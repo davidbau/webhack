@@ -11,6 +11,9 @@ import {
     CHAIN_CLASS, VENOM_CLASS,
     IRON, COPPER, WOOD, PLASTIC, GLASS, DRAGON_HIDE, LIQUID,
     ARROW, DART, ROCK,
+    GOLD_PIECE, DILITHIUM_CRYSTAL, LOADSTONE,
+    WAN_CANCELLATION, WAN_LIGHT, WAN_LIGHTNING,
+    BAG_OF_HOLDING, OILSKIN_SACK, BAG_OF_TRICKS, SACK,
     initObjectData,
 } from './objects.js';
 import { rndmonnum } from './makemon_new.js';
@@ -28,6 +31,30 @@ import { mons, G_NOCORPSE, M2_NEUTER, M2_FEMALE, M2_MALE } from './monsters.js';
 // FUMBLE_BOOTS, LEVITATION_BOOTS, HELM_OF_OPPOSITE_ALIGNMENT, GAUNTLETS_OF_FUMBLING,
 // RIN_TELEPORTATION, RIN_POLYMORPH, RIN_AGGRAVATE_MONSTER, RIN_HUNGER,
 // GOLD_PIECE, SPE_BLANK_PAPER, POT_OIL, POT_WATER
+
+// Module-level depth for level_difficulty() during mklev
+let _levelDepth = 1;
+export function setLevelDepth(d) { _levelDepth = d; }
+
+// C ref: objnam.c rnd_class() -- pick random object in index range by probability
+function rnd_class(first, last) {
+    let sum = 0;
+    for (let i = first; i <= last; i++)
+        sum += objectData[i].prob || 0;
+    if (!sum) return rn1(last - first + 1, first);
+    let x = rnd(sum);
+    for (let i = first; i <= last; i++) {
+        x -= objectData[i].prob || 0;
+        if (x <= 0) return i;
+    }
+    return first;
+}
+
+// C ref: Is_mbag() -- is object a magic bag?
+function is_mbag(obj) {
+    return obj.otyp === BAG_OF_HOLDING || obj.otyp === BAG_OF_TRICKS
+        || obj.otyp === OILSKIN_SACK;
+}
 
 // P_ skill constants for is_multigen
 const P_BOW = 20;
@@ -480,7 +507,30 @@ function mkbox_cnts(box) {
                 if (prob <= 0) { oclass = bp.iclass; break; }
             }
             // Create the item
-            mkobj(oclass, false);
+            const otmp = mkobj(oclass, false);
+            if (!otmp) continue;
+
+            // C ref: mkobj.c:360-370 — coin quantity and rock substitution
+            if (otmp.oclass === COIN_CLASS) {
+                // C ref: rnd(level_difficulty() + 2) * rnd(75)
+                rnd(_levelDepth + 2);
+                rnd(75);
+            } else {
+                // C ref: while (otmp->otyp == ROCK) rnd_class(...)
+                while (otmp.otyp === ROCK) {
+                    otmp.otyp = rnd_class(DILITHIUM_CRYSTAL, LOADSTONE);
+                }
+            }
+            // C ref: mkobj.c:371-378 — bag of holding special cases
+            if (box.otyp === BAG_OF_HOLDING) {
+                if (is_mbag(otmp)) {
+                    otmp.otyp = SACK;
+                } else {
+                    while (otmp.otyp === WAN_CANCELLATION) {
+                        otmp.otyp = rnd_class(WAN_LIGHT, WAN_LIGHTNING);
+                    }
+                }
+            }
         }
     }
 }

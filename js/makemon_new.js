@@ -4,6 +4,7 @@
 
 import { rn2, rnd, rn1, d } from './rng.js';
 import { mksobj } from './mkobj_new.js';
+import { ROCK } from './objects.js';
 import {
     mons, LOW_PM, SPECIAL_PM,
     G_FREQ, G_NOGEN, G_UNIQ, G_HELL, G_NOHELL, G_SGROUP, G_LGROUP,
@@ -425,11 +426,14 @@ function m_initweap(mndx, depth) {
             else wpn = SPEAR;
             mksobj(wpn, true, false);
         }
-        // Offensive item for high-level monsters
-        if (ptr.level > 0 && !rn2(75)) {
-            // Would give offensive item — skip details
-        }
         break;
+    }
+
+    // C ref: makemon.c:571 — offensive item check, OUTSIDE the switch,
+    // always called for ALL monsters. rn2(75) is always consumed.
+    if (ptr.level > rn2(75)) {
+        // rnd_offensive_item → mongets → mksobj
+        // TODO: implement actual offensive item creation
     }
 }
 

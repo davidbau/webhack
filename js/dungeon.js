@@ -16,7 +16,8 @@ import {
     DIR_N, DIR_S, DIR_E, DIR_W, DIR_180,
     xdir, ydir, N_DIRS,
     OROOM, THEMEROOM, VAULT, MAXNROFROOMS, ROOMOFFSET,
-    IS_WALL, IS_DOOR, IS_ROCK, IS_ROOM, IS_OBSTRUCTED, IS_FURNITURE,
+    DBWALL,
+    IS_WALL, IS_STWALL, IS_DOOR, IS_ROCK, IS_ROOM, IS_OBSTRUCTED, IS_FURNITURE,
     IS_POOL, IS_LAVA, ACCESSIBLE, isok,
     NO_TRAP, ARROW_TRAP, DART_TRAP, ROCKTRAP, SQKY_BOARD, BEAR_TRAP,
     LANDMINE, ROLLING_BOULDER_TRAP, SLP_GAS_TRAP, RUST_TRAP, FIRE_TRAP,
@@ -26,9 +27,9 @@ import {
     is_pit, is_hole,
     MKTRAP_NOFLAGS, MKTRAP_MAZEFLAG, MKTRAP_NOSPIDERONWEB, MKTRAP_NOVICTIM
 } from './config.js';
-import { GameMap, makeRoom } from './map.js';
+import { GameMap, makeRoom, FILL_NONE, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, d, skipRng } from './rng.js';
-import { mkobj, mksobj } from './mkobj_new.js';
+import { mkobj, mksobj, setLevelDepth } from './mkobj_new.js';
 import { makemon, NO_MM_FLAGS, MM_NOGRP } from './makemon_new.js';
 import { init_objects } from './o_init.js';
 import {
@@ -42,6 +43,10 @@ import {
     WAN_DIGGING, SPE_HEALING, SPE_BLANK_PAPER, SPE_NOVEL,
     objectData, bases,
 } from './objects.js';
+import {
+    RUMOR_TRUE_TEXTS, RUMOR_FALSE_TEXTS,
+    RUMOR_TRUE_LINE_BYTES, RUMOR_FALSE_LINE_BYTES,
+} from './rumor_data.js';
 
 // ========================================================================
 // rect.c -- Rectangle pool for BSP room placement
@@ -154,10 +159,13 @@ function split_rects(r1, r2) {
 // C ref: sp_lev.c check_room()
 // Verifies room area is all STONE with required margins.
 // May shrink the room. Returns { lowx, ddx, lowy, ddy } or null.
-function check_room(map, lowx, ddx, lowy, ddy, vault) {
+function check_room(map, lowx, ddx, lowy, ddy, vault, inThemerooms) {
     let hix = lowx + ddx, hiy = lowy + ddy;
     const xlim = XLIM + (vault ? 1 : 0);
     const ylim = YLIM + (vault ? 1 : 0);
+
+    // C ref: sp_lev.c:1417-1418 — save original dimensions for themeroom check
+    const s_lowx = lowx, s_ddx = ddx, s_lowy = lowy, s_ddy = ddy;
 
     if (lowx < 3) lowx = 3;
     if (lowy < 2) lowy = 2;
@@ -166,6 +174,12 @@ function check_room(map, lowx, ddx, lowy, ddy, vault) {
 
     for (;;) { // C uses goto chk; for retry
         if (hix <= lowx || hiy <= lowy)
+            return null;
+
+        // C ref: sp_lev.c:1435-1437 — in themerooms mode, fail if all
+        // dimensions were modified from original
+        if (inThemerooms && (s_lowx !== lowx) && (s_ddx !== ddx)
+            && (s_lowy !== lowy) && (s_ddy !== ddy))
             return null;
 
         let conflict = false;
@@ -179,6 +193,9 @@ function check_room(map, lowx, ddx, lowy, ddy, vault) {
                 const loc = map.at(x, y);
                 if (loc && loc.typ !== STONE) {
                     if (!rn2(3)) return null;
+                    // C ref: sp_lev.c:1457-1458 — in themerooms mode,
+                    // any overlap causes immediate failure (no shrinking)
+                    if (inThemerooms) return null;
                     if (x < lowx)
                         lowx = x + xlim + 1;
                     else
@@ -207,7 +224,7 @@ function litstate_rnd(litstate, depth) {
 
 // C ref: sp_lev.c create_room() -- create a random room using rect BSP
 // Returns true if room was created, false if failed.
-function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth) {
+function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth, inThemerooms) {
     let xabs = 0, yabs = 0;
     let wtmp, htmp, xtmp, ytmp;
     let r1 = null;
@@ -261,7 +278,7 @@ function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth) {
                 if (map.nroom < 4 && dy > 1)
                     dy--;
             }
-            const result = check_room(map, xabs, dx, yabs, dy, vault);
+            const result = check_room(map, xabs, dx, yabs, dy, vault, inThemerooms);
             if (!result) {
                 r1 = null;
                 continue;
@@ -395,19 +412,86 @@ function do_room_or_subroom(map, croom, lowx, lowy, hix, hiy,
 // C ref: mklev.c add_room()
 function add_room_to_map(map, lowx, lowy, hix, hiy, lit, rtype, special) {
     const croom = makeRoom();
+    // needfill defaults to FILL_NONE; caller sets FILL_NORMAL as needed
     map.rooms.push(croom);
     map.nroom = map.rooms.length;
     do_room_or_subroom(map, croom, lowx, lowy, hix, hiy, lit, rtype,
                        special, true);
 }
 
+// C ref: mklev.c mkroom_cmp() — sort rooms by lx only
+function mkroom_cmp(a, b) {
+    if (a.lx < b.lx) return -1;
+    if (a.lx > b.lx) return 1;
+    return 0;
+}
+
+// BSD-compatible qsort (Bentley-McIlroy fat partition).
+// JS Array.sort is stable (TimSort) while C's qsort is not.
+// We must match C's exact sort behavior for deterministic level gen.
+function bsdQsort(arr, cmpFn) {
+    function med3(a, b, c) {
+        return cmpFn(arr[a], arr[b]) < 0
+            ? (cmpFn(arr[b], arr[c]) < 0 ? b : (cmpFn(arr[a], arr[c]) < 0 ? c : a))
+            : (cmpFn(arr[b], arr[c]) > 0 ? b : (cmpFn(arr[a], arr[c]) > 0 ? c : a));
+    }
+    function swap(i, j) {
+        const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    function qsort(lo, n) {
+        if (n < 7) {
+            // Insertion sort for small subarrays (stable)
+            for (let i = lo + 1; i < lo + n; i++)
+                for (let j = i; j > lo && cmpFn(arr[j - 1], arr[j]) > 0; j--)
+                    swap(j, j - 1);
+            return;
+        }
+        // Pivot: median of three (or ninther for large arrays)
+        let pm = lo + Math.floor(n / 2);
+        if (n > 7) {
+            let pl = lo, pn = lo + n - 1;
+            if (n > 40) {
+                const s = Math.floor(n / 8);
+                pl = med3(pl, pl + s, pl + 2 * s);
+                pm = med3(pm - s, pm, pm + s);
+                pn = med3(pn - 2 * s, pn - s, pn);
+            }
+            pm = med3(pl, pm, pn);
+        }
+        swap(lo, pm);
+        let pa = lo + 1, pb = pa;
+        let pc = lo + n - 1, pd = pc;
+        for (;;) {
+            while (pb <= pc && cmpFn(arr[pb], arr[lo]) <= 0) {
+                if (cmpFn(arr[pb], arr[lo]) === 0) { swap(pa, pb); pa++; }
+                pb++;
+            }
+            while (pb <= pc && cmpFn(arr[pc], arr[lo]) >= 0) {
+                if (cmpFn(arr[pc], arr[lo]) === 0) { swap(pc, pd); pd--; }
+                pc--;
+            }
+            if (pb > pc) break;
+            swap(pb, pc); pb++; pc--;
+        }
+        const hi = lo + n;
+        let s = Math.min(pa - lo, pb - pa);
+        for (let i = 0; i < s; i++) swap(lo + i, pb - s + i);
+        s = Math.min(pd - pc, hi - pd - 1);
+        for (let i = 0; i < s; i++) swap(pb + i, hi - s + i);
+        s = pb - pa;
+        if (s > 1) qsort(lo, s);
+        s = pd - pc;
+        if (s > 1) qsort(hi - s, s);
+    }
+    qsort(0, arr.length);
+}
+
 // C ref: mklev.c sort_rooms()
 function sort_rooms(map) {
     const n = map.nroom;
 
-    // Build old-to-new index mapping
-    const oldIndices = map.rooms.map((r, i) => i);
-    map.rooms.sort((a, b) => a.lx - b.lx);
+    // Sort rooms using BSD-compatible qsort to match C's behavior
+    bsdQsort(map.rooms, mkroom_cmp);
 
     // Build reverse index: ri[old_roomnoidx] = new_index
     const ri = new Array(MAXNROFROOMS + 1).fill(0);
@@ -568,16 +652,9 @@ function placeMapThemeroom(map, mapIdx, depth) {
             fillerRegion(map, fx, fy, depth);
         }
 
-        // Split BSP rects around the placed map area
-        // C ref: sp_lev.c doesn't directly do this, but mklev.c needs it for
-        // subsequent room placement to avoid overlap
-        const mapRect = {
-            lx: xstart - 1, ly: ystart - 1,
-            hx: xstart + mfWid, hy: ystart + mfHei
-        };
-        const parentRect = get_rect(mapRect);
-        if (parentRect) split_rects(parentRect, mapRect);
-
+        // C ref: lspo_map() does NOT modify the rect pool for des.map()
+        // themeroms. Overlap avoidance for subsequent rooms is handled by
+        // the overlap check inside create_room(), not by split_rects().
         return true;
     }
 
@@ -642,6 +719,11 @@ function fillerRegion(map, absX, absY, depth) {
     // flood_fill_rm from (absX, absY) + add_room
     const rtype = isThemed ? THEMEROOM : OROOM;
     floodFillAndRegister(map, absX, absY, rtype, lit);
+
+    // C ref: themerms.lua filler_region passes filled=1 to des.region()
+    if (map.nroom > 0) {
+        map.rooms[map.nroom - 1].needfill = FILL_NORMAL;
+    }
 
     // If themed, run themeroom_fill reservoir sampling + contents
     if (isThemed && map.nroom > 0) {
@@ -794,9 +876,34 @@ function simulateThemeroomFill(map, room, depth, forceLit) {
     // Simulate fill contents RNG consumption.
     // Each fill's contents function in themerms.lua calls des.altar/des.object/
     // des.monster/des.trap which consume RNG. We simulate the simple ones here.
+    //
+    // IMPORTANT: math.random in nhlib.lua is overridden to use NetHack RNG:
+    //   math.random(n) → 1 + nh.rn2(n) → rn2(n)
+    //   math.random(a, b) → nh.random(a, b-a+1) → rn2(b-a+1)
+    //   percent(n) → math.random(0, 99) → rn2(100)
+    //   d(n, x) → n × math.random(1, x) → n × rn2(x)
+    //   shuffle(list) → (len-1) rn2 calls
     const w = room.hx - room.lx + 1;
     const h = room.hy - room.ly + 1;
+    const floorTiles = w * h; // all floor tiles (lx..hx × ly..hy)
     switch (pickName) {
+        case 'ice':
+            // C ref: themerms.lua Ice room — selection.room() then des.terrain(ice, "I")
+            // selection.room() selects all floor tiles from lx..hx, ly..hy
+            for (let y = room.ly; y <= room.hy; y++) {
+                for (let x = room.lx; x <= room.hx; x++) {
+                    const loc = map.at(x, y);
+                    if (loc && loc.typ === ROOM) loc.typ = ICE;
+                }
+            }
+            // percent(25) → rn2(100)
+            if (rn2(100) < 25) {
+                // ice:iterate(ice_melter) — nh.rn2(1000) per floor tile
+                for (let i = 0; i < floorTiles; i++) {
+                    rn2(1000);
+                }
+            }
+            break;
         case 'temple':
             // Temple of the gods: 3 altars × (somex + somey)
             // C ref: themerms.lua Temple of the gods, mkroom.c somex/somey
@@ -807,7 +914,7 @@ function simulateThemeroomFill(map, room, depth, forceLit) {
                 if (loc) loc.typ = ALTAR;
             }
             break;
-        // TODO: simulate other fill types (ice, cloud, spider, trap, etc.)
+        // TODO: simulate other fill types (cloud, spider, trap, etc.)
         // These involve des.object/des.monster/des.trap creation which requires
         // porting mkobj.c/makemon.c/mktrap.c RNG consumption patterns.
     }
@@ -847,7 +954,7 @@ function makerooms(map, depth) {
             // C ref: mklev.c:396-399 — create_vault() saves position but
             // does NOT add a room or increment nroom. The vault is properly
             // created later in the post-corridor section of makelevel.
-            create_room(map, -1, -1, 2, 2, -1, -1, VAULT, true, depth);
+            create_room(map, -1, -1, 2, 2, -1, -1, VAULT, true, depth, true);
         } else {
             // C ref: mklev.c:402-407 — themerooms_generate Lua reservoir
             // sampling (30 calls). Track which room was picked.
@@ -869,12 +976,19 @@ function makerooms(map, depth) {
                 // C ref: sp_lev.c:2803 build_room chance check
                 rn2(100);
 
-                if (!create_room(map, -1, -1, -1, -1, -1, -1, OROOM, -1, depth)) {
+                if (!create_room(map, -1, -1, -1, -1, -1, -1, OROOM, -1, depth, true)) {
                     // C ref: mklev.c:408-411 — themeroom_failed retry logic
                     if (++themeroom_tries > 10
                         || map.nroom >= Math.floor(MAXNROFROOMS / 6))
                         break;
                 } else {
+                    // C ref: themerms.lua — set needfill based on whether the
+                    // Lua themeroom passes filled=1 to des.room().
+                    // Picks with filled=1: 0,1,2,3,4,7,10. Others: no filled → 0.
+                    const filledPicks = [0, 1, 2, 3, 4, 7, 10];
+                    if (filledPicks.includes(themeroomPick)) {
+                        map.rooms[map.nroom - 1].needfill = FILL_NORMAL;
+                    }
                     // C ref: non-default themerooms get rtype=THEMEROOM
                     if (themeroomPick !== 0) {
                         map.rooms[map.nroom - 1].rtype = THEMEROOM;
@@ -952,7 +1066,24 @@ function finddpos_shift(map, x, y, dir, aroom) {
     if (good_rm_wall_doorpos(map, x, y, dir, aroom))
         return { x, y };
 
-    // For irregular rooms, walk inward -- skip for now (regular rooms only)
+    // C ref: mklev.c:118-139 — irregular rooms may have their wall away from
+    // the bounding box edge; walk inward through STONE/CORR to find the wall.
+    if (aroom.irregular) {
+        let rx = x, ry = y;
+        let fail = false;
+        while (!fail && isok(rx, ry)
+               && (map.at(rx, ry).typ === STONE || map.at(rx, ry).typ === CORR)) {
+            rx += dx;
+            ry += dy;
+            if (good_rm_wall_doorpos(map, rx, ry, dir, aroom))
+                return { x: rx, y: ry };
+            if (!(map.at(rx, ry).typ === STONE || map.at(rx, ry).typ === CORR))
+                fail = true;
+            if (rx < aroom.lx || rx > aroom.hx
+                || ry < aroom.ly || ry > aroom.hy)
+                fail = true;
+        }
+    }
     return null;
 }
 
@@ -1432,6 +1563,168 @@ function place_niche(map, aroom) {
     return null;
 }
 
+// ========================================================================
+// Engraving / wipeout_text — C ref: engrave.c
+// Used to consume RNG for trap engravings and graffiti.
+// ========================================================================
+
+// C ref: engrave.c rubouts[] — partial rubout substitution table
+const RUBOUTS = {
+    'A': "^", 'B': "Pb[", 'C': "(", 'D': "|)[", 'E': "|FL[_",
+    'F': "|-", 'G': "C(", 'H': "|-", 'I': "|", 'K': "|<",
+    'L': "|_", 'M': "|", 'N': "|\\", 'O': "C(", 'P': "F",
+    'Q': "C(", 'R': "PF", 'T': "|", 'U': "J", 'V': "/\\",
+    'W': "V/\\", 'Z': "/",
+    'b': "|", 'd': "c|", 'e': "c", 'g': "c", 'h': "n",
+    'j': "i", 'k': "|", 'l': "|", 'm': "nr", 'n': "r",
+    'o': "c", 'q': "c", 'w': "v", 'y': "v",
+    ':': ".", ';': ",:", ',': ".", '=': "-", '+': "-|",
+    '*': "+", '@': "0", '0': "C(", '1': "|", '6': "o",
+    '7': "/", '8': "3o",
+};
+
+// C ref: engrave.c wipeout_text() with seed=0 (random mode)
+// Simulates the RNG consumption pattern without needing the actual text result.
+function wipeout_text(text, cnt) {
+    if (!text.length || cnt <= 0) return;
+    const chars = text.split('');
+    const lth = chars.length;
+    while (cnt--) {
+        const nxt = rn2(lth);
+        const use_rubout = rn2(4);
+        const ch = chars[nxt];
+        if (ch === ' ') continue;
+        if ("?.,'`-|_".includes(ch)) {
+            chars[nxt] = ' ';
+            continue;
+        }
+        if (use_rubout && RUBOUTS[ch]) {
+            const wipeto = RUBOUTS[ch];
+            const j = rn2(wipeto.length);
+            chars[nxt] = wipeto[j];
+        } else {
+            chars[nxt] = '?';
+        }
+    }
+}
+
+// C ref: engrave.c random_engraving() — engraving texts from ENGRAVEFILE
+// These are the decoded texts from the compiled dat/engrave file.
+const ENGRAVE_TEXTS = [
+    'No matter where you go, there you are.',
+    'Elbereth', 'Vlad was here', 'ad aerarium', 'Owlbreath', 'Galadriel',
+    'Kilroy was here', 'Frodo lives', 'A.S. ->', '<- A.S.',
+    "You won't get it up the steps",
+    "Lasciate ogni speranza o voi ch'entrate.",
+    'Well Come', 'We apologize for the inconvenience.',
+    'See you next Wednesday', 'notary sojak',
+    'For a good time call 8?7-5309',
+    "Please don't feed the animals.",
+    "Madam, in Eden, I'm Adam.",
+    'Two thumbs up!', 'Hello, World!', "You've got mail!", 'As if!',
+    'BAD WOLF', 'Arooo!  Werewolves of Yendor!', 'Dig for Victory here',
+    'Gaius Julius Primigenius was here.  Why are you late?',
+    "Don't go this way", 'Go left --->', '<--- Go right',
+    'X marks the spot', 'X <--- You are here.', 'Here be dragons',
+    'Save now, and do your homework!',
+    "There was a hole here.  It's gone now.",
+    'The Vibrating Square', 'This is a pit!',
+    'This is not the dungeon you are looking for.',
+    "Watch out, there's a gnome with a wand of death behind that door!",
+    'This square deliberately left blank.',
+    'Haermund Hardaxe carved these runes',
+    "Need a light?  Come visit the Minetown branch of Izchak's Lighting Store!",
+    'Snakes on the Astral Plane - Soon in a dungeon near you',
+    'You are the one millionth visitor to this place!  Please wait 200 turns for your wand of wishing.',
+    'Warning, Exploding runes!',
+    'If you can read these words then you are not only a nerd but probably dead.',
+    'The cake is a lie',
+];
+// Byte lengths of each data line in the compiled engrave file (including newline)
+const ENGRAVE_LINE_BYTES = [
+    60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
+    60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
+    60, 60, 60, 60, 60, 60, 66, 60, 60, 74, 60, 98, 60, 76, 60,
+];
+const ENGRAVE_FILE_CHUNKSIZE = 2894;
+
+// C ref: rumors file section sizes (from compiled dat/rumors header)
+const RUMOR_TRUE_SIZE = 23875;
+const RUMOR_FALSE_SIZE = 25762;
+// Padded line size for rumor/engrave files (MD_PAD_RUMORS)
+const RUMOR_PAD_LENGTH = 60;
+
+// C ref: rumors.c get_rnd_line — simulate the random line selection from a
+// padded file section. Returns the index of the selected line.
+function get_rnd_line_index(lineBytes, chunksize, padlength) {
+    for (let trylimit = 10; trylimit > 0; trylimit--) {
+        const chunkoffset = rn2(chunksize);
+        let pos = 0;
+        let lineIdx = 0;
+        while (lineIdx < lineBytes.length && pos + lineBytes[lineIdx] <= chunkoffset) {
+            pos += lineBytes[lineIdx];
+            lineIdx++;
+        }
+        if (lineIdx < lineBytes.length) {
+            // C: strlen(buf) after fgets = remaining bytes including \n
+            // C rejects if strlen(buf) > padlength + 1
+            const remaining = lineBytes[lineIdx] - (chunkoffset - pos);
+            if (padlength === 0 || remaining <= padlength + 1) {
+                const nextIdx = (lineIdx + 1) % lineBytes.length;
+                return nextIdx;
+            }
+        } else {
+            return 0;
+        }
+    }
+    return 0;
+}
+
+// C ref: engrave.c random_engraving() — simulate full RNG consumption.
+// C: if (!rn2(4) || !(rumor = getrumor(0, buf, TRUE)) || !*rumor)
+//        get_rnd_text(ENGRAVEFILE, buf, rn2, MD_PAD_RUMORS);
+//    wipeout_text(buf, strlen(buf)/4, 0);
+function random_engraving_rng() {
+    let text = null;
+    if (!rn2(4)) {
+        // Path A: use engrave file directly (short-circuit: skip getrumor)
+        const idx = get_rnd_line_index(
+            ENGRAVE_LINE_BYTES, ENGRAVE_FILE_CHUNKSIZE, RUMOR_PAD_LENGTH);
+        text = ENGRAVE_TEXTS[idx] || ENGRAVE_TEXTS[0];
+    } else {
+        // Path B: getrumor(0, buf, TRUE) with cookie exclusion loop
+        let count = 0;
+        do {
+            // C: adjtruth = truth + rn2(2) where truth=0
+            const adjtruth = 0 + rn2(2);
+            if (adjtruth > 0) {
+                const idx = get_rnd_line_index(
+                    RUMOR_TRUE_LINE_BYTES, RUMOR_TRUE_SIZE, RUMOR_PAD_LENGTH);
+                text = RUMOR_TRUE_TEXTS[idx];
+            } else {
+                const idx = get_rnd_line_index(
+                    RUMOR_FALSE_LINE_BYTES, RUMOR_FALSE_SIZE, RUMOR_PAD_LENGTH);
+                text = RUMOR_FALSE_TEXTS[idx];
+            }
+        } while (count++ < 50 && text && text.startsWith('[cookie] '));
+
+        if (!text || !text.length) {
+            // Fallback to engrave file (C short-circuit: getrumor returned empty)
+            const idx = get_rnd_line_index(
+                ENGRAVE_LINE_BYTES, ENGRAVE_FILE_CHUNKSIZE, RUMOR_PAD_LENGTH);
+            text = ENGRAVE_TEXTS[idx] || ENGRAVE_TEXTS[0];
+        }
+    }
+    // C: wipeout_text(outbuf, (int)(strlen(outbuf) / 4), 0);
+    wipeout_text(text, Math.floor(text.length / 4));
+}
+
+// C ref: mklev.c trap_engravings[] — engraving text for trap niches
+const TRAP_ENGRAVINGS = [];
+TRAP_ENGRAVINGS[TRAPDOOR] = "Vlad was here";
+TRAP_ENGRAVINGS[TELEP_TRAP] = "ad aerarium";
+TRAP_ENGRAVINGS[LEVEL_TELEP] = "ad aerarium";
+
 // C ref: mklev.c makeniche()
 function makeniche(map, depth, trap_type) {
     let vct = 8;
@@ -1446,7 +1739,22 @@ function makeniche(map, depth, trap_type) {
 
         if (trap_type || !rn2(4)) {
             rm.typ = SCORR;
-            // Skip trap creation for now
+            // C ref: maketrap + trap engraving (maketrap itself doesn't use RNG)
+            if (trap_type) {
+                // C ref: mklev.c:751-753 — is_hole replacement for Can_fall_thru
+                let actual_trap = trap_type;
+                if (is_hole(actual_trap) && depth <= 1) {
+                    // Can't fall through top level; use ROCKTRAP instead
+                    actual_trap = ROCKTRAP;
+                }
+                // C ref: mklev.c:757-763 — trap engraving + wipe
+                const engr = TRAP_ENGRAVINGS[actual_trap];
+                if (engr) {
+                    // C ref: wipe_engr_at(xx, yy-dy, 5, FALSE)
+                    // For DUST type, cnt stays at 5 (no reduction)
+                    wipeout_text(engr, 5);
+                }
+            }
             dosdoor(map, xx, yy, aroom, SDOOR, depth);
         } else {
             rm.typ = CORR;
@@ -1463,7 +1771,8 @@ function makeniche(map, depth, trap_type) {
                     }
                 }
                 // C ref: mklev.c:780-782 — scroll of teleportation in niche
-                mksobj(SCR_TELEPORTATION, true, false);
+                if (!map.flags.noteleport)
+                    mksobj(SCR_TELEPORTATION, true, false);
                 if (!rn2(3)) {
                     // C ref: mklev.c:783-784 — random object in niche
                     mkobj(0, true); // RANDOM_CLASS = 0
@@ -1477,16 +1786,19 @@ function makeniche(map, depth, trap_type) {
 // C ref: mklev.c make_niches()
 function make_niches(map, depth) {
     let ct = rnd(Math.floor(map.nroom / 2) + 1);
-    const ltptr = (depth > 15);
-    const vamp = (depth > 5 && depth < 25);
+    // C ref: mklev.c:795-796 — ltptr and vamp are boolean flags, used once
+    let ltptr = (!map.flags.noteleport && depth > 15);
+    let vamp = (depth > 5 && depth < 25);
 
     while (ct--) {
         if (ltptr && !rn2(6)) {
-            makeniche(map, depth, 0); // TELEP_TRAP simplified
+            ltptr = false;
+            makeniche(map, depth, LEVEL_TELEP);
         } else if (vamp && !rn2(6)) {
-            makeniche(map, depth, 0); // TRAPDOOR simplified
+            vamp = false;
+            makeniche(map, depth, TRAPDOOR);
         } else {
-            makeniche(map, depth, 0);
+            makeniche(map, depth, NO_TRAP);
         }
     }
 }
@@ -1941,6 +2253,7 @@ const extra_classes = [
 // C ref: mklev.c fill_ordinary_room()
 // C ref: ROOM_IS_FILLABLE: (rtype == OROOM || rtype == THEMEROOM) && needfill == FILL_NORMAL
 function fill_ordinary_room(map, croom, depth, bonusItems) {
+    if (croom.needfill !== FILL_NORMAL) return;
     if (croom.rtype !== OROOM && croom.rtype !== THEMEROOM) return;
 
     // Put a sleeping monster inside (1/3 chance)
@@ -2073,8 +2386,13 @@ function fill_ordinary_room(map, croom, depth, bonusItems) {
 
     // C ref: graffiti (!rn2(27 + 3 * abs(depth)))
     if (!rn2(27 + 3 * Math.abs(depth))) {
-        // random_engraving consumes RNG, then somexyspace loop
-        // Skip: can't simulate engraving internals
+        // C: random_engraving(buf, pristinebuf) — selects text + wipeout_text
+        random_engraving_rng();
+        // C: do { somexyspace(croom, &pos); } while (typ != ROOM && !rn2(40));
+        let pos;
+        do {
+            pos = somexyspace(map, croom);
+        } while (pos && map.at(pos.x, pos.y).typ !== ROOM && !rn2(40));
     }
 
     // C ref: random objects (!rn2(3))
@@ -2094,64 +2412,115 @@ function fill_ordinary_room(map, croom, depth, bonusItems) {
 // Wall fixup
 // ========================================================================
 
-// C ref: mklev.c wallification() -- fix wall types in a region
-function wallify(map, x1, y1, x2, y2) {
+// C ref: mkmaze.c wall_cleanup() — remove walls totally surrounded by stone
+function wall_cleanup(map, x1, y1, x2, y2) {
     for (let x = x1; x <= x2; x++) {
         for (let y = y1; y <= y2; y++) {
             const loc = map.at(x, y);
-            if (loc && IS_WALL(loc.typ)) {
-                setWallType(map, x, y);
+            if (loc && IS_WALL(loc.typ) && loc.typ !== DBWALL) {
+                if (is_solid(map, x-1, y-1) && is_solid(map, x-1, y)
+                    && is_solid(map, x-1, y+1) && is_solid(map, x, y-1)
+                    && is_solid(map, x, y+1) && is_solid(map, x+1, y-1)
+                    && is_solid(map, x+1, y) && is_solid(map, x+1, y+1))
+                    loc.typ = STONE;
             }
         }
     }
 }
 
-// C ref: mklev.c wallification() -- full map wall fixup
+// C ref: mkmaze.c wallification() = wall_cleanup + fix_wall_spines
+function wallify(map, x1, y1, x2, y2) {
+    wall_cleanup(map, x1, y1, x2, y2);
+    for (let x = x1; x <= x2; x++) {
+        for (let y = y1; y <= y2; y++) {
+            setWallType(map, x, y);
+        }
+    }
+}
+
+// C ref: mkmaze.c wallification() -- full map wall fixup
 export function wallification(map) {
+    wall_cleanup(map, 1, 0, COLNO - 1, ROWNO - 1);
     for (let x = 1; x < COLNO - 1; x++) {
-        for (let y = 1; y < ROWNO - 1; y++) {
-            const loc = map.at(x, y);
-            if (loc && IS_WALL(loc.typ)) {
-                setWallType(map, x, y);
-            }
+        for (let y = 0; y < ROWNO; y++) {
+            setWallType(map, x, y);
         }
     }
 }
 
-// Determine the correct wall type for a position based on neighbors
+// C ref: mkmaze.c iswall() — check if wall spine can join this location
+function iswall_check(map, x, y) {
+    if (!isok(x, y)) return 0;
+    const typ = map.at(x, y).typ;
+    return (IS_WALL(typ) || IS_DOOR(typ) || typ === LAVAWALL
+            || typ === SDOOR || typ === IRONBARS) ? 1 : 0;
+}
+
+// C ref: mkmaze.c iswall_or_stone()
+function iswall_or_stone(map, x, y) {
+    if (!isok(x, y)) return 1; // out of bounds = stone
+    const typ = map.at(x, y).typ;
+    return (typ === STONE || iswall_check(map, x, y)) ? 1 : 0;
+}
+
+// C ref: mkmaze.c is_solid()
+function is_solid(map, x, y) {
+    return !isok(x, y) || IS_STWALL(map.at(x, y).typ);
+}
+
+// C ref: mkmaze.c extend_spine() — determine if wall spine extends in (dx,dy)
+function extend_spine(locale, wall_there, dx, dy) {
+    const nx = 1 + dx, ny = 1 + dy;
+    if (wall_there) {
+        if (dx) {
+            if (locale[1][0] && locale[1][2]
+                && locale[nx][0] && locale[nx][2])
+                return 0; // corridor of walls — don't extend
+            return 1;
+        } else {
+            if (locale[0][1] && locale[2][1]
+                && locale[0][ny] && locale[2][ny])
+                return 0;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// C ref: mkmaze.c spine_array — maps 4-bit NSEW extension to wall type
+//   bits: N=8, S=4, E=2, W=1
+const SPINE_ARRAY = [
+    VWALL, HWALL, HWALL, HWALL,
+    VWALL, TRCORNER, TLCORNER, TDWALL,
+    VWALL, BRCORNER, BLCORNER, TUWALL,
+    VWALL, TLWALL, TRWALL, CROSSWALL,
+];
+
+// C ref: mkmaze.c fix_wall_spines() — set correct wall type based on neighbors
 function setWallType(map, x, y) {
     const loc = map.at(x, y);
-    if (!loc || !IS_WALL(loc.typ)) return;
+    if (!loc || !IS_WALL(loc.typ) || loc.typ === DBWALL) return;
 
-    const above = isok(x, y - 1) ? map.at(x, y - 1) : null;
-    const below = isok(x, y + 1) ? map.at(x, y + 1) : null;
-    const left  = isok(x - 1, y) ? map.at(x - 1, y) : null;
-    const right = isok(x + 1, y) ? map.at(x + 1, y) : null;
+    // Build 3x3 locale grid of iswall_or_stone values
+    const locale = [[0,0,0],[0,0,0],[0,0,0]];
+    const loc_f = (cx, cy) => iswall_or_stone(map, cx, cy);
+    locale[0][0] = loc_f(x - 1, y - 1);
+    locale[1][0] = loc_f(x,     y - 1);
+    locale[2][0] = loc_f(x + 1, y - 1);
+    locale[0][1] = loc_f(x - 1, y);
+    locale[2][1] = loc_f(x + 1, y);
+    locale[0][2] = loc_f(x - 1, y + 1);
+    locale[1][2] = loc_f(x,     y + 1);
+    locale[2][2] = loc_f(x + 1, y + 1);
 
-    const hasAbove = above && IS_WALL(above.typ);
-    const hasBelow = below && IS_WALL(below.typ);
-    const hasLeft  = left  && IS_WALL(left.typ);
-    const hasRight = right && IS_WALL(right.typ);
+    // Determine if wall extends in each direction NSEW
+    const bits = (extend_spine(locale, iswall_check(map, x, y - 1), 0, -1) << 3)
+               | (extend_spine(locale, iswall_check(map, x, y + 1), 0, 1) << 2)
+               | (extend_spine(locale, iswall_check(map, x + 1, y), 1, 0) << 1)
+               | extend_spine(locale, iswall_check(map, x - 1, y), -1, 0);
 
-    const connections = [hasAbove, hasBelow, hasLeft, hasRight]
-        .filter(Boolean).length;
-
-    if (connections >= 3) {
-        if (!hasAbove) { loc.typ = TUWALL; }
-        else if (!hasBelow) { loc.typ = TDWALL; }
-        else if (!hasLeft)  { loc.typ = TLWALL; }
-        else if (!hasRight) { loc.typ = TRWALL; }
-        else { loc.typ = CROSSWALL; }
-    } else if (hasAbove && hasRight && !hasBelow && !hasLeft) {
-        loc.typ = BLCORNER;
-    } else if (hasAbove && hasLeft && !hasBelow && !hasRight) {
-        loc.typ = BRCORNER;
-    } else if (hasBelow && hasRight && !hasAbove && !hasLeft) {
-        loc.typ = TLCORNER;
-    } else if (hasBelow && hasLeft && !hasAbove && !hasRight) {
-        loc.typ = TRCORNER;
-    }
-    // Otherwise leave as HWALL or VWALL
+    // Don't change typ if wall is free-standing
+    if (bits) loc.typ = SPINE_ARRAY[bits];
 }
 
 // C ref: mklev.c:1312-1322 — vault creation and fill
@@ -2166,15 +2535,18 @@ function do_fill_vault(map, vaultCheck, depth) {
 
     add_room_to_map(map, lowx, lowy, hix, hiy, true, VAULT, false);
     map.flags.has_vault = true;
+    // C ref: mklev.c:1318 — vault room gets needfill=FILL_NORMAL
+    map.rooms[map.nroom - 1].needfill = FILL_NORMAL;
 
     // C ref: fill_special_room for VAULT — mkgold per cell
     // mkgold(rn1(abs(depth)*100, 51), x, y) for each cell
-    // rn1(n, base) = rn2(n) + base, then mkgold calls mksobj_at internally.
-    // We consume rn2 for the amount but can't simulate mksobj internals.
+    // rn1(n, base) = rn2(n) + base, then mkgold → mksobj_at(GOLD_PIECE)
+    // → newobj() → next_ident() which consumes rnd(2) per gold object.
     const vroom = map.rooms[map.nroom - 1];
     for (let vx = vroom.lx; vx <= vroom.hx; vx++) {
         for (let vy = vroom.ly; vy <= vroom.hy; vy++) {
             rn2(Math.abs(depth) * 100 || 100); // rn1 amount
+            rnd(2); // C ref: mkobj.c:521 — next_ident() in newobj()
         }
     }
 
@@ -2189,16 +2561,234 @@ function do_fill_vault(map, vaultCheck, depth) {
         rn2(3);
     }
 
-    // C ref: !rn2(3) → makevtele()
-    // makevtele = makeniche(TELEP_TRAP)
+    // C ref: mklev.c:1321-1322 — !rn2(3) → makevtele() → makeniche(TELEP_TRAP)
     if (!rn2(3)) {
-        // makeniche consumes rn2 for room selection + place_niche RNG
-        // At depth 1 this is a niche attempt — simulate the RNG
-        makeniche(map, depth, 1); // 1 = TELEP_TRAP equivalent
+        makeniche(map, depth, TELEP_TRAP);
     }
 
     // Re-run wallification around the vault region to fix wall types
     wallify(map, lowx - 1, lowy - 1, hix + 1, hiy + 1);
+}
+
+// ========================================================================
+// Pre-makelevel dungeon initialization simulation
+// ========================================================================
+
+// Simulate all RNG calls from dungeon.c init_dungeons() plus surrounding
+// pre-makelevel calls. The call count is seed-dependent because
+// place_level() uses recursive backtracking that varies by dungeon size.
+//
+// Call sequence (wizard mode — no chance checks):
+//   1. nhlib.lua shuffle(align): rn2(3), rn2(2)
+//   2. For each dungeon:
+//      a. rn1(range, base) → rn2(range) if range > 0
+//      b. parent_dlevel → rn2(num) for non-root, non-unconnected dungeons
+//      c. place_level → recursive rn2(npossible) calls
+//   3. init_castle_tune: 5 × rn2(7)
+//   4. u_init.c: rn2(10)
+//   5. nhlua pre_themerooms shuffle: rn2(3), rn2(2)
+//   6. bones.c: rn2(3)
+function simulateDungeonInit() {
+    // 1. nhlib.lua: shuffle(align) — 3-element Fisher-Yates
+    rn2(3); rn2(2);
+
+    // Level definitions for each dungeon, in dungeon.lua order.
+    // Each level: [base, range, chainIndex] where chainIndex is -1 for
+    // no chain, or the index into THIS dungeon's level list for the chain.
+    // In wizard mode, all levels are created (no chance checks).
+    const DUNGEON_DEFS = [
+        { // 0: Dungeons of Doom
+            base: 25, range: 5, hasParent: false,
+            // parentBranch computed from DofD branches, not needed for root
+            levels: [
+                [15, 4, -1],  // rogue
+                [5, 5, -1],   // oracle
+                [10, 3, -1],  // bigrm
+                [-5, 4, -1],  // medusa
+                [-1, 0, -1],  // castle
+            ],
+        },
+        { // 1: Gehennom
+            base: 20, range: 5, hasParent: true,
+            parentBranchNum: 1, // rn2(1) — chain=castle in DofD, base=0, range=0
+            levels: [
+                [1, 0, -1],   // valley
+                [-1, 0, -1],  // sanctum
+                [4, 4, -1],   // juiblex
+                [6, 4, -1],   // baalz
+                [2, 6, -1],   // asmodeus
+                [11, 6, -1],  // wizard1
+                [1, 0, 5],    // wizard2 (chain=wizard1)
+                [2, 0, 5],    // wizard3 (chain=wizard1)
+                [10, 6, -1],  // orcus
+                [-6, 4, -1],  // fakewiz1
+                [-6, 4, -1],  // fakewiz2
+            ],
+        },
+        { // 2: Gnomish Mines
+            base: 8, range: 2, hasParent: true,
+            parentBranchNum: 3, // rn2(3) — base=2, range=3 in DofD
+            levels: [
+                [3, 2, -1],   // minetn
+                [-1, 0, -1],  // minend
+            ],
+        },
+        { // 3: The Quest
+            base: 5, range: 2, hasParent: true,
+            parentBranchNum: 2, // rn2(2) — chain=oracle in DofD, base=6, range=2
+            levels: [
+                [1, 1, -1],   // x-strt
+                [3, 1, -1],   // x-loca
+                [-1, 0, -1],  // x-goal
+            ],
+        },
+        { // 4: Sokoban
+            base: 4, range: 0, hasParent: true,
+            parentBranchNum: 1, // rn2(1) — chain=oracle in DofD, base=1, range=0
+            levels: [
+                [1, 0, -1],   // soko1
+                [2, 0, -1],   // soko2
+                [3, 0, -1],   // soko3
+                [4, 0, -1],   // soko4
+            ],
+        },
+        { // 5: Fort Ludios
+            base: 1, range: 0, hasParent: true,
+            parentBranchNum: 4, // rn2(4) — base=18, range=4 in DofD
+            levels: [
+                [-1, 0, -1],  // knox
+            ],
+        },
+        { // 6: Vlad's Tower
+            base: 3, range: 0, hasParent: true,
+            parentBranchNum: 5, // rn2(5) — base=9, range=5 in Gehennom
+            levels: [
+                [1, 0, -1],   // tower1
+                [2, 0, -1],   // tower2
+                [3, 0, -1],   // tower3
+            ],
+        },
+        { // 7: Elemental Planes
+            base: 6, range: 0, hasParent: true,
+            parentBranchNum: 1, // rn2(1) — base=1, range=0 in DofD
+            levels: [
+                [1, 0, -1],   // astral
+                [2, 0, -1],   // water
+                [3, 0, -1],   // fire
+                [4, 0, -1],   // air
+                [5, 0, -1],   // earth
+                [6, 0, -1],   // dummy
+            ],
+        },
+        { // 8: Tutorial (unconnected — no parent branch)
+            base: 2, range: 0, hasParent: false,
+            levels: [
+                [1, 0, -1],   // tut-1
+                [2, 0, -1],   // tut-2
+            ],
+        },
+    ];
+
+    // Process each dungeon
+    for (const dgn of DUNGEON_DEFS) {
+        // 2a. rn1(range, base) for level count
+        const numLevels = dgn.range > 0
+            ? rn2(dgn.range) + dgn.base
+            : dgn.base;
+
+        // 2b. parent_dlevel → rn2(num)
+        if (dgn.hasParent) {
+            rn2(dgn.parentBranchNum);
+        }
+
+        // 2c. place_level — recursive backtracking
+        placeLevelSim(dgn.levels, numLevels);
+    }
+
+    // 3. init_castle_tune: 5 × rn2(7)
+    for (let i = 0; i < 5; i++) rn2(7);
+
+    // 4. u_init.c: rn2(10) for role selection
+    rn2(10);
+
+    // 5. nhlua pre_themerooms shuffle (loaded when themerms.lua is first used)
+    rn2(3); rn2(2);
+
+    // 6. bones.c: rn2(3) for bones check
+    rn2(3);
+}
+
+// Simulate C's place_level() recursive backtracking for one dungeon.
+// rawLevels: array of [base, range, chainIndex] per level template.
+// numLevels: total dungeon levels available.
+// C ref: dungeon.c:665-705 place_level, 597-626 possible_places
+function placeLevelSim(rawLevels, numLevels) {
+    const placed = new Array(rawLevels.length).fill(0);
+
+    // Compute a level's valid range given current placed state.
+    // C ref: dungeon.c level_range + possible_places
+    function getLevelRange(idx) {
+        const [base, range, chain] = rawLevels[idx];
+        let adjBase;
+        if (chain >= 0) {
+            // Chain to previously-placed level in this dungeon
+            adjBase = placed[chain] + base;
+        } else if (base < 0) {
+            adjBase = numLevels + base + 1;
+        } else {
+            adjBase = base;
+        }
+        let count;
+        if (range === 0) {
+            count = 1;
+        } else {
+            count = Math.min(range, numLevels - adjBase + 1);
+            if (count < 1) count = 1;
+        }
+        return { adjBase, count };
+    }
+
+    function doPlace(idx) {
+        if (idx >= rawLevels.length) return true;
+
+        const { adjBase, count } = getLevelRange(idx);
+
+        // Build validity map: mark range as TRUE, then exclude placed levels
+        const map = new Array(numLevels + 1).fill(false);
+        for (let i = adjBase; i < adjBase + count && i <= numLevels; i++) {
+            if (i >= 1) map[i] = true;
+        }
+        let npossible = 0;
+        for (let i = 0; i < idx; i++) {
+            if (placed[i] > 0 && placed[i] <= numLevels && map[placed[i]]) {
+                map[placed[i]] = false;
+            }
+        }
+        for (let i = 1; i <= numLevels; i++) {
+            if (map[i]) npossible++;
+        }
+
+        // Try random placements with backtracking
+        for (; npossible > 0; npossible--) {
+            const nth = rn2(npossible);
+            // pick_level: find the nth TRUE entry
+            let c = 0;
+            for (let i = 1; i <= numLevels; i++) {
+                if (map[i]) {
+                    if (c === nth) {
+                        placed[idx] = i;
+                        break;
+                    }
+                    c++;
+                }
+            }
+            if (doPlace(idx + 1)) return true;
+            map[placed[idx]] = false;
+        }
+        return false;
+    }
+
+    doPlace(0);
 }
 
 // ========================================================================
@@ -2207,11 +2797,15 @@ function do_fill_vault(map, vaultCheck, depth) {
 
 // C ref: mklev.c makelevel()
 export function generateLevel(depth) {
+    setLevelDepth(depth);
+
     // C ref: o_init.c init_objects() — shuffle descriptions, 198 rn2 calls
     init_objects();
 
-    // Skip remaining pre-makelevel RNG: dungeon.c(53) + nhlua(4) + u_init(1) + bones(1) = 59
-    skipRng(59);
+    // Simulate pre-makelevel RNG calls that happen between init_objects
+    // and makelevel. These are: nhlib.lua shuffle(align)(2) + dungeon.c
+    // init (variable) + u_init(1) + nhlua pre_themerooms(2) + bones(1).
+    simulateDungeonInit();
 
     const map = new GameMap();
     map.clear();
@@ -2322,14 +2916,17 @@ export function generateLevel(depth) {
     }
 
     // C ref: mklev.c:1381-1401 — bonus item room selection + fill loop
+    // ROOM_IS_FILLABLE: (rtype == OROOM || rtype == THEMEROOM) && needfill == FILL_NORMAL
+    const isFillable = (r) => (r.rtype === OROOM || r.rtype === THEMEROOM)
+                              && r.needfill === FILL_NORMAL;
     let fillableCount = 0;
     for (const croom of map.rooms) {
-        if (croom.rtype === OROOM || croom.rtype === THEMEROOM) fillableCount++;
+        if (isFillable(croom)) fillableCount++;
     }
     let bonusCountdown = fillableCount > 0 ? rn2(fillableCount) : -1;
 
     for (const croom of map.rooms) {
-        const fillable = (croom.rtype === OROOM || croom.rtype === THEMEROOM);
+        const fillable = isFillable(croom);
         fill_ordinary_room(map, croom, depth,
                            fillable && bonusCountdown === 0);
         if (fillable) bonusCountdown--;

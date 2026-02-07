@@ -32,6 +32,12 @@ export function makeLocation() {
 }
 
 // A room structure (mirrors struct mkroom in mkroom.h)
+// C ref: mkroom.h needfill values
+const FILL_NONE = 0;
+const FILL_NORMAL = 1;
+
+export { FILL_NONE, FILL_NORMAL };
+
 export function makeRoom() {
     return {
         lx: 0, ly: 0,     // lower-left corner
@@ -39,6 +45,7 @@ export function makeRoom() {
         rtype: 0,          // room type (OROOM, SHOP, etc.)
         rlit: false,       // is the room lit?
         needjoining: true, // does this room need corridors?
+        needfill: FILL_NONE, // C ref: mkroom.h — needs filling? default 0
         doorct: 0,         // number of doors
         fdoor: 0,          // index of first door in doors[]
         irregular: false,  // is this an irregular room?
