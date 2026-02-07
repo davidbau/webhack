@@ -1,0 +1,23 @@
+--- a/sys/unix/unixmain.c
++++ b/sys/unix/unixmain.c
+@@ -1161,6 +1161,20 @@ const char *errarg;
+ unsigned long
+ sys_random_seed(void)
+ {
++    /* WebHack comparison testing: if NETHACK_SEED is set, use it directly.
++     * Critically, we do NOT set has_strong_rngseed so that reseed_random()
++     * in mklev.c becomes a no-op. This ensures the entire level generation
++     * sequence uses our deterministic seed without re-seeding from
++     * /dev/urandom between levels. */
++    {
++        const char *env_seed = getenv("NETHACK_SEED");
++        if (env_seed) {
++            unsigned long seed = strtoul(env_seed, NULL, 10);
++            /* has_strong_rngseed remains FALSE (default) */
++            return seed;
++        }
++    }
++
+     unsigned long seed = 0L;
+     unsigned long pid = (unsigned long) getpid();
+     boolean no_seed = TRUE;

@@ -1,0 +1,63 @@
+diff --git a/src/cmd.c b/src/cmd.c
+index 780bca6c3..f5da8fb77 100644
+--- a/src/cmd.c
++++ b/src/cmd.c
+@@ -96,6 +96,7 @@ extern int doorganize(void);         /**/
+ 
+ staticfn int dosuspend_core(void);
+ staticfn int dosh_core(void);
++staticfn int wiz_dumpmap(void);
+ staticfn int doherecmdmenu(void);
+ staticfn int dotherecmdmenu(void);
+ staticfn int doprev_message(void);
+@@ -1062,6 +1063,41 @@ makemap_prepost(boolean pre, boolean wiztower)
+     }
+ }
+ 
++/* #dumpmap -- write raw levl[x][y].typ grid to a file.
++ * Used by WebHack comparison tests to verify map generation fidelity.
++ * Output: 21 rows of 80 space-separated integers (terrain type codes).
++ * Filename comes from NETHACK_DUMPMAP env var, or defaults to "dumpmap.txt". */
++staticfn int
++wiz_dumpmap(void)
++{
++    const char *fname;
++    FILE *fp;
++    int x, y;
++
++    fname = getenv("NETHACK_DUMPMAP");
++    if (!fname || !*fname)
++        fname = "dumpmap.txt";
++
++    fp = fopen(fname, "w");
++    if (!fp) {
++        pline("Cannot open %s for writing.", fname);
++        return ECMD_OK;
++    }
++
++    for (y = 0; y < ROWNO; y++) {
++        for (x = 0; x < COLNO; x++) {
++            if (x > 0)
++                fputc(' ', fp);
++            fprintf(fp, "%d", levl[x][y].typ);
++        }
++        fputc('\n', fp);
++    }
++
++    fclose(fp);
++    pline("Map dumped to %s.", fname);
++    return ECMD_OK;
++}
++
+ /* temporary? hack, since level type codes aren't the same as screen
+    symbols and only the latter have easily accessible descriptions.
+    Also used by wizcmds.c */
+@@ -1648,6 +1684,8 @@ do_repeat(void)
+ struct ext_func_tab extcmdlist[] = {
+     { '#',    "#", "enter and perform an extended command",
+               doextcmd, IFBURIED | GENERALCMD | CMD_M_PREFIX, NULL },
++    { '\0',   "dumpmap", "dump raw map typ grid to file",
++              wiz_dumpmap, IFBURIED | AUTOCOMPLETE | WIZMODECMD, NULL },
+     { M('?'), "?", "list all extended commands",
+               doextlist, IFBURIED | AUTOCOMPLETE | GENERALCMD | CMD_M_PREFIX,
+               NULL },
