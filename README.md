@@ -1,4 +1,6 @@
-# WebHack -- NetHack in Your Browser
+# Mazes of Menace
+
+NetHack in Your Browser
 
 *You feel a strange vibration under your feet.*
 
