@@ -19,7 +19,7 @@ import {
     M2_MERC, M2_LORD, M2_PRINCE, M2_NASTY, M2_FEMALE, M2_MALE,
     M2_HOSTILE, M2_PEACEFUL, M2_DOMESTIC, M2_NEUTER, M2_GREEDY,
     M1_FLY, M1_NOHANDS,
-    PM_SOLDIER,
+    PM_SOLDIER, AT_WEAP,
 } from './monsters.js';
 import {
     DAGGER, KNIFE, SHORT_SWORD, LONG_SWORD, SILVER_SABER, BROADSWORD,
@@ -64,6 +64,8 @@ function is_domestic(ptr) { return !!(ptr.flags2 & M2_DOMESTIC); }
 function is_elf(ptr) { return ptr.symbol === S_HUMANOID && ptr.name && ptr.name.includes('elf'); }
 function is_dwarf(ptr) { return ptr.symbol === S_HUMANOID && ptr.name && ptr.name.includes('dwarf'); }
 function is_hobbit(ptr) { return ptr.symbol === S_HUMANOID && ptr.name && ptr.name.includes('hobbit'); }
+// C ref: mondata.h:87 — #define is_armed(ptr) attacktype(ptr, AT_WEAP)
+function is_armed(ptr) { return ptr.attacks && ptr.attacks.some(a => a.type === AT_WEAP); }
 
 // ========================================================================
 // rndmonst_adj -- weighted reservoir sampling (exact C port)
@@ -510,6 +512,14 @@ function m_initinv(mndx, depth, m_lev) {
         if (!rn2(7)) mksobj(MUMMY_WRAPPING, true, false);
         break;
 
+    case S_GNOME:
+        // C ref: makemon.c:811 — gnome candle
+        // Not in mines at depth 1, so rn2(60)
+        if (!rn2(60)) {
+            mksobj(rn2(4) ? TALLOW_CANDLE : WAX_CANDLE, true, false);
+        }
+        break;
+
     default:
         break;
     }
@@ -582,7 +592,8 @@ export function makemon(ptr_or_null, x, y, mmflags, depth) {
 
     // Weapon/inventory initialization
     // C ref: makemon.c:1438-1440
-    m_initweap(mndx, depth || 1);
+    if (is_armed(ptr))
+        m_initweap(mndx, depth || 1);
     m_initinv(mndx, depth || 1, m_lev);
 
     // C ref: makemon.c:1443-1448 — saddle for domestic monsters

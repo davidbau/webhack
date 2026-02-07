@@ -13,10 +13,12 @@ let ctx = null; // ISAAC64 context
 // retrieve with getRngLog(), disable with disableRngLog().
 let rngLog = null;       // null = disabled, Array = enabled
 let rngCallCount = 0;
+let rngLogWithTags = false;  // when true, log includes caller info
 
-export function enableRngLog() {
+export function enableRngLog(withTags = false) {
     rngLog = [];
     rngCallCount = 0;
+    rngLogWithTags = withTags;
 }
 
 export function getRngLog() {
@@ -30,7 +32,17 @@ export function disableRngLog() {
 function logRng(func, args, result) {
     if (!rngLog) return;
     rngCallCount++;
-    rngLog.push(`${rngCallCount} ${func}(${args}) = ${result}`);
+    let tag = '';
+    if (rngLogWithTags) {
+        // Extract caller from stack trace (skip logRng → rn2/rnd → caller)
+        const stack = new Error().stack;
+        const lines = stack.split('\n');
+        // lines[0]="Error", [1]=logRng, [2]=rn2/rnd, [3]=caller
+        const callerLine = lines[3] || '';
+        const m = callerLine.match(/at (\S+).*?([^/]+\.js:\d+)/);
+        tag = m ? ` @ ${m[1]}(${m[2]})` : '';
+    }
+    rngLog.push(`${rngCallCount} ${func}(${args}) = ${result}${tag}`);
 }
 
 // Initialize the PRNG with a seed (unsigned long, up to 64 bits)
@@ -111,6 +123,20 @@ export function d(n, x) {
     }
     logRng('d', `${n},${x}`, tmp);
     return tmp;
+}
+
+// C ref: rnd.c rnz() -- randomized scaling
+export function rnz(i) {
+    let x = i;
+    let tmp = 1000;
+    tmp += rn2(1000);
+    tmp *= rne(4);
+    if (rn2(2)) {
+        x = Math.floor(x * tmp / 1000);
+    } else {
+        x = Math.floor(x * 1000 / tmp);
+    }
+    return x;
 }
 
 // C ref: rnd.c rne() -- 1 <= rne(x) <= max(u.ulevel/3, 5)

@@ -155,9 +155,14 @@ describe('PRNG call log comparison', { skip: !hasCBinary() || !hasTmux() }, () =
         const jsLevelLines = jsLines.slice(JS_INIT_OBJECTS_CALLS);
 
         // Compare C's mklev portion against JS level gen
-        const cMklevLines = cLines.slice(mklevStart);
+        // Filter out rne/rnz/d wrapper lines from C log — JS only logs
+        // the internal rn2/rnd calls, not the wrapper functions.
+        const cMklevLines = cLines.slice(mklevStart).filter(line => {
+            const p = parseLogLine(stripFileInfo(line));
+            return p && (p.func === 'rn2' || p.func === 'rnd' || p.func === 'rnl');
+        });
 
-        // Find first divergence
+        // Find first divergence (two-pointer walk)
         const maxCompare = Math.min(cMklevLines.length, jsLevelLines.length);
         let firstDivergence = -1;
         for (let i = 0; i < maxCompare; i++) {
@@ -175,7 +180,7 @@ describe('PRNG call log comparison', { skip: !hasCBinary() || !hasTmux() }, () =
         }
 
         console.log(`\nRNG Log Comparison (seed=42):`);
-        console.log(`  C mklev calls: ${cMklevLines.length}`);
+        console.log(`  C mklev calls: ${cMklevLines.length} (rn2/rnd/rnl only)`);
         console.log(`  JS level gen calls: ${jsLevelLines.length} (after ${JS_INIT_OBJECTS_CALLS} init_objects calls)`);
 
         if (firstDivergence >= 0) {

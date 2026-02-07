@@ -2,7 +2,7 @@
 // Faithful port of mkobj.c from NetHack 3.7
 // Focus: PRNG-faithful RNG consumption for level generation alignment
 
-import { rn2, rnd, rn1, rne, d } from './rng.js';
+import { rn2, rnd, rn1, rne, rnz, d } from './rng.js';
 import {
     objectData, bases, oclass_prob_totals, mkobjprobs, NUM_OBJECTS,
     ILLOBJ_CLASS, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
@@ -14,6 +14,7 @@ import {
     initObjectData,
 } from './objects.js';
 import { rndmonnum } from './makemon_new.js';
+import { mons, G_NOCORPSE, M2_NEUTER, M2_FEMALE, M2_MALE } from './monsters.js';
 
 // Named object indices we need (exported from objects.js)
 // Check: CORPSE, EGG, TIN, SLIME_MOLD, KELP_FROND, CANDY_BAR,
@@ -68,16 +69,20 @@ function is_corrodeable(obj) {
 
 // Helper: can object generate eroded?
 function may_generate_eroded(obj) {
-    // Skip erosion for coins, items with no relevant class
-    if (obj.oclass === COIN_CLASS) return false;
-    if (obj.oclass === VENOM_CLASS) return false;
-    if (obj.oclass === BALL_CLASS || obj.oclass === CHAIN_CLASS) return false;
-    // Simplified: check if erosion is relevant for the class
+    // C ref: may_generate_eroded + erosion_matters
+    // erosion_matters returns true only for WEAPON, ARMOR, BALL, CHAIN,
+    // and TOOL_CLASS items that are weptools (oc_skill != P_NONE)
+    const od = objectData[obj.otyp];
     switch (obj.oclass) {
     case WEAPON_CLASS:
     case ARMOR_CLASS:
-    case TOOL_CLASS:
+    case BALL_CLASS:
+    case CHAIN_CLASS:
         return true;
+    case TOOL_CLASS:
+        // C ref: is_weptool(o) = oclass==TOOL_CLASS && oc_skill != P_NONE
+        // In objects.js, 'sub' field = oc_skill
+        return (od.sub || 0) !== 0;
     default:
         return false;
     }
@@ -164,6 +169,49 @@ function mkobj_erosions(obj) {
 
 // rndmonnum imported from makemon_new.js (circular but safe — called at runtime only)
 
+// C ref: mon.c undead_to_corpse() — map undead monsters to their living form
+function undead_to_corpse(mndx) {
+    const ptr = objectData.length > 0 ? mons[mndx] : null;
+    if (!ptr) return mndx;
+    const name = ptr.name;
+    // Zombie → living
+    if (name === 'kobold zombie' || name === 'kobold mummy') return mons.findIndex(m => m.name === 'kobold');
+    if (name === 'dwarf zombie' || name === 'dwarf mummy') return mons.findIndex(m => m.name === 'dwarf');
+    if (name === 'gnome zombie' || name === 'gnome mummy') return mons.findIndex(m => m.name === 'gnome');
+    if (name === 'orc zombie' || name === 'orc mummy') return mons.findIndex(m => m.name === 'orc');
+    if (name === 'elf zombie' || name === 'elf mummy') return mons.findIndex(m => m.name === 'elf');
+    if (name === 'human zombie' || name === 'human mummy'
+        || name === 'vampire' || name === 'vampire lord') return mons.findIndex(m => m.name === 'human');
+    if (name === 'giant zombie' || name === 'giant mummy') return mons.findIndex(m => m.name === 'giant');
+    if (name === 'ettin zombie' || name === 'ettin mummy') return mons.findIndex(m => m.name === 'ettin');
+    return mndx;
+}
+// Cache the lookups (lazy init on first call)
+let _undead_cache = null;
+function undead_to_corpse_fast(mndx) {
+    if (!_undead_cache) {
+        _undead_cache = new Map();
+        const targets = [
+            [['kobold zombie', 'kobold mummy'], 'kobold'],
+            [['dwarf zombie', 'dwarf mummy'], 'dwarf'],
+            [['gnome zombie', 'gnome mummy'], 'gnome'],
+            [['orc zombie', 'orc mummy'], 'orc'],
+            [['elf zombie', 'elf mummy'], 'elf'],
+            [['human zombie', 'human mummy', 'vampire', 'vampire lord'], 'human'],
+            [['giant zombie', 'giant mummy'], 'giant'],
+            [['ettin zombie', 'ettin mummy'], 'ettin'],
+        ];
+        for (const [srcs, tgt] of targets) {
+            const tgtIdx = mons.findIndex(m => m.name === tgt);
+            for (const src of srcs) {
+                const srcIdx = mons.findIndex(m => m.name === src);
+                if (srcIdx >= 0 && tgtIdx >= 0) _undead_cache.set(srcIdx, tgtIdx);
+            }
+        }
+    }
+    return _undead_cache.has(mndx) ? _undead_cache.get(mndx) : mndx;
+}
+
 // C ref: mkobj.c mksobj_init() -- class-specific object initialization
 function mksobj_init(obj, artif) {
     const oclass = obj.oclass;
@@ -192,11 +240,14 @@ function mksobj_init(obj, artif) {
     case FOOD_CLASS:
         // Check specific food types by name since we may not have all constants
         if (od.name === 'corpse') {
-            // rndmonnum loop -- up to 50 tries
+            // C ref: mkobj.c:900-910 — retry if G_NOCORPSE
             let tryct = 50;
             do {
-                obj.corpsenm = rndmonnum(); // undead_to_corpse(rndmonnum())
-            } while (obj.corpsenm < 0 && --tryct > 0);
+                obj.corpsenm = undead_to_corpse_fast(rndmonnum());
+            } while (obj.corpsenm >= 0
+                     && (mons[obj.corpsenm].geno & G_NOCORPSE)
+                     && --tryct > 0);
+            if (tryct === 0) obj.corpsenm = mons.findIndex(m => m.name === 'human');
         } else if (od.name === 'egg') {
             obj.corpsenm = -1;
             if (!rn2(3)) {
@@ -210,10 +261,15 @@ function mksobj_init(obj, artif) {
             if (!rn2(6)) {
                 // spinach tin -- no RNG
             } else {
+                // C ref: mkobj.c:930-937 — retry until cnutrit && !G_NOCORPSE
                 for (let tryct = 200; tryct > 0; --tryct) {
-                    rndmonnum(); // undead_to_corpse(rndmonnum())
-                    rn2(10); // set_tin_variety RANDOM_TIN: rn2(TTSZ-1) = rn2(10)
-                    break; // simplified: first attempt succeeds
+                    const mndx = undead_to_corpse_fast(rndmonnum());
+                    if (mndx >= 0 && mons[mndx].nutrition > 0
+                        && !(mons[mndx].geno & G_NOCORPSE)) {
+                        obj.corpsenm = mndx;
+                        rn2(10); // set_tin_variety RANDOM_TIN: rn2(TTSZ-1) = rn2(10)
+                        break;
+                    }
                 }
             }
             blessorcurse(obj, 10);
@@ -430,20 +486,32 @@ function mkbox_cnts(box) {
 }
 
 // C ref: mksobj() post-init -- handle corpse/statue/figurine/egg gender
+// C ref: mkobj.c:1196-1225
 function mksobj_postinit(obj) {
     const od = objectData[obj.otyp];
     // Corpse: if corpsenm not set, assign one
     if (od.name === 'corpse' && obj.corpsenm === -1) {
-        rndmonnum(); // undead_to_corpse(rndmonnum())
+        obj.corpsenm = undead_to_corpse_fast(rndmonnum());
     }
     // Statue/figurine: if corpsenm not set, assign one
     if ((od.name === 'statue' || od.name === 'figurine') && obj.corpsenm === -1) {
         rndmonnum();
     }
-    // Gender assignment for corpse/statue/figurine: sometimes rn2(2)
-    if (obj.corpsenm !== -1 && (od.name === 'corpse' || od.name === 'statue' || od.name === 'figurine')) {
-        // is_neuter/is_female/is_male checks -- simplified: 50% chance of rn2(2)
-        rn2(2); // gender assignment
+    // Gender assignment for corpse/statue/figurine
+    // C ref: mkobj.c:1215-1218 — only rn2(2) if not neuter/female/male
+    if (obj.corpsenm >= 0 && (od.name === 'corpse' || od.name === 'statue' || od.name === 'figurine')) {
+        const ptr = mons[obj.corpsenm];
+        const isNeuter = !!(ptr.flags2 & M2_NEUTER);
+        const isFemale = !!(ptr.flags2 & M2_FEMALE);
+        const isMale   = !!(ptr.flags2 & M2_MALE);
+        if (!isNeuter && !isFemale && !isMale) {
+            rn2(2); // random gender
+        }
+    }
+    // C ref: mkobj.c:1224 set_corpsenm → start_corpse_timeout for CORPSE
+    // start_corpse_timeout calls rnz(rot_adjust) where rot_adjust=25 at depth 1
+    if (od.name === 'corpse' && obj.corpsenm >= 0) {
+        rnz(25); // start_corpse_timeout
     }
 }
 
