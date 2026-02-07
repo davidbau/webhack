@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="pandoc">
+  <title>$title$</title>
+$for(css)$
+  <link rel="stylesheet" href="$css$">
+$endfor$
+$if(math)$
+  $math$
+$endif$
+$for(header-includes)$
+  $header-includes$
+$endfor$
+</head>
+<body>
+$if(title)$
+<header id="title-block-header">
+  <h1 class="title">$title$</h1>
+</header>
+$endif$
+$if(toc)$
+<nav id="TOC">
+  <h2>Contents</h2>
+  $toc$
+</nav>
+$endif$
+<main>
+$body$
+</main>
+<footer>
+  <hr>
+  <p><em>Generated from the WebHack project. All data verified against game source code.</em></p>
+</footer>
+</body>
+</html>

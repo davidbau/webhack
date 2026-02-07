@@ -1,0 +1,98 @@
+% A Traveler's Guide to the Mazes of Menace -- LaTeX header
+% Included via pandoc --include-in-header
+
+% Page geometry: B-format (129mm x 198mm) with print-friendly margins
+\usepackage[
+  paperwidth=129mm,
+  paperheight=198mm,
+  top=16mm,
+  bottom=18mm,
+  inner=16mm,
+  outer=12mm,
+  footskip=10mm
+]{geometry}
+
+% Typography
+\usepackage{microtype}
+
+% Suppress "Chapter N" label (single-document guide, not multi-chapter)
+\renewcommand{\chaptername}{}
+\renewcommand{\thechapter}{}
+\makeatletter
+\def\@makechapterhead#1{%
+  \vspace*{30\p@}%
+  {\parindent \z@ \raggedright \normalfont
+    \Huge\bfseries #1\par\nobreak
+    \vskip 20\p@
+  }}
+\makeatother
+
+% Suppress headers on blank pages
+\usepackage{emptypage}
+
+% Running headers
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\thepage}
+\fancyhead[RE]{\textit{A Traveler's Guide to the Mazes of Menace}}
+\fancyhead[LO]{\textit{\nouppercase{\rightmark}}}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% Nicer tables
+\usepackage{booktabs}
+\usepackage{longtable}
+
+% Tighter list spacing
+\usepackage{enumitem}
+\setlist{nosep, leftmargin=1.5em}
+\setlist[itemize]{label=--}
+
+% Code block styling -- make it fit the narrow page
+\usepackage{fvextra}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{
+  fontsize=\fontsize{7}{8.5}\selectfont,
+  breaklines=true,
+  breakanywhere=true,
+  commandchars=\\\{\}
+}
+
+% Plain verbatim (for ``` blocks without language) also needs to be small
+\usepackage{fancyvrb}
+\RecustomVerbatimEnvironment{verbatim}{Verbatim}{
+  fontsize=\fontsize{7}{8.5}\selectfont,
+  breaklines=true,
+  breakanywhere=true
+}
+
+% Table font size
+\let\oldlongtable\longtable
+\let\endoldlongtable\endlongtable
+\renewenvironment{longtable}
+  {\footnotesize\oldlongtable}
+  {\endoldlongtable}
+
+% Prevent overfull hboxes in tables
+\setlength{\tabcolsep}{3pt}
+
+% Reduce widow/orphan penalties to avoid ugly spacing
+\widowpenalty=300
+\clubpenalty=300
+
+% Tighten up paragraph spacing for small page
+\setlength{\parskip}{0.3em}
+\setlength{\parindent}{0em}
+
+% Hyperlink colors for PDF
+\hypersetup{
+  colorlinks=true,
+  linkcolor={blue!60!black},
+  urlcolor={blue!60!black},
+  pdfauthor={WebHack Contributors},
+  pdftitle={A Traveler's Guide to the Mazes of Menace}
+}
