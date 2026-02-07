@@ -86,7 +86,7 @@ could pray -- read on. We'll do our best to keep you alive.
 - [Experience Levels and Rank Titles](#experience-levels-and-rank-titles) -- XP thresholds and progression
 - [Score Calculation](#score-calculation) -- How your final score is computed
 - [Alchemy Recipe Reference](#alchemy-recipe-reference) -- Potion mixing and holy water
-- [What Changed Since Last Time](#what-changed) -- Notable differences in the current edition
+- [What Changed Since Last Time](#what-changed-since-last-time) -- Notable differences in the current edition
 - [Keyboard Quick Reference](#keyboard-quick-reference) -- Every command you'll need
 - [A Brief History of NetHack](#a-brief-history-of-nethack) -- From Rogue to the modern era
 - [Famous Last Words](#famous-last-words) -- Epitaphs from the overconfident
@@ -580,7 +580,7 @@ terrible. Think of yourself as an engineer: dig around problems,
 identify gems for shop credit, and build up through cleverness
 rather than brute force.
 
-**Caveperson.** Your club isn't glamorous but it works. You start
+**Cave Dweller.** Your club isn't glamorous but it works. You start
 with decent strength and HP, which counts for a lot in the early
 levels. You can eat almost anything. The quest artifact (Sceptre of
 Might) provides magic resistance when carried, solving one of the
@@ -647,6 +647,15 @@ Mines for a luckstone and Minetown's shops, clear Sokoban for a
 prize, do your Quest, reach the Castle, descend through Gehennom
 to get the Amulet, then climb all the way back up and through the
 Planes. Simple enough on paper. Surviving it is another matter.
+
+**Bones files.** Occasionally you'll encounter a level that feels
+strangely well-stocked, with a gravestone and a suspiciously
+well-equipped ghost. This is a bones level -- the preserved remains
+of a previous adventurer who died here. Their gear, their pets
+(now hostile), and their ghost all persist. Bones levels can be a
+windfall (free equipment!) or a death trap (whatever killed the
+last adventurer is still here). Proceed with appropriate caution
+and respectful looting.
 
 #### The Map Symbols
 
@@ -1350,11 +1359,12 @@ piercers (Lev 7, AC 0) hit hard on the drop but are helpless
 afterward. More startling than threatening.
 
 **`q` -- Quadrupeds.** A motley collection of large animals. Rothes
-are early dungeon livestock. The leocrotta (Spd 18, imitates voices)
-is unsettling but manageable. Late-game, you might meet a mastodon
-(Lev 20, Spd 12) -- a lot of hit points on four legs. The mumak
-(Lev 5, AC 0) is a war elephant that shows up earlier than you'd
-expect.
+are early dungeon livestock. The leocrotta (Spd 18) imitates voices
+perfectly -- it will beg for help while trying to eat you. Trust
+nothing that talks in the dungeon. Late-game, you might meet a
+mastodon (Lev 20, Spd 12) -- a lot of hit points on four legs. The
+mumak (Lev 5, AC 0) is a war elephant that hits harder than its
+level suggests.
 
 **`r` -- Rodents.** Rats and moles. Sewer rats come in packs, and
 a rabid rat can give you a disease. Rock moles (AC 0) eat metallic
@@ -1482,7 +1492,7 @@ round. Minotaurs show up in mazes and always know where they're going.
 | Frost giant | 10  | 12  | 3   | 10  | Cold res.     |
 | Storm giant | 16  | 12  | 3   | 10  | Shock res.    |
 | Titan       | 16  | 18  | -3  | 70  | (strength)    |
-| Minotaur    | 15  | 15  | 6   | 0   | --            |
+| Minotaur    | 15  | 15  | 6   | 0   | (none)        |
 
 <!-- Stalkers are class E internally, but display as I on screen -->
 **`I` -- Invisible Creatures.** When the game wants to hint that
