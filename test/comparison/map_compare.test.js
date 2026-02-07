@@ -16,6 +16,7 @@ import {
     DOOR, CORR, ROOM, STAIRS, FOUNTAIN, THRONE, SINK, GRAVE, ALTAR,
     POOL, MOAT, WATER, LAVAPOOL, LAVAWALL, ICE, IRONBARS, TREE,
     DRAWBRIDGE_UP, DRAWBRIDGE_DOWN, AIR, CLOUD, SDOOR, SCORR,
+    OROOM, VAULT,
     IS_WALL, IS_DOOR, ACCESSIBLE, isok
 } from '../../js/config.js';
 import { initRng } from '../../js/rng.js';
@@ -165,7 +166,7 @@ describe('Room wall completeness', () => {
                     if (!isok(x, yTop)) continue;
                     const loc = map.at(x, yTop);
                     assert.ok(
-                        IS_WALL(loc.typ) || IS_DOOR(loc.typ) || loc.typ === CORR,
+                        IS_WALL(loc.typ) || IS_DOOR(loc.typ) || loc.typ === CORR || loc.typ === SDOOR || loc.typ === SCORR || loc.typ === IRONBARS,
                         `Gap in top wall at (${x},${yTop}) for ${label}: typ=${loc.typ}`
                     );
                 }
@@ -175,7 +176,7 @@ describe('Room wall completeness', () => {
                     if (!isok(x, yBot)) continue;
                     const loc = map.at(x, yBot);
                     assert.ok(
-                        IS_WALL(loc.typ) || IS_DOOR(loc.typ) || loc.typ === CORR,
+                        IS_WALL(loc.typ) || IS_DOOR(loc.typ) || loc.typ === CORR || loc.typ === SDOOR || loc.typ === SCORR || loc.typ === IRONBARS,
                         `Gap in bottom wall at (${x},${yBot}) for ${label}: typ=${loc.typ}`
                     );
                 }
@@ -185,7 +186,7 @@ describe('Room wall completeness', () => {
                     if (!isok(xLeft, y)) continue;
                     const loc = map.at(xLeft, y);
                     assert.ok(
-                        IS_WALL(loc.typ) || IS_DOOR(loc.typ) || loc.typ === CORR,
+                        IS_WALL(loc.typ) || IS_DOOR(loc.typ) || loc.typ === CORR || loc.typ === SDOOR || loc.typ === SCORR || loc.typ === IRONBARS,
                         `Gap in left wall at (${xLeft},${y}) for ${label}: typ=${loc.typ}`
                     );
                 }
@@ -195,7 +196,7 @@ describe('Room wall completeness', () => {
                     if (!isok(xRight, y)) continue;
                     const loc = map.at(xRight, y);
                     assert.ok(
-                        IS_WALL(loc.typ) || IS_DOOR(loc.typ) || loc.typ === CORR,
+                        IS_WALL(loc.typ) || IS_DOOR(loc.typ) || loc.typ === CORR || loc.typ === SDOOR || loc.typ === SCORR || loc.typ === IRONBARS,
                         `Gap in right wall at (${xRight},${y}) for ${label}: typ=${loc.typ}`
                     );
                 }
@@ -218,10 +219,12 @@ describe('Corridor connectivity', () => {
             const map = generateLevel(depth);
             wallification(map);
 
-            if (map.rooms.length <= 1) return; // nothing to check
+            // Find first non-vault room
+            const nonVaultRooms = map.rooms.filter(r => r.rtype !== VAULT);
+            if (nonVaultRooms.length <= 1) return; // nothing to check
 
-            // BFS from center of first room
-            const start = map.rooms[0];
+            // BFS from center of first non-vault room
+            const start = nonVaultRooms[0];
             const sx = Math.floor((start.lx + start.hx) / 2);
             const sy = Math.floor((start.ly + start.hy) / 2);
 
@@ -240,7 +243,8 @@ describe('Corridor connectivity', () => {
                     const ny = cy + dy;
                     if (!isok(nx, ny)) continue;
                     if (visited[nx][ny]) continue;
-                    if (ACCESSIBLE(map.at(nx, ny).typ)) {
+                    const t = map.at(nx, ny).typ;
+                    if (ACCESSIBLE(t) || t === SDOOR || t === SCORR) {
                         visited[nx][ny] = 1;
                         queue.push([nx, ny]);
                     }
@@ -249,6 +253,8 @@ describe('Corridor connectivity', () => {
 
             for (let i = 1; i < map.rooms.length; i++) {
                 const room = map.rooms[i];
+                // Vaults are intentionally disconnected (accessed via teleport)
+                if (room.rtype === VAULT) continue;
                 const rx = Math.floor((room.lx + room.hx) / 2);
                 const ry = Math.floor((room.ly + room.hy) / 2);
                 assert.ok(visited[rx][ry] === 1,

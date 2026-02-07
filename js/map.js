@@ -43,6 +43,7 @@ export function makeRoom() {
         fdoor: 0,          // index of first door in doors[]
         irregular: false,  // is this an irregular room?
         nsubrooms: 0,      // number of subrooms
+        roomnoidx: 0,      // room index before sort (for sort_rooms)
     };
 }
 
@@ -72,6 +73,10 @@ export class GameMap {
         // Stairs
         this.upstair = { x: 0, y: 0 };
         this.dnstair = { x: 0, y: 0 };
+
+        // Room connectivity (smeq -- same-equivalent groups)
+        // C ref: gs.smeq[] in decl.h
+        this.smeq = [];
 
         // Level metadata
         this.flags = {

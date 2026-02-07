@@ -4,7 +4,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { COLNO, ROWNO, STONE, ROOM, CORR, DOOR, STAIRS, HWALL, VWALL,
+         SDOOR, SCORR, IRONBARS, VAULT,
          IS_WALL, IS_DOOR, ACCESSIBLE, isok } from '../../js/config.js';
+function REACHABLE(typ) { return ACCESSIBLE(typ) || typ === SDOOR || typ === SCORR; }
 import { initRng } from '../../js/rng.js';
 import { generateLevel, wallification } from '../../js/dungeon.js';
 
@@ -24,11 +26,16 @@ describe('Dungeon generation', () => {
             assert.ok(room.hx >= room.lx && room.hx < COLNO - 1);
             assert.ok(room.ly >= 1 && room.ly < ROWNO - 1);
             assert.ok(room.hy >= room.ly && room.hy < ROWNO - 1);
-            // Room should have reasonable size
+            // Vault rooms can be 2x2; regular rooms should be at least 3x3
             const w = room.hx - room.lx + 1;
             const h = room.hy - room.ly + 1;
-            assert.ok(w >= 3, `Room width ${w} too small`);
-            assert.ok(h >= 3, `Room height ${h} too small`);
+            if (room.rtype === VAULT) {
+                assert.ok(w >= 2, `Vault width ${w} too small`);
+                assert.ok(h >= 2, `Vault height ${h} too small`);
+            } else {
+                assert.ok(w >= 3, `Room width ${w} too small`);
+                assert.ok(h >= 3, `Room height ${h} too small`);
+            }
         }
     });
 
@@ -56,13 +63,15 @@ describe('Dungeon generation', () => {
             for (let x = room.lx - 1; x <= room.hx + 1; x++) {
                 if (isok(x, room.ly - 1)) {
                     const top = map.at(x, room.ly - 1);
-                    assert.ok(IS_WALL(top.typ) || IS_DOOR(top.typ) || top.typ === CORR,
-                        `Expected wall/door/corr at ${x},${room.ly - 1} (top border)`);
+                    assert.ok(IS_WALL(top.typ) || IS_DOOR(top.typ) || top.typ === CORR
+                        || top.typ === SDOOR || top.typ === SCORR || top.typ === IRONBARS,
+                        `Expected wall/door/corr at ${x},${room.ly - 1} (top border), got typ=${top.typ}`);
                 }
                 if (isok(x, room.hy + 1)) {
                     const bot = map.at(x, room.hy + 1);
-                    assert.ok(IS_WALL(bot.typ) || IS_DOOR(bot.typ) || bot.typ === CORR,
-                        `Expected wall/door/corr at ${x},${room.hy + 1} (bottom border)`);
+                    assert.ok(IS_WALL(bot.typ) || IS_DOOR(bot.typ) || bot.typ === CORR
+                        || bot.typ === SDOOR || bot.typ === SCORR || bot.typ === IRONBARS,
+                        `Expected wall/door/corr at ${x},${room.hy + 1} (bottom border), got typ=${bot.typ}`);
                 }
             }
         }
@@ -103,10 +112,12 @@ describe('Dungeon generation', () => {
     it('all rooms are reachable from the first room', () => {
         initRng(42);
         const map = generateLevel(1);
-        if (map.rooms.length <= 1) return;
+        // Skip vault rooms -- they are intentionally disconnected in NetHack
+        const nonVaultRooms = map.rooms.filter(r => r.rtype !== VAULT);
+        if (nonVaultRooms.length <= 1) return;
 
-        // BFS from center of first room
-        const start = map.rooms[0];
+        // BFS from center of first non-vault room
+        const start = nonVaultRooms[0];
         const sx = Math.floor((start.lx + start.hx) / 2);
         const sy = Math.floor((start.ly + start.hy) / 2);
 
@@ -118,16 +129,16 @@ describe('Dungeon generation', () => {
             const [cx, cy] = queue.shift();
             for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) {
                 const nx = cx + dx, ny = cy + dy;
-                if (isok(nx, ny) && !visited[nx][ny] && ACCESSIBLE(map.at(nx, ny).typ)) {
+                if (isok(nx, ny) && !visited[nx][ny] && REACHABLE(map.at(nx, ny).typ)) {
                     visited[nx][ny] = true;
                     queue.push([nx, ny]);
                 }
             }
         }
 
-        // Check that at least one tile in each room is reachable
-        for (let i = 1; i < map.rooms.length; i++) {
-            const room = map.rooms[i];
+        // Check that at least one tile in each non-vault room is reachable
+        for (let i = 1; i < nonVaultRooms.length; i++) {
+            const room = nonVaultRooms[i];
             const rx = Math.floor((room.lx + room.hx) / 2);
             const ry = Math.floor((room.ly + room.hy) / 2);
             assert.ok(visited[rx][ry],
