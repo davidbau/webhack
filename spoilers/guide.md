@@ -87,6 +87,9 @@ could pray -- read on. We'll do our best to keep you alive.
 - [Score Calculation](#score-calculation) -- How your final score is computed
 - [Alchemy Recipe Reference](#alchemy-recipe-reference) -- Potion mixing and holy water
 - [What Changed Since Last Time](#what-changed) -- Notable differences in the current edition
+- [Keyboard Quick Reference](#keyboard-quick-reference) -- Every command you'll need
+- [A Brief History of NetHack](#a-brief-history-of-nethack) -- From Rogue to the modern era
+- [Famous Last Words](#famous-last-words) -- Epitaphs from the overconfident
 - [Acknowledgements](#acknowledgements) -- Standing on the shoulders of giants
 
 ---
@@ -1479,13 +1482,13 @@ round. Minotaurs show up in mazes and always know where they're going.
 | Frost giant | 10  | 12  | 3   | 10  | Cold res.     |
 | Storm giant | 16  | 12  | 3   | 10  | Shock res.    |
 | Titan       | 16  | 18  | -3  | 70  | (strength)    |
-| Minotaur    | 15  | 15  | 6   | 0   | ------------- |
+| Minotaur    | 15  | 15  | 6   | 0   | --            |
 
-**`I` -- Invisible Stalkers.** (Actually filed under `E` in the
-code, but you'll see `I` on screen when the game hints at invisible
-monsters.) This letter also covers other invisible creatures. If
-you see a blank space attacking you, use telepathy or see invisible
-to fight back.
+<!-- Stalkers are class E internally, but display as I on screen -->
+**`I` -- Invisible Creatures.** When the game wants to hint that
+something invisible is nearby, it shows the `I` glyph. This covers
+stalkers and other unseen threats. If you see a blank space attacking
+you, use telepathy or see invisible to fight back.
 
 **`J` -- Jabberwock.** A single species (Lev 15, Spd 12, AC -2,
 MR 50). Big, mean, and hits multiple times per round. Nothing special
@@ -1792,8 +1795,28 @@ beam back. Magic resistance does NOT protect against disintegration.
 
 #### Genocide
 
-Reading a scroll of genocide while confused can genocide your own
-race. Don't do this.
+Reading a scroll of genocide lets you remove an entire species from
+the game. Blessed genocide removes a class (letter), uncursed removes
+a species. Confused genocide genocides your own race. Don't do this.
+
+**Recommended genocide targets** (roughly in priority order):
+
+| Target             | Letter | Why                                                      |
+| ------------------ | ------ | -------------------------------------------------------- |
+| Liches             | L      | Teleporting, cursing, summoning, death rays. Top threat. |
+| Mind flayers       | h      | Int drain that can brainsuck you to death instantly.     |
+| Cockatrices        | c      | Petrification from touch, gaze, corpse -- everywhere.    |
+| Rust monsters      | R      | Will eat your enchanted armor. Unforgivable.             |
+| Disenchanters      | R      | Also class R. Drain enchantment from gear on hit.        |
+| Electric eels      | ;      | Drown you and destroy wands/rings. No warning.           |
+| Green slimes       | P      | Sliming is like stoning but worse. Burn or die.          |
+| Master mind flayer | h      | The upgraded version. Even nastier.                      |
+
+A few notes: `L` as a class genocide gets all liches (regular,
+demilich, master lich, arch-lich) in one go -- extremely efficient.
+The `;` class also removes kraken and other sea creatures. Class `h`
+covers mind flayers, minotaurs, and other medium humanoids, so it's
+a broader sweep. Choose based on what's killing you.
 
 #### The Amulet of Life Saving
 
@@ -1809,6 +1832,78 @@ The short version: you need **magic resistance**, **reflection**,
 **poison resistance**, and a **lizard corpse** to survive the
 dungeon's worst surprises. Get these as early as you can. Everything
 else is luxury. These are survival.
+
+#### Resistance Acquisition Summary
+
+Here's how to get each key resistance. Multiple sources exist for
+most -- you only need one.
+
+| Resistance     | Armor/Gear                  | Corpse/Eat                                      | Intrinsic (level)     |
+| -------------- | --------------------------- | ----------------------------------------------- | --------------------- |
+| Fire           | Red DSM, ring               | Fire ant, pyrolisk, red dragon, hell hound      | Monk 11, Priest 20    |
+| Cold           | White DSM, ring             | Winter wolf cub/wolf, yeti, white/silver dragon | Valkyrie 1, Monk 13   |
+| Shock          | Blue DSM, ring              | Blue dragon, storm giant, electric eel          | Monk 15               |
+| Poison         | Green DSM, ring, amulet     | Killer bee, unicorn, green dragon, gremlin      | Barb/Healer 1, Monk 3 |
+| Disintegration | Black DSM                   | Black dragon                                    | --                    |
+| Sleep          | Orange DSM                  | Orange dragon, elf, homunculus                  | Monk 1, Elf 4         |
+| Magic          | Gray DSM, cloak of MR       | --                                              | --                    |
+| Reflection     | Silver DSM, shield of refl. | --                                              | --                    |
+| Free action    | Ring of free action         | --                                              | --                    |
+
+DSM = dragon scale mail. Eating a dragon corpse always conveys
+its color's resistance. Rings of resistance are the backup plan
+when you can't get DSM. Magic resistance and reflection have no
+corpse sources -- you need equipment for these.
+
+#### What Killed You (A Troubleshooting Flowchart)
+
+Dead again? Let's figure out what happened.
+
+```
+  You died.
+     |
+     +-- Did you turn to stone?
+     |      YES --> Were you fighting a cockatrice?
+     |                YES --> Wear gloves. Carry a lizard corpse.
+     |                NO  --> Medusa? Use reflection or blindfold.
+     |
+     +-- "Killed by a death ray"?
+     |      YES --> Get magic resistance. Or reflection.
+     |
+     +-- Drowned?
+     |      YES --> Electric eel grabbed you with low HP.
+     |             Get magical breathing or genocide ;
+     |
+     +-- "Choked on food"?
+     |      YES --> Don't eat while Satiated. Ever.
+     |
+     +-- "Killed by a touch of death"?
+     |      YES --> That was Demogorgon or Death.
+     |             Magic resistance blocks this.
+     |
+     +-- Brainless (Int reached 0)?
+     |      YES --> Mind flayer. Genocide h or wear a
+     |             greased helmet (delays, doesn't prevent).
+     |
+     +-- "Killed by a <demon lord>"?
+     |      YES --> You went to Gehennom underprepared.
+     |             See the Pre-Gehennom Checklist.
+     |
+     +-- Fell into lava / burned?
+     |      YES --> Get fire resistance before Gehennom.
+     |
+     +-- "Killed by a poisoned <weapon>"?
+     |      YES --> Get poison resistance. It's easy.
+     |             Eat a killer bee or unicorn corpse.
+     |
+     +-- None of the above?
+            Your HP hit zero. Get more HP, better AC,
+            and fight fewer things at once.
+```
+
+Most deaths in NetHack fall into one of these categories. The
+common thread: the defense existed, you just didn't have it yet.
+That's the game in a nutshell.
 
 ---
 
@@ -2005,17 +2100,19 @@ most useful scrolls in the game and you just found it for free.
 
 ##### Potion Prices
 
-| Base Price | Potions                                                                            |
-| ---------- | ---------------------------------------------------------------------------------- |
-| $50        | booze, fruit juice, see invisible, sickness                                        |
-| $100       | confusion, extra healing, hallucination, healing, restore ability, sleeping, water |
-| $150       | blindness, gain energy, invisibility, monster detection, object detection          |
-| $200       | enlightenment, full healing, levitation, polymorph, speed                          |
-| $250       | acid, oil                                                                          |
-| $300       | gain ability, gain level, paralysis                                                |
+| Base Price | Potions                                                                   |
+| ---------- | ------------------------------------------------------------------------- |
+| $20        | healing                                                                   |
+| $50        | booze, fruit juice, see invisible, sickness                               |
+| $100       | confusion, extra healing, hallucination, restore ability, sleeping, water |
+| $150       | blindness, gain energy, invisibility, monster detection, object detection |
+| $200       | enlightenment, full healing, levitation, polymorph, speed                 |
+| $250       | acid, oil                                                                 |
+| $300       | gain ability, gain level, paralysis                                       |
 
 Water is always the "clear" potion, so if you see "clear potion" you
-know what it is without even checking the price. The $50 group is
+know what it is without even checking the price. Healing sits alone
+at $20 -- a lucky break for price identification. The $50 group is
 tricky because sickness and see invisible are in there together (one
 very good, one very bad). The $200 group is packed with excellent
 potions.
@@ -2386,16 +2483,19 @@ next.
 Potions are organized by price. Cross-reference any unidentified
 potion's shop price with this table to narrow down what it might be:
 
-| Price | Potions at this price                                                              |
-| ----- | ---------------------------------------------------------------------------------- |
-| $50   | Booze, fruit juice, see invisible, sickness                                        |
-| $100  | Confusion, extra healing, hallucination, healing, restore ability, sleeping, water |
-| $150  | Blindness, gain energy, invisibility, monster detection, object detection, speed   |
-| $200  | Acid, gain ability, gain level, oil, polymorph                                     |
-| $300  | Full healing, levitation, paralysis                                                |
+| Price | Potions at this price                                                     |
+| ----- | ------------------------------------------------------------------------- |
+| $20   | Healing                                                                   |
+| $50   | Booze, fruit juice, see invisible, sickness                               |
+| $100  | Confusion, extra healing, hallucination, restore ability, sleeping, water |
+| $150  | Blindness, gain energy, invisibility, monster detection, object detection |
+| $200  | Enlightenment, full healing, levitation, polymorph, speed                 |
+| $250  | Acid, oil                                                                 |
+| $300  | Gain ability, gain level, paralysis                                       |
 
-Water is the oddity in the $100 group. It appears as "clear potion"
-and is always identifiable on sight.
+Water is the oddity in the $100 group -- it appears as "clear potion"
+and is always identifiable on sight. Healing sits alone at $20, making
+it one of the easiest potions to price-identify.
 
 #### Key Potions
 
@@ -2442,6 +2542,32 @@ The chain from healing up to gain ability via gain energy or gain
 level is the core alchemy sequence. If you find potions of gain
 energy (cheap and common), you can upgrade your healing potions into
 much more valuable ones.
+
+```
+  The Alchemy Upgrade Chain
+
+  healing ($20)
+     |  + gain energy/level
+     v
+  extra healing ($100)
+     |  + gain energy/level
+     v
+  full healing ($200)
+     |  + gain energy/level
+     v
+  gain ability ($300)  <-- the jackpot
+
+  Side chain:
+  fruit juice ($50)  --+ gain energy/level-->  see invisible ($50)
+  speed ($200)  --+ healing-->  extra healing
+  speed ($200)  --+ extra healing-->  levitation ($200)
+```
+
+Start from the bottom (healing) and work your way up. A single
+potion of gain energy can convert a $20 healing potion into a $100
+extra healing. Two gain energies turn it into $200 full healing.
+Three, and you've got $300 gain ability from a $20 investment. This
+is the best deal in the dungeon.
 
 There is a 10% chance of explosion on any non-water mixture, so do
 this in a safe place. Cursed potions always explode when used as the
@@ -2830,6 +2956,25 @@ attacks.
 
 The key armor slots:
 
+```
+  The Adventurer's Wardrobe
+  (what goes where)
+
+        [Helmet]          <-- helm of brilliance, telepathy
+           |
+        [Amulet]          <-- life saving, reflection, ESP
+           |
+  [Cloak]--+--[Shirt]     <-- MR cloak over Hawaiian shirt
+           |
+  [Gloves]-+--[Shield]    <-- gauntlets of power + shield of refl.
+           |
+        [Body Armor]      <-- dragon scale mail (THE slot)
+           |
+        [Boots]           <-- speed boots (almost mandatory)
+           |
+     [Ring] [Ring]        <-- free action, levitation, etc.
+```
+
 | Slot   | Best mundane options     | Best magical options                  |
 | ------ | ------------------------ | ------------------------------------- |
 | Body   | Splint mail, banded mail | Dragon scale mail (one resistance)    |
@@ -2838,6 +2983,7 @@ The key armor slots:
 | Gloves | Gauntlets of power       | Gauntlets of dexterity                |
 | Boots  | Speed boots              | Water walking boots, levitation boots |
 | Shield | Shield of reflection     | Small shield (for spellcasters)       |
+| Shirt  | Hawaiian shirt           | T-shirt (if you can find one)         |
 
 **Dragon scale mail** is the endgame body armor of choice. Each
 color provides one extrinsic resistance while offering excellent
@@ -2908,11 +3054,26 @@ does.
 #### Enchantment
 
 Weapons and armor can be enchanted using scrolls of enchant weapon
-and enchant armor. Each scroll adds +1 (uncursed) or potentially
-more (blessed). Enchanting beyond +5 risks destroying the item,
-though blessed scrolls reduce this risk. The absolute safe limit
-for enchanting is +5 for weapons and +3 for armor (with uncursed
-scrolls). Blessed scrolls can push higher safely.
+and enchant armor. Each reading adds +1 (uncursed) or +1 to +3
+(blessed, random). Going too high risks destroying the item.
+
+**Safe enchantment limits:**
+
+| Item type | Uncursed scroll | Blessed scroll |
+| --------- | --------------- | -------------- |
+| Weapon    | +5              | +7             |
+| Armor     | +3              | +5             |
+
+Beyond these limits, there's a chance the item evaporates. The risk
+increases with each level above the safe limit. A +7 artifact weapon
+lost to a greedy enchant scroll is the kind of mistake you only make
+once but remember forever.
+
+**Tips:** Always use blessed scrolls for enchanting valuable gear.
+To maximize, enchant to the uncursed safe limit with uncursed scrolls
+(cheap), then switch to blessed scrolls for the final push. Don't
+enchant past +5 on armor or +7 on weapons unless you're feeling
+genuinely reckless.
 
 #### Erosion and Proofing
 
@@ -3642,6 +3803,39 @@ are demons, and your god can't hear your prayers here.
 Consider this your travel advisory: Gehennom is hostile territory
 from the moment you arrive.
 
+```
+  Gehennom -- Schematic Overview
+
+  Dungeons of Doom (above)
+         |
+    The Castle (wand of wishing in chest)
+         |
+    Valley of the Dead
+         |
+    ~~ Maze levels ~~~~~~~~~~~~~~~~~~~~~~
+    |                                    |
+    |   Asmodeus' Lair                   |
+    |   Baalzebub's Lair                 |
+    |   Orcus Town (wand of death)       |
+    |   Juiblex's Swamp                  |
+    |   Yeenoghu's level                 |
+    |                                    |
+    |   Vlad's Tower (Candelabrum)  <--branch
+    |                                    |
+    |   Wizard's Tower (Book of Dead) <--branch
+    |                                    |
+    ~~ More maze levels ~~~~~~~~~~~~~~~~~
+         |
+    Vibrating Square level
+         |
+    Moloch's Sanctum (Amulet of Yendor)
+```
+
+The demon lairs are scattered throughout the maze levels. You don't
+have to fight every demon lord, but you do have to pass through their
+levels. Vlad's Tower and the Wizard's Tower are side branches you
+must visit to collect the Invocation items.
+
 #### What's Different
 
 - **No prayer.** Your god cannot hear you in Gehennom (unless you
@@ -3826,13 +4020,53 @@ The final level. Three altars line the central temple: one Lawful,
 one Neutral, one Chaotic. You must sacrifice the Amulet of Yendor
 on the altar matching your alignment to ascend and win the game.
 
+```
+    Layout (approximate):
+
+    +--------+         +--------+         +--------+
+    | Altar  |         | Altar  |         | Altar  |
+    | (left) +---------+ (mid)  +---------+(right) |
+    +---+----+         +---+----+         +---+----+
+        |                  |                  |
+    ~~~~+~~~~~~~ open ~~~~+~~~~~~~ open ~~~~~+~~~~~
+             area with             area with
+             Angels,               Angels,
+             Riders,               Riders,
+             and demons            and demons
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    You arrive here
+```
+
+The three altars are always Lawful, Neutral, and Chaotic, but the
+left-to-right order is randomized each game. You must identify which
+altar matches your alignment before sacrificing.
+
+**How to identify the correct altar:**
+
+1. **Farlook** (`/` then cursor to altar): If you can see an altar,
+   this tells you its alignment directly. Fastest method.
+2. **Chat with aligned priest**: Each altar has a high priest nearby.
+   If the priest is peaceful to you, it's your alignment's altar.
+3. **#offer a junk item**: Sacrificing on the wrong altar angers
+   that god's priest. On the right altar, your god responds.
+4. **Telepathy**: If you have intrinsic telepathy, you can sense the
+   priests' positions and guess from their behavior.
+
+**WARNING:** Do NOT sacrifice the Amulet on the wrong altar. The
+wrong god keeps it, and you'll need to defeat the now-hostile high
+priest to get it back. Test with a junk item first.
+
 The Astral Plane is swarming with Angels, the three Riders (Death,
 Famine, Pestilence), and other powerful enemies. The Riders cannot
 be permanently killed. Your goal is not to fight everything but to
 reach the correct altar.
 
 - Use a wand of teleportation or conflict to clear a path.
+- Ring of conflict is enormously powerful here -- the Angels fight
+  each other instead of you.
 - The Riders will follow you. Don't engage unless you have to.
+- Famine drains nutrition, Pestilence causes sickness, Death uses
+  the touch of death. Magic resistance blocks Death's touch.
 - If you sacrifice on the wrong altar, you'll lose the Amulet and
   need to retrieve it.
 - Once you sacrifice on the correct altar: you ascend. You win.
@@ -4236,6 +4470,174 @@ Drop uncursed water potions on a co-aligned altar and pray.
 They convert to holy water. You can then multiply holy water
 indefinitely by dipping uncursed water into existing holy water.
 Holy water blesses items dipped in it; unholy water curses them.
+
+---
+
+### Keyboard Quick Reference
+
+The essential commands, grouped by what you're trying to do.
+
+#### Movement
+
+| Key     | Action                | Key     | Action             |
+| ------- | --------------------- | ------- | ------------------ |
+| `y`     | Move NW               | `u`     | Move NE            |
+| `h`     | Move W                | `l`     | Move E             |
+| `b`     | Move SW               | `n`     | Move SE            |
+| `j`     | Move S                | `k`     | Move N             |
+| `.`     | Wait one turn         | `s`     | Search adjacent    |
+| `<`     | Go up stairs          | `>`     | Go down stairs     |
+| `g`+dir | Move until something  | `G`+dir | Move, no pickup    |
+| `m`+dir | Move without fighting | `_`     | Travel to location |
+
+#### Items
+
+| Key | Action             | Key | Action             |
+| --- | ------------------ | --- | ------------------ |
+| `,` | Pick up items      | `d` | Drop items         |
+| `i` | View inventory     | `I` | View specific item |
+| `a` | Apply/use a tool   | `e` | Eat something      |
+| `q` | Quaff a potion     | `r` | Read scroll/book   |
+| `z` | Zap a wand         | `Z` | Cast a spell       |
+| `w` | Wield a weapon     | `W` | Wear armor         |
+| `T` | Take off armor     | `P` | Put on ring/amulet |
+| `R` | Remove ring/amulet | `t` | Throw something    |
+| `f` | Fire from quiver   | `Q` | Set quiver ammo    |
+
+#### Information
+
+| Key | Action              | Key      | Action               |
+| --- | ------------------- | -------- | -------------------- |
+| `/` | Farlook (identify)  | `;`      | What is here?        |
+| `:` | Look at floor       | `^`      | Show trap here       |
+| `\` | Show known items    | `@`      | Toggle autopickup    |
+| `C` | Call/name something | `#`      | Extended command     |
+| `?` | Help                | `S`      | Save game            |
+| `X` | Explore mode        | `Ctrl-P` | Show message history |
+
+#### Extended Commands (common ones)
+
+| Command    | Action                               |
+| ---------- | ------------------------------------ |
+| `#pray`    | Pray to your god                     |
+| `#offer`   | Sacrifice on an altar                |
+| `#dip`     | Dip item into potion or fountain     |
+| `#chat`    | Talk to adjacent creature            |
+| `#loot`    | Loot a container or adjacent chest   |
+| `#force`   | Force a lock                         |
+| `#enhance` | Advance weapon skills                |
+| `#adjust`  | Reorder inventory letters            |
+| `#name`    | Name an item or type of item         |
+| `#invoke`  | Invoke an artifact's special power   |
+| `#monster` | Use monster special ability (poly'd) |
+| `#untrap`  | Disarm an adjacent trap              |
+| `#wipe`    | Wipe your face (cream pie, venom)    |
+
+---
+
+### A Brief History of NetHack
+
+> *"The DevTeam thinks of everything."*
+> -- Ancient proverb among NetHack players, usually uttered after
+> discovering yet another obscure interaction that someone
+> actually programmed on purpose.
+
+**1987: Birth.** NetHack was created by Mike Stephenson, who merged
+the codebase of Hack (by Jay Fenlason et al., itself derived from
+Rogue) with various modifications and improvements. The name "NetHack"
+came from the fact that development was coordinated over the Internet
+-- still a novel concept in 1987. The original DevTeam members included
+Mike Stephenson, Izchak Miller, and Janet Walz.
+
+**1987-1993: Rapid evolution.** NetHack grew quickly through versions
+1.0 to 3.1. Each release added entire subsystems: the quest, the
+endgame, Gehennom, pets, shops, altars, spellcasting, artifacts. By
+version 3.1, NetHack was recognizably the game it is today. The pace
+was fast. Version 3.0 came in 1989, 3.1 in 1993.
+
+**1993-1996: The polishing era.** Version 3.2 (1996) and its
+sub-releases refined and expanded the game. The Sokoban levels were
+added. More monsters, more items, more interactions. The DevTeam's
+design philosophy became clear: every object should interact with
+every other object in some meaningful way. If you could think of it,
+they'd probably already coded it.
+
+**1996-2003: The long golden age.** Version 3.3 (1999) brought new
+races and roles. Version 3.4 (2002) and its bugfix 3.4.3 (2003)
+became the most played and most documented version of NetHack in
+history. The community thrived on RGRN (rec.games.roguelike.nethack),
+spoiler files multiplied, and ascension strategies were refined by
+thousands of players.
+
+**2003-2015: The great silence.** After 3.4.3, the DevTeam went
+quiet. For twelve years, no new release. The community continued
+playing 3.4.3, writing patches, creating variants (SporkHack, UnNetHack,
+NetHack4, dNetHack, FIQHack), and wondering if NetHack was finished.
+The DevTeam, famously secretive, said nothing.
+
+**2015-2023: The return.** In December 2015, the DevTeam surprised
+everyone with NetHack 3.6.0. Development continued through 3.6.1
+(2018), 3.6.2 (2019), 3.6.6 (2020), and 3.6.7 (2023). Each release
+modernized the game while preserving its essential character.
+
+**2023-present: The current era.** NetHack 3.7 represents the latest
+evolution. The core game is intact -- still 80x24 ASCII, still
+crushingly difficult, still deeper than any two-hundred-page guide
+can fully document. Forty years of continuous development by a team
+that thinks of everything.
+
+The DevTeam remains semi-anonymous by tradition. Members have included
+Mike Stephenson, Izchak Miller (who passed away in 1994 and is
+honored in the game by a persistent gravestone), Janet Walz, Steve
+Linhart, Warwick Allison, Ken Arromdee, Jean-Christophe Collet,
+Kevin Darcy, Timo Hakulinen, Steve Creps, Kevin Smolkowski, Eric
+Smith, Dean Luick, Pat Rankin, and others. The current team continues
+to maintain and develop the game.
+
+NetHack's source code has always been freely available. It is one of
+the longest-running open source projects in existence, predating the
+term "open source" by a decade.
+
+---
+
+### Famous Last Words
+
+> *Every dead adventurer has a story. Most of them end the same way.*
+
+A collection of epitaphs, gathered from tombstones, bones files, and
+the confessions of the overconfident. If you recognize yourself in
+any of these, you're in good company.
+
+- "Killed by a newt, while helpless." -- First turn. Last turn.
+- "Killed by a cockatrice corpse." -- Gloves. That's all it takes.
+- "Choked on a tin of floating eye meat." -- Satiated means stop.
+- "Petrified by a chickatrice." -- They get you younger than you'd
+  think.
+- "Killed by kicking a wall." -- The dungeon doesn't forgive hubris.
+- "Killed by a poisoned dart trap." -- Poison resistance. Priority
+  one.
+- "Killed by a falling rock trap." -- Helmets are functional, not
+  fashionable.
+- "Died while praying." -- Your god was busy. Should have checked
+  the timeout.
+- "Killed by a shopkeeper." -- They always had more HP than you.
+  Always.
+- "Killed by a leocrotta." -- It said "Help! I'm being attacked!"
+  It lied.
+- "Killed by touching a cockatrice corpse." -- Yes, even bare hands.
+  Yes, even through a bag.
+- "Killed by a soldier ant." -- Not the worst monster. Just the
+  worst surprise.
+- "Killed by contaminated water." -- The fountain gives. The
+  fountain takes.
+- "Killed by a bolt of lightning." -- The wand was for them, not
+  for you. Reflection exists.
+- "Killed by brainlessness." -- The mind flayer doesn't negotiate.
+- "Killed by genocidal confusion." -- You genocided your own race.
+  The scroll told you to read it while confused. Why did you listen?
+- "Ascended." -- Finally.
+
+The only epitaph that matters is the last one. Keep playing.
 
 ---
 
