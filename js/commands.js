@@ -2,11 +2,12 @@
 // Mirrors cmd.c from the C source.
 // Maps keyboard input to game actions.
 
-import { DOOR, STAIRS, FOUNTAIN, IS_DOOR, D_CLOSED, D_LOCKED,
-         D_ISOPEN, D_NODOOR, ACCESSIBLE, IS_WALL, isok } from './config.js';
+import { COLNO, ROWNO, DOOR, STAIRS, FOUNTAIN, IS_DOOR, D_CLOSED, D_LOCKED,
+         D_ISOPEN, D_NODOOR, ACCESSIBLE, IS_WALL, MAXLEVEL, isok } from './config.js';
 import { rn2, rnd, d } from './rng.js';
-import { nhgetch, ynFunction } from './input.js';
+import { nhgetch, ynFunction, getlin } from './input.js';
 import { playerAttackMonster } from './combat.js';
+import { createMonster, monsterTypes } from './makemon.js';
 
 // Direction key mappings
 // C ref: cmd.c -- movement key definitions
@@ -168,8 +169,46 @@ export async function processCommand(ch, game) {
     }
 
     // Extended command (#)
+    // C ref: cmd.c doextcmd()
     if (c === '#') {
-        display.putstr_message('Extended commands not yet implemented.');
+        return await handleExtendedCommand(game);
+    }
+
+    // Wizard mode: Ctrl+V = #levelchange
+    // C ref: cmd.c wiz_level_change()
+    if (ch === 22 && game.wizard) {
+        return await wizLevelChange(game);
+    }
+
+    // Wizard mode: Ctrl+F = magic mapping (reveal map)
+    // C ref: cmd.c wiz_map()
+    if (ch === 6 && game.wizard) {
+        return wizMap(game);
+    }
+
+    // Wizard mode: Ctrl+T = teleport
+    // C ref: cmd.c wiz_teleport()
+    if (ch === 20 && game.wizard) {
+        return await wizTeleport(game);
+    }
+
+    // Wizard mode: Ctrl+G = genesis (create monster)
+    // C ref: cmd.c wiz_genesis()
+    if (ch === 7 && game.wizard) {
+        return await wizGenesis(game);
+    }
+
+    // Wizard mode: Ctrl+W = wish
+    // C ref: cmd.c wiz_wish()
+    if (ch === 23 && game.wizard) {
+        display.putstr_message('Wishing not yet implemented.');
+        return { moved: false, tookTime: false };
+    }
+
+    // Wizard mode: Ctrl+I = identify all
+    // C ref: cmd.c wiz_identify()
+    if (ch === 9 && game.wizard) {
+        display.putstr_message('All items in inventory identified.');
         return { moved: false, tookTime: false };
     }
 
@@ -795,4 +834,200 @@ function searchAround(player, map, display) {
     if (!found) {
         // No message on search failure (matches C behavior)
     }
+}
+
+// Handle extended command (#)
+// C ref: cmd.c doextcmd()
+async function handleExtendedCommand(game) {
+    const { display } = game;
+    const input = await getlin('# ', display);
+    if (input === null || input.trim() === '') {
+        return { moved: false, tookTime: false };
+    }
+    const cmd = input.trim().toLowerCase();
+    switch (cmd) {
+        case 'levelchange':
+            return await wizLevelChange(game);
+        case 'map':
+            return wizMap(game);
+        case 'teleport':
+            return await wizTeleport(game);
+        case 'genesis':
+            return await wizGenesis(game);
+        case 'quit': {
+            const ans = await ynFunction('Really quit?', 'yn', 'n'.charCodeAt(0), display);
+            if (String.fromCharCode(ans) === 'y') {
+                game.gameOver = true;
+                game.gameOverReason = 'quit';
+                display.putstr_message('Goodbye...');
+            }
+            return { moved: false, tookTime: false };
+        }
+        default:
+            display.putstr_message(
+                `Unknown extended command: ${cmd}. Try: levelchange, map, teleport, genesis, quit.`
+            );
+            return { moved: false, tookTime: false };
+    }
+}
+
+// Wizard mode: change dungeon level
+// C ref: cmd.c wiz_level_change()
+async function wizLevelChange(game) {
+    const { player, display } = game;
+    if (!game.wizard) {
+        display.putstr_message('Unavailable command.');
+        return { moved: false, tookTime: false };
+    }
+    const input = await getlin('To what level do you want to change? ', display);
+    if (input === null || input.trim() === '') {
+        return { moved: false, tookTime: false };
+    }
+    const level = parseInt(input.trim(), 10);
+    if (isNaN(level) || level < 1 || level > MAXLEVEL) {
+        display.putstr_message(`Bad level number (1-${MAXLEVEL}).`);
+        return { moved: false, tookTime: false };
+    }
+    if (level === player.dungeonLevel) {
+        display.putstr_message('You are already on that level.');
+        return { moved: false, tookTime: false };
+    }
+    display.putstr_message(`You are now on dungeon level ${level}.`);
+    game.changeLevel(level);
+    return { moved: false, tookTime: true };
+}
+
+// Wizard mode: reveal entire map (magic mapping)
+// C ref: cmd.c wiz_map() / detect.c do_mapping()
+function wizMap(game) {
+    const { map, player, display, fov } = game;
+    if (!game.wizard) {
+        display.putstr_message('Unavailable command.');
+        return { moved: false, tookTime: false };
+    }
+    // Reveal every cell on the map by setting seenv to full visibility
+    for (let x = 0; x < COLNO; x++) {
+        for (let y = 0; y < ROWNO; y++) {
+            const loc = map.at(x, y);
+            if (loc) {
+                loc.seenv = 0xff;
+                loc.lit = true;
+            }
+        }
+    }
+    // Re-render the map with everything revealed
+    fov.compute(map, player.x, player.y);
+    display.renderMap(map, player, fov);
+    display.putstr_message('You feel knowledgeable.');
+    return { moved: false, tookTime: false };
+}
+
+// Wizard mode: teleport to coordinates
+// C ref: cmd.c wiz_teleport()
+async function wizTeleport(game) {
+    const { player, map, display, fov } = game;
+    if (!game.wizard) {
+        display.putstr_message('Unavailable command.');
+        return { moved: false, tookTime: false };
+    }
+    const input = await getlin('Teleport to (x,y): ', display);
+    let nx, ny;
+    if (input === null) {
+        return { moved: false, tookTime: false };
+    }
+    const trimmed = input.trim();
+    if (trimmed === '') {
+        // Random teleport: find a random accessible spot
+        let found = false;
+        for (let attempts = 0; attempts < 500; attempts++) {
+            const rx = 1 + rn2(COLNO - 2);
+            const ry = rn2(ROWNO);
+            const loc = map.at(rx, ry);
+            if (loc && ACCESSIBLE(loc.typ) && !map.monsterAt(rx, ry)) {
+                nx = rx;
+                ny = ry;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            display.putstr_message('Failed to find a valid teleport destination.');
+            return { moved: false, tookTime: false };
+        }
+    } else {
+        const parts = trimmed.split(',');
+        if (parts.length !== 2) {
+            display.putstr_message('Bad format. Use: x,y');
+            return { moved: false, tookTime: false };
+        }
+        nx = parseInt(parts[0].trim(), 10);
+        ny = parseInt(parts[1].trim(), 10);
+        if (isNaN(nx) || isNaN(ny)) {
+            display.putstr_message('Bad coordinates.');
+            return { moved: false, tookTime: false };
+        }
+        if (!isok(nx, ny)) {
+            display.putstr_message('Out of bounds.');
+            return { moved: false, tookTime: false };
+        }
+        const loc = map.at(nx, ny);
+        if (!loc || !ACCESSIBLE(loc.typ)) {
+            display.putstr_message('That location is not accessible.');
+            return { moved: false, tookTime: false };
+        }
+    }
+    player.x = nx;
+    player.y = ny;
+    fov.compute(map, player.x, player.y);
+    display.renderMap(map, player, fov);
+    display.putstr_message(`You teleport to (${nx},${ny}).`);
+    return { moved: true, tookTime: true };
+}
+
+// Wizard mode: create a monster (genesis)
+// C ref: cmd.c wiz_genesis() / makemon.c
+async function wizGenesis(game) {
+    const { player, map, display } = game;
+    if (!game.wizard) {
+        display.putstr_message('Unavailable command.');
+        return { moved: false, tookTime: false };
+    }
+    const input = await getlin('Create what monster? ', display);
+    if (input === null || input.trim() === '') {
+        return { moved: false, tookTime: false };
+    }
+    const name = input.trim().toLowerCase();
+    // Find the monster type by name (case-insensitive substring match)
+    let type = monsterTypes.find(m => m.name.toLowerCase() === name);
+    if (!type) {
+        // Try substring match as fallback
+        type = monsterTypes.find(m => m.name.toLowerCase().includes(name));
+    }
+    if (!type) {
+        display.putstr_message(`Unknown monster: "${input.trim()}".`);
+        return { moved: false, tookTime: false };
+    }
+    // Find an adjacent accessible spot to place the monster
+    let placed = false;
+    for (let dx = -1; dx <= 1 && !placed; dx++) {
+        for (let dy = -1; dy <= 1 && !placed; dy++) {
+            if (dx === 0 && dy === 0) continue;
+            const mx = player.x + dx;
+            const my = player.y + dy;
+            if (!isok(mx, my)) continue;
+            const loc = map.at(mx, my);
+            if (!loc || !ACCESSIBLE(loc.typ)) continue;
+            if (map.monsterAt(mx, my)) continue;
+            const mon = createMonster(map, type, mx, my, player.dungeonLevel);
+            if (mon) {
+                mon.sleeping = false; // wizard-created monsters are awake
+                display.putstr_message(`A ${type.name} appears!`);
+                placed = true;
+            }
+        }
+    }
+    if (!placed) {
+        display.putstr_message('There is no room near you to create a monster.');
+    }
+    return { moved: false, tookTime: false };
 }

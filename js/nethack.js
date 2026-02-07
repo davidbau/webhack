@@ -15,6 +15,17 @@ import { populateObjects } from './mkobj.js';
 import { processCommand } from './commands.js';
 import { moveMonsters } from './monmove.js';
 
+// Parse URL parameters for game options
+// Supports: ?wizard=1, ?seed=N, ?role=X
+function parseUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+        wizard: params.get('wizard') === '1' || params.get('wizard') === 'true',
+        seed: params.has('seed') ? parseInt(params.get('seed'), 10) : null,
+        role: params.get('role') || null,
+    };
+}
+
 // --- Game State ---
 // C ref: decl.h -- globals are accessed via NH object (see DECISIONS.md #7)
 class NetHackGame {
@@ -27,13 +38,21 @@ class NetHackGame {
         this.gameOver = false;
         this.gameOverReason = '';
         this.turnCount = 0;
+        this.wizard = false;  // C ref: flags.debug (wizard mode)
     }
 
     // Initialize a new game
     // C ref: allmain.c early_init() + moveloop_preamble()
     async init() {
-        // Initialize RNG with random seed
-        initRng(Math.floor(Math.random() * 0xFFFFFFFF));
+        // Parse URL params
+        const urlOpts = parseUrlParams();
+        this.wizard = urlOpts.wizard;
+
+        // Initialize RNG with seed from URL or random
+        const seed = urlOpts.seed !== null
+            ? urlOpts.seed
+            : Math.floor(Math.random() * 0xFFFFFFFF);
+        initRng(seed);
 
         // Initialize display
         this.display = new Display('game');
@@ -43,7 +62,9 @@ class NetHackGame {
 
         // Show welcome message
         // C ref: allmain.c -- welcome messages
-        this.display.putstr_message('NetHack JS -- Welcome to the Mazes of Menace!');
+        const wizStr = this.wizard ? ' [WIZARD MODE]' : '';
+        const seedStr = urlOpts.seed !== null ? ` (seed:${seed})` : '';
+        this.display.putstr_message(`NetHack JS -- Welcome to the Mazes of Menace!${wizStr}${seedStr}`);
 
         // Player selection
         await this.playerSelection();

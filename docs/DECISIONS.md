@@ -202,3 +202,34 @@ rooms. This is a signature visual element of NetHack's dungeon.
 - Handle corridor-corridor connections
 
 This ensures the dungeon "looks like NetHack."
+
+---
+
+## Decision 10: Wizard Mode via URL Parameters
+
+**Context:** NetHack's wizard mode (debug mode) is invaluable for testing. The C
+version activates it via compile-time flags or special user names. We need a
+browser-friendly equivalent.
+
+**Choice:** Activate wizard mode via URL query parameters:
+- `?wizard=1` -- enables wizard mode
+- `?seed=N` -- sets the PRNG seed for deterministic play
+- `?role=X` -- selects starting role
+
+**Wizard commands implemented:**
+- Ctrl+F: Magic mapping (reveal entire level)
+- Ctrl+V: Level change (teleport to any dungeon level)
+- Ctrl+T: Teleport to coordinates or random location
+- Ctrl+G: Genesis (create any monster by name)
+- Ctrl+W: Wish (stub)
+- Ctrl+I: Identify all (stub)
+- `#` extended command: text-based command dispatch
+
+**Rationale:** URL parameters are the natural equivalent of command-line flags for
+a browser application. They can be bookmarked, shared, and don't require any UI
+for activation. The `?seed=N` parameter combined with wizard mode enables fully
+deterministic, reproducible test scenarios.
+
+**Testing:** Wizard commands that don't require user input (e.g., magic mapping)
+are tested via unit tests with mock game objects. Input-requiring commands
+(level change, teleport, genesis) are tested via E2E browser tests.
