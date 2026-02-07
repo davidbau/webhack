@@ -14,6 +14,8 @@ import {
     IS_WALL, IS_DOOR, IS_ROOM
 } from './config.js';
 
+import { def_monsyms, def_oc_syms } from './symbols.js';
+
 // Color constants (color.h)
 // C ref: include/color.h
 export const CLR_BLACK = 0;
@@ -116,6 +118,15 @@ export class Display {
         // DOM spans: [row][col] = <span>
         this.spans = [];
 
+        // Cell info for hover: [row][col] = { name, desc, color }
+        this.cellInfo = [];
+        for (let r = 0; r < this.rows; r++) {
+            this.cellInfo[r] = [];
+            for (let c = 0; c < this.cols; c++) {
+                this.cellInfo[r][c] = null;
+            }
+        }
+
         // Message history
         this.messages = [];
         this.topMessage = '';
@@ -148,6 +159,8 @@ export class Display {
                 const span = document.createElement('span');
                 span.textContent = ' ';
                 span.style.color = COLOR_CSS[CLR_GRAY];
+                span.dataset.row = r;
+                span.dataset.col = c;
                 this.spans[r][c] = span;
                 pre.appendChild(span);
             }
@@ -158,6 +171,9 @@ export class Display {
 
         this.container.innerHTML = '';
         this.container.appendChild(pre);
+
+        // Set up hover info panel
+        this._setupHover(pre);
     }
 
     // Set a character at terminal position (col, row) with color
@@ -225,8 +241,11 @@ export class Display {
                         // Show remembered (dimmed)
                         const sym = this.terrainSymbol(loc);
                         this.setCell(col, row, sym.ch, CLR_BLACK);
+                        const desc = this._terrainDesc(loc);
+                        this.cellInfo[row][col] = { name: desc, desc: '(remembered)', color: CLR_BLACK };
                     } else {
                         this.setCell(col, row, ' ', CLR_GRAY);
+                        this.cellInfo[row][col] = null;
                     }
                     continue;
                 }
@@ -234,6 +253,7 @@ export class Display {
                 const loc = gameMap.at(x, y);
                 if (!loc) {
                     this.setCell(col, row, ' ', CLR_GRAY);
+                    this.cellInfo[row][col] = null;
                     continue;
                 }
 
@@ -243,6 +263,7 @@ export class Display {
                 // Check for player at this position
                 if (player && x === player.x && y === player.y) {
                     this.setCell(col, row, '@', CLR_WHITE);
+                    this.cellInfo[row][col] = { name: player.name || 'you', desc: 'you, the adventurer', color: CLR_WHITE };
                     continue;
                 }
 
@@ -250,6 +271,8 @@ export class Display {
                 const mon = gameMap.monsterAt(x, y);
                 if (mon) {
                     this.setCell(col, row, mon.displayChar, mon.displayColor);
+                    const classInfo = this._monsterClassDesc(mon.displayChar);
+                    this.cellInfo[row][col] = { name: mon.name, desc: classInfo, color: mon.displayColor };
                     continue;
                 }
 
@@ -258,6 +281,9 @@ export class Display {
                 if (objs.length > 0) {
                     const topObj = objs[objs.length - 1];
                     this.setCell(col, row, topObj.displayChar, topObj.displayColor);
+                    const classInfo = this._objectClassDesc(topObj.oc_class);
+                    const extra = objs.length > 1 ? ` (+${objs.length - 1} more)` : '';
+                    this.cellInfo[row][col] = { name: topObj.name + extra, desc: classInfo, color: topObj.displayColor };
                     continue;
                 }
 
@@ -265,12 +291,15 @@ export class Display {
                 const trap = gameMap.trapAt(x, y);
                 if (trap && trap.tseen) {
                     this.setCell(col, row, '^', CLR_MAGENTA);
+                    this.cellInfo[row][col] = { name: 'trap', desc: 'a trap', color: CLR_MAGENTA };
                     continue;
                 }
 
                 // Show terrain
                 const sym = this.terrainSymbol(loc);
                 this.setCell(col, row, sym.ch, sym.color);
+                const desc = this._terrainDesc(loc);
+                this.cellInfo[row][col] = { name: desc, desc: '', color: sym.color };
             }
         }
     }
@@ -450,5 +479,89 @@ export class Display {
         if (player) {
             this.setCell(player.x, player.y + MAP_ROW_START, '@', CLR_WHITE);
         }
+    }
+
+    // --- Hover info helpers ---
+
+    // Get terrain description for a map location
+    _terrainDesc(loc) {
+        const typ = loc.typ;
+        if (typ === DOOR) {
+            if (loc.flags & D_ISOPEN) return 'open door';
+            if (loc.flags & D_CLOSED || loc.flags & D_LOCKED) return 'closed door';
+            return 'doorway';
+        }
+        if (typ === STAIRS) return loc.flags === 1 ? 'staircase up' : 'staircase down';
+        const names = {
+            [STONE]: '', [VWALL]: 'wall', [HWALL]: 'wall',
+            [TLCORNER]: 'wall', [TRCORNER]: 'wall', [BLCORNER]: 'wall', [BRCORNER]: 'wall',
+            [CROSSWALL]: 'wall', [TUWALL]: 'wall', [TDWALL]: 'wall',
+            [TLWALL]: 'wall', [TRWALL]: 'wall',
+            [CORR]: 'corridor', [ROOM]: 'floor',
+            [FOUNTAIN]: 'fountain', [THRONE]: 'throne', [SINK]: 'sink',
+            [GRAVE]: 'grave', [ALTAR]: 'altar',
+            [POOL]: 'pool of water', [MOAT]: 'moat', [WATER]: 'water',
+            [LAVAPOOL]: 'molten lava', [LAVAWALL]: 'wall of lava',
+            [ICE]: 'ice', [IRONBARS]: 'iron bars', [TREE]: 'tree',
+            [DRAWBRIDGE_UP]: 'drawbridge', [DRAWBRIDGE_DOWN]: 'drawbridge',
+            [AIR]: 'air', [CLOUD]: 'cloud',
+            [SDOOR]: 'wall', [SCORR]: '',
+        };
+        return names[typ] || '';
+    }
+
+    // Look up monster class description from display character
+    _monsterClassDesc(ch) {
+        for (let i = 1; i < def_monsyms.length; i++) {
+            if (def_monsyms[i].sym === ch) return def_monsyms[i].explain;
+        }
+        return 'creature';
+    }
+
+    // Look up object class description from oc_class
+    _objectClassDesc(oc_class) {
+        // def_oc_syms is 1-indexed (idx 0 is placeholder)
+        const idx = oc_class + 1;
+        if (idx > 0 && idx < def_oc_syms.length) return def_oc_syms[idx].explain;
+        return 'object';
+    }
+
+    // Set up mouseover handling for the hover info panel
+    _setupHover(pre) {
+        const display = this;
+        const panel = document.getElementById('hover-info');
+        if (!panel) return;
+
+        const nameEl = document.getElementById('hover-name');
+        const descEl = document.getElementById('hover-desc');
+        const symbolEl = document.getElementById('hover-symbol');
+
+        pre.addEventListener('mouseover', function(e) {
+            const span = e.target;
+            if (!span.dataset || span.dataset.row === undefined) return;
+            const r = parseInt(span.dataset.row);
+            const c = parseInt(span.dataset.col);
+            const info = display.cellInfo[r] && display.cellInfo[r][c];
+            if (info && info.name) {
+                const ch = display.grid[r][c].ch;
+                const color = COLOR_CSS[info.color] || COLOR_CSS[CLR_GRAY];
+                if (symbolEl) {
+                    symbolEl.textContent = ch;
+                    symbolEl.style.color = color;
+                }
+                if (nameEl) nameEl.textContent = info.name;
+                if (descEl) descEl.textContent = info.desc;
+                panel.style.visibility = 'visible';
+            } else {
+                panel.style.visibility = 'hidden';
+            }
+        });
+
+        pre.addEventListener('mouseout', function(e) {
+            // Only hide if leaving the pre entirely
+            if (!pre.contains(e.relatedTarget)) {
+                panel.style.visibility = 'hidden';
+            }
+        });
     }
 }

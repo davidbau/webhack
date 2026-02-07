@@ -11,11 +11,39 @@
             color: #aaa;
             font-family: "DejaVu Sans Mono", "Courier New", "Lucida Console", monospace;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             display: flex;
             justify-content: center;
-            align-items: flex-start;
+            align-items: center;
             min-height: 100vh;
+        }
+
+        #page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #nav {
+            display: flex;
+            gap: 1.5em;
+            padding: 0.5em 0;
+            font-size: 13px;
+        }
+
+        #nav a {
+            color: #555;
+            text-decoration: none;
+        }
+
+        #nav a:hover {
+            color: #888;
+        }
+
+        #main {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
         }
 
         #game {
@@ -24,6 +52,7 @@
             border: 2px solid #333;
             padding: 4px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            flex-shrink: 0;
         }
 
         #terminal {
@@ -53,12 +82,232 @@
         #game:focus-within {
             border-color: #555;
         }
+
+        /* --- Side panels --- */
+        .side-panel {
+            font-size: 12px;
+            color: #444;
+            line-height: 1.6;
+            width: 180px;
+            flex-shrink: 0;
+        }
+
+        .side-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5em;
+            color: #555;
+            font-size: 11px;
+        }
+
+        .side-panel-close {
+            cursor: pointer;
+            color: #444;
+            font-size: 14px;
+        }
+
+        .side-panel-close:hover {
+            color: #888;
+        }
+
+        /* Keyboard quick-reference (left panel) */
+        #keyref table {
+            border-spacing: 0;
+        }
+
+        #keyref td {
+            padding: 0 0.5em 0 0;
+            white-space: nowrap;
+        }
+
+        #keyref td:first-child {
+            color: #666;
+            text-align: right;
+            padding-right: 0.8em;
+        }
+
+        #keyref .keyref-section {
+            color: #555;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding-top: 0.6em;
+        }
+
+        /* Hover info panel (right panel) */
+        #hover-panel {
+            padding-top: 1.8em;
+        }
+
+        #hover-info {
+            visibility: hidden;
+        }
+
+        #hover-symbol {
+            font-size: 28px;
+            line-height: 1;
+            display: block;
+            margin-bottom: 0.3em;
+        }
+
+        #hover-name {
+            color: #888;
+            font-size: 14px;
+            display: block;
+            margin-bottom: 0.2em;
+        }
+
+        #hover-desc {
+            color: #555;
+            font-size: 11px;
+            display: block;
+        }
+
+        #hover-hint {
+            color: #333;
+            font-size: 11px;
+            margin-top: 2em;
+        }
+
+        /* Nav toggle links */
+        .nav-toggle {
+            cursor: pointer;
+        }
+
+        /* Responsive: stack vertically on narrow screens */
+        @media (max-width: 1100px) {
+            #main {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            #main {
+                /* Reorder: game first, then panels below */
+            }
+
+            #keyref {
+                width: auto;
+                max-width: 780px;
+                order: 1;
+            }
+
+            #hover-panel {
+                width: auto;
+                max-width: 780px;
+                order: 2;
+                padding-top: 0.5em;
+            }
+
+            #game {
+                order: 0;
+            }
+
+            #keyref table {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0 2em;
+            }
+
+            #keyref tr {
+                display: flex;
+            }
+        }
     </style>
 </head>
 <body>
-    <div id="game">
-        <div id="loading">Loading NetHack JS...</div>
+    <div id="page">
+        <nav id="nav">
+            <a href="https://en.wikipedia.org/wiki/NetHack" target="_blank">About NetHack</a>
+            <a href="https://nethackwiki.com/wiki/Guidebook" target="_blank">How to Play</a>
+            <a href="https://github.com/davidbau/webhack" target="_blank">About This Project</a>
+            <a id="nav-controls" class="nav-toggle" style="display:none" title="Show keyboard controls">Controls</a>
+        </nav>
+        <div id="main">
+            <!-- Left: keyboard controls -->
+            <div id="keyref" class="side-panel">
+                <div class="side-panel-header">
+                    <span>CONTROLS</span>
+                    <span class="side-panel-close" id="keyref-close" title="Hide">&times;</span>
+                </div>
+                <table>
+                    <tr class="keyref-section"><td colspan="2">Move</td></tr>
+                    <tr><td>h j k l</td><td>left/down/up/right</td></tr>
+                    <tr><td>y u b n</td><td>diagonals</td></tr>
+                    <tr><td>.</td><td>wait one turn</td></tr>
+                    <tr><td>s</td><td>search adjacent</td></tr>
+                    <tr><td>&lt; &gt;</td><td>go up / down stairs</td></tr>
+                    <tr class="keyref-section"><td colspan="2">Actions</td></tr>
+                    <tr><td>o</td><td>open door</td></tr>
+                    <tr><td>c</td><td>close door</td></tr>
+                    <tr><td>,</td><td>pick up item</td></tr>
+                    <tr><td>d</td><td>drop item</td></tr>
+                    <tr><td>e</td><td>eat</td></tr>
+                    <tr><td>q</td><td>quaff (drink)</td></tr>
+                    <tr><td>r</td><td>read scroll</td></tr>
+                    <tr><td>z</td><td>zap wand</td></tr>
+                    <tr class="keyref-section"><td colspan="2">Equipment</td></tr>
+                    <tr><td>w</td><td>wield weapon</td></tr>
+                    <tr><td>W</td><td>wear armor</td></tr>
+                    <tr><td>P</td><td>put on ring</td></tr>
+                    <tr><td>T</td><td>take off armor</td></tr>
+                    <tr><td>R</td><td>remove ring</td></tr>
+                    <tr class="keyref-section"><td colspan="2">Info</td></tr>
+                    <tr><td>i</td><td>inventory</td></tr>
+                    <tr><td>/</td><td>identify symbol</td></tr>
+                    <tr><td>:</td><td>look here</td></tr>
+                    <tr class="keyref-section"><td colspan="2">Game</td></tr>
+                    <tr><td>S</td><td>save &amp; quit</td></tr>
+                    <tr><td>?</td><td>help</td></tr>
+                </table>
+            </div>
+
+            <!-- Center: game terminal -->
+            <div id="game">
+                <div id="loading">Loading NetHack JS...</div>
+            </div>
+
+            <!-- Right: hover symbol info -->
+            <div id="hover-panel" class="side-panel">
+                <div id="hover-info">
+                    <span id="hover-symbol"></span>
+                    <span id="hover-name"></span>
+                    <span id="hover-desc"></span>
+                </div>
+                <div id="hover-hint">Hover over the map to identify symbols</div>
+            </div>
+        </div>
     </div>
+
+    <script>
+    // Keyboard quick-reference: toggle visibility, persist preference
+    (function() {
+        var panel = document.getElementById('keyref');
+        var close = document.getElementById('keyref-close');
+        var show = document.getElementById('nav-controls');
+        var key = 'webhack-keyref-hidden';
+
+        function hide() {
+            panel.style.display = 'none';
+            show.style.display = '';
+            try { localStorage.setItem(key, '1'); } catch(e) {}
+        }
+
+        function reveal() {
+            panel.style.display = '';
+            show.style.display = 'none';
+            try { localStorage.removeItem(key); } catch(e) {}
+        }
+
+        close.addEventListener('click', hide);
+        show.addEventListener('click', reveal);
+
+        // Restore preference
+        try {
+            if (localStorage.getItem(key)) hide();
+        } catch(e) {}
+    })();
+    </script>
 
     <!-- ES6 Module entry point -->
     <script type="module" src="js/nethack.js"></script>
