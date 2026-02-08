@@ -9,7 +9,7 @@ diff --git a/src/cmd.c b/src/cmd.c
  staticfn int doherecmdmenu(void);
  staticfn int dotherecmdmenu(void);
  staticfn int doprev_message(void);
-@@ -1099,6 +1100,36 @@ wiz_dumpmap(void)
+@@ -1099,6 +1100,37 @@ wiz_dumpmap(void)
      return ECMD_OK;
  }
 
@@ -47,7 +47,7 @@ diff --git a/src/cmd.c b/src/cmd.c
  /* temporary? hack, since level type codes aren't the same as screen
     symbols and only the latter have easily accessible descriptions.
     Also used by wizcmds.c */
-@@ -1688,6 +1719,8 @@ struct ext_func_tab extcmdlist[] = {
+@@ -1688,4 +1720,6 @@ struct ext_func_tab extcmdlist[] = {
                wiz_dumpmap, IFBURIED | AUTOCOMPLETE | WIZMODECMD, NULL },
 +    { '\0',   "dumpobj", "dump floor objects in fobj iteration order",
 +              wiz_dumpobj, IFBURIED | AUTOCOMPLETE | WIZMODECMD, NULL },
