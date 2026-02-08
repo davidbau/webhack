@@ -63,6 +63,18 @@ document per session is easier to generate, parse, version, and extend.
     // (o_init + level gen + post-level init)
     "rngCalls": 2807,
 
+    // Per-call RNG trace for the entire startup sequence (optional).
+    // Same compact string format as step rng entries.
+    // When present, rng.length === rngCalls.
+    // Essential for debugging startup divergences between C and JS —
+    // pinpoints exactly which RNG call first diverges.
+    "rng": [
+      "rn2(2)=1 @ o_init.c:88",
+      "rn2(2)=0 @ o_init.c:91",
+      "rn2(4)=0 @ o_init.c:94",
+      "... rngCalls entries total ..."
+    ],
+
     // Terrain type grid for the starting level (depth 1)
     // 21 rows x 80 columns of integer terrain type codes
     // (STONE=0, VWALL=1, HWALL=2, ..., ROOM=25, STAIRS=26)
@@ -174,11 +186,12 @@ document per session is easier to generate, parse, version, and extend.
 
 ### `startup`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `rngCalls` | number | Total PRNG consumptions during startup |
-| `typGrid` | number[][] | 21x80 terrain type grid for starting level |
-| `screen` | string[] | 24-line terminal screen after startup |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `rngCalls` | number | yes | Total PRNG consumptions during startup |
+| `rng` | string[] | no | Per-call RNG trace (same format as step `rng`); length === `rngCalls` |
+| `typGrid` | number[][] | yes | 21x80 terrain type grid for starting level |
+| `screen` | string[] | yes | 24-line terminal screen after startup |
 
 ### `steps[i]`
 
@@ -216,6 +229,35 @@ functions like `rne` and `rnz` are not logged separately — their internal
 
 The global RNG call index is not stored per-entry. It can be reconstructed:
 `startup.rngCalls + sum of rng.length for all preceding steps + position`.
+
+### Startup RNG (`startup.rng`)
+
+The `startup.rng` array is optional because startup involves thousands of RNG
+calls (typically 2000-3000) and adds significant file size. It uses the same
+compact string format as step `rng` entries.
+
+When present, `startup.rng` enables line-by-line comparison of the C and JS
+startup sequences. This is critical for debugging startup divergences — when
+the JS port's `makelevel()` or `simulatePostLevelInit()` consumes a different
+number of RNG calls than C, the per-call trace pinpoints the exact call where
+they first diverge. Without it, you only know the total count is wrong.
+
+The `startup.rng` array covers the full startup: `o_init` (object/monster
+shuffles), `makelevel` (dungeon generation), and post-level init (pet
+creation, attribute initialization, welcome messages). The `@ source:line`
+annotations reference C source files like `o_init.c`, `mkroom.c`, `mkobj.c`,
+`makemon.c`, `attrib.c`, and `allmain.c`.
+
+Example:
+```
+startup.rng[0]    = "rn2(2)=1 @ o_init.c:88"      // first shuffle
+startup.rng[255]  = "rn2(7)=3 @ dungeon.js:289"    // makelevel starts
+startup.rng[2350] = "rnd(9000)=3711 @ allmain.c:74" // main loop init
+```
+
+The `run_session.py` capture tool automatically includes `startup.rng` in new
+sessions. Older session files (like `seed42.session.json`) may lack it — the
+field is treated as optional by test code.
 
 ## Screen Format
 
@@ -497,6 +539,13 @@ reversible mapping applied at test time.
 files. The string format is trivially parseable with a regex, and the
 source location is optional — tests that only check call signatures can
 ignore the `@ ...` suffix.
+
+**Why is `startup.rng` optional?**
+Startup RNG data adds 2000-3000 entries to the JSON, roughly doubling file
+size. It's invaluable during active development (debugging why JS `makelevel`
+diverges from C) but not needed for routine regression testing where only the
+total `rngCalls` count is checked. Making it optional keeps old session files
+valid and lets future sessions include or omit it based on need.
 
 **Why include both screen and typGrid?**
 They test different things. The screen tests rendering, FOV, object display,

@@ -412,6 +412,7 @@ def main():
         clear_more_prompts(session_name)
 
         # Build session object
+        startup_rng_entries = parse_rng_lines(startup_rng_lines)
         session_data = {
             'version': 1,
             'seed': seed,
@@ -420,6 +421,7 @@ def main():
             'symset': 'DECgraphics',
             'startup': {
                 'rngCalls': startup_rng_count,
+                'rng': startup_rng_entries,
                 'typGrid': startup_typ_grid,
                 'screen': startup_screen,
             },

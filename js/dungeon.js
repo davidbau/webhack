@@ -8,7 +8,7 @@
 import {
     COLNO, ROWNO, STONE, VWALL, HWALL, TLCORNER, TRCORNER,
     BLCORNER, BRCORNER, CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL,
-    DOOR, CORR, ROOM, STAIRS, FOUNTAIN, ALTAR, GRAVE, SINK,
+    DOOR, CORR, ROOM, STAIRS, LADDER, FOUNTAIN, ALTAR, GRAVE, SINK,
     SDOOR, SCORR,
     POOL, TREE, IRONBARS, LAVAPOOL, ICE, WATER, MOAT, LAVAWALL,
     AIR, CLOUD, THRONE, MAX_TYPE,
@@ -1820,15 +1820,19 @@ function somex(croom) { return rn1(croom.hx - croom.lx + 1, croom.lx); }
 function somey(croom) { return rn1(croom.hy - croom.ly + 1, croom.ly); }
 
 // C ref: mkroom.c somexyspace() -- find accessible space in room
-function somexyspace(map, croom) {
+// C ref: mkroom.c somexyspace(croom, c, mflags)
+// SPACE_POS(typ) && typ != STAIRS/LADDER
+// mflags & SPCFLG_NOMON: also reject cells with monsters
+const SPCFLG_NOMON = 1;
+function somexyspace(map, croom, mflags = 0) {
     let trycnt = 0;
     do {
         const x = somex(croom);
         const y = somey(croom);
         if (isok(x, y)) {
             const loc = map.at(x, y);
-            if (loc && (loc.typ === ROOM || loc.typ === CORR || loc.typ === ICE)
-                && !map.monsterAt(x, y))
+            if (loc && loc.typ > DOOR && loc.typ !== STAIRS && loc.typ !== LADDER
+                && (!(mflags & SPCFLG_NOMON) || !map.monsterAt(x, y)))
                 return { x, y };
         }
     } while (trycnt++ < 100);
@@ -2662,9 +2666,9 @@ function fill_ordinary_room(map, croom, depth, bonusItems) {
     if (croom.rtype !== OROOM && croom.rtype !== THEMEROOM) return;
 
     // Put a sleeping monster inside (1/3 chance)
-    // C ref: (u.uhave.amulet || !rn2(3)) && somexyspace(...)
+    // C ref: (u.uhave.amulet || !rn2(3)) && somexyspace(..., SPCFLG_NOMON)
     if (!rn2(3)) {
-        const pos = somexyspace(map, croom);
+        const pos = somexyspace(map, croom, SPCFLG_NOMON);
         if (pos) {
             makemon(null, pos.x, pos.y, MM_NOGRP, depth, map);
         }
