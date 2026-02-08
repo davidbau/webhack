@@ -410,5 +410,7 @@ export function simulatePostLevelInit(player, map, depth) {
     // C ref: allmain.c:74 rnd(9000) for rndencode
     // C ref: allmain.c:81 rnd(30) for seer_turn
     rnd(9000);
-    rnd(30);
+    const seerTurn = rnd(30);
+
+    return { seerTurn };
 }

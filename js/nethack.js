@@ -2,7 +2,7 @@
 // Mirrors allmain.c from the C source.
 // This is the heart of the JS port: the game initialization and main loop.
 
-import { COLNO, ROWNO, ROOM, STAIRS, NORMAL_SPEED, ACCESSIBLE, isok, A_DEX } from './config.js';
+import { COLNO, ROWNO, ROOM, STAIRS, NORMAL_SPEED, ACCESSIBLE, isok, A_DEX, A_CON } from './config.js';
 import { initRng, rn2, rnd, rn1 } from './rng.js';
 import { Display } from './display.js';
 import { initInput, nhgetch } from './input.js';
@@ -93,7 +93,8 @@ class NetHackGame {
         // Post-level initialization: pet, inventory, attributes, welcome
         // C ref: allmain.c newgame() — makedog through welcome(TRUE)
         if (this.wizard) {
-            simulatePostLevelInit(this.player, this.map, 1);
+            const initResult = simulatePostLevelInit(this.player, this.map, 1);
+            this.seerTurn = initResult.seerTurn;
         }
 
         // Initial display
@@ -288,9 +289,19 @@ class NetHackGame {
 
         // --- Once-per-turn effects ---
 
+        // C ref: allmain.c:289-295 regen_hp()
+        // heal = (u.ulevel + ACURR(A_CON)) > rn2(100); only when hp < max
+        if (this.player.hp < this.player.hpmax) {
+            const con = this.player.attributes ? this.player.attributes[A_CON] : 10;
+            const heal = (this.player.level + con) > rn2(100) ? 1 : 0;
+            if (heal) {
+                this.player.hp = Math.min(this.player.hp + heal, this.player.hpmax);
+            }
+        }
+
         // C ref: allmain.c:351 dosounds() — ambient sounds
-        // sounds.c:213 — rn2(400) for fountain sound check
-        rn2(400);
+        // sounds.c:202-339 — chain of feature-dependent checks with short-circuit &&
+        this.dosounds();
 
         // C ref: allmain.c:353 gethungry()
         // eat.c:3186 — rn2(20) for accessory hunger timing
@@ -323,11 +334,26 @@ class NetHackGame {
             this.seerTurn = this.turnCount + rn1(31, 15);
         }
 
-        // C ref: allmain.c:289-293 regen_hp() — deterministic, no RNG
-        // Simplified: hero regens 1 HP every 3 turns if below max
-        if (this.player.hp < this.player.hpmax && this.turnCount % 3 === 0) {
-            this.player.hp++;
-        }
+        // Note: regen_hp() with rn2(100) is now handled above (before dosounds)
+    }
+
+    // C ref: sounds.c:202-339 dosounds() — ambient level sounds
+    // Each feature check uses short-circuit && so rn2() is only called
+    // when the feature exists. Fountains/sinks don't return early;
+    // all others return on a triggered sound.
+    dosounds() {
+        const f = this.map.flags;
+        if (f.nfountains && !rn2(400)) { rn2(3); }  // fountain msg
+        if (f.nsinks && !rn2(300)) { rn2(2); }       // sink msg
+        if (f.has_court && !rn2(200)) { return; }     // throne sound
+        if (f.has_swamp && !rn2(200)) { rn2(2); return; }
+        if (f.has_vault && !rn2(200)) { rn2(2); return; }
+        if (f.has_beehive && !rn2(200)) { return; }
+        if (f.has_morgue && !rn2(200)) { return; }
+        if (f.has_barracks && !rn2(200)) { rn2(3); return; }
+        if (f.has_zoo && !rn2(200)) { return; }
+        if (f.has_shop && !rn2(200)) { rn2(2); return; }
+        if (f.has_temple && !rn2(200)) { return; }
     }
 
     // Display game over screen

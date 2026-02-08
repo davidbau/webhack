@@ -8,10 +8,14 @@ import {
     IS_WALL, IS_DOOR, ACCESSIBLE, SDOOR, SCORR, IRONBARS,
     CORR, ROOM, DOOR, isok
 } from '../../js/config.js';
-import { initRng, enableRngLog, getRngLog, disableRngLog } from '../../js/rng.js';
+import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1 } from '../../js/rng.js';
 import { initLevelGeneration, makelevel, wallification } from '../../js/dungeon.js';
 import { simulatePostLevelInit } from '../../js/u_init.js';
 import { Player } from '../../js/player.js';
+import { NORMAL_SPEED, A_DEX, A_CON } from '../../js/config.js';
+import { rhack } from '../../js/commands.js';
+import { movemon } from '../../js/monmove.js';
+import { FOV } from '../../js/vision.js';
 
 // Terrain type names for readable diffs (matches C's levltyp[] in cmd.c)
 export const TYP_NAMES = [
@@ -219,6 +223,175 @@ export function generateStartupWithRng(seed, session) {
         player,
         rngCalls: fullLog.length,
         rng: fullLog.map(toCompactRng),
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Headless game replay for gameplay session testing
+// ---------------------------------------------------------------------------
+
+// Null display that swallows all output (for headless testing)
+const nullDisplay = {
+    putstr_message() {},
+    putstr() {},
+    clearRow() {},
+    renderMap() {},
+    renderStatus() {},
+};
+
+// A minimal game object that can be driven by rhack() and movemon() without DOM.
+// Mirrors NetHackGame from nethack.js but strips browser dependencies.
+class HeadlessGame {
+    constructor(player, map, opts = {}) {
+        this.player = player;
+        this.map = map;
+        this.display = nullDisplay;
+        this.fov = new FOV();
+        this.levels = { 1: map };
+        this.gameOver = false;
+        this.turnCount = 0;
+        this.wizard = true;
+        this.seerTurn = opts.seerTurn || 0;
+    }
+
+    // C ref: mon.c mcalcmove() — random rounding of monster speed
+    mcalcmove(mon) {
+        let mmove = mon.speed;
+        const mmoveAdj = mmove % NORMAL_SPEED;
+        mmove -= mmoveAdj;
+        if (rn2(NORMAL_SPEED) < mmoveAdj) mmove += NORMAL_SPEED;
+        return mmove;
+    }
+
+    // C ref: allmain.c moveloop_core() — per-turn effects
+    simulateTurnEnd() {
+        this.turnCount++;
+        this.player.turns = this.turnCount;
+
+        for (const mon of this.map.monsters) {
+            if (mon.dead) continue;
+            mon.movement += this.mcalcmove(mon);
+        }
+
+        rn2(70);   // monster spawn check
+
+        // C ref: allmain.c:289-295 regen_hp()
+        if (this.player.hp < this.player.hpmax) {
+            const con = this.player.attributes ? this.player.attributes[A_CON] : 10;
+            const heal = (this.player.level + con) > rn2(100) ? 1 : 0;
+            if (heal) {
+                this.player.hp = Math.min(this.player.hp + heal, this.player.hpmax);
+            }
+        }
+
+        this.dosounds();
+        rn2(20);   // gethungry
+        this.player.hunger--;
+
+        const dex = this.player.attributes ? this.player.attributes[A_DEX] : 14;
+        rn2(40 + dex * 3); // engrave wipe
+
+        if (this.turnCount >= this.seerTurn) {
+            this.seerTurn = this.turnCount + rn1(31, 15);
+        }
+    }
+
+    // C ref: sounds.c:202-339 dosounds() — ambient level sounds
+    dosounds() {
+        const f = this.map.flags;
+        if (f.nfountains && !rn2(400)) { rn2(3); }
+        if (f.nsinks && !rn2(300)) { rn2(2); }
+        if (f.has_court && !rn2(200)) { return; }
+        if (f.has_swamp && !rn2(200)) { rn2(2); return; }
+        if (f.has_vault && !rn2(200)) { rn2(2); return; }
+        if (f.has_beehive && !rn2(200)) { return; }
+        if (f.has_morgue && !rn2(200)) { return; }
+        if (f.has_barracks && !rn2(200)) { rn2(3); return; }
+        if (f.has_zoo && !rn2(200)) { return; }
+        if (f.has_shop && !rn2(200)) { rn2(2); return; }
+        if (f.has_temple && !rn2(200)) { return; }
+    }
+
+    // Generate or retrieve a level (for stair traversal)
+    changeLevel(depth) {
+        if (this.map) {
+            this.levels[this.player.dungeonLevel] = this.map;
+        }
+        if (this.levels[depth]) {
+            this.map = this.levels[depth];
+        } else {
+            this.map = makelevel(depth);
+            wallification(this.map);
+            this.levels[depth] = this.map;
+        }
+        this.player.dungeonLevel = depth;
+        this.placePlayerOnLevel();
+    }
+
+    placePlayerOnLevel() {
+        const hasUpstair = this.map.upstair.x > 0 && this.map.upstair.y > 0;
+        if (hasUpstair && this.player.dungeonLevel > 1) {
+            this.player.x = this.map.upstair.x;
+            this.player.y = this.map.upstair.y;
+        }
+    }
+}
+
+// Replay a gameplay session and return per-step RNG results.
+// Returns { startup: { rngCalls, rng }, steps: [{ rngCalls, rng }] }
+export async function replaySession(seed, session) {
+    enableRngLog();
+    initRng(seed);
+    initLevelGeneration();
+
+    const map = makelevel(1);
+    wallification(map);
+
+    const player = new Player();
+    player.initRole(11); // PM_VALKYRIE
+    player.name = session.character?.name || 'Wizard';
+    player.gender = session.character?.gender === 'female' ? 1 : 0;
+
+    if (map.upstair) {
+        player.x = map.upstair.x;
+        player.y = map.upstair.y;
+    }
+
+    const initResult = simulatePostLevelInit(player, map, 1);
+
+    const startupLog = getRngLog();
+    const startupRng = startupLog.map(toCompactRng);
+
+    const game = new HeadlessGame(player, map, { seerTurn: initResult.seerTurn });
+
+    // Replay each step
+    const stepResults = [];
+    for (const step of (session.steps || [])) {
+        const prevCount = getRngLog().length;
+
+        // Feed the key to the game engine
+        const ch = step.key.charCodeAt(0);
+        const result = await rhack(ch, game);
+
+        // If the command took time, run monster movement and turn effects
+        if (result && result.tookTime) {
+            movemon(game.map, game.player, game.display, game.fov);
+            game.simulateTurnEnd();
+        }
+
+        const fullLog = getRngLog();
+        const stepLog = fullLog.slice(prevCount);
+        stepResults.push({
+            rngCalls: stepLog.length,
+            rng: stepLog.map(toCompactRng),
+        });
+    }
+
+    disableRngLog();
+
+    return {
+        startup: { rngCalls: startupRng.length, rng: startupRng },
+        steps: stepResults,
     };
 }
 

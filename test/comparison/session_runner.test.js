@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
     generateMapsSequential, generateMapsWithRng, generateStartupWithRng,
-    extractTypGrid, compareGrids, formatDiffs, compareRng,
+    replaySession, extractTypGrid, compareGrids, formatDiffs, compareRng,
     checkWallCompleteness, checkConnectivity, checkStairs,
     checkDimensions, checkValidTypValues,
 } from './session_helpers.js';
@@ -203,6 +203,47 @@ function runGameplaySession(file, session) {
                     `seed=${session.seed}: RNG diverges at call ${divergence.index}: ` +
                     `JS="${divergence.js}" session="${divergence.session}"`);
             });
+        }
+    }
+
+    // Step-by-step replay: verify per-step RNG traces
+    if (session.steps && session.steps.length > 0 && session.startup?.rng) {
+        let replay;
+        it('step replay completes', async () => {
+            replay = await replaySession(session.seed, session);
+        });
+
+        // Verify startup still matches in replay context
+        if (session.startup.rngCalls !== undefined) {
+            it('replay startup rngCalls matches', () => {
+                assert.ok(replay, 'Replay failed');
+                assert.equal(replay.startup.rngCalls, session.startup.rngCalls,
+                    `seed=${session.seed}: replay startup JS=${replay.startup.rngCalls} ` +
+                    `session=${session.startup.rngCalls}`);
+            });
+        }
+
+        // Verify each step's RNG trace
+        for (let i = 0; i < session.steps.length; i++) {
+            const step = session.steps[i];
+            if (step.rng && step.rng.length > 0) {
+                it(`step ${i} RNG matches (${step.action}, turn ${step.turn})`, () => {
+                    assert.ok(replay, 'Replay failed');
+                    assert.ok(replay.steps[i], `Step ${i} not produced`);
+                    const divergence = compareRng(replay.steps[i].rng, step.rng);
+                    assert.equal(divergence.index, -1,
+                        `step ${i} (${step.action}): RNG diverges at call ${divergence.index}: ` +
+                        `JS="${divergence.js}" session="${divergence.session}"`);
+                });
+            } else {
+                it(`step ${i} RNG matches (${step.action}, turn ${step.turn})`, () => {
+                    assert.ok(replay, 'Replay failed');
+                    assert.ok(replay.steps[i], `Step ${i} not produced`);
+                    assert.equal(replay.steps[i].rngCalls, step.rng.length,
+                        `step ${i} (${step.action}): rngCalls JS=${replay.steps[i].rngCalls} ` +
+                        `session=${step.rng.length}`);
+                });
+            }
         }
     }
 }
