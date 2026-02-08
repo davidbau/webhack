@@ -241,7 +241,7 @@ function mkobj_erosions(obj) {
 // C ref: mon.c undead_to_corpse() — map undead monsters to their living form
 // Cache the lookups (lazy init on first call)
 let _undead_cache = null;
-function undead_to_corpse_fast(mndx) {
+function undead_to_corpse(mndx) {
     if (!_undead_cache) {
         _undead_cache = new Map();
         const targets = [
@@ -298,7 +298,7 @@ function mksobj_init(obj, artif, skipErosion) {
             // C ref: mkobj.c:900-910 — retry if G_NOCORPSE
             let tryct = 50;
             do {
-                obj.corpsenm = undead_to_corpse_fast(rndmonnum());
+                obj.corpsenm = undead_to_corpse(rndmonnum());
             } while (obj.corpsenm >= 0
                      && (mons[obj.corpsenm].geno & G_NOCORPSE)
                      && --tryct > 0);
@@ -318,7 +318,7 @@ function mksobj_init(obj, artif, skipErosion) {
             } else {
                 // C ref: mkobj.c:930-937 — retry until cnutrit && !G_NOCORPSE
                 for (let tryct = 200; tryct > 0; --tryct) {
-                    const mndx = undead_to_corpse_fast(rndmonnum());
+                    const mndx = undead_to_corpse(rndmonnum());
                     if (mndx >= 0 && mons[mndx].nutrition > 0
                         && !(mons[mndx].geno & G_NOCORPSE)) {
                         obj.corpsenm = mndx;
@@ -569,7 +569,7 @@ function mksobj_postinit(obj) {
     const od = objectData[obj.otyp];
     // Corpse: if corpsenm not set, assign one
     if (od.name === 'corpse' && obj.corpsenm === -1) {
-        obj.corpsenm = undead_to_corpse_fast(rndmonnum());
+        obj.corpsenm = undead_to_corpse(rndmonnum());
     }
     // Statue/figurine: if corpsenm not set, assign one
     if ((od.name === 'statue' || od.name === 'figurine') && obj.corpsenm === -1) {
