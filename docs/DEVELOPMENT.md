@@ -57,7 +57,7 @@ test/
 ├── e2e/               2 Puppeteer browser tests
 └── comparison/        C-vs-JS comparison testing
     ├── seeds.json     Central config: which seeds to test, with RNG traces
-    ├── sessions/      Full gameplay session JSON files (C-captured)
+    ├── sessions/      Gameplay + chargen session JSON files (C-captured)
     ├── maps/          C map sessions with RNG traces (for divergence debugging)
     ├── golden/        ISAAC64 reference values
     ├── session_runner.test.js   Unified test runner
@@ -99,6 +99,7 @@ JS output against C-captured reference data:
 |---|---|---|
 | `"map"` (source: c) | typGrid match + RNG traces + structural validation | `seed16_maps_c.session.json` |
 | `"gameplay"` | Startup typGrid + per-step RNG traces + screen rendering | `seed42.session.json` |
+| `"chargen"` | Character creation reference data (screens, RNG, inventory) | `seed42_chargen_valkyrie.session.json` |
 
 Map sessions generate levels 1→5 sequentially on one RNG stream (matching
 C's behavior). Each level is checked for:
@@ -117,8 +118,12 @@ bash test/comparison/c-harness/setup.sh
 python3 test/comparison/c-harness/run_session.py --from-config
 python3 test/comparison/c-harness/gen_map_sessions.py --from-config
 
-# Or capture a single seed manually
+# Generate character creation sessions for all 13 roles
+python3 test/comparison/c-harness/gen_chargen_sessions.py --from-config
+
+# Or capture a single seed/role manually
 python3 test/comparison/c-harness/gen_map_sessions.py 42 5 --with-rng
+python3 test/comparison/c-harness/gen_chargen_sessions.py 42 v h f n Valkyrie
 
 # Session runner auto-discovers all C-captured files
 node --test test/comparison/session_runner.test.js
@@ -166,8 +171,29 @@ python3 test/comparison/c-harness/gen_map_sessions.py --from-config
 1. Add the seed to `test/comparison/seeds.json`:
    - `map_seeds.with_rng.c` for C map sessions with RNG traces
    - `session_seeds.sessions` for full gameplay sessions
+   - `chargen_seeds.sessions` for character creation sessions
 2. Regenerate: `python3 test/comparison/c-harness/gen_map_sessions.py --from-config`
 3. The session runner auto-discovers the new file
+
+### Character creation sessions
+
+Chargen sessions capture the full interactive character creation sequence
+for all 13 roles, recording every keystroke (including `--More--` as space),
+screen state, RNG traces, and starting inventory. Configuration is in
+`seeds.json` under `chargen_seeds`:
+
+```bash
+# Generate all 13 roles
+python3 test/comparison/c-harness/gen_chargen_sessions.py --from-config
+
+# Or a single role
+python3 test/comparison/c-harness/gen_chargen_sessions.py 42 v h f n Valkyrie
+```
+
+The script adaptively navigates the character creation menus, handling
+cases where menus are auto-skipped (e.g., Knight has only one valid race
+and alignment). Each session includes the typGrid and inventory display
+for comparison with JS.
 
 ### Regenerating monster/object data
 

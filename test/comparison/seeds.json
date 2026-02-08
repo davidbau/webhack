@@ -17,5 +17,25 @@
       {"seed": 42, "moves": ":hhlhhhh.hhs"},
       {"seed": 1,  "moves": ":hhhhhhhhhhhhhhjhhkkhhhhjjhhhhhhhhhhhjjjhhjhhhjhhjhhjjllllllllllll>"}
     ]
+  },
+
+  "chargen_seeds": {
+    "_comment": "Character creation sessions (C gen_chargen_sessions.py). One session per role, all using the same seed. Keys: role/race/gender/align menu accelerators.",
+    "seed": 42,
+    "sessions": [
+      {"role": "a", "race": "h", "gender": "m", "align": "n", "label": "Archeologist"},
+      {"role": "b", "race": "h", "gender": "m", "align": "n", "label": "Barbarian"},
+      {"role": "c", "race": "h", "gender": "m", "align": "n", "label": "Caveman"},
+      {"role": "h", "race": "h", "gender": "m", "align": "n", "label": "Healer"},
+      {"role": "k", "race": "h", "gender": "m", "align": "l", "label": "Knight"},
+      {"role": "m", "race": "h", "gender": "m", "align": "n", "label": "Monk"},
+      {"role": "p", "race": "h", "gender": "m", "align": "n", "label": "Priest"},
+      {"role": "r", "race": "h", "gender": "m", "align": "c", "label": "Rogue"},
+      {"role": "R", "race": "h", "gender": "m", "align": "n", "label": "Ranger"},
+      {"role": "s", "race": "h", "gender": "m", "align": "l", "label": "Samurai"},
+      {"role": "t", "race": "h", "gender": "m", "align": "n", "label": "Tourist"},
+      {"role": "v", "race": "h", "gender": "f", "align": "n", "label": "Valkyrie"},
+      {"role": "w", "race": "h", "gender": "m", "align": "n", "label": "Wizard"}
+    ]
   }
 }

@@ -263,6 +263,13 @@ for (const { file, dir } of sessionFiles) {
             runMapSession(file, session);
         } else if (type === 'gameplay') {
             runGameplaySession(file, session);
+        } else if (type === 'chargen') {
+            it('chargen session (reference data only)', () => {
+                // Chargen sessions capture C character creation sequences.
+                // They serve as reference data for future JS replay testing.
+                assert.ok(session.character, 'Missing character data');
+                assert.ok(session.steps.length > 0, 'No steps recorded');
+            });
         } else {
             it('unknown session type', () => {
                 assert.fail(`Unknown session type: ${type}`);
