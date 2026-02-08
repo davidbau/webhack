@@ -148,7 +148,7 @@ export function createMonster(map, typeOrNull, x, y, depth) {
         mlevel: type.level,
         mac: type.ac,
         speed: type.speed,
-        movement: type.speed,
+        movement: 0, // C ref: makemon.c — *mtmp = cg.zeromonst (zero-init, not NORMAL_SPEED)
         attacks: type.attacks,
         peaceful: false,
         tame: false,
@@ -159,13 +159,15 @@ export function createMonster(map, typeOrNull, x, y, depth) {
         sleeping: rn2(3) === 0,  // 1/3 chance of starting asleep
         dead: false,
         passive: type.passive || false,
+        // C ref: monst.h — coord mtrack[MTSZ] for backtracking avoidance
+        mtrack: [{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}],
     };
     mon.mhpmax = mon.mhp;
 
     // Don't place on player or existing monster
     if (map.monsterAt(x, y)) return null;
 
-    map.monsters.push(mon);
+    map.monsters.unshift(mon); // C ref: fmon prepend (LIFO order)
     return mon;
 }
 

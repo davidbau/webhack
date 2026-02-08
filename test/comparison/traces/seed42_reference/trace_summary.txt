@@ -1,0 +1,35 @@
+Trace for seed=42
+Move sequence: :hhlhhhh.hhs
+
+=== STARTUP ===
+  startup-000: rng=2805 action=press Space (--More--)
+  startup-001: rng=2807 action=press Space (--More--)
+  startup-002: rng=2807 action=press n (tutorial)
+  startup-003: rng=2807 action=GAME READY
+
+=== MOVES ===
+[000] START — 2807 RNG calls total
+[001] key=':' (look) — +0 RNG calls (total 2807)
+  message: There is a staircase up out of the dungeon here.
+[002] key='h' (move-west) — +9 RNG calls (total 2816)
+  message: 
+[003] key='h' (move-west) — +34 RNG calls (total 2850)
+  message: 
+[004] key='l' (move-east) — +38 RNG calls (total 2888)
+  message: 
+[005] key='h' (move-west) — +35 RNG calls (total 2923)
+  message: 
+[006] key='h' (move-west) — +27 RNG calls (total 2950)
+  message: 
+[007] key='h' (move-west) — +40 RNG calls (total 2990)
+  message: 
+[008] key='h' (move-west) — +31 RNG calls (total 3021)
+  message: 
+[009] key='.' (wait) — +43 RNG calls (total 3064)
+  message: 
+[010] key='h' (move-west) — +32 RNG calls (total 3096)
+  message: 
+[011] key='h' (move-west) — +28 RNG calls (total 3124)
+  message: 
+[012] key='s' (search) — +24 RNG calls (total 3148)
+  message: 

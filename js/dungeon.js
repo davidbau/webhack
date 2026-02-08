@@ -2087,28 +2087,42 @@ function mktrap(map, num, mktrapflags, croom, tm, depth) {
 // C ref: mklev.c:1804 mktrap_victim() — stub until mkobj is ported
 // C ref: mklev.c mktrap_victim() — creates corpse + items on trap
 function mktrap_victim(map, trap, depth) {
+    const x = trap.tx, y = trap.ty;
+
+    // Helper: place object on map at trap position
+    function placeObj(obj) {
+        obj.ox = x;
+        obj.oy = y;
+        map.objects.push(obj);
+    }
+
     // Trap-specific item
-    // C ref: mklev.c:1818-1833
+    // C ref: mklev.c:1818-1836
+    let otmp = null;
     switch (trap.ttyp) {
     case ARROW_TRAP:
-        mksobj(ARROW, true, false);
+        otmp = mksobj(ARROW, true, false);
+        if (otmp) otmp.opoisoned = 0; // C ref: mklev.c:1820
         break;
     case DART_TRAP:
-        mksobj(DART, true, false);
+        otmp = mksobj(DART, true, false);
         break;
     case ROCKTRAP:
-        mksobj(ROCK, true, false);
+        otmp = mksobj(ROCK, true, false);
         break;
     default:
         break;
     }
+    if (otmp) placeObj(otmp);
 
     // Random possession loop
     // C ref: mklev.c:1843-1877
     const classMap = [WEAPON_CLASS, TOOL_CLASS, FOOD_CLASS, GEM_CLASS];
     do {
         const poss_class = classMap[rn2(4)];
-        mkobj(poss_class, false);
+        otmp = mkobj(poss_class, false);
+        otmp.cursed = true; // C ref: curse(otmp) at mklev.c:1865
+        placeObj(otmp);
     } while (!rn2(5));
 
     // Corpse race selection
@@ -2123,7 +2137,9 @@ function mktrap_victim(map, trap, depth) {
     } else if (race >= 6 && race <= 9) {
         victim_mnum = 2; // PM_GNOME placeholder
         if (!rn2(10)) {
-            mksobj(rn2(4) ? TALLOW_CANDLE : WAX_CANDLE, true, false);
+            otmp = mksobj(rn2(4) ? TALLOW_CANDLE : WAX_CANDLE, true, false);
+            otmp.cursed = true; // C ref: curse(otmp) at mklev.c:1905
+            placeObj(otmp);
         }
     } else if (race >= 10) {
         victim_mnum = 1; // PM_HUMAN placeholder
@@ -2139,7 +2155,8 @@ function mktrap_victim(map, trap, depth) {
 
     // mkcorpstat(CORPSE, ...) — calls mksobj(CORPSE, TRUE, FALSE) internally
     // C ref: mklev.c:1921
-    mksobj(CORPSE, true, false);
+    otmp = mksobj(CORPSE, true, false);
+    placeObj(otmp);
 }
 
 // C ref: mkroom.c find_okay_roompos() -- find non-occupied, non-bydoor pos
@@ -2261,7 +2278,7 @@ function fill_ordinary_room(map, croom, depth, bonusItems) {
     if (!rn2(3)) {
         const pos = somexyspace(map, croom);
         if (pos) {
-            makemon(null, pos.x, pos.y, MM_NOGRP, depth);
+            makemon(null, pos.x, pos.y, MM_NOGRP, depth, map);
         }
     }
 
@@ -2281,9 +2298,14 @@ function fill_ordinary_room(map, croom, depth, bonusItems) {
     if (!rn2(3)) {
         const pos = somexyspace(map, croom);
         if (pos) {
-            rnd(Math.max(Math.floor(30 / Math.max(12 - depth, 2)), 1)); // mul
-            rnd(depth + 2); // rnd(level_difficulty() + 2)
-            mksobj(GOLD_PIECE, true, false);
+            const mul = rnd(Math.max(Math.floor(30 / Math.max(12 - depth, 2)), 1));
+            const amount = 1 + rnd(depth + 2) * mul;
+            const gold = mksobj(GOLD_PIECE, true, false);
+            if (gold) {
+                gold.ox = pos.x; gold.oy = pos.y;
+                gold.quan = amount;
+                map.objects.push(gold);
+            }
         }
     }
 
@@ -2311,7 +2333,11 @@ function fill_ordinary_room(map, croom, depth, bonusItems) {
     if (!rn2(20)) {
         const pos = somexyspace(map, croom);
         if (pos) {
-            mksobj(STATUE, true, false);
+            const statue = mksobj(STATUE, true, false);
+            if (statue) {
+                statue.ox = pos.x; statue.oy = pos.y;
+                map.objects.push(statue);
+            }
         }
     }
 
@@ -2328,7 +2354,8 @@ function fill_ordinary_room(map, croom, depth, bonusItems) {
             if (rn2(3)) {
                 // Create supply chest (2/3 chance)
                 // C ref: mklev.c:1033-1034
-                mksobj(rn2(3) ? CHEST : LARGE_BOX, false, false);
+                const chest = mksobj(rn2(3) ? CHEST : LARGE_BOX, false, false);
+                if (chest) { chest.ox = pos.x; chest.oy = pos.y; map.objects.push(chest); }
                 rn2(6); // olocked check
 
                 // Supply items loop
@@ -2380,7 +2407,11 @@ function fill_ordinary_room(map, croom, depth, bonusItems) {
     if (!skip_chests && !rn2(Math.max(Math.floor(map.nroom * 5 / 2), 1))) {
         const pos = somexyspace(map, croom);
         if (pos) {
-            mksobj(rn2(3) ? LARGE_BOX : CHEST, true, false);
+            const box = mksobj(rn2(3) ? LARGE_BOX : CHEST, true, false);
+            if (box) {
+                box.ox = pos.x; box.oy = pos.y;
+                map.objects.push(box);
+            }
         }
     }
 
@@ -2398,12 +2429,18 @@ function fill_ordinary_room(map, croom, depth, bonusItems) {
     // C ref: random objects (!rn2(3))
     if (!rn2(3)) {
         const pos = somexyspace(map, croom);
-        if (pos) mkobj(0, true); // RANDOM_CLASS = 0
+        if (pos) {
+            const obj = mkobj(0, true);
+            if (obj) { obj.ox = pos.x; obj.oy = pos.y; map.objects.push(obj); }
+        }
         trycnt = 0;
         while (!rn2(5)) {
             if (++trycnt > 100) break;
             const pos2 = somexyspace(map, croom);
-            if (pos2) mkobj(0, true);
+            if (pos2) {
+                const obj2 = mkobj(0, true);
+                if (obj2) { obj2.ox = pos2.x; obj2.oy = pos2.y; map.objects.push(obj2); }
+            }
         }
     }
 }
@@ -2789,6 +2826,78 @@ function placeLevelSim(rawLevels, numLevels) {
 }
 
 // ========================================================================
+// mineralize() — Deposit gold and gems in stone walls
+// C ref: mklev.c:1437-1530
+// ========================================================================
+
+function mineralize(map, depth) {
+    // C ref: mklev.c:1468-1472 — default probabilities
+    const goldprob = 20 + Math.floor(depth / 3);
+    const gemprob = Math.floor(goldprob / 4);
+
+    // C ref: mklev.c:1490-1529 — scan for eligible stone tiles
+    for (let x = 2; x < COLNO - 2; x++) {
+        for (let y = 1; y < ROWNO - 1; y++) {
+            const loc_yp1 = map.at(x, y + 1);
+            if (!loc_yp1 || loc_yp1.typ !== STONE) {
+                // <x,y> and <x,y+1> not eligible, skip ahead
+                y += 2;
+                continue;
+            }
+            const loc = map.at(x, y);
+            if (!loc || loc.typ !== STONE) {
+                // <x,y> not eligible, <x,y+1> also not eligible
+                y += 1;
+                continue;
+            }
+            // Check all 8 neighbors are stone (skip W_NONDIGGABLE — not used on normal levels)
+            const ym1 = map.at(x, y - 1);
+            const xp1y = map.at(x + 1, y);
+            const xm1y = map.at(x - 1, y);
+            const xp1ym1 = map.at(x + 1, y - 1);
+            const xm1ym1 = map.at(x - 1, y - 1);
+            const xp1yp1 = map.at(x + 1, y + 1);
+            const xm1yp1 = map.at(x - 1, y + 1);
+            if (ym1?.typ !== STONE || xp1ym1?.typ !== STONE || xm1ym1?.typ !== STONE
+                || xp1y?.typ !== STONE || xm1y?.typ !== STONE
+                || xp1yp1?.typ !== STONE || xm1yp1?.typ !== STONE) {
+                continue;
+            }
+
+            // Eligible stone tile — try to place gold
+            if (rn2(1000) < goldprob) {
+                const otmp = mksobj(GOLD_PIECE, false, false);
+                if (otmp) {
+                    otmp.ox = x;
+                    otmp.oy = y;
+                    otmp.quan = 1 + rnd(goldprob * 3);
+                    // C: !rn2(3) → add_to_buried, else place_object
+                    // We just consume the rn2(3) for RNG alignment
+                    rn2(3);
+                }
+            }
+            // Try to place gems
+            if (rn2(1000) < gemprob) {
+                const cnt = rnd(2 + Math.floor(depth / 3));
+                for (let i = 0; i < cnt; i++) {
+                    const otmp = mkobj(GEM_CLASS, false);
+                    if (otmp) {
+                        if (otmp.otyp === ROCK) {
+                            // C: dealloc_obj(otmp) — discard rocks, no rn2(3)
+                        } else {
+                            otmp.ox = x;
+                            otmp.oy = y;
+                            // C: !rn2(3) → add_to_buried, else place_object
+                            rn2(3);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ========================================================================
 // Main entry point
 // ========================================================================
 
@@ -2934,6 +3043,9 @@ export function generateLevel(depth) {
                            fillable && bonusCountdown === 0);
         if (fillable) bonusCountdown--;
     }
+
+    // C ref: mklev.c:1538-1539 — level_finalize_topology() → mineralize()
+    mineralize(map, depth);
 
     return map;
 }

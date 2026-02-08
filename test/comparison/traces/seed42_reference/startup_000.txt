@@ -1,0 +1,25 @@
+--- Action: press Space (--More--) | RNG calls so far: 2805 ---
+                       It is written in the Book of Odin:
+
+                           After the Creation, the cruel god Moloch rebelled
+                           against the authority of Marduk the Creator.
+                           Moloch stole from Marduk the most powerful of all
+                           the artifacts of the gods, the Amulet of Yendor,
+                           and he hid it in the dark cavities of Gehennom, the
+                           Under World, where he now lurks, and bides his time.
+
+                       Your god Odin seeks to possess the Amulet, and with it
+                       to gain deserved ascendance over the other gods.
+
+                       You, a newly trained Stripling, have been heralded
+                       from birth as the instrument of Odin.  You are destined
+                       to recover the Amulet for your deity, or die in the
+                       attempt.  Your hour of destiny has come.  For the sake
+                       of us all:  Go bravely with Odin!
+                       --More--
+
+
+
+
+Wizard the Stripling           St:18 Dx:14 Co:18 In:9 Wi:9 Ch:7 Neutral
+Dlvl:1 $:0 HP:16(16) Pw:2(2) AC:0 Xp:1

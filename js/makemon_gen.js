@@ -5,6 +5,7 @@
 import { rn2, rnd, rn1, d } from './rng.js';
 import { mksobj } from './mkobj_gen.js';
 import { ROCK } from './objects.js';
+import { def_monsyms } from './symbols.js';
 import {
     mons, LOW_PM, SPECIAL_PM,
     G_FREQ, G_NOGEN, G_UNIQ, G_HELL, G_NOHELL, G_SGROUP, G_LGROUP,
@@ -564,7 +565,7 @@ function m_initinv(mndx, depth, m_lev) {
 export const NO_MM_FLAGS = 0;
 export const MM_NOGRP = 0x08;
 
-export function makemon(ptr_or_null, x, y, mmflags, depth) {
+export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     let mndx;
 
     if (ptr_or_null === null || ptr_or_null === undefined) {
@@ -619,7 +620,7 @@ export function makemon(ptr_or_null, x, y, mmflags, depth) {
                 // m_initsgrp: rnd(3) for count, then makemon per group member
                 const cnt = Math.floor(rnd(3) / 4); // ulevel < 3 → divide by 4
                 for (let i = 0; i < cnt; i++) {
-                    makemon(mndx, x, y, mmflags | MM_NOGRP, depth);
+                    makemon(mndx, x, y, mmflags | MM_NOGRP, depth, map);
                 }
             }
         } else if (ptr.geno & G_LGROUP) {
@@ -629,18 +630,52 @@ export function makemon(ptr_or_null, x, y, mmflags, depth) {
                     // m_initsgrp: rnd(3)
                     const cnt = Math.floor(rnd(3) / 4);
                     for (let i = 0; i < cnt; i++) {
-                        makemon(mndx, x, y, mmflags | MM_NOGRP, depth);
+                        makemon(mndx, x, y, mmflags | MM_NOGRP, depth, map);
                     }
                 } else {
                     // m_initlgrp: rnd(10)
                     const cnt = Math.floor(rnd(10) / 4);
                     for (let i = 0; i < cnt; i++) {
-                        makemon(mndx, x, y, mmflags | MM_NOGRP, depth);
+                        makemon(mndx, x, y, mmflags | MM_NOGRP, depth, map);
                     }
                 }
             }
         }
     }
 
-    return { mndx, hp, m_lev, name: ptr.name };
+    // Build full monster object for gameplay
+    const symEntry = def_monsyms[ptr.symbol];
+    const mon = {
+        mndx,
+        type: ptr,
+        name: ptr.name,
+        displayChar: symEntry ? symEntry.sym : '?',
+        displayColor: ptr.color,
+        mx: x,
+        my: y,
+        mhp: hp,
+        mhpmax: hp,
+        mlevel: m_lev,
+        mac: ptr.ac,
+        speed: ptr.speed,
+        movement: 0,  // C ref: *mtmp = cg.zeromonst (zero-init)
+        attacks: ptr.attacks,
+        peaceful: false,
+        tame: false,
+        flee: false,
+        confused: false,
+        stunned: false,
+        blind: false,
+        sleeping: false,  // sleep handled by C's finalize_creation, not here
+        dead: false,
+        passive: false,
+        mtrack: [{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}],
+    };
+
+    // Add to map if provided
+    if (map && x !== undefined && y !== undefined) {
+        map.monsters.unshift(mon); // C ref: fmon prepend (LIFO order)
+    }
+
+    return mon;
 }

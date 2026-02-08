@@ -1,0 +1,25 @@
+--- Action: press Space (--More--) | RNG calls so far: 2807 ---
+Velkommen wizard, welcome to NetHack!  You are a neutral human Valkyrie.
+--More--
+                                                       lqqqqqqk
+                                                       x~%~~~~x
+                                                       ~~@~~~~x
+                                                       x~~d~?~x
+                                                       +(~~~~~x
+                                                       x~~~~~~~
+                                                       mqqqqqqj
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wizard the Stripling           St:18 Dx:14 Co:18 In:9 Wi:9 Ch:7 Neutral
+Dlvl:1 $:0 HP:16(16) Pw:2(2) AC:6 Xp:1

@@ -1,0 +1,25 @@
+--- Action: press n (tutorial) | RNG calls so far: 2807 ---
+                     Do you want a tutorial?
+
+                     y - Yes, do a tutorial
+                     n - No, just start play
+
+                     Put "OPTIONS=!tutorial" in .nethackrc to skip this query.
+                     (end)
+                                                       x~~~~~~~
+                                                       mqqqqqqj
+
+
+
+
+
+
+
+
+
+
+
+
+
+Wizard the Stripling           St:18 Dx:14 Co:18 In:9 Wi:9 Ch:7 Neutral
+Dlvl:1 $:0 HP:16(16) Pw:2(2) AC:6 Xp:1
