@@ -75,7 +75,7 @@ function logRng(func, args, result) {
     if (!rngLog) return;
     rngCallCount++;
     const tag = rngCallerTag ? ` @ ${rngCallerTag}` : '';
-    rngLog.push(`${rngCallCount} ${func}(${args}) = ${result}${tag}`);
+    rngLog.push(`${rngCallCount} ${func}(${args})=${result}${tag}`);
 }
 
 // Initialize the PRNG with a seed (unsigned long, up to 64 bits)
