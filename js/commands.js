@@ -7,7 +7,8 @@ import { COLNO, ROWNO, DOOR, STAIRS, FOUNTAIN, IS_DOOR, D_CLOSED, D_LOCKED,
 import { rn2, rnd, d } from './rng.js';
 import { nhgetch, ynFunction, getlin } from './input.js';
 import { playerAttackMonster } from './combat.js';
-import { createMonster, monsterTypes } from './makemon.js';
+import { makemon } from './makemon.js';
+import { mons } from './monsters.js';
 import { showPager } from './pager.js';
 
 // Direction key mappings
@@ -1063,13 +1064,13 @@ async function wizGenesis(game) {
         return { moved: false, tookTime: false };
     }
     const name = input.trim().toLowerCase();
-    // Find the monster type by name (case-insensitive substring match)
-    let type = monsterTypes.find(m => m.name.toLowerCase() === name);
-    if (!type) {
+    // Find the monster type by name (case-insensitive match against mons[])
+    let mndx = mons.findIndex(m => m.name.toLowerCase() === name);
+    if (mndx < 0) {
         // Try substring match as fallback
-        type = monsterTypes.find(m => m.name.toLowerCase().includes(name));
+        mndx = mons.findIndex(m => m.name.toLowerCase().includes(name));
     }
-    if (!type) {
+    if (mndx < 0) {
         display.putstr_message(`Unknown monster: "${input.trim()}".`);
         return { moved: false, tookTime: false };
     }
@@ -1084,10 +1085,10 @@ async function wizGenesis(game) {
             const loc = map.at(mx, my);
             if (!loc || !ACCESSIBLE(loc.typ)) continue;
             if (map.monsterAt(mx, my)) continue;
-            const mon = createMonster(map, type, mx, my, player.dungeonLevel);
+            const mon = makemon(mndx, mx, my, 0, player.dungeonLevel, map);
             if (mon) {
                 mon.sleeping = false; // wizard-created monsters are awake
-                display.putstr_message(`A ${type.name} appears!`);
+                display.putstr_message(`A ${mons[mndx].name} appears!`);
                 placed = true;
             }
         }

@@ -10,8 +10,6 @@ import { FOV } from './vision.js';
 import { Player, roles } from './player.js';
 import { GameMap } from './map.js';
 import { initLevelGeneration, generateLevel, wallification } from './dungeon.js';
-// populateLevel/populateObjects removed: monsters and objects are now
-// created during generateLevel() via C-faithful makemon/mkobj
 import { processCommand } from './commands.js';
 import { moveMonsters } from './monmove.js';
 import { simulatePostLevelInit } from './u_init.js';

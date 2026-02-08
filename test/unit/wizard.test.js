@@ -7,7 +7,6 @@ import { COLNO, ROWNO, ROOM, STONE, ACCESSIBLE } from '../../js/config.js';
 import { initRng, rn2 } from '../../js/rng.js';
 import { GameMap } from '../../js/map.js';
 import { initLevelGeneration, generateLevel, wallification } from '../../js/dungeon.js';
-import { populateLevel } from '../../js/makemon.js';
 import { processCommand } from '../../js/commands.js';
 import { FOV } from '../../js/vision.js';
 import { pushInput } from '../../js/input.js';
@@ -31,7 +30,6 @@ function mockGame(opts = {}) {
     initLevelGeneration();
     const map = generateLevel(1);
     wallification(map);
-    populateLevel(map, 1);
     const display = mockDisplay();
     const fov = new FOV();
     const player = {
@@ -62,7 +60,6 @@ function mockGame(opts = {}) {
                 initLevelGeneration();
                 const newMap = generateLevel(depth);
                 wallification(newMap);
-                populateLevel(newMap, depth);
                 this.levels[depth] = newMap;
             }
             this.map = this.levels[depth];

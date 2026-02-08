@@ -6,8 +6,6 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { initRng, rn2, rnd, enableRngLog, getRngLog, disableRngLog } from '../../js/rng.js';
 import { initLevelGeneration, generateLevel, wallification } from '../../js/dungeon.js';
-import { populateLevel } from '../../js/makemon.js';
-import { populateObjects } from '../../js/mkobj.js';
 import { Player, roles } from '../../js/player.js';
 import { simulatePostLevelInit } from '../../js/u_init.js';
 import { NORMAL_SPEED, A_DEX } from '../../js/config.js';
@@ -22,8 +20,6 @@ function setupTestGame() {
     player.gender = 1; // female
     const map = generateLevel(1);
     wallification(map);
-    populateLevel(map, 1);
-    populateObjects(map, 1);
     player.x = map.upstair.x;
     player.y = map.upstair.y;
     player.dungeonLevel = 1;

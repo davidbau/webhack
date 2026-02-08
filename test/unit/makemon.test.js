@@ -1,62 +1,76 @@
-// test/unit/makemon.test.js -- Tests for monster creation and population
-// C ref: makemon.c -- verifies monster instantiation
+// test/unit/makemon.test.js -- Tests for C-faithful monster creation
+// C ref: makemon.c -- verifies makemon(), mons[], and level generation monsters
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { initRng } from '../../js/rng.js';
-import { COLNO, ROWNO, ACCESSIBLE } from '../../js/config.js';
-import { createMonster, populateLevel, monsterTypes } from '../../js/makemon.js';
+import { ACCESSIBLE } from '../../js/config.js';
+import { makemon, rndmonnum, NO_MM_FLAGS, MM_NOGRP } from '../../js/makemon.js';
+import { mons } from '../../js/monsters.js';
 import { initLevelGeneration, generateLevel, wallification } from '../../js/dungeon.js';
-import { GameMap } from '../../js/map.js';
 
-describe('Monster creation', () => {
-    it('monsterTypes has entries', () => {
-        assert.ok(monsterTypes.length > 10, `Expected >10 monster types, got ${monsterTypes.length}`);
+describe('Monster creation (C-faithful)', () => {
+    it('mons[] has many entries', () => {
+        assert.ok(mons.length > 300, `Expected >300 monster types, got ${mons.length}`);
     });
 
-    it('createMonster creates a valid monster', () => {
+    it('makemon creates a valid monster with known mndx', () => {
         initRng(42);
-        const map = new GameMap();
-        const type = monsterTypes[0];
-        const mon = createMonster(map, type, 10, 5, 1);
+        initLevelGeneration();
+        const map = generateLevel(1);
+        wallification(map);
 
+        const room = map.rooms[0];
+        const cx = Math.floor((room.lx + room.hx) / 2);
+        const cy = Math.floor((room.ly + room.hy) / 2);
+
+        // Find a grid bug in mons[]
+        const mndx = mons.findIndex(m => m.name === 'grid bug');
+        assert.ok(mndx >= 0, 'grid bug should exist in mons[]');
+
+        const mon = makemon(mndx, cx, cy, NO_MM_FLAGS, 1, map);
         assert.ok(mon, 'Should create a monster');
-        assert.equal(mon.mx, 10);
-        assert.equal(mon.my, 5);
+        assert.equal(mon.mx, cx);
+        assert.equal(mon.my, cy);
         assert.ok(mon.mhp > 0, 'Monster should have HP');
         assert.ok(mon.speed > 0, 'Monster should have speed');
-        assert.equal(typeof mon.name, 'string');
+        assert.equal(mon.name, 'grid bug');
         assert.equal(typeof mon.displayChar, 'string');
         assert.ok(!mon.dead, 'New monster should not be dead');
     });
 
-    it('each monster type creates valid instances', () => {
+    it('makemon with null selects random monster', () => {
         initRng(42);
         initLevelGeneration();
         const map = generateLevel(1);
         wallification(map);
-        // Place monsters in center of first room
+
         const room = map.rooms[0];
         const cx = Math.floor((room.lx + room.hx) / 2);
         const cy = Math.floor((room.ly + room.hy) / 2);
-        for (const type of monsterTypes) {
-            const mon = createMonster(map, type, cx, cy, 1);
-            if (mon) {
-                assert.ok(mon.mhp > 0, `${type.name} should have positive HP`);
-                assert.ok(mon.speed >= 0, `${type.name} should have non-negative speed`);
-                assert.ok(Array.isArray(mon.attacks), `${type.name} should have attacks array`);
-            }
+
+        const mon = makemon(null, cx, cy, NO_MM_FLAGS, 1, map);
+        assert.ok(mon, 'Should create a random monster');
+        assert.ok(mon.mhp > 0, 'Monster should have HP');
+        assert.ok(mon.name, 'Monster should have a name');
+    });
+
+    it('rndmonnum returns valid monster index', () => {
+        initRng(42);
+        for (let i = 0; i < 20; i++) {
+            const mndx = rndmonnum(1);
+            assert.ok(mndx >= 0 && mndx < mons.length,
+                `rndmonnum should return valid index, got ${mndx}`);
         }
     });
 });
 
-describe('Level monster population', () => {
-    it('populateLevel places monsters on the map', () => {
+describe('Level monster population (C-faithful)', () => {
+    it('generateLevel places monsters on the map', () => {
         initRng(42);
         initLevelGeneration();
         const map = generateLevel(1);
         wallification(map);
-        populateLevel(map, 1);
 
         assert.ok(map.monsters.length > 0, 'Level should have monsters');
     });
@@ -66,7 +80,6 @@ describe('Level monster population', () => {
         initLevelGeneration();
         const map = generateLevel(1);
         wallification(map);
-        populateLevel(map, 1);
 
         for (const mon of map.monsters) {
             const loc = map.at(mon.mx, mon.my);
@@ -80,7 +93,6 @@ describe('Level monster population', () => {
         initLevelGeneration();
         const map = generateLevel(1);
         wallification(map);
-        populateLevel(map, 1);
 
         const positions = new Set();
         for (const mon of map.monsters) {
@@ -91,26 +103,20 @@ describe('Level monster population', () => {
         }
     });
 
-    it('deeper levels have more/tougher monsters', () => {
+    it('monsters have C-faithful properties', () => {
         initRng(42);
         initLevelGeneration();
-        const map1 = generateLevel(1);
-        wallification(map1);
-        populateLevel(map1, 1);
+        const map = generateLevel(1);
+        wallification(map);
 
-        initRng(42);
-        initLevelGeneration();
-        const map5 = generateLevel(5);
-        wallification(map5);
-        populateLevel(map5, 5);
-
-        // Deeper levels should tend to have more or tougher monsters
-        const avgLevel1 = map1.monsters.reduce((s, m) => s + m.level, 0) / Math.max(map1.monsters.length, 1);
-        const avgLevel5 = map5.monsters.reduce((s, m) => s + m.level, 0) / Math.max(map5.monsters.length, 1);
-
-        // This is a statistical test; deeper levels should generally have higher avg level
-        // but we won't enforce it strictly since RNG can vary
-        assert.ok(typeof avgLevel1 === 'number');
-        assert.ok(typeof avgLevel5 === 'number');
+        for (const mon of map.monsters) {
+            assert.equal(typeof mon.mndx, 'number', `${mon.name} should have mndx`);
+            assert.ok(mon.mndx >= 0 && mon.mndx < mons.length,
+                `${mon.name} mndx ${mon.mndx} should be valid`);
+            assert.ok(mon.mhp > 0, `${mon.name} should have positive HP`);
+            assert.ok(mon.speed >= 0, `${mon.name} should have non-negative speed`);
+            assert.ok(Array.isArray(mon.attacks), `${mon.name} should have attacks array`);
+            assert.ok(Array.isArray(mon.mtrack), `${mon.name} should have mtrack array`);
+        }
     });
 });
