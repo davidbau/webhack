@@ -50,11 +50,11 @@ CHARACTER = {
 }
 
 
-def tmux_send(session, keys, delay=0.3):
+def tmux_send(session, keys, delay=0.1):
     subprocess.run(['tmux', 'send-keys', '-t', session, '-l', keys], check=True)
     time.sleep(delay)
 
-def tmux_send_special(session, key, delay=0.3):
+def tmux_send_special(session, key, delay=0.1):
     subprocess.run(['tmux', 'send-keys', '-t', session, key], check=True)
     time.sleep(delay)
 
@@ -153,10 +153,10 @@ def execute_dumpmap(session, dumpmap_file):
     if os.path.exists(dumpmap_file):
         os.unlink(dumpmap_file)
 
-    tmux_send(session, '#', 0.3)
-    time.sleep(0.5)
-    tmux_send(session, 'dumpmap', 0.3)
-    tmux_send_special(session, 'Enter', 1.0)
+    tmux_send(session, '#', 0.1)
+    time.sleep(0.1)
+    tmux_send(session, 'dumpmap', 0.1)
+    tmux_send_special(session, 'Enter', 0.3)
 
     # Clear --More--
     for _ in range(5):
@@ -165,28 +165,28 @@ def execute_dumpmap(session, dumpmap_file):
         except subprocess.CalledProcessError:
             break
         if '--More--' in content:
-            tmux_send_special(session, 'Space', 0.3)
+            tmux_send_special(session, 'Space', 0.1)
         else:
             break
-        time.sleep(0.3)
+        time.sleep(0.1)
 
-    time.sleep(0.5)
+    time.sleep(0.1)
     return read_typ_grid(dumpmap_file)
 
 
 def clear_more_prompts(session, max_iterations=10):
     content = ''
     for _ in range(max_iterations):
-        time.sleep(0.2)
+        time.sleep(0.1)
         try:
             content = tmux_capture(session)
         except subprocess.CalledProcessError:
             break
         if '--More--' in content:
-            tmux_send_special(session, 'Space', 0.2)
+            tmux_send_special(session, 'Space', 0.1)
         elif 'Die?' in content:
             # Wizard mode death: answer 'n' to resurrect
-            tmux_send(session, 'n', 0.3)
+            tmux_send(session, 'n', 0.1)
             print('  [WIZARD] Died and resurrected')
         else:
             break
@@ -206,43 +206,43 @@ def wait_for_game_ready(session, rng_log_file):
 
         if '--More--' in content:
             print(f'  [startup-{attempt}] rng={rng_count} --More--')
-            tmux_send_special(session, 'Space', 0.5)
+            tmux_send_special(session, 'Space', 0.1)
             continue
 
         if 'keep the save file' in content or 'keep save' in content.lower():
-            tmux_send(session, 'n', 0.5)
+            tmux_send(session, 'n', 0.1)
             continue
 
         if 'Destroy old game?' in content or 'destroy old game' in content.lower():
-            tmux_send(session, 'y', 0.5)
+            tmux_send(session, 'y', 0.1)
             continue
 
         if 'Shall I pick' in content:
-            tmux_send(session, 'y', 0.5)
+            tmux_send(session, 'y', 0.1)
             continue
 
         if 'Is this ok?' in content:
-            tmux_send(session, 'y', 0.5)
+            tmux_send(session, 'y', 0.1)
             continue
 
         if 'tutorial' in content.lower():
-            tmux_send(session, 'n', 0.5)
+            tmux_send(session, 'n', 0.1)
             continue
 
         if 'pick a role' in content or 'Pick a role' in content:
-            tmux_send(session, 'v', 0.3)
+            tmux_send(session, 'v', 0.1)
             continue
 
         if 'pick a race' in content or 'Pick a race' in content:
-            tmux_send(session, 'h', 0.3)
+            tmux_send(session, 'h', 0.1)
             continue
 
         if 'pick a gender' in content or 'Pick a gender' in content:
-            tmux_send(session, 'f', 0.3)
+            tmux_send(session, 'f', 0.1)
             continue
 
         if 'pick an alignment' in content or 'Pick an alignment' in content:
-            tmux_send(session, 'n', 0.3)
+            tmux_send(session, 'n', 0.1)
             continue
 
         if 'Dlvl:' in content or 'St:' in content or 'HP:' in content:
@@ -255,9 +255,9 @@ def wait_for_game_ready(session, rng_log_file):
             break
 
         if attempt > 2:
-            tmux_send_special(session, 'Space', 0.3)
+            tmux_send_special(session, 'Space', 0.1)
         else:
-            time.sleep(0.5)
+            time.sleep(0.1)
 
 
 def describe_key(key):
@@ -295,25 +295,25 @@ def detect_depth(screen_lines):
 
 
 def quit_game(session):
-    tmux_send(session, '#', 0.3)
-    time.sleep(0.3)
-    tmux_send(session, 'quit', 0.3)
-    tmux_send_special(session, 'Enter', 0.5)
+    tmux_send(session, '#', 0.1)
+    time.sleep(0.1)
+    tmux_send(session, 'quit', 0.1)
+    tmux_send_special(session, 'Enter', 0.1)
     for _ in range(15):
         try:
             content = tmux_capture(session)
         except subprocess.CalledProcessError:
             break
         if 'Really quit' in content or 'really quit' in content:
-            tmux_send(session, 'y', 0.3)
+            tmux_send(session, 'y', 0.1)
         elif 'do you want your possessions' in content.lower():
-            tmux_send(session, 'n', 0.3)
+            tmux_send(session, 'n', 0.1)
         elif '--More--' in content:
-            tmux_send_special(session, 'Space', 0.2)
+            tmux_send_special(session, 'Space', 0.1)
         elif 'PROCESS_DONE' in content or 'sleep 999' in content:
             break
-        time.sleep(0.3)
-    time.sleep(0.5)
+        time.sleep(0.1)
+    time.sleep(0.1)
 
 
 def compact_session_json(session_data):
@@ -392,14 +392,14 @@ def main():
             check=True
         )
 
-        time.sleep(2.0)
+        time.sleep(1.0)
 
         print(f'=== Capturing session: seed={seed}, moves="{move_str}" ===')
         print(f'=== STARTUP ===')
         wait_for_game_ready(session_name, rng_log_file)
-        time.sleep(1.0)
+        time.sleep(0.1)
         clear_more_prompts(session_name)
-        time.sleep(0.5)
+        time.sleep(0.1)
 
         # Capture startup state
         startup_screen = capture_screen_lines(session_name)
@@ -444,14 +444,14 @@ def main():
         for idx, (key, description) in enumerate(moves):
             # Send the keystroke
             if key.startswith('F'):
-                tmux_send(session_name, 'F', 0.2)
-                tmux_send(session_name, key[1], 0.3)
+                tmux_send(session_name, 'F', 0.1)
+                tmux_send(session_name, key[1], 0.1)
             else:
-                tmux_send(session_name, key, 0.3)
+                tmux_send(session_name, key, 0.1)
 
-            time.sleep(0.3)
+            time.sleep(0.1)
             clear_more_prompts(session_name)
-            time.sleep(0.2)
+            time.sleep(0.1)
 
             # Capture state after this step
             screen = capture_screen_lines(session_name)

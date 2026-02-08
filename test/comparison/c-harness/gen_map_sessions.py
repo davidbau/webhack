@@ -136,9 +136,9 @@ def main():
             check=True
         )
 
-        time.sleep(2.0)
+        time.sleep(1.0)
         wait_for_game_ready(session_name, verbose)
-        time.sleep(0.5)
+        time.sleep(0.1)
 
         levels = []
         prev_rng_count = 0
