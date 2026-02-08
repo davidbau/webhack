@@ -56,11 +56,12 @@ test/
 ├── unit/              18 unit test files (150 tests, ~0.3s)
 ├── e2e/               2 Puppeteer browser tests
 └── comparison/        Session-based comparison testing
-    ├── sessions/      19 session JSON files (ground truth)
+    ├── sessions/      Gameplay session JSON files (ground truth)
+    ├── maps/          Map-only session JSON files (typGrid comparison)
     ├── golden/        ISAAC64 reference values
     ├── session_runner.test.js   Unified test runner (635 tests)
     ├── session_helpers.js       Grid compare, RNG compare, structural tests
-    ├── gen_typ_grid.js          Generate/regenerate session files
+    ├── gen_typ_grid.js          Generate/regenerate map session files
     └── c-harness/               C build + capture infrastructure
 
 docs/                  You are here
@@ -90,7 +91,8 @@ npm test && node --test test/comparison/session_runner.test.js
 ### Session Tests In Detail
 
 The session runner auto-discovers all `*.session.json` files in
-`test/comparison/sessions/` and verifies whatever data is present:
+`test/comparison/sessions/` and `test/comparison/maps/` and verifies
+whatever data is present:
 
 | Session Type | What It Tests | Example |
 |---|---|---|
@@ -117,7 +119,7 @@ python3 test/comparison/c-harness/gen_map_sessions.py 42 5
 # Capture with full RNG traces (for debugging divergence)
 python3 test/comparison/c-harness/gen_map_sessions.py 42 5 --with-rng
 
-# The captured session lands in sessions/seed42_maps_c.session.json
+# The captured session lands in maps/seed42_maps_c.session.json
 # Session runner will auto-discover and test it
 node --test test/comparison/session_runner.test.js
 ```

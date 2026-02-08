@@ -18,7 +18,7 @@ All data fields are optional except `version` and `seed`. The test runner
 the rest. This means a minimal session with just a seed and one typGrid is
 a valid test.
 
-**File location:** `test/comparison/sessions/`
+**File location:** `test/comparison/maps/` (map sessions), `test/comparison/sessions/` (gameplay sessions)
 **Naming:** `seed<N>_maps.session.json` (map) or `seed<N>.session.json` (gameplay)
 
 ## Map-Only Sessions

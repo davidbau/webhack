@@ -122,7 +122,7 @@ function toCompactRng(entry) {
 // Each session covers depths 1→maxDepth for one seed.
 // When withRng is true, full RNG traces are included per level.
 function generateSessions(maxDepth = 5, withRng = false) {
-    const sessionsDir = join(__dirname, 'sessions');
+    const sessionsDir = join(__dirname, 'maps');
     mkdirSync(sessionsDir, { recursive: true });
 
     for (const seed of uniqueSeeds()) {

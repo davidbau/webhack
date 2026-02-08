@@ -8,7 +8,7 @@ Generates levels 1→max_depth sequentially (via wizard mode level teleport)
 and captures typGrid at each depth using #dumpmap. When --with-rng is given,
 also captures per-level RNG traces from the C PRNG logger.
 
-Output: test/comparison/sessions/seed<N>_maps_c.session.json
+Output: test/comparison/maps/seed<N>_maps_c.session.json
 
 Requires the C binary to be built with setup.sh first.
 """
@@ -23,7 +23,7 @@ import subprocess
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..', '..'))
 RESULTS_DIR = os.path.join(SCRIPT_DIR, 'results')
-SESSIONS_DIR = os.path.join(PROJECT_ROOT, 'test', 'comparison', 'sessions')
+SESSIONS_DIR = os.path.join(PROJECT_ROOT, 'test', 'comparison', 'maps')
 INSTALL_DIR = os.path.join(PROJECT_ROOT, 'nethack-c', 'install', 'games', 'lib', 'nethackdir')
 NETHACK_BINARY = os.path.join(INSTALL_DIR, 'nethack')
 

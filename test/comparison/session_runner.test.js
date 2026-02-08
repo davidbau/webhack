@@ -1,7 +1,7 @@
 // test/comparison/session_runner.test.js -- Unified session replay test runner
 //
-// Auto-discovers all *.session.json files in test/comparison/sessions/ and runs
-// appropriate tests based on session type:
+// Auto-discovers all *.session.json files in test/comparison/sessions/ and
+// test/comparison/maps/ and runs appropriate tests based on session type:
 //
 //   type === "map"      : Sequential level generation + typGrid comparison + structural tests
 //   type === "gameplay" : Startup verification + step-by-step replay
@@ -13,7 +13,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,11 +27,16 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const SESSIONS_DIR = join(__dirname, 'sessions');
+const MAPS_DIR = join(__dirname, 'maps');
 
-// Discover all session files
-const sessionFiles = readdirSync(SESSIONS_DIR)
-    .filter(f => f.endsWith('.session.json'))
-    .sort();
+// Discover all session files from both directories
+const sessionFiles = [];
+for (const [dir, label] of [[SESSIONS_DIR, 'sessions'], [MAPS_DIR, 'maps']]) {
+    if (!existsSync(dir)) continue;
+    for (const f of readdirSync(dir).filter(f => f.endsWith('.session.json')).sort()) {
+        sessionFiles.push({ file: f, dir });
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Map sessions: sequential level generation + typGrid comparison
@@ -195,8 +200,8 @@ function runGameplaySession(file, session) {
 // Main: discover and run all sessions
 // ---------------------------------------------------------------------------
 
-for (const file of sessionFiles) {
-    const session = JSON.parse(readFileSync(join(SESSIONS_DIR, file), 'utf-8'));
+for (const { file, dir } of sessionFiles) {
+    const session = JSON.parse(readFileSync(join(dir, file), 'utf-8'));
 
     // Determine session type (v2 has explicit type; v1 is gameplay)
     const type = session.type || 'gameplay';
