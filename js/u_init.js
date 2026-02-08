@@ -138,7 +138,7 @@ function makedog(map, playerX, playerY, depth) {
         rn2(2);
     }
 
-    // Create the pet monster object (matches createMonster structure)
+    // Create the pet monster object (matches makemon structure)
     const pet = {
         type: petData,
         name: petData.name,

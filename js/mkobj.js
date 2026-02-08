@@ -174,12 +174,6 @@ function curse(obj) {
     obj.cursed = true;
 }
 
-// C ref: mkobj.c bless()
-function bless_obj(obj) {
-    obj.cursed = false;
-    obj.blessed = true;
-}
-
 // C ref: mkobj.c bcsign()
 function bcsign(obj) {
     return obj.cursed ? -1 : obj.blessed ? 1 : 0;
