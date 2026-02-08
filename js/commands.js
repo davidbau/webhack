@@ -254,7 +254,7 @@ function handleMovement(dir, player, map, display) {
         rn2(20); // overexertion/gethungry before attack
         // C ref: uhitm.c:550 exercise(A_STR, TRUE) before hitum()
         rn2(19); // exercise(A_STR)
-        const killed = playerAttackMonster(player, mon, display);
+        const killed = playerAttackMonster(player, mon, display, map);
         if (killed) {
             map.removeMonster(mon);
         }

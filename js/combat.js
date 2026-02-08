@@ -1,16 +1,19 @@
 // combat.js -- Combat system
 // Mirrors uhitm.c (hero hits monster) and mhitu.c (monster hits hero)
 
-import { rn2, rnd, d } from './rng.js';
+import { rn2, rnd, d, rne, rnz } from './rng.js';
+import { rndmonnum } from './makemon.js';
+import { mons, G_FREQ, MZ_TINY, M2_NEUTER, M2_MALE, M2_FEMALE } from './monsters.js';
+import { CORPSE, FOOD_CLASS, FLESH } from './objects.js';
 
 // Attack a monster (hero attacking)
 // C ref: uhitm.c attack() -> hmon_hitmon() -> hmon_hitmon_core()
-export function playerAttackMonster(player, monster, display) {
+export function playerAttackMonster(player, monster, display, map) {
     // To-hit calculation
     // C ref: uhitm.c find_roll_to_hit() -- tmp = 1 + abon + find_mac(mtmp) + level
     // then mhit = (tmp > rnd(20)); lower AC = better defense
     const dieRoll = rnd(20);
-    const toHit = 1 + player.strToHit + monster.mac + player.level;
+    const toHit = 1 + player.strToHit + monster.mac + player.level + (player.weapon ? player.weapon.enchantment || 0 : 0);
 
     if (toHit <= dieRoll || dieRoll === 20) {
         // Miss
@@ -21,10 +24,16 @@ export function playerAttackMonster(player, monster, display) {
         return false;
     }
 
+    // C ref: uhitm.c:742 exercise(A_DEX, TRUE) on successful hit
+    rn2(19); // exercise(A_DEX, TRUE)
+
     // Hit! Calculate damage
-    // C ref: uhitm.c dmgval() -- base weapon damage + strength bonus
+    // C ref: weapon.c:265 dmgval() -- rnd(oc_wsdam) for small monsters
     let damage = 0;
-    if (player.weapon && player.weapon.damage) {
+    if (player.weapon && player.weapon.wsdam) {
+        damage = rnd(player.weapon.wsdam);
+        damage += player.weapon.enchantment || 0;
+    } else if (player.weapon && player.weapon.damage) {
         damage = d(player.weapon.damage[0], player.weapon.damage[1]);
         damage += player.weapon.enchantment || 0;
     } else {
@@ -45,7 +54,7 @@ export function playerAttackMonster(player, monster, display) {
 
     if (monster.mhp <= 0) {
         // Monster killed
-        // C ref: uhitm.c -> mon.c mondead() -> killed()
+        // C ref: uhitm.c -> mon.c mondead() -> killed() -> xkilled()
         display.putstr_message(`You kill the ${monster.name}!`);
         monster.dead = true;
 
@@ -57,6 +66,55 @@ export function playerAttackMonster(player, monster, display) {
 
         // Check for level-up
         checkLevelUp(player, display);
+
+        // C ref: mon.c:3581 xkilled() — "illogical but traditional" treasure drop
+        rn2(6); // 1 in 6 chance of random treasure (result not used for RNG alignment)
+
+        // C ref: mon.c:3243 corpse_chance() — decide whether to create corpse
+        const mdat = monster.type || {};
+        const gfreq = (mdat.geno || 0) & G_FREQ;
+        const verysmall = (mdat.size || 0) === MZ_TINY;
+        const corpsetmp = 2 + (gfreq < 2 ? 1 : 0) + (verysmall ? 1 : 0);
+        const createCorpse = !rn2(corpsetmp);
+
+        if (createCorpse) {
+            // C ref: mkobj.c:521 next_ident — assign object ID
+            rnd(2);
+
+            // C ref: mkobj.c:1210 mksobj(CORPSE, TRUE) — init=TRUE calls rndmonnum
+            // even though mkcorpstat overrides corpsenm afterward
+            const rndmndx = rndmonnum(1);
+
+            // C ref: mkobj.c:1218 sex determination for the randomly selected monster
+            // rn2(2) consumed unless monster is neuter, male, or female
+            if (rndmndx >= 0) {
+                const rndmon = mons[rndmndx];
+                const f2 = rndmon ? rndmon.flags2 || 0 : 0;
+                if (!(f2 & M2_NEUTER) && !(f2 & M2_FEMALE) && !(f2 & M2_MALE)) {
+                    rn2(2); // sex
+                }
+            }
+
+            // C ref: mkobj.c:1409 start_corpse_timeout — corpse rot timer
+            // Fox is not lizard/lichen, not rider, not troll
+            rnz(10); // rnz internally calls rn2(1000), rne(4), rn2(2)
+
+            // Place corpse on the map so pets can find it
+            if (map) {
+                const corpse = {
+                    otyp: CORPSE,
+                    oclass: FOOD_CLASS,
+                    material: FLESH,
+                    corpsenm: monster.mndx || 0,
+                    ox: monster.mx,
+                    oy: monster.my,
+                    cursed: false,
+                    blessed: false,
+                    oartifact: 0,
+                };
+                map.objects.push(corpse);
+            }
+        }
 
         // C ref: uhitm.c:5997 passive() — SKIPPED when monster is killed
         return true; // monster is dead

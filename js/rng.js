@@ -181,6 +181,7 @@ export function rnz(i) {
     } else {
         x = Math.floor(x * 1000 / tmp);
     }
+    logRng('rnz', i, x);
     exitRng();
     return x;
 }
@@ -193,6 +194,7 @@ export function rne(x) {
     let tmp = 1;
     while (tmp < utmp && !rn2(x))
         tmp++;
+    logRng('rne', x, tmp);
     exitRng();
     return tmp;
 }

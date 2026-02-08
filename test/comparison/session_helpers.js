@@ -365,6 +365,34 @@ export async function replaySession(seed, session) {
     player.name = session.character?.name || 'Wizard';
     player.gender = session.character?.gender === 'female' ? 1 : 0;
 
+    // Parse actual attributes from session screen (u_init randomizes them)
+    // Screen format: "St:18 Dx:11 Co:18 In:11 Wi:9 Ch:8"
+    const screen = session.startup?.screen || [];
+    for (const line of screen) {
+        if (!line) continue;
+        const m = line.match(/St:(\d+)\s+Dx:(\d+)\s+Co:(\d+)\s+In:(\d+)\s+Wi:(\d+)\s+Ch:(\d+)/);
+        if (m) {
+            player.attributes[0] = parseInt(m[1]); // A_STR
+            player.attributes[1] = parseInt(m[4]); // A_INT (In)
+            player.attributes[2] = parseInt(m[5]); // A_WIS (Wi)
+            player.attributes[3] = parseInt(m[2]); // A_DEX (Dx)
+            player.attributes[4] = parseInt(m[3]); // A_CON (Co)
+            player.attributes[5] = parseInt(m[6]); // A_CHA (Ch)
+        }
+        const hpm = line.match(/HP:(\d+)\((\d+)\)\s+Pw:(\d+)\((\d+)\)\s+AC:(\d+)/);
+        if (hpm) {
+            player.hp = parseInt(hpm[1]);
+            player.hpmax = parseInt(hpm[2]);
+            player.pw = parseInt(hpm[3]);
+            player.pwmax = parseInt(hpm[4]);
+            player.ac = parseInt(hpm[5]);
+        }
+    }
+
+    // C ref: 3.7 Valkyrie starts with spear (+1), not long sword
+    // spear: oc_wsdam=6, oc_wldam=8
+    player.weapon = { name: 'spear', wsdam: 6, wldam: 8, enchantment: 1 };
+
     if (map.upstair) {
         player.x = map.upstair.x;
         player.y = map.upstair.y;
