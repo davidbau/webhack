@@ -50,6 +50,10 @@ export class Agent {
         this.currentPath = null;     // current navigation path
         this.recentPositions = new Set(); // recent positions to avoid oscillation
         this.recentPositionsList = []; // ordered list for LRU eviction
+        this.petPositions = new Set(); // known pet positions (updated each turn)
+        this.refusedAttackPositions = new Set(); // positions where we declined "Really attack?"
+        this.lastAttemptedAttackPos = null; // position of last attempted attack target
+        this.knownPetChars = new Set(); // monster chars confirmed as pets via displacement
 
         // Statistics
         this.stats = {
@@ -87,8 +91,14 @@ export class Agent {
                 continue; // UI interaction consumed a turn's worth of input
             }
 
+            // Detect pet displacement: if we "attacked" and swapped positions
+            this._detectPetDisplacement();
+
             // Update map knowledge
             this.dungeon.update(this.screen, this.status);
+
+            // Update pet tracking
+            this._updatePets();
 
             // Decide and act
             const action = this._decide();
@@ -157,8 +167,16 @@ export class Agent {
     _handlePrompt(promptText) {
         const lower = promptText.toLowerCase();
 
-        // "Really attack X?" -- yes if we decided to attack
-        if (lower.includes('really attack')) return 'y';
+        // "Really attack X?" -- no! The game only asks this for peacefuls/pets
+        if (lower.includes('really attack')) {
+            // Mark last attempted attack position as a pet/peaceful
+            if (this.lastAttemptedAttackPos) {
+                this.refusedAttackPositions.add(
+                    this.lastAttemptedAttackPos.y * 80 + this.lastAttemptedAttackPos.x
+                );
+            }
+            return 'n';
+        }
 
         // "There is X here; pick it up?" -- yes for useful items
         if (lower.includes('pick it up')) return 'y';
@@ -371,19 +389,94 @@ export class Agent {
 
     /**
      * Find an adjacent monster (for melee combat).
+     * Skips known pets and positions where we refused to attack.
      */
     _findAdjacentMonster(px, py) {
         const monsters = findMonsters(this.screen);
         for (const mon of monsters) {
             if (Math.abs(mon.x - px) <= 1 && Math.abs(mon.y - py) <= 1) {
                 if (mon.x !== px || mon.y !== py) { // not self
-                    // Skip pets (identified by color white / @-symbol adjacency)
-                    // For now, attack all monsters
+                    const posKey = mon.y * 80 + mon.x;
+                    // Skip known pets (by position)
+                    if (this.petPositions.has(posKey)) continue;
+                    // Skip positions where we declined "Really attack?"
+                    if (this.refusedAttackPositions.has(posKey)) continue;
+                    // Skip monsters whose character type was identified as pet via displacement
+                    if (this.knownPetChars.has(mon.ch)) continue;
+                    this.lastAttemptedAttackPos = { x: mon.x, y: mon.y };
                     return mon;
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * Detect pet displacement: if last action was "attack" and we swapped
+     * positions with the target, that was a pet displacement.
+     */
+    _detectPetDisplacement() {
+        if (this.lastAction !== 'attack' || !this.lastAttemptedAttackPos || !this.lastPosition) return;
+
+        const px = this.screen.playerX;
+        const py = this.screen.playerY;
+        if (px < 0 || py < 0) return;
+
+        const target = this.lastAttemptedAttackPos;
+        const oldPos = this.lastPosition;
+
+        // If we're now at the target's old position...
+        if (px === target.x && py === target.y) {
+            // ...and there's a monster at our old position, it was a swap
+            const monsters = findMonsters(this.screen);
+            for (const mon of monsters) {
+                if (mon.x === oldPos.x && mon.y === oldPos.y) {
+                    // This monster is a pet (we displaced it)
+                    this.knownPetChars.add(mon.ch);
+                    this.refusedAttackPositions.add(mon.y * 80 + mon.x);
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Track pet positions.
+     * On early turns, adjacent d/f/C (dog/cat/horse) are pets.
+     * After that, we mark monsters as pets when "Really attack" is declined.
+     * Refused-attack positions are refreshed: old ones expire, new ones added
+     * when monsters move to new positions.
+     */
+    _updatePets() {
+        const px = this.screen.playerX;
+        const py = this.screen.playerY;
+        if (px < 0 || py < 0) return;
+
+        this.petPositions.clear();
+
+        const monsters = findMonsters(this.screen);
+        const petChars = new Set(['d', 'f', 'C']); // dog, cat, horse
+
+        // Build set of current monster positions
+        const currentMonsterPositions = new Set();
+        for (const mon of monsters) {
+            currentMonsterPositions.add(mon.y * 80 + mon.x);
+
+            const dist = Math.max(Math.abs(mon.x - px), Math.abs(mon.y - py));
+
+            // On first few turns, adjacent d/f/C are almost certainly pets
+            if (this.turnNumber < 5 && dist <= 2 && petChars.has(mon.ch)) {
+                this.petPositions.add(mon.y * 80 + mon.x);
+            }
+        }
+
+        // Clean up refused-attack positions: remove positions where no monster exists
+        // (the pet moved away, so the position is safe to walk through)
+        for (const posKey of this.refusedAttackPositions) {
+            if (!currentMonsterPositions.has(posKey)) {
+                this.refusedAttackPositions.delete(posKey);
+            }
+        }
     }
 }
 
