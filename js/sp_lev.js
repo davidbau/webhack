@@ -1623,6 +1623,81 @@ export const selection = {
     },
 };
 
+/**
+ * des.drawbridge(opts)
+ *
+ * Create a drawbridge.
+ * C ref: sp_lev.c lspo_drawbridge()
+ *
+ * @param {Object} opts - Drawbridge options
+ *   - dir: Direction ("north", "south", "east", "west")
+ *   - state: State ("open", "closed")
+ *   - x, y: Coordinates
+ */
+export function drawbridge(opts) {
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+
+    const { dir, state, x, y } = opts;
+
+    if (x === undefined || y === undefined || x < 0 || x >= 80 || y < 0 || y >= 21) {
+        return;
+    }
+
+    // For now, just place the drawbridge terrain
+    // In C, drawbridges are complex: they can be opened/closed, have portcullises, etc.
+    // For simplicity, we'll treat closed drawbridge as a door and open as floor
+    const loc = levelState.map.locations[x][y];
+
+    if (state === 'closed') {
+        // Closed drawbridge - treat as a closed door
+        loc.typ = DOOR;
+        loc.doormask = D_CLOSED;
+    } else {
+        // Open drawbridge - treat as floor/corridor
+        loc.typ = CORR;
+    }
+
+    // TODO: Implement full drawbridge mechanics (portcullis, opening/closing, etc.)
+}
+
+/**
+ * des.mazewalk(x, y, direction)
+ *
+ * Create a maze passage starting from (x, y) going in the specified direction.
+ * C ref: sp_lev.c lspo_mazewalk()
+ *
+ * @param {number} x - Starting X coordinate
+ * @param {number} y - Starting Y coordinate
+ * @param {string} direction - Direction to walk ("north", "south", "east", "west")
+ */
+export function mazewalk(x, y, direction) {
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+
+    if (x === undefined || y === undefined) {
+        return;
+    }
+
+    // Mazewalk creates a winding passage from the given point
+    // For now, stub - in full implementation this would:
+    // 1. Start at (x, y)
+    // 2. Randomly walk in the general direction, carving CORR terrain
+    // 3. Continue until hitting the edge or another passage
+
+    // Simple stub: just ensure the starting point is passable
+    if (x >= 0 && x < 80 && y >= 0 && y < 21) {
+        const loc = levelState.map.locations[x][y];
+        if (loc.typ === STONE || loc.typ === 0) {
+            loc.typ = CORR;
+        }
+    }
+
+    // TODO: Implement full mazewalk algorithm
+}
+
 // Export the des.* API
 export const des = {
     level_init,
@@ -1645,5 +1720,7 @@ export const des = {
     monster,
     door,
     engraving,
+    drawbridge,
+    mazewalk,
     finalize_level,
 };

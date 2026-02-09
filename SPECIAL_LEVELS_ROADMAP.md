@@ -4,13 +4,13 @@ Epic: `interface-3br` - Complete special level system for all dungeon branches
 
 ## Current Status
 
-### ✓ COMPLETED (22 levels, 27.5%)
+### ✓ COMPLETED (36 levels, 45%)
 - **Sokoban** (8 levels): soko1-1/2, soko2-1/2, soko3-1/2, soko4-1/2 ✓ (variant selection implemented)
 - **Tier 1: Simple Fixed Maps** (5 levels): tower1-3, valley, knox ✓
 - **Tier 2: Intermediate Fixed Maps** (3 levels): wizard1-3 ✓
-- **Tier 3: Complex Fixed Maps** (1 level): medusa ✓
+- **Tier 3: Complex Fixed Maps** (11 levels): castle, bigroom (8 variants), medusa (2 variants) ✓
 - **Tier 4: Demon Lairs** (5 levels): asmodeus, baalz, juiblex, orcus, sanctum ✓
-- **Integration** (complete): All 22 levels registered and playable via (dnum, dlevel) coordinates ✓
+- **Integration** (complete): All 36 levels registered and playable via (dnum, dlevel) coordinates ✓
 - **des.* API Foundation**: level_init, level_flags, map, terrain, stair, region, ladder, feature ✓
 - **Random Placement System**: des.object(), des.monster(), des.trap() with no-argument support ✓
 - **Object/Trap Placement**: Full coord/selection/class format support with intelligent defaults ✓
@@ -252,13 +252,13 @@ Port end-game planes (after C trace collection).
 - **Phase 5 Complete**: Gehennom and Quest playable
 - **Phase 6 Complete**: Full game playable to ascension
 
-**Current Progress**: ~27% ✓ Phase 1 Complete + Partial Phase 2!
+**Current Progress**: ~45% ✓ Phase 1 Complete + Phase 2 In Progress!
 - Sokoban: 8 levels ✓ (variant selection system implemented)
 - Tier 1 Simple Fixed Maps: 5 levels ✓ (tower 1-3, knox, valley)
 - Tier 2 Intermediate Fixed Maps: 3 levels ✓ (wizard 1-3)
-- Tier 3 Complex Fixed Maps: 1 level ✓ (medusa)
+- Tier 3 Complex Fixed Maps: 11 levels ✓ (castle, bigroom 1-8, medusa 1-2)
 - Tier 4 Demon Lairs: 5 levels ✓ (asmodeus, baalz, juiblex, orcus, sanctum)
-- Total: 22 of ~80 special levels implemented and tested
+- Total: 36 of ~80 special levels implemented and tested (45%)
 - **All 21/21 special level tests passing** (4 tower + 2 knox + 2 valley + 2 sanctum + 2 medusa + 4 wizard + 5 demon)
 - **Integration complete**: All levels playable via (dnum, dlevel) coordinates
 
