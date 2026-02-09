@@ -509,8 +509,8 @@ function mkbox_cnts(box) {
     // For each item in box, generate it
     for (let i = 0; i < n; i++) {
         if (od.name === 'ice box') {
-            // mkobj(FOOD_CLASS, TRUE) for ice box contents
-            mkobj(FOOD_CLASS, true);
+            // C ref: mkobj.c:347 — mksobj(CORPSE, TRUE, FALSE) for ice box
+            mksobj(CORPSE, true, false);
         } else {
             // rnd(100) for class selection from boxiprobs
             const tprob = rnd(100);
