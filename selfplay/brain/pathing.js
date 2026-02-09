@@ -227,28 +227,25 @@ export function findNearest(levelMap, sx, sy, predicate) {
  * @returns {PathResult|null}
  */
 export function findExplorationTarget(levelMap, sx, sy, recentTargets = null) {
-    // BFS outward from player, collecting all frontier cells
-    // Then pick the best one (furthest from player among the nearest candidates,
-    // avoiding recently-visited positions).
+    // BFS outward from player, collecting ALL reachable frontier cells.
+    // A frontier cell is an explored walkable cell that borders unexplored space.
+    // Pick the best one considering: search history, distance, and recency.
     const visited = new Uint8Array(MAP_COLS * MAP_ROWS);
     const queue = [{ x: sx, y: sy, dist: 0 }];
     const idx = (x, y) => y * MAP_COLS + x;
     visited[idx(sx, sy)] = 1;
 
     const candidates = [];
-    let nearestDist = Infinity;
 
     while (queue.length > 0) {
         const { x, y, dist } = queue.shift();
-
-        // Once we've found candidates and we're past the nearest distance + margin, stop
-        if (candidates.length > 0 && dist > nearestDist + 3) break;
 
         const cell = levelMap.at(x, y);
 
         // Check if this explored walkable cell borders unexplored space
         if (cell && cell.explored && cell.walkable && (x !== sx || y !== sy)) {
             let hasUnexplored = false;
+            let unexploredSearchScore = 0;
             for (const dir of DIRS) {
                 const nx = x + dir.dx;
                 const ny = y + dir.dy;
@@ -256,20 +253,19 @@ export function findExplorationTarget(levelMap, sx, sy, recentTargets = null) {
                 const neighbor = levelMap.at(nx, ny);
                 if (neighbor && !neighbor.explored) {
                     hasUnexplored = true;
-                    break;
                 }
             }
             if (hasUnexplored) {
-                // Skip if this is immediately adjacent to player (avoid oscillation)
                 const chebyshev = Math.max(Math.abs(x - sx), Math.abs(y - sy));
                 const isRecent = recentTargets && recentTargets.has(idx(x, y));
+                // How much has this cell been searched? High = less promising
+                const searched = cell.searched || 0;
 
-                candidates.push({ x, y, dist, chebyshev, isRecent });
-                if (dist < nearestDist) nearestDist = dist;
+                candidates.push({ x, y, dist, chebyshev, isRecent, searched });
             }
         }
 
-        // Continue BFS through walkable explored cells
+        // Continue BFS through walkable explored cells (no early termination)
         for (const dir of DIRS) {
             const nx = x + dir.dx;
             const ny = y + dir.dy;
@@ -286,14 +282,18 @@ export function findExplorationTarget(levelMap, sx, sy, recentTargets = null) {
 
     if (candidates.length === 0) return null;
 
-    // Prefer: non-recent first, then distance >= 2 from player, then nearest BFS dist
+    // Sort by priority:
+    // 1. Strongly prefer non-recently-visited
+    // 2. Prefer cells not immediately adjacent to player (avoids oscillation)
+    // 3. Prefer less-searched cells (more likely to lead somewhere)
+    // 4. Among remaining, prefer nearest by BFS distance
     candidates.sort((a, b) => {
-        // Strongly prefer non-recently-visited
         if (a.isRecent !== b.isRecent) return a.isRecent ? 1 : -1;
-        // Prefer cells not immediately adjacent (avoids oscillation)
         if (a.chebyshev <= 1 && b.chebyshev > 1) return 1;
         if (b.chebyshev <= 1 && a.chebyshev > 1) return -1;
-        // Among remaining, prefer nearest
+        // Strongly prefer unsearched over heavily-searched
+        if (a.searched >= 3 && b.searched < 3) return 1;
+        if (b.searched >= 3 && a.searched < 3) return -1;
         return a.dist - b.dist;
     });
 

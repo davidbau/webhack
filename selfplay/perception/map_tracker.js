@@ -85,6 +85,7 @@ export class LevelMap {
 
                 const cell = this.cells[y][x];
                 const oldExplored = cell.explored;
+                const oldType = cell.type;
 
                 cell.ch = screenCell.ch;
                 cell.color = screenCell.color;
@@ -109,18 +110,20 @@ export class LevelMap {
                     };
                 }
 
-                // Track items (accumulate, don't replace)
+                // Track items: update when we see the cell fresh
                 if (screenCell.type === 'item' || screenCell.type === 'gold') {
-                    // Replace item info when we see the cell fresh
                     cell.items = [{
                         ch: screenCell.ch,
                         color: screenCell.color,
                         lastSeenTurn: turn,
                     }];
+                } else if (cell.items.length > 0) {
+                    // Cell no longer shows items — they were picked up or gone
+                    cell.items = [];
                 }
 
-                // Register features (only on first discovery or if changed)
-                if (!oldExplored || cell.type !== screenCell.type) {
+                // Register features (on first discovery or type change)
+                if (!oldExplored || oldType !== screenCell.type) {
                     this._registerFeature(x, y, screenCell.type);
                 }
             }
@@ -164,6 +167,8 @@ export class LevelMap {
     /**
      * Get unexplored cells that border explored walkable cells.
      * These are the exploration frontier.
+     * Cells whose adjacent walkable neighbors have all been heavily searched
+     * are deprioritized (likely stone, not openings).
      */
     getExplorationFrontier() {
         const frontier = [];
@@ -172,11 +177,33 @@ export class LevelMap {
                 if (this.cells[y][x].explored) continue;
                 // Check if any neighbor is explored and walkable
                 if (this._hasWalkableNeighbor(x, y)) {
-                    frontier.push({ x, y });
+                    // Score based on how much adjacent cells have been searched
+                    // High search count = probably stone (deprioritize)
+                    const searchScore = this._neighborSearchScore(x, y);
+                    frontier.push({ x, y, searchScore });
                 }
             }
         }
+        // Sort: least-searched neighbors first (most likely to be real openings)
+        frontier.sort((a, b) => a.searchScore - b.searchScore);
         return frontier;
+    }
+
+    /**
+     * Total search count of walkable neighbors of an unexplored cell.
+     * High values mean we've searched next to this cell a lot (probably stone).
+     */
+    _neighborSearchScore(x, y) {
+        let total = 0;
+        for (const [dx, dy] of DIRS) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
+            const neighbor = this.cells[ny][nx];
+            if (neighbor.explored && neighbor.walkable) {
+                total += neighbor.searched;
+            }
+        }
+        return total;
     }
 
     /**

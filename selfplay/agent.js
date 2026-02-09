@@ -54,6 +54,7 @@ export class Agent {
         this.refusedAttackPositions = new Set(); // positions where we declined "Really attack?"
         this.lastAttemptedAttackPos = null; // position of last attempted attack target
         this.knownPetChars = new Set(); // monster chars confirmed as pets via displacement
+        this.pendingDoorDir = null; // direction key for "In what direction?" prompt after 'o'
 
         // Statistics
         this.stats = {
@@ -139,8 +140,8 @@ export class Agent {
     async _handleUIState() {
         if (!this.screen) return false;
 
-        // Handle --More-- prompts
-        if (this.screen.hasMore) {
+        // Handle --More-- prompts (check message line and scan full screen for C game)
+        if (this.screen.hasMore || this._screenHasMore()) {
             await this.adapter.sendKey(' ');
             return true;
         }
@@ -158,6 +159,42 @@ export class Agent {
             return true;
         }
 
+        // Handle "This door is closed" message by auto-opening the door
+        if (this.screen.message.includes('door is closed')) {
+            const adjDoor = this._findAdjacentDoor(this.screen.playerX, this.screen.playerY);
+            if (adjDoor) {
+                await this.adapter.sendKey('o');
+                await this.adapter.sendKey(adjDoor.key);
+                return true;
+            }
+        }
+
+        // Handle locked doors by trying to kick them
+        if (this.screen.message.includes('This door is locked')) {
+            // For now, just kick it
+            const adjDoor = this._findAdjacentDoor(this.screen.playerX, this.screen.playerY);
+            if (adjDoor) {
+                await this.adapter.sendKey('\x04'); // Ctrl-D for kick
+                await this.adapter.sendKey(adjDoor.key);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check all screen rows for --More-- (C game puts it mid-screen during intro).
+     */
+    _screenHasMore() {
+        if (!this.screen || !this.screen.map) return false;
+        // Check map rows for --More--
+        for (let y = 0; y < this.screen.map.length; y++) {
+            const row = this.screen.map[y];
+            let text = '';
+            for (let x = 0; x < row.length; x++) text += row[x].ch;
+            if (text.includes('--More--')) return true;
+        }
         return false;
     }
 
@@ -184,8 +221,15 @@ export class Agent {
         // "What do you want to eat?" -- select first item (a)
         if (lower.includes('want to eat')) return 'a';
 
-        // "In what direction?" -- provide a direction based on context
-        if (lower.includes('direction')) return '.'; // self for search
+        // "In what direction?" -- provide saved direction (from door-open, etc.)
+        if (lower.includes('direction')) {
+            if (this.pendingDoorDir) {
+                const dir = this.pendingDoorDir;
+                this.pendingDoorDir = null;
+                return dir;
+            }
+            return '.'; // self for search as fallback
+        }
 
         // "Shall I pick up ..." -- yes
         if (lower.includes('shall i pick')) return 'y';
@@ -266,21 +310,28 @@ export class Agent {
 
         // --- Strategic movement ---
 
-        // 5. If on downstairs and level is mostly explored, descend
+        // 6. If on downstairs, descend (especially if level is mostly explored)
         if (currentCell && currentCell.type === 'stairs_down') {
             const frontier = level.getExplorationFrontier();
-            if (frontier.length === 0 || this.stuckCounter > 20) {
-                return { type: 'descend', key: '>', reason: 'level explored, descending' };
+            // Descend if: fully explored, or mostly explored, or stuck
+            if (frontier.length < 10 || this.stuckCounter > 5) {
+                return { type: 'descend', key: '>', reason: 'descending stairs' };
             }
         }
 
-        // 6. If oscillating / stuck, try different strategies
+        // 7. If oscillating / stuck, try different strategies
         if (this.stuckCounter > 3) {
-            // Try searching for secret doors
-            if (this.searchesAtPosition < 10) {
+            // Try searching briefly for secret doors
+            if (this.searchesAtPosition < 3) {
                 this.searchesAtPosition++;
                 if (currentCell) currentCell.searched++;
                 return { type: 'search', key: 's', reason: 'searching for secret passages (stuck)' };
+            }
+
+            // Mark well-searched adjacent unexplored cells as stone
+            // (if we searched 3+ times and nothing was revealed, it's likely solid rock)
+            if (currentCell && currentCell.searched >= 3) {
+                this._markDeadEndFrontier(px, py, level);
             }
 
             // Head for downstairs if known
@@ -288,11 +339,23 @@ export class Agent {
                 const stairs = level.stairsDown[0];
                 const path = findPath(level, px, py, stairs.x, stairs.y);
                 if (path.found) {
-                    return {
-                        type: 'navigate',
-                        key: path.firstKey,
-                        reason: `heading to downstairs (stuck) at (${stairs.x},${stairs.y})`,
-                    };
+                    this.stuckCounter = 0;
+                    this.searchesAtPosition = 0;
+                    return this._followPath(path, 'navigate', `heading to downstairs (stuck) at (${stairs.x},${stairs.y})`);
+                }
+            }
+
+            // Force explore with allowUnexplored to reach frontier through unexplored territory
+            const frontier = level.getExplorationFrontier();
+            if (frontier.length > 0) {
+                // Pick the nearest frontier cell that we can actually path to
+                for (const target of frontier.slice(0, 10)) {
+                    const path = findPath(level, px, py, target.x, target.y, { allowUnexplored: true });
+                    if (path.found) {
+                        this.stuckCounter = 0;
+                        this.searchesAtPosition = 0;
+                        return this._followPath(path, 'explore', `force-exploring toward (${target.x},${target.y})`);
+                    }
                 }
             }
 
@@ -302,39 +365,31 @@ export class Agent {
             return { type: 'random_move', key: randomDir, reason: 'stuck, trying random direction' };
         }
 
-        // 7. Explore: move toward nearest unexplored area
+        // 8. Explore: move toward nearest unexplored area
         const explorationPath = findExplorationTarget(level, px, py, this.recentPositions);
         if (explorationPath && explorationPath.found) {
             this.currentPath = explorationPath;
             this.consecutiveWaits = 0;
-            return {
-                type: 'explore',
-                key: explorationPath.firstKey,
-                reason: `exploring toward (${explorationPath.nextPos.x},${explorationPath.nextPos.y})`,
-            };
+            return this._followPath(explorationPath, 'explore', `exploring toward (${explorationPath.nextPos.x},${explorationPath.nextPos.y})`);
         }
 
-        // 8. No unexplored areas -- head for downstairs
+        // 9. No unexplored areas -- head for downstairs
         if (level.stairsDown.length > 0) {
             const stairs = level.stairsDown[0];
             const path = findPath(level, px, py, stairs.x, stairs.y);
             if (path.found) {
-                return {
-                    type: 'navigate',
-                    key: path.firstKey,
-                    reason: `heading to downstairs at (${stairs.x},${stairs.y})`,
-                };
+                return this._followPath(path, 'navigate', `heading to downstairs at (${stairs.x},${stairs.y})`);
             }
         }
 
-        // 9. Search for secret doors
+        // 10. Search for secret doors
         if (this.searchesAtPosition < 20) {
             this.searchesAtPosition++;
             if (currentCell) currentCell.searched++;
             return { type: 'search', key: 's', reason: 'searching for secret passages' };
         }
 
-        // 10. Last resort: random walk
+        // 11. Last resort: random walk
         this.consecutiveWaits++;
         const dirs = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
         const randomDir = dirs[Math.floor(Math.random() * dirs.length)];
@@ -347,6 +402,12 @@ export class Agent {
     async _act(action) {
         this.lastAction = action.type;
         await this.adapter.sendKey(action.key);
+
+        // For door open, also send the direction immediately
+        if (action.type === 'open_door' && this.pendingDoorDir) {
+            await this.adapter.sendKey(this.pendingDoorDir);
+            this.pendingDoorDir = null;
+        }
     }
 
     /**
@@ -406,6 +467,70 @@ export class Agent {
                     this.lastAttemptedAttackPos = { x: mon.x, y: mon.y };
                     return mon;
                 }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Mark unexplored cells adjacent to a well-searched position as explored stone.
+     * This removes dead-end frontier cells from the exploration target list.
+     */
+    _markDeadEndFrontier(px, py, level) {
+        const dirs = [
+            [-1,-1], [0,-1], [1,-1],
+            [-1,0],          [1,0],
+            [-1,1],  [0,1],  [1,1],
+        ];
+        for (const [dx, dy] of dirs) {
+            const nx = px + dx, ny = py + dy;
+            const cell = level.at(nx, ny);
+            if (cell && !cell.explored) {
+                // Mark as explored stone (dead end)
+                cell.explored = true;
+                cell.type = 'stone';
+                cell.ch = ' ';
+                cell.walkable = false;
+                cell.stale = true;
+            }
+        }
+    }
+
+    /**
+     * Follow a path, handling closed doors along the way.
+     * If the next cell is a closed door, open it instead of moving.
+     */
+    _followPath(path, actionType, reason) {
+        if (!path || !path.nextPos) {
+            return { type: actionType, key: path.firstKey, reason };
+        }
+
+        const nextCell = this.dungeon.currentLevel.at(path.nextPos.x, path.nextPos.y);
+        if (nextCell && nextCell.type === 'door_closed') {
+            // Open the door instead of walking into it
+            this.pendingDoorDir = path.firstKey;
+            return { type: 'open_door', key: 'o', reason: `opening door at (${path.nextPos.x},${path.nextPos.y})` };
+        }
+
+        return { type: actionType, key: path.firstKey, reason };
+    }
+
+    /**
+     * Find an adjacent closed door and return {x, y, key} for opening it.
+     */
+    _findAdjacentDoor(px, py) {
+        const level = this.dungeon.currentLevel;
+        const dirList = [
+            { dx: 0, dy: -1, key: 'k' }, { dx: -1, dy: 0, key: 'h' },
+            { dx: 1, dy: 0, key: 'l' }, { dx: 0, dy: 1, key: 'j' },
+            { dx: -1, dy: -1, key: 'y' }, { dx: 1, dy: -1, key: 'u' },
+            { dx: -1, dy: 1, key: 'b' }, { dx: 1, dy: 1, key: 'n' },
+        ];
+        for (const dir of dirList) {
+            const nx = px + dir.dx, ny = py + dir.dy;
+            const cell = level.at(nx, ny);
+            if (cell && cell.type === 'door_closed') {
+                return { x: nx, y: ny, key: dir.key };
             }
         }
         return null;

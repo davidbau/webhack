@@ -111,10 +111,12 @@ function classifyCell(ch, color) {
         return 'floor';
     }
 
-    // Closed door
+    // Closed door / spellbook
     if (ch === '+') {
-        if (color === 3) return 'door_closed'; // CLR_BROWN = door
-        return 'item'; // spellbook if not brown
+        // CLR_BROWN (3) = door. CLR_GRAY (7) = ambiguous (no color from tmux), assume door.
+        // Only classify as item (spellbook) when color is clearly non-door.
+        if (color === 3 || color === 7) return 'door_closed';
+        return 'item'; // spellbook if distinctly colored
     }
 
     // Stairs
