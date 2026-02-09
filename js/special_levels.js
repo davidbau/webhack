@@ -46,6 +46,10 @@ import { generate as generateWater } from './levels/water.js';
 import { generate as generateLava } from './levels/lava.js';
 import { generate as generateGraveyard } from './levels/graveyard.js';
 import { generate as generateVault } from './levels/vault.js';
+import { generate as generateIce } from './levels/ice.js';
+import { generate as generateForest } from './levels/forest.js';
+import { generate as generateClouds } from './levels/clouds.js';
+import { generate as generateGarden } from './levels/garden.js';
 
 // Sokoban levels
 import { generate as generateSoko1a } from './levels/soko1-1.js';
@@ -204,6 +208,10 @@ registerSpecialLevel(DUNGEONS_OF_DOOM, 17, generateCastle, 'castle');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 20, generateMedusa, 'medusa');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 21, generateMedusa2, 'medusa-2');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 22, generateMedusa3, 'medusa-3');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 23, generateIce, 'ice');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 24, generateForest, 'forest');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 25, generateClouds, 'clouds');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 26, generateGarden, 'garden');
 
 /**
  * Get list of all registered special levels
