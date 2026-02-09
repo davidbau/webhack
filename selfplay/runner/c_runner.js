@@ -23,18 +23,35 @@ const opts = {
 };
 
 for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--seed' && args[i + 1]) opts.seed = parseInt(args[++i]);
-    else if (args[i] === '--turns' && args[i + 1]) opts.maxTurns = parseInt(args[++i]);
-    else if (args[i] === '--delay' && args[i + 1]) opts.moveDelay = parseInt(args[++i]);
-    else if (args[i] === '--key-delay' && args[i + 1]) opts.keyDelay = parseInt(args[++i]);
-    else if (args[i] === '--verbose' || args[i] === '-v') opts.verbose = true;
-    else if (args[i] === '--quiet' || args[i] === '-q') opts.verbose = false;
-    else if (args[i] === '--help' || args[i] === '-h') {
-        console.log('Usage: node c_runner.js [--seed N] [--turns N] [--verbose] [--delay MS]');
-        console.log('  --seed N       PRNG seed for deterministic games (default: 42)');
-        console.log('  --turns N      Maximum turns to play (default: 200)');
-        console.log('  --delay MS     Delay between agent moves in ms (default: 0)');
-        console.log('  --key-delay MS Delay after each tmux keystroke in ms (default: 60)');
+    const arg = args[i];
+
+    // Handle --key=value format
+    if (arg.startsWith('--')) {
+        const eqIndex = arg.indexOf('=');
+        if (eqIndex !== -1) {
+            const key = arg.slice(0, eqIndex);
+            const value = arg.slice(eqIndex + 1);
+            if (key === '--seed') opts.seed = parseInt(value);
+            else if (key === '--turns') opts.maxTurns = parseInt(value);
+            else if (key === '--delay') opts.moveDelay = parseInt(value);
+            else if (key === '--key-delay') opts.keyDelay = parseInt(value);
+            continue;
+        }
+    }
+
+    // Handle --key value format (original code)
+    if (arg === '--seed' && args[i + 1]) opts.seed = parseInt(args[++i]);
+    else if (arg === '--turns' && args[i + 1]) opts.maxTurns = parseInt(args[++i]);
+    else if (arg === '--delay' && args[i + 1]) opts.moveDelay = parseInt(args[++i]);
+    else if (arg === '--key-delay' && args[i + 1]) opts.keyDelay = parseInt(args[++i]);
+    else if (arg === '--verbose' || arg === '-v') opts.verbose = true;
+    else if (arg === '--quiet' || arg === '-q') opts.verbose = false;
+    else if (arg === '--help' || arg === '-h') {
+        console.log('Usage: node c_runner.js [--seed=N] [--turns=N] [--verbose] [--delay=MS]');
+        console.log('  --seed=N       PRNG seed for deterministic games (default: 42)');
+        console.log('  --turns=N      Maximum turns to play (default: 200)');
+        console.log('  --delay=MS     Delay between agent moves in ms (default: 0)');
+        console.log('  --key-delay=MS Delay after each tmux keystroke in ms (default: 60)');
         console.log('  --verbose/-v   Verbose output (default: on)');
         console.log('  --quiet/-q     Suppress verbose output');
         process.exit(0);

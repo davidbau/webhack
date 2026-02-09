@@ -10,6 +10,7 @@ import { DungeonTracker } from './perception/map_tracker.js';
 import { findPath, findExplorationTarget, findNearest, directionKey, directionDelta } from './brain/pathing.js';
 import { shouldEngageMonster, getMonsterName } from './brain/danger.js';
 import { InventoryTracker } from './brain/inventory.js';
+import { PrayerTracker } from './brain/prayer.js';
 
 // Direction keys for movement toward a target
 const DIR_KEYS = {
@@ -42,6 +43,7 @@ export class Agent {
         this.screen = null;
         this.status = null;
         this.inventory = new InventoryTracker();
+        this.prayer = new PrayerTracker();
 
         // State
         this.turnNumber = 0;
@@ -330,6 +332,7 @@ export class Agent {
         // --- Emergency checks (highest priority) ---
 
         // 0. If HP is very low (< 30%), use healing potion if available
+        let hasHealingPotions = false;
         if (this.status && this.status.hp < this.status.hpmax * 0.3) {
             // Refresh inventory if needed
             if (this.turnNumber - this.inventory.lastUpdate > 100 || this.inventory.lastUpdate === 0) {
@@ -337,12 +340,30 @@ export class Agent {
             }
 
             const healingPotions = this.inventory.findHealingPotions();
-            if (healingPotions.length > 0) {
+            hasHealingPotions = healingPotions.length > 0;
+
+            if (hasHealingPotions) {
                 // Quaff the first healing potion
                 const potion = healingPotions[0];
                 // Store the potion letter for the prompt handler
                 this.pendingQuaffLetter = potion.letter;
                 return { type: 'quaff', key: 'q', reason: `HP low (${this.status.hp}/${this.status.hpmax}), drinking ${potion.name}` };
+            }
+        }
+
+        // 0b. If HP is critically low, consider prayer as last resort
+        if (this.status && this.status.hp < this.status.hpmax * 0.2) {
+            const nearbyMonsters = findMonsters(this.screen);
+            const canFlee = nearbyMonsters.length > 0 && this._fleeFrom(px, py, nearbyMonsters, level) !== null;
+
+            const prayerDecision = this.prayer.shouldPray(this.status, this.turnNumber, {
+                hasHealingPotions,
+                canFlee,
+            });
+
+            if (prayerDecision.shouldPray) {
+                this.prayer.recordPrayer(this.turnNumber);
+                return { type: 'pray', key: '#pray\n', reason: prayerDecision.reason };
             }
         }
 
