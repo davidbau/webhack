@@ -11,6 +11,7 @@ import { rn2 } from './rng.js';
 import { generate as generateKnox } from './levels/knox.js';
 import { generate as generateMedusa } from './levels/medusa.js';
 import { generate as generateMedusa2 } from './levels/medusa-2.js';
+import { generate as generateMedusa3 } from './levels/medusa-3.js';
 import { generate as generateSanctum } from './levels/sanctum.js';
 import { generate as generateValley } from './levels/valley.js';
 import { generate as generateTower1 } from './levels/tower1.js';
@@ -190,6 +191,7 @@ registerSpecialLevel(DUNGEONS_OF_DOOM, 16, generateBigroom2, 'bigroom-2');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 17, generateCastle, 'castle');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 20, generateMedusa, 'medusa');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 21, generateMedusa2, 'medusa-2');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 22, generateMedusa3, 'medusa-3');
 
 /**
  * Get list of all registered special levels
