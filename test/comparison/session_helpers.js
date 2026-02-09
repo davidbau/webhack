@@ -300,6 +300,7 @@ class HeadlessGame {
         this.gameOver = false;
         this.turnCount = 0;
         this.wizard = true;
+        this.flags = { pickup: false, safe_pet: true, confirm: true, verbose: true };
         this.seerTurn = opts.seerTurn || 0;
         initrack(); // C ref: track.c — initialize player track buffer
     }

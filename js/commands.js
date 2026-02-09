@@ -348,7 +348,7 @@ function handleMovement(dir, player, map, display, game) {
     // Autopickup non-gold items if option is on
     const remaining = map.objectsAt(nx, ny);
     if (game.flags.pickup && remaining.length > 0) {
-        const item = remaining.find(o => o.oc_class !== 10);
+        const item = remaining.find(o => o.oclass !== 11); // not COIN_CLASS
         if (item) {
             player.addToInventory(item);
             map.removeObject(item);
