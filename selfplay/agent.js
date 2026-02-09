@@ -728,8 +728,8 @@ export class Agent {
                 }
 
                 // Search very aggressively for secret doors (might be hiding stairs)
-                // Search up to 20 times for ~95% success rate (1/7 probability)
-                if (this.searchesAtPosition < 20) {
+                // Search up to 30 times for ~99.5% success rate (1/7 probability)
+                if (this.searchesAtPosition < 30) {
                     this.searchesAtPosition++;
                     if (currentCell) currentCell.searched++;
                     return { type: 'search', key: 's', reason: `aggressive search for hidden stairs (stuck ${this.levelStuckCounter})` };
@@ -838,7 +838,7 @@ export class Agent {
                     const searchCandidates = level.getSearchCandidates();
                     const nearbyCandidates = searchCandidates.filter(c => {
                         const cdist = Math.max(Math.abs(c.x - sx), Math.abs(c.y - sy));
-                        return cdist < 12 && c.searched < 20;
+                        return cdist < 12 && c.searched < 30;
                     });
 
                     if (nearbyCandidates.length > 0) {
@@ -869,7 +869,7 @@ export class Agent {
         // 6.5. Systematic wall searching when no stairs found
         // If we've explored available areas but haven't found stairs, systematically
         // search walls to reveal secret doors/corridors
-        // Search probability is 1/7, so search each location up to 20 times for ~95% success rate
+        // Search probability is 1/7, so search each location up to 30 times for ~99.5% success rate
         const frontierSmall = level.getExplorationFrontier().length < 30;
         const exploredPercent = level.exploredCount / (80 * 21);
         // Trigger searching if: no downstairs OR stuck for long time (even with downstairs visible)
@@ -879,7 +879,7 @@ export class Agent {
         if (shouldSearch) {
             const searchCandidates = level.getSearchCandidates();
             // Filter to candidates that haven't been heavily searched yet
-            const unsearchedCandidates = searchCandidates.filter(c => c.searched < 20);
+            const unsearchedCandidates = searchCandidates.filter(c => c.searched < 30);
 
             if (unsearchedCandidates.length > 0) {
                 // Try to path to the nearest unsearched candidate
@@ -891,11 +891,36 @@ export class Agent {
 
                     const path = findPath(level, px, py, candidate.x, candidate.y, { allowUnexplored: false });
                     if (path.found) {
-                        // If we're at the candidate, search it
+                        // If we're at the candidate, use breadth-first searching
+                        // Search ALL adjacent walls before moving to the next candidate
                         if (px === candidate.x && py === candidate.y) {
+                            // Check all 8 directions for unsearched walls
+                            const directions = [
+                                [-1, -1], [0, -1], [1, -1],
+                                [-1,  0],          [1,  0],
+                                [-1,  1], [0,  1], [1,  1],
+                            ];
+
+                            for (const [dx, dy] of directions) {
+                                const nx = px + dx, ny = py + dy;
+                                if (nx < 0 || nx >= 80 || ny < 0 || ny >= 21) continue;
+
+                                const adjCell = level.at(nx, ny);
+                                // Search adjacent walls that haven't been thoroughly searched
+                                if (adjCell && adjCell.explored && adjCell.type === 'wall' && adjCell.searched < 10) {
+                                    adjCell.searched++;
+                                    const cell = level.at(px, py);
+                                    if (cell) cell.searched++;
+                                    return { type: 'search', key: 's', reason: `breadth-first wall search from (${px},${py}) checking (${nx},${ny}) [${adjCell.searched}/10]` };
+                                }
+                            }
+
+                            // All adjacent walls searched, mark this position as done
                             const cell = level.at(px, py);
-                            if (cell) cell.searched++;
-                            return { type: 'search', key: 's', reason: `systematic wall search at (${px},${py}) [searched=${cell ? cell.searched : 0}]` };
+                            if (cell && cell.searched < 30) {
+                                cell.searched++;
+                                return { type: 'search', key: 's', reason: `systematic wall search at (${px},${py}) [searched=${cell.searched}]` };
+                            }
                         }
                         // Otherwise path to it
                         return this._followPath(path, 'navigate', `heading to search candidate (${candidate.x},${candidate.y})`);
@@ -905,7 +930,7 @@ export class Agent {
 
             // If no reachable search candidates, or all are heavily searched,
             // just search from current position (might help in edge cases)
-            if (this.levelStuckCounter > 40 && currentCell && currentCell.searched < 20) {
+            if (this.levelStuckCounter > 40 && currentCell && currentCell.searched < 30) {
                 currentCell.searched++;
                 return { type: 'search', key: 's', reason: `exhaustive search from current position (stuck ${this.levelStuckCounter})` };
             }
