@@ -74,5 +74,5 @@ export function generate() {
     des.object({ class: '/' });
 
     // Finalize level (applies random flipping)
-    finalize_level();
+    return finalize_level();
 }

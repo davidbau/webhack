@@ -115,5 +115,5 @@ export function generate() {
     des.engraving({ coord: pt, type: 'burn', text: 'Elbereth' });
     des.object({ id: 'scroll of scare monster', coord: pt, buc: 'cursed' });
 
-    finalize_level();
+    return finalize_level();
 }

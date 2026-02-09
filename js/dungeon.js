@@ -47,6 +47,7 @@ import {
     objectData, bases,
 } from './objects.js';
 import { RUMORS_FILE_TEXT } from './rumor_data.js';
+import { getSpecialLevel } from './special_levels.js';
 import { themerooms_generate } from './themerms.js';
 import { parseEncryptedDataFile, parseRumorsFile } from './hacklib.js';
 import { EPITAPH_FILE_TEXT } from './epitaph_data.js';
@@ -3062,8 +3063,29 @@ export function initLevelGeneration(roleIndex) {
 }
 
 // C ref: mklev.c makelevel()
-export function makelevel(depth) {
+/**
+ * Generate a level at the specified depth or dungeon coordinates.
+ * @param {number} depth - Absolute depth from surface (backward compat)
+ * @param {number} [dnum] - Dungeon branch number (optional)
+ * @param {number} [dlevel] - Level within branch (optional, 1-based)
+ * @returns {GameMap} The generated level
+ */
+export function makelevel(depth, dnum, dlevel) {
     setLevelDepth(depth);
+
+    // Check for special level if branch coordinates provided
+    if (dnum !== undefined && dlevel !== undefined) {
+        const special = getSpecialLevel(dnum, dlevel);
+        if (special) {
+            console.log(`Generating special level: ${special.name} at (${dnum}, ${dlevel})`);
+            const specialMap = special.generator();
+            if (specialMap) {
+                return specialMap;
+            }
+            // If special level generation fails, fall through to procedural
+            console.warn(`Special level ${special.name} generation failed, using procedural`);
+        }
+    }
 
     // C ref: bones.c getbones() — rn2(3) + bones load pipeline
     const bonesMap = getbones(null, depth);
