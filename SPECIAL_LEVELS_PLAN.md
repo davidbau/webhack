@@ -291,12 +291,48 @@ The recommended order prioritizes getting testable results quickly:
 - Tested with seed1 soko4 (vertical flip case) - works correctly
 
 **Next steps identified:**
-1. Implement wall_extends() for proper junction types
+1. ~~Implement wall_extends() for proper junction types~~ ✓ DONE
 2. ~~Implement map flipping (horizontal/vertical)~~ ✓ DONE
 3. Add object placement system
 4. Add trap placement system
 5. Port remaining 7 Sokoban levels (soko1-2, soko2-1/2, soko3-1/2, soko4-2)
 6. Integrate special level loading into makelevel() flow
+
+### Wall Junction Computation (wall_extends)
+
+**Implemented complete wallification system:**
+- `wallification(map)`: Main algorithm applying iterative wall junction computation
+- `isWall(typ)`: Checks if terrain is any wall type (VWALL through TRWALL)
+- Directional extension functions: `extendsNorth/South/East/West(typ)`
+  - Based on box-drawing character geometry
+  - ┌ (TLCORNER) extends south + east
+  - ┐ (TRCORNER) extends south + west
+  - └ (BLCORNER) extends north + east
+  - ┘ (BRCORNER) extends north + west
+  - ├ (TRWALL) extends north + south + east
+  - ┤ (TLWALL) extends north + south + west
+  - ┬ (TDWALL) extends south + east + west
+  - ┴ (TUWALL) extends north + east + west
+  - ┼ (CROSSWALL) extends all four directions
+  - │ (VWALL) extends north + south
+  - ─ (HWALL) extends east + west
+
+**Algorithm:**
+1. For each wall cell, check 4 cardinal neighbors
+2. Determine connectivity: does neighbor extend toward this cell?
+3. Assign junction type based on N/S/E/W connectivity pattern
+4. Iterate until no changes (convergence)
+5. Max 100 iterations to prevent infinite loops
+
+**Integration:**
+- Called in `finalize_level()` before flipping
+- Respects original wall placement from ASCII maps
+- Isolated walls keep their original type
+
+**Test coverage:**
+- 4 tests in wallification.test.js
+- Validates corners, T-junctions, convergence, isolated walls
+- All 15 sp_lev tests passing
 
 ---
 
