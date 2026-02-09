@@ -29,6 +29,12 @@ import { generate as generateOrcus } from './levels/orcus.js';
 // Special room variants
 import { generate as generateBigroom } from './levels/bigroom.js';
 import { generate as generateBigroom2 } from './levels/bigroom-2.js';
+import { generate as generateBigroom3 } from './levels/bigroom-3.js';
+import { generate as generateBigroom4 } from './levels/bigroom-4.js';
+import { generate as generateBigroom5 } from './levels/bigroom-5.js';
+import { generate as generateBigroom6 } from './levels/bigroom-6.js';
+import { generate as generateBigroom7 } from './levels/bigroom-7.js';
+import { generate as generateBigroom8 } from './levels/bigroom-8.js';
 
 // Sokoban levels
 import { generate as generateSoko1a } from './levels/soko1-1.js';
@@ -170,6 +176,12 @@ registerSpecialLevel(SOKOBAN, 4, [generateSoko4a, generateSoko4b], ['soko4-1', '
 // Register Medusa's lair and special rooms in main dungeon
 // In Dungeons of Doom, at depths that vary by dungeon generation
 // Using specific depths for testing (actual depths determined at runtime)
+registerSpecialLevel(DUNGEONS_OF_DOOM, 9, generateBigroom5, 'bigroom-5');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 10, generateBigroom6, 'bigroom-6');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 11, generateBigroom7, 'bigroom-7');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 12, generateBigroom8, 'bigroom-8');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 13, generateBigroom3, 'bigroom-3');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 14, generateBigroom4, 'bigroom-4');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 15, generateBigroom, 'bigroom');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 16, generateBigroom2, 'bigroom-2');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 20, generateMedusa, 'medusa');

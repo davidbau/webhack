@@ -231,15 +231,64 @@ export class LevelMap {
                 const cell = this.cells[y][x];
                 if (!cell.explored || !cell.walkable) continue;
                 // Check for adjacent walls that might hide secret passages
-                // Search up to 20 times per location (1/7 chance each = ~95% after 20 tries)
-                if (this._hasAdjacentWall(x, y) && cell.searched < 20) {
-                    candidates.push({ x, y, searched: cell.searched });
+                // Search up to 30 times per location (1/7 chance each = ~99.5% after 30 tries)
+                if (this._hasAdjacentWall(x, y) && cell.searched < 30) {
+                    // Calculate priority for likely secret door locations
+                    let priority = 0;
+
+                    // Higher priority for dead-ends (likely secret door locations)
+                    const walkableNeighbors = this._countWalkableNeighbors(x, y);
+                    if (walkableNeighbors <= 2) priority += 10;
+
+                    // Higher priority for corners
+                    if (this._isCornerLocation(x, y)) priority += 5;
+
+                    candidates.push({ x, y, searched: cell.searched, priority });
                 }
             }
         }
-        // Sort by least-searched first
-        candidates.sort((a, b) => a.searched - b.searched);
+        // Sort by: priority desc (high priority first), then searched asc (least searched first)
+        candidates.sort((a, b) => {
+            if (a.priority !== b.priority) return b.priority - a.priority;
+            return a.searched - b.searched;
+        });
         return candidates;
+    }
+
+    /**
+     * Count walkable neighbors for dead-end detection.
+     */
+    _countWalkableNeighbors(x, y) {
+        let count = 0;
+        for (const [dx, dy] of DIRS) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
+            const neighbor = this.cells[ny][nx];
+            if (neighbor.explored && neighbor.walkable) count++;
+        }
+        return count;
+    }
+
+    /**
+     * Check if this is a corner location (higher probability of secret doors).
+     */
+    _isCornerLocation(x, y) {
+        // Check if we're at a corner (walkable in L-shape)
+        const n = this.cells[y - 1]?.[x];
+        const s = this.cells[y + 1]?.[x];
+        const e = this.cells[y]?.[x + 1];
+        const w = this.cells[y]?.[x - 1];
+
+        const nWalk = n?.explored && n?.walkable;
+        const sWalk = s?.explored && s?.walkable;
+        const eWalk = e?.explored && e?.walkable;
+        const wWalk = w?.explored && w?.walkable;
+
+        // L-shape patterns indicate corners
+        return (nWalk && eWalk && !sWalk && !wWalk) ||
+               (nWalk && wWalk && !sWalk && !eWalk) ||
+               (sWalk && eWalk && !nWalk && !wWalk) ||
+               (sWalk && wWalk && !nWalk && !eWalk);
     }
 
     _hasWalkableNeighbor(x, y) {
