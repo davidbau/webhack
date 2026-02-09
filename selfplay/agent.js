@@ -748,42 +748,7 @@ export class Agent {
             return { type: 'random_move', key: randomDir, reason: 'stuck, trying random direction' };
         }
 
-        // 8. Exhaustive exploration: if stairs not found after many turns, be aggressive
-        // This runs even when not stuck, to ensure we find stairs
-        if (this.turnNumber > 150 && level.stairsDown.length === 0) {
-            const frontier = level.getExplorationFrontier();
-
-            // Try ALL frontier cells with allowUnexplored
-            if (frontier.length > 0) {
-                for (const target of frontier) {
-                    const tKey = target.y * 80 + target.x;
-                    if (this.failedTargets.has(tKey)) continue;
-
-                    const path = findPath(level, px, py, target.x, target.y, { allowUnexplored: true });
-                    if (path.found) {
-                        return this._followPath(path, 'explore', `exhaustive search for stairs (turn ${this.turnNumber})`);
-                    }
-                }
-            }
-
-            // If frontier empty, search walls for secret doors
-            if (frontier.length === 0) {
-                const dirs = [
-                    { dx: 0, dy: -1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: 1 },
-                ];
-
-                for (const dir of dirs) {
-                    const nx = px + dir.dx, ny = py + dir.dy;
-                    const cell = level.at(nx, ny);
-                    if (cell && cell.type === 'wall' && cell.searched < 10) {
-                        if (currentCell) currentCell.searched++;
-                        return { type: 'search', key: 's', reason: `searching for secret doors (no stairs after ${this.turnNumber} turns)` };
-                    }
-                }
-            }
-        }
-
-        // 9. Explore: move toward nearest unexplored area
+        // 8. Explore: move toward nearest unexplored area
         //    Use path commitment: stick with a target until we reach it or can't progress
         const exploreAction = this._commitToExploration(level, px, py);
         if (exploreAction) return exploreAction;
