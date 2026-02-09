@@ -325,9 +325,11 @@ export class Agent {
         }
 
         // 2. If hungry and have food, eat
-        if (this.status && this.status.needsFood) {
-            return { type: 'eat', key: 'e', reason: 'need food' };
-        }
+        // TODO: Check inventory for food items before trying to eat
+        // For now, skip eating to avoid infinite loop when no food available
+        // if (this.status && this.status.needsFood) {
+        //     return { type: 'eat', key: 'e', reason: 'need food' };
+        // }
 
         // --- Tactical checks ---
 
