@@ -12,7 +12,11 @@ import { FOOD_CLASS, BOULDER, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS } from './obje
 import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT,
          POISON, UNDEF, TABU } from './dog.js';
 import { couldsee, m_cansee, do_clear_area } from './vision.js';
-import { PM_GRID_BUG } from './monsters.js';
+import { PM_GRID_BUG, PM_IRON_GOLEM, mons,
+         M1_FLY, M1_AMORPHOUS, M1_CLING, MZ_SMALL, MR_FIRE, MR_SLEEP } from './monsters.js';
+import { STATUE_TRAP, MAGIC_TRAP, VIBRATING_SQUARE, RUST_TRAP, FIRE_TRAP,
+         SLP_GAS_TRAP, BEAR_TRAP, PIT, SPIKED_PIT, HOLE, TRAPDOOR,
+         WEB, ANTI_MAGIC } from './symbols.js';
 
 const MTSZ = 4;           // C ref: monst.h — track history size
 const SQSRCHRADIUS = 5;   // C ref: dogmove.c — object search radius
@@ -124,6 +128,46 @@ function mfndpos(mon, map, player) {
         }
     }
     return positions;
+}
+
+// ========================================================================
+// Trap harmlessness check — C ref: trap.c m_harmless_trap()
+// ========================================================================
+// Returns true if the trap is harmless to this monster (no avoidance needed).
+function m_harmless_trap(mon, trap) {
+    const mdat = mons[mon.mndx] || {};
+    const flags1 = mdat.flags1 || 0;
+    const mr1 = mdat.mr1 || 0;
+    const msize = mdat.size || 0;
+
+    // C ref: floor_trigger + check_in_air — flyers avoid floor traps
+    const isFloor = trap.ttyp >= 1 && trap.ttyp <= TRAPDOOR; // ARROW..TRAPDOOR
+    if (isFloor && (flags1 & M1_FLY)) return true;
+
+    switch (trap.ttyp) {
+    case STATUE_TRAP:
+    case MAGIC_TRAP:
+    case VIBRATING_SQUARE:
+        return true;
+    case RUST_TRAP:
+        // Only harmful to iron golems
+        return mon.mndx !== PM_IRON_GOLEM;
+    case FIRE_TRAP:
+        return !!(mr1 & MR_FIRE);
+    case SLP_GAS_TRAP:
+        return !!(mr1 & MR_SLEEP);
+    case BEAR_TRAP:
+        return msize <= MZ_SMALL || !!(flags1 & M1_AMORPHOUS);
+    case PIT: case SPIKED_PIT: case HOLE: case TRAPDOOR:
+        return !!(flags1 & M1_CLING);
+    case WEB:
+        return !!(flags1 & M1_AMORPHOUS);
+    case ANTI_MAGIC:
+        // Simplified: no resists_magm check yet
+        return false;
+    default:
+        return false;
+    }
 }
 
 // ========================================================================
@@ -558,15 +602,12 @@ function dog_move(mon, map, player, display, fov) {
     for (let i = 0; i < cnt; i++) {
         const nx = positions[i].x, ny = positions[i].y;
 
-        // C ref: dogmove.c:1182-1203 — pet avoids seen traps
-        // ALLOW_TRAPS is always set for tame monsters (pets)
+        // Trap avoidance — C ref: dogmove.c:1182-1204
+        // Pets avoid harmful seen traps with 39/40 probability
         const trap = map.trapAt(nx, ny);
-        if (trap) {
-            if (mon.mleashed) {
-                // whimper — no RNG
-            } else if (trap.tseen) {
-                // C ref: dogmove.c:1200 — 1/40 chance of stepping on trap anyway
-                if (rn2(40))
+        if (trap && !m_harmless_trap(mon, trap)) {
+            if (!mon.mleashed) {
+                if (trap.tseen && rn2(40))
                     continue;
             }
         }
