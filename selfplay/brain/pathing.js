@@ -284,13 +284,14 @@ export function findExplorationTarget(levelMap, sx, sy, recentTargets = null) {
 
     // Sort by priority:
     // 1. Strongly prefer non-recently-visited
-    // 2. Prefer cells not immediately adjacent to player (avoids oscillation)
-    // 3. Prefer less-searched cells (more likely to lead somewhere)
-    // 4. Among remaining, prefer nearest by BFS distance
+    // 2. Prefer less-searched cells (more likely to lead somewhere)
+    // 3. Among remaining, prefer nearest by BFS distance
+    //
+    // Note: we do NOT penalize adjacent cells. In corridors, the next
+    // frontier cell IS adjacent and we want to keep moving forward.
+    // Path commitment handles oscillation instead.
     candidates.sort((a, b) => {
         if (a.isRecent !== b.isRecent) return a.isRecent ? 1 : -1;
-        if (a.chebyshev <= 1 && b.chebyshev > 1) return 1;
-        if (b.chebyshev <= 1 && a.chebyshev > 1) return -1;
         // Strongly prefer unsearched over heavily-searched
         if (a.searched >= 3 && b.searched < 3) return 1;
         if (b.searched >= 3 && a.searched < 3) return -1;

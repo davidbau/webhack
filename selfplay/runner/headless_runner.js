@@ -28,7 +28,7 @@ import {
     STAIRS, FOUNTAIN, THRONE, SINK, GRAVE, ALTAR, POOL, MOAT,
     WATER, LAVAPOOL, LAVAWALL, ICE, IRONBARS, TREE,
     DRAWBRIDGE_UP, DRAWBRIDGE_DOWN, AIR, CLOUD, SDOOR, SCORR,
-    D_NODOOR, D_CLOSED, D_ISOPEN, D_LOCKED,
+    D_NODOOR, D_CLOSED, D_ISOPEN, D_LOCKED, ACCESSIBLE, MAXLEVEL,
 } from '../../js/config.js';
 
 // Terrain symbol mapping (matches display.js)
@@ -109,6 +109,59 @@ class HeadlessGame {
 
         // Render initial state
         this._renderAll();
+    }
+
+    /**
+     * Change to a different dungeon level. Mirrors NetHackGame.changeLevel().
+     */
+    changeLevel(depth) {
+        // Cache current level
+        if (this.map) {
+            this.levels[this.player.dungeonLevel] = this.map;
+        }
+
+        // Check cache or generate
+        if (this.levels[depth]) {
+            this.map = this.levels[depth];
+        } else {
+            this.map = makelevel(depth);
+            wallification(this.map);
+            this.levels[depth] = this.map;
+        }
+
+        this.player.dungeonLevel = depth;
+        this._placePlayerOnLevel();
+        this._renderAll();
+    }
+
+    /**
+     * Place the player on the current level at the appropriate staircase.
+     */
+    _placePlayerOnLevel() {
+        const hasUpstair = this.map.upstair && this.map.upstair.x > 0 && this.map.upstair.y > 0;
+        if (hasUpstair && this.player.dungeonLevel > 1) {
+            this.player.x = this.map.upstair.x;
+            this.player.y = this.map.upstair.y;
+            return;
+        }
+        // Find a room
+        if (this.map.rooms && this.map.rooms.length > 0) {
+            const room = this.map.rooms[0];
+            this.player.x = Math.floor((room.lx + room.hx) / 2);
+            this.player.y = Math.floor((room.ly + room.hy) / 2);
+            return;
+        }
+        // Fallback: any accessible square
+        for (let x = 1; x < COLNO - 1; x++) {
+            for (let y = 1; y < ROWNO - 1; y++) {
+                const loc = this.map.at(x, y);
+                if (loc && ACCESSIBLE(loc.typ)) {
+                    this.player.x = x;
+                    this.player.y = y;
+                    return;
+                }
+            }
+        }
     }
 
     _renderAll() {
@@ -299,14 +352,22 @@ export async function runHeadless(options = {}) {
     const agent = new Agent(adapter, {
         maxTurns,
         onTurn: verbose ? (info) => {
-            if (info.turn % 100 === 0 || info.turn <= 20) {
-                const act = info.action;
-                const actionStr = act ? `${act.type}(${act.key}): ${act.reason}` : '?';
+            const act = info.action;
+            const actionStr = act ? `${act.type}(${act.key}): ${act.reason}` : '?';
+            if (info.turn <= 50 || info.turn % 50 === 0 || info.turn % 100 === 0) {
                 console.log(`  Turn ${info.turn}: HP=${info.hp}/${info.hpmax} Dlvl=${info.dlvl} pos=(${info.position?.x},${info.position?.y}) ${actionStr}`);
             }
         } : null,
     });
 
+    // Dump the agent's known map at specific turns for debugging
+    const origOnTurn = agent.onTurn;
+    agent.onTurn = (info) => {
+        if (origOnTurn) origOnTurn(info);
+        if (info.turn === 50 || info.turn === 200) {
+            dumpAgentMap(agent, info.turn);
+        }
+    };
     const stats = await agent.run();
 
     if (verbose) {
@@ -344,4 +405,51 @@ if (process.argv[1] && process.argv[1].endsWith('headless_runner.js')) {
         console.error('Error:', err);
         process.exit(1);
     });
+}
+
+/**
+ * Dump the agent's known map for debugging.
+ * Shows explored cells, frontier cells, and the player position.
+ */
+function dumpAgentMap(agent, turn) {
+    const level = agent.dungeon.currentLevel;
+    const px = agent.screen?.playerX ?? -1;
+    const py = agent.screen?.playerY ?? -1;
+    console.log(`\n=== Agent Map at Turn ${turn} (Dlvl ${agent.dungeon.currentDepth}) ===`);
+    // Find bounding box of explored area
+    let minX = 80, maxX = 0, minY = 21, maxY = 0;
+    for (let y = 0; y < 21; y++) {
+        for (let x = 0; x < 80; x++) {
+            if (level.at(x, y).explored) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+    }
+    // Add margin
+    minX = Math.max(0, minX - 2);
+    maxX = Math.min(79, maxX + 2);
+    minY = Math.max(0, minY - 2);
+    maxY = Math.min(20, maxY + 2);
+    for (let y = minY; y <= maxY; y++) {
+        let row = '';
+        for (let x = minX; x <= maxX; x++) {
+            if (x === px && y === py) { row += '@'; continue; }
+            const cell = level.at(x, y);
+            if (!cell.explored) { row += ' '; continue; }
+            row += cell.ch === ' ' ? '.' : cell.ch;  // show stone-marked cells as '.'
+        }
+        console.log(`  ${String(y).padStart(2)}| ${row}`);
+    }
+    // Show stairs and features
+    console.log(`  Stairs up: ${JSON.stringify(level.stairsUp)}`);
+    console.log(`  Stairs down: ${JSON.stringify(level.stairsDown)}`);
+    console.log(`  Frontier cells: ${level.getExplorationFrontier().length}`);
+    console.log(`  Explored cells: ${level.exploredCount}`);
+    if (agent.committedTarget) {
+        console.log(`  Committed target: (${agent.committedTarget.x}, ${agent.committedTarget.y})`);
+    }
+    console.log('');
 }

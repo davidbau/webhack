@@ -44,7 +44,8 @@ export class Agent {
         this.turnNumber = 0;
         this.lastAction = '';
         this.consecutiveWaits = 0;
-        this.stuckCounter = 0;      // detect when agent is stuck
+        this.stuckCounter = 0;      // detect when agent is stuck (resets on real progress)
+        this.levelStuckCounter = 0; // total stuck turns on this level (never resets)
         this.lastPosition = null;
         this.searchesAtPosition = 0; // how many times we've searched at current pos
         this.currentPath = null;     // current navigation path
@@ -55,6 +56,9 @@ export class Agent {
         this.lastAttemptedAttackPos = null; // position of last attempted attack target
         this.knownPetChars = new Set(); // monster chars confirmed as pets via displacement
         this.pendingDoorDir = null; // direction key for "In what direction?" prompt after 'o'
+        this.committedTarget = null; // {x, y} of committed exploration target
+        this.committedPath = null; // PathResult we're currently following
+        this.targetStuckCount = 0; // how many turns we've been stuck on committed path
 
         // Statistics
         this.stats = {
@@ -88,7 +92,8 @@ export class Agent {
             }
 
             // Handle UI states first (prompts, menus, --More--)
-            if (await this._handleUIState()) {
+            const uiHandled = await this._handleUIState();
+            if (uiHandled) {
                 continue; // UI interaction consumed a turn's worth of input
             }
 
@@ -109,7 +114,15 @@ export class Agent {
             this.turnNumber++;
             this.stats.turns = this.turnNumber;
             if (this.status) {
-                this.stats.maxDepth = Math.max(this.stats.maxDepth, this.status.dungeonLevel);
+                const newDepth = this.status.dungeonLevel;
+                if (newDepth > this.stats.maxDepth) {
+                    this.stats.maxDepth = newDepth;
+                    // Reset level stuck counter on level change
+                    this.levelStuckCounter = 0;
+                    this.stuckCounter = 0;
+                    this.committedTarget = null;
+                    this.committedPath = null;
+                }
             }
 
             // Callback
@@ -159,25 +172,20 @@ export class Agent {
             return true;
         }
 
-        // Handle "This door is closed" message by auto-opening the door
-        if (this.screen.message.includes('door is closed')) {
-            const adjDoor = this._findAdjacentDoor(this.screen.playerX, this.screen.playerY);
-            if (adjDoor) {
-                await this.adapter.sendKey('o');
-                await this.adapter.sendKey(adjDoor.key);
-                return true;
-            }
-        }
-
-        // Handle locked doors by trying to kick them
+        // Handle door messages: just bump the door again.
+        // JS port auto-opens closed doors on bump; locked doors we avoid.
+        // (Multi-key commands like 'o' and Ctrl-D hang the headless adapter
+        //  because rhack internally calls nhgetch() for direction.)
         if (this.screen.message.includes('This door is locked')) {
-            // For now, just kick it
+            // Mark the locked door position so pathfinding avoids it
             const adjDoor = this._findAdjacentDoor(this.screen.playerX, this.screen.playerY);
             if (adjDoor) {
-                await this.adapter.sendKey('\x04'); // Ctrl-D for kick
-                await this.adapter.sendKey(adjDoor.key);
-                return true;
+                const cell = this.dungeon.currentLevel.at(adjDoor.x, adjDoor.y);
+                if (cell) {
+                    cell.walkable = false; // treat as impassable
+                }
             }
+            return false; // let _decide pick a new path
         }
 
         return false;
@@ -259,11 +267,13 @@ export class Agent {
         // Track if we're stuck (same position OR oscillating between nearby positions)
         if (this.lastPosition && this.lastPosition.x === px && this.lastPosition.y === py) {
             this.stuckCounter++;
+            this.levelStuckCounter++;
         } else {
-            // Detect oscillation: if we've been in this position in the last 4 turns
+            // Detect oscillation: if we've been in this position in the last 6 turns
             const recentCount = this.recentPositionsList.slice(-6).filter(k => k === posKey).length;
             if (recentCount >= 2) {
                 this.stuckCounter++;
+                this.levelStuckCounter++;
             } else {
                 this.stuckCounter = 0;
                 this.searchesAtPosition = 0;
@@ -310,17 +320,29 @@ export class Agent {
 
         // --- Strategic movement ---
 
-        // 6. If on downstairs, descend (especially if level is mostly explored)
-        if (currentCell && currentCell.type === 'stairs_down') {
-            const frontier = level.getExplorationFrontier();
-            // Descend if: fully explored, or mostly explored, or stuck
-            if (frontier.length < 10 || this.stuckCounter > 5) {
-                return { type: 'descend', key: '>', reason: 'descending stairs' };
+        // 5. If on downstairs, descend
+        //    Check both cell type and registered features (player '@' overrides '>' on screen)
+        const onDownstairs = (currentCell && currentCell.type === 'stairs_down') ||
+            level.stairsDown.some(s => s.x === px && s.y === py);
+        if (onDownstairs) {
+            return { type: 'descend', key: '>', reason: 'descending stairs' };
+        }
+
+        // 6. If we've spent too long stuck on this level, head for stairs
+        if (this.levelStuckCounter > 20 && level.stairsDown.length > 0) {
+            const stairs = level.stairsDown[0];
+            const path = findPath(level, px, py, stairs.x, stairs.y);
+            if (path.found) {
+                return this._followPath(path, 'navigate', `heading to downstairs (level stuck ${this.levelStuckCounter}) at (${stairs.x},${stairs.y})`);
             }
         }
 
         // 7. If oscillating / stuck, try different strategies
         if (this.stuckCounter > 3) {
+            // Abandon committed path since we're stuck
+            this.committedTarget = null;
+            this.committedPath = null;
+
             // Try searching briefly for secret doors
             if (this.searchesAtPosition < 3) {
                 this.searchesAtPosition++;
@@ -339,8 +361,6 @@ export class Agent {
                 const stairs = level.stairsDown[0];
                 const path = findPath(level, px, py, stairs.x, stairs.y);
                 if (path.found) {
-                    this.stuckCounter = 0;
-                    this.searchesAtPosition = 0;
                     return this._followPath(path, 'navigate', `heading to downstairs (stuck) at (${stairs.x},${stairs.y})`);
                 }
             }
@@ -348,12 +368,9 @@ export class Agent {
             // Force explore with allowUnexplored to reach frontier through unexplored territory
             const frontier = level.getExplorationFrontier();
             if (frontier.length > 0) {
-                // Pick the nearest frontier cell that we can actually path to
                 for (const target of frontier.slice(0, 10)) {
                     const path = findPath(level, px, py, target.x, target.y, { allowUnexplored: true });
                     if (path.found) {
-                        this.stuckCounter = 0;
-                        this.searchesAtPosition = 0;
                         return this._followPath(path, 'explore', `force-exploring toward (${target.x},${target.y})`);
                     }
                 }
@@ -366,12 +383,9 @@ export class Agent {
         }
 
         // 8. Explore: move toward nearest unexplored area
-        const explorationPath = findExplorationTarget(level, px, py, this.recentPositions);
-        if (explorationPath && explorationPath.found) {
-            this.currentPath = explorationPath;
-            this.consecutiveWaits = 0;
-            return this._followPath(explorationPath, 'explore', `exploring toward (${explorationPath.nextPos.x},${explorationPath.nextPos.y})`);
-        }
+        //    Use path commitment: stick with a target until we reach it or can't progress
+        const exploreAction = this._commitToExploration(level, px, py);
+        if (exploreAction) return exploreAction;
 
         // 9. No unexplored areas -- head for downstairs
         if (level.stairsDown.length > 0) {
@@ -402,12 +416,6 @@ export class Agent {
     async _act(action) {
         this.lastAction = action.type;
         await this.adapter.sendKey(action.key);
-
-        // For door open, also send the direction immediately
-        if (action.type === 'open_door' && this.pendingDoorDir) {
-            await this.adapter.sendKey(this.pendingDoorDir);
-            this.pendingDoorDir = null;
-        }
     }
 
     /**
@@ -497,22 +505,80 @@ export class Agent {
     }
 
     /**
-     * Follow a path, handling closed doors along the way.
-     * If the next cell is a closed door, open it instead of moving.
+     * Follow a path, returning the next action.
+     * Just walk toward the next cell — the JS port auto-opens closed doors,
+     * and the C binary's "This door is closed" is handled by _handleUIState.
      */
     _followPath(path, actionType, reason) {
-        if (!path || !path.nextPos) {
-            return { type: actionType, key: path.firstKey, reason };
-        }
-
-        const nextCell = this.dungeon.currentLevel.at(path.nextPos.x, path.nextPos.y);
-        if (nextCell && nextCell.type === 'door_closed') {
-            // Open the door instead of walking into it
-            this.pendingDoorDir = path.firstKey;
-            return { type: 'open_door', key: 'o', reason: `opening door at (${path.nextPos.x},${path.nextPos.y})` };
-        }
-
         return { type: actionType, key: path.firstKey, reason };
+    }
+
+    /**
+     * Path commitment for exploration: pick a target and follow it until we
+     * reach it, it becomes invalid, or we're stuck trying to reach it.
+     * This prevents oscillation between nearby frontier cells.
+     */
+    _commitToExploration(level, px, py) {
+        // Check if we've reached our committed target
+        if (this.committedTarget) {
+            const tx = this.committedTarget.x;
+            const ty = this.committedTarget.y;
+            if (px === tx && py === ty) {
+                // Reached it! Clear and find next.
+                this.committedTarget = null;
+                this.committedPath = null;
+                this.targetStuckCount = 0;
+            }
+        }
+
+        // Check if committed target is still a valid frontier cell
+        if (this.committedTarget) {
+            const tx = this.committedTarget.x;
+            const ty = this.committedTarget.y;
+            const targetCell = level.at(tx, ty);
+            // Invalid if: not explored, not walkable, or no longer borders unexplored
+            let stillFrontier = false;
+            if (targetCell && targetCell.explored && targetCell.walkable) {
+                const dirs = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+                for (const [dx, dy] of dirs) {
+                    const nx = tx + dx, ny = ty + dy;
+                    const neighbor = level.at(nx, ny);
+                    if (neighbor && !neighbor.explored) { stillFrontier = true; break; }
+                }
+            }
+            if (!stillFrontier) {
+                this.committedTarget = null;
+                this.committedPath = null;
+                this.targetStuckCount = 0;
+            }
+        }
+
+        // Re-path to committed target
+        if (this.committedTarget) {
+            const path = findPath(level, px, py, this.committedTarget.x, this.committedTarget.y);
+            if (path.found) {
+                this.committedPath = path;
+                this.consecutiveWaits = 0;
+                return this._followPath(path, 'explore', `following path to (${this.committedTarget.x},${this.committedTarget.y})`);
+            }
+            // Can't reach target anymore — abandon it
+            this.committedTarget = null;
+            this.committedPath = null;
+            this.targetStuckCount = 0;
+        }
+
+        // Find a new target: use findExplorationTarget but commit to its destination
+        const explorationPath = findExplorationTarget(level, px, py, this.recentPositions);
+        if (explorationPath && explorationPath.found) {
+            // Commit to the destination (last point on the path)
+            const dest = explorationPath.path[explorationPath.path.length - 1];
+            this.committedTarget = { x: dest.x, y: dest.y };
+            this.committedPath = explorationPath;
+            this.consecutiveWaits = 0;
+            return this._followPath(explorationPath, 'explore', `exploring toward (${dest.x},${dest.y})`);
+        }
+
+        return null;
     }
 
     /**
