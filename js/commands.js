@@ -304,20 +304,21 @@ function handleMovement(dir, player, map, display, game) {
         return { moved: false, tookTime: false };
     }
 
-    // Handle closed doors — attempt to open by walking into them
-    // C ref: hack.c domove() → lock.c doopen_indir()
+    // Handle closed doors — auto-open per C ref: hack.c:1077-1090 + lock.c:904
+    // In C, doopen_indir is called within domove_core. After it, context.move
+    // remains false (player didn't move), so monsters don't get a turn.
+    // The RNG calls (rnl + exercise) happen but no per-turn processing runs.
     if (IS_DOOR(loc.typ) && (loc.flags & D_CLOSED)) {
         const str = player.attributes ? player.attributes[A_STR] : 18;
         const dex = player.attributes ? player.attributes[A_DEX] : 11;
         const con = player.attributes ? player.attributes[A_CON] : 18;
-        if (rnl(20) < Math.floor((str + dex + con) / 3)) {
-            // Success — door opens
+        const threshold = Math.floor((str + dex + con) / 3);
+        if (rnl(20) < threshold) {
             loc.flags = (loc.flags & ~D_CLOSED) | D_ISOPEN;
             display.putstr_message("The door opens.");
         } else {
-            // Failed — exercise strength
+            rn2(19); // exercise(A_STR, TRUE) — C ref: attrib.c:506
             display.putstr_message("The door resists!");
-            rn2(19); // exercise(A_STR, TRUE)
         }
         return { moved: false, tookTime: false };
     }
@@ -336,28 +337,11 @@ function handleMovement(dir, player, map, display, game) {
     player.y = ny;
     player.moved = true;
 
-    // Auto-pickup gold
+    // Show what's here (no auto-pickup; C NetHack 3.7 requires explicit pickup)
     const objs = map.objectsAt(nx, ny);
-    const gold = objs.find(o => o.oclass === 11); // COIN_CLASS
-    if (gold) {
-        player.gold += gold.quantity;
-        display.putstr_message(`${gold.quantity} gold piece${gold.quantity > 1 ? 's' : ''}.`);
-        map.removeObject(gold);
-    }
-
-    // Autopickup non-gold items if option is on
-    const remaining = map.objectsAt(nx, ny);
-    if (game.flags.pickup && remaining.length > 0) {
-        const item = remaining.find(o => o.oc_class !== 10);
-        if (item) {
-            player.addToInventory(item);
-            map.removeObject(item);
-            display.putstr_message(`${item.invlet} - ${item.name}.`);
-        }
-    } else if (remaining.length > 0) {
-        // Show what's here
-        if (remaining.length === 1) {
-            display.putstr_message(`You see here ${remaining[0].name}.`);
+    if (objs.length > 0) {
+        if (objs.length === 1) {
+            display.putstr_message(`You see here ${objs[0].name}.`);
         } else {
             display.putstr_message(`You see here several objects.`);
         }

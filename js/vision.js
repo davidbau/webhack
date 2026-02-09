@@ -597,3 +597,45 @@ export function couldsee(map, player, x, y) {
     if (viz_clear) return !!clear_path(player.x, player.y, x, y);
     return clear_path_map(map, player.x, player.y, x, y);
 }
+
+// C ref: vision.c:2095-2137 — do_clear_area
+// Compute LOS from (scol, srow) and call func(x, y, arg) for each visible
+// position within range. Used by dog_goal's wantdoor search.
+export function do_clear_area(fov, map, scol, srow, range, func, arg) {
+    // Ensure viz_clear tables are available (lazy init from map if needed)
+    if (!fov.viz_clear && map) fov.visionReset(map);
+    if (!fov.viz_clear) return;
+
+    // Set module-level table references for view_from
+    viz_clear = fov.viz_clear;
+    right_ptrs_arr = fov.right_ptrs;
+    left_ptrs_arr = fov.left_ptrs;
+
+    // Allocate temp arrays for view_from (separate from hero's _cs)
+    const tmpCs = [];
+    const tmpLeft = new Int16Array(ROWNO).fill(COLNO);
+    const tmpRight = new Int16Array(ROWNO).fill(0);
+    for (let y = 0; y < ROWNO; y++) tmpCs[y] = new Uint8Array(COLNO);
+
+    // Run Algorithm C from center position
+    view_from(srow, scol, tmpCs, tmpLeft, tmpRight);
+
+    // C ref: vision.c circle_data[45..54] — horizontal limits for range 9
+    const circle_9 = [9, 9, 9, 9, 8, 8, 7, 6, 5, 3];
+
+    const ymin = Math.max(0, srow - range);
+    const ymax = Math.min(ROWNO - 1, srow + range);
+    for (let y = ymin; y <= ymax; y++) {
+        if (tmpLeft[y] <= tmpRight[y]) {
+            const offset = Math.abs(srow - y);
+            const xlim = circle_9[offset] || 0;
+            const xmin = Math.max(1, Math.max(scol - xlim, tmpLeft[y]));
+            const xmax = Math.min(COLNO - 1, Math.min(scol + xlim, tmpRight[y]));
+            for (let x = xmin; x <= xmax; x++) {
+                if (tmpCs[y][x] & COULD_SEE) {
+                    func(x, y, arg);
+                }
+            }
+        }
+    }
+}

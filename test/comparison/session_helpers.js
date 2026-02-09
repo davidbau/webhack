@@ -407,6 +407,7 @@ class HeadlessGame {
 // Replay a gameplay session and return per-step RNG results.
 // Returns { startup: { rngCalls, rng }, steps: [{ rngCalls, rng }] }
 export async function replaySession(seed, session) {
+    initrack(); // clear hero track buffer between sessions
     enableRngLog();
     initRng(seed);
     const replayRoleIndex = ROLE_INDEX[session.character?.role] ?? 11;
@@ -488,6 +489,7 @@ export async function replaySession(seed, session) {
 
         // If the command took time, run monster movement and turn effects
         if (result && result.tookTime) {
+            settrack(game.player); // C ref: allmain.c — record hero position before movemon
             movemon(game.map, game.player, game.display, game.fov);
             game.simulateTurnEnd();
         }

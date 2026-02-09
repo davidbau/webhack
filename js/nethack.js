@@ -16,7 +16,7 @@ import { Player, roles, races, validRacesForRole, validAlignsForRoleRace,
 import { GameMap } from './map.js';
 import { initLevelGeneration, makelevel, wallification } from './dungeon.js';
 import { rhack } from './commands.js';
-import { movemon } from './monmove.js';
+import { movemon, settrack } from './monmove.js';
 import { simulatePostLevelInit } from './u_init.js';
 import { loadSave, deleteSave, hasSave, saveGame,
          loadFlags, deserializeRng,
@@ -1066,6 +1066,9 @@ class NetHackGame {
             // If time passed, process turn effects
             // C ref: allmain.c moveloop_core() -- context.move handling
             if (result.tookTime) {
+                // C ref: allmain.c moveloop_core() -> settrack() before movemon
+                settrack(this.player);
+
                 // Move monsters
                 // C ref: allmain.c moveloop_core() -> movemon()
                 movemon(this.map, this.player, this.display, this.fov);

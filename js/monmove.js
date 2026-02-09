@@ -11,11 +11,12 @@ import { monsterAttackPlayer } from './combat.js';
 import { FOOD_CLASS, BOULDER, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS } from './objects.js';
 import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT,
          POISON, UNDEF, TABU } from './dog.js';
-import { couldsee, m_cansee } from './vision.js';
+import { couldsee, m_cansee, do_clear_area } from './vision.js';
 import { PM_GRID_BUG } from './monsters.js';
 
 const MTSZ = 4;           // C ref: monst.h — track history size
 const SQSRCHRADIUS = 5;   // C ref: dogmove.c — object search radius
+const FARAWAY = 127;      // C ref: hack.h — large distance sentinel
 
 // ========================================================================
 // Player track — C ref: track.c
@@ -74,6 +75,8 @@ function dist2(x1, y1, x2, y2) {
 function mfndpos(mon, map, player) {
     const omx = mon.mx, omy = mon.my;
     const nodiag = (mon.mndx === PM_GRID_BUG);
+    // C ref: mon.c:2061-2062 — tame monsters get ALLOW_M | ALLOW_TRAPS
+    const allowM = !!mon.tame;
     const positions = [];
     const maxx = Math.min(omx + 1, COLNO - 1);
     const maxy = Math.min(omy + 1, ROWNO - 1);
@@ -100,8 +103,8 @@ function mfndpos(mon, map, player) {
                     continue;
             }
 
-            // C ref: MON_AT — skip positions with other monsters
-            if (map.monsterAt(nx, ny)) continue;
+            // C ref: MON_AT — skip positions with other monsters (unless ALLOW_M)
+            if (map.monsterAt(nx, ny) && !allowM) continue;
 
             // C ref: u_at — skip player position
             if (nx === player.x && ny === player.y) continue;
@@ -185,6 +188,77 @@ function can_reach_location(map, mon, mx, my, fx, fy) {
         }
     }
     return false;
+}
+
+// ========================================================================
+// dog_invent — pet inventory management (pickup/drop at current position)
+// C ref: dogmove.c:392-471
+// Returns: 0 (no action), 1 (ate something), 2 (died)
+// ========================================================================
+function dog_invent(mon, edog, udist, map, turnCount) {
+    if (mon.meating) return 0;
+    const omx = mon.mx, omy = mon.my;
+
+    // C ref: droppables(mtmp) — check if pet has non-cursed inventory
+    const hasDrop = mon.minvent && mon.minvent.some(o => !o.cursed);
+
+    if (hasDrop) {
+        // C ref: dogmove.c:411-421 — drop path
+        if (!rn2(udist + 1) || !rn2(edog.apport)) {
+            if (rn2(10) < edog.apport) {
+                // relobj: drop all non-cursed inventory items
+                const keep = [];
+                for (const o of mon.minvent) {
+                    if (!o.cursed) {
+                        o.ox = omx; o.oy = omy;
+                        map.objects.push(o);
+                    } else {
+                        keep.push(o);
+                    }
+                }
+                mon.minvent = keep;
+                if (edog.apport > 1) edog.apport--;
+                edog.dropdist = udist;
+                edog.droptime = turnCount;
+            }
+        }
+    } else {
+        // C ref: dogmove.c:423-470 — pickup/eat path
+        // Find the top object at pet's position (last in array = top of C's chain)
+        let obj = null;
+        for (let i = map.objects.length - 1; i >= 0; i--) {
+            if (map.objects[i].ox === omx && map.objects[i].oy === omy) {
+                obj = map.objects[i]; break;
+            }
+        }
+
+        if (obj) {
+            const edible = dogfood(mon, obj, turnCount);
+
+            // C ref: dogmove.c:436-438 — eat if edible enough
+            if ((edible <= CADAVER
+                || (edog.mhpmax_penalty && edible === ACCFOOD))
+                && could_reach_item(map, mon, obj.ox, obj.oy)) {
+                dog_eat(mon, obj, map, turnCount);
+                return 1;
+            }
+
+            // C ref: dogmove.c:440-467 — carry check
+            const carryamt = can_carry(mon, obj);
+            if (carryamt > 0 && !obj.cursed
+                && could_reach_item(map, mon, obj.ox, obj.oy)) {
+                if (rn2(20) < edog.apport + 3) {
+                    if (rn2(udist) || !rn2(edog.apport)) {
+                        // Pick up the object
+                        map.removeObject(obj);
+                        if (!mon.minvent) mon.minvent = [];
+                        mon.minvent.push(obj);
+                    }
+                }
+            }
+        }
+    }
+    return 0;
 }
 
 // ========================================================================
@@ -303,66 +377,15 @@ function dog_move(mon, map, player, display, fov) {
     // JS player.turns is incremented after movemon(), so add 1 to match C.
     const turnCount = (player.turns || 0) + 1;
 
+    // C ref: dogmove.c:1024-1029 — dog_invent before dog_goal
+    if (edog) {
+        const invResult = dog_invent(mon, edog, udist, map, turnCount);
+        if (invResult === 1) return 1; // ate something — done
+        if (invResult === 2) return 0; // died
+    }
+
     // C ref: dogmove.c — whappr = (monstermoves - edog->whistletime < 5)
     const whappr = (turnCount - edog.whistletime) < 5 ? 1 : 0;
-
-    // C ref: dogmove.c:1034-1039 — dog_invent (handle eating/pickup at current position)
-    const nofetchClasses = new Set([BALL_CLASS, CHAIN_CLASS, ROCK_CLASS]);
-    if (edog && !mon.meating) {
-        // C ref: dogmove.c:413 — droppables check
-        const hasDroppables = mon.minvent && mon.minvent.length > 0;
-        if (hasDroppables) {
-            // C ref: dogmove.c:415-422 — maybe drop carried item
-            if (!rn2(udist + 1) || !rn2(edog.apport)) {
-                if (rn2(10) < edog.apport) {
-                    // Drop item (simplified: remove from inventory, place on map)
-                    const dropped = mon.minvent.shift();
-                    if (dropped) {
-                        dropped.ox = omx;
-                        dropped.oy = omy;
-                        map.objects.push(dropped);
-                        if (edog.apport > 1) edog.apport--;
-                        edog.dropdist = udist;
-                        edog.droptime = turnCount;
-                    }
-                }
-            }
-        } else {
-            // C ref: dogmove.c:423-473 — check for object at pet position
-            // Find top object at pet's position (LIFO order like C's level.objects)
-            let floorObj = null;
-            for (let oi = map.objects.length - 1; oi >= 0; oi--) {
-                const obj = map.objects[oi];
-                if (obj.ox === omx && obj.oy === omy) {
-                    floorObj = obj;
-                    break;
-                }
-            }
-            if (floorObj && !nofetchClasses.has(floorObj.oclass)) {
-                const edible = dogfood(mon, floorObj, turnCount);
-                if ((edible <= CADAVER
-                     || (edog.mhpmax_penalty && edible === ACCFOOD))
-                    && could_reach_item(map, mon, omx, omy)) {
-                    // Eat the object
-                    dog_eat(mon, floorObj, map, turnCount);
-                    return; // C ref: goto newdogpos — eating counts as move
-                }
-                const carryamt = can_carry(mon, floorObj);
-                if (carryamt > 0 && !floorObj.cursed
-                    && could_reach_item(map, mon, omx, omy)) {
-                    if (rn2(20) < edog.apport + 3) {
-                        if (rn2(udist) || !rn2(edog.apport)) {
-                            // Pick up object
-                            const idx = map.objects.indexOf(floorObj);
-                            if (idx >= 0) map.objects.splice(idx, 1);
-                            if (!mon.minvent) mon.minvent = [];
-                            mon.minvent.push(floorObj);
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     // dog_goal — scan nearby objects for food/items
     // C ref: dogmove.c dog_goal():500-554
@@ -468,52 +491,38 @@ function dog_move(mon, map, player, display, fov) {
     // C ref: dogmove.c:610-611 — confused pets don't approach or flee
     if (mon.confused) appr = 0;
 
-    // C ref: dogmove.c:614-647 — redirect goal when pet can't see player
-    // If goal is at player position but pet can't see them, use track/ogoal/door
-    const FARAWAY = COLNO + 2;
+    // C ref: dogmove.c:603-637 — redirect goal when pet can't see master
     if (gx === player.x && gy === player.y && !inMastersSight) {
         const cp = gettrack(omx, omy);
         if (cp) {
-            gx = cp.x;
-            gy = cp.y;
-            if (edog) edog.ogoal = { x: 0, y: 0 };
+            gx = cp.x; gy = cp.y;
+            if (edog) edog.ogoal.x = 0;
         } else {
-            // C ref: dogmove.c:625-629 — reuse previous goal
-            if (edog && edog.ogoal && edog.ogoal.x
+            if (edog && edog.ogoal.x
                 && (edog.ogoal.x !== omx || edog.ogoal.y !== omy)) {
-                gx = edog.ogoal.x;
-                gy = edog.ogoal.y;
-                edog.ogoal = { x: 0, y: 0 };
+                gx = edog.ogoal.x; gy = edog.ogoal.y;
+                edog.ogoal.x = 0;
             } else {
-                // C ref: dogmove.c:631-643 — find nearest visible cell to player
-                // C uses do_clear_area(omx, omy, 9, wantdoor, &fardist) which calls
-                // view_from() for non-hero centers — full LOS from pet position.
-                // We approximate with clear_path LOS checks per cell.
-                let bestDist = FARAWAY * FARAWAY;
+                let fardist = FARAWAY * FARAWAY;
                 gx = FARAWAY; gy = FARAWAY;
-                for (let di = -9; di <= 9; di++) {
-                    for (let dj = -9; dj <= 9; dj++) {
-                        const cx = omx + di, cy = omy + dj;
-                        if (!isok(cx, cy)) continue;
-                        // C checks LOS visibility from pet, not just typ
-                        if (!m_cansee(mon, map, cx, cy)) continue;
-                        const ndist = (cx - player.x) ** 2 + (cy - player.y) ** 2;
-                        if (ndist < bestDist) {
-                            gx = cx; gy = cy;
-                            bestDist = ndist;
-                        }
+                // C ref: do_clear_area(omx, omy, 9, wantdoor, &fardist)
+                // wantdoor finds visible-from-pet position closest to player
+                const wdState = { dist: fardist };
+                do_clear_area(fov, map, omx, omy, 9, (x, y, st) => {
+                    const ndist = dist2(x, y, player.x, player.y);
+                    if (st.dist > ndist) {
+                        gx = x; gy = y; st.dist = ndist;
                     }
-                }
+                }, wdState);
                 if (gx === FARAWAY || (gx === omx && gy === omy)) {
-                    gx = player.x;
-                    gy = player.y;
+                    gx = player.x; gy = player.y;
                 } else if (edog) {
-                    edog.ogoal = { x: gx, y: gy };
+                    edog.ogoal.x = gx; edog.ogoal.y = gy;
                 }
             }
         }
     } else if (edog) {
-        edog.ogoal = { x: 0, y: 0 };
+        edog.ogoal.x = 0;
     }
 
     // ========================================================================
