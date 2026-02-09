@@ -503,16 +503,144 @@ function mapchrToTerrain(ch) {
 }
 
 /**
+ * Check if a terrain type is any kind of wall.
+ */
+function isWall(typ) {
+    return typ >= VWALL && typ <= TRWALL;
+}
+
+/**
+ * Directional extension checks for wall types.
+ * These determine which directions a wall type connects to neighboring walls.
+ */
+function extendsNorth(typ) {
+    // Types that have north-going connectivity
+    return typ === VWALL || typ === BLCORNER || typ === BRCORNER ||
+           typ === TUWALL || typ === CROSSWALL || typ === TRWALL || typ === TLWALL;
+}
+
+function extendsSouth(typ) {
+    // Types that have south-going connectivity
+    return typ === VWALL || typ === TLCORNER || typ === TRCORNER ||
+           typ === TDWALL || typ === CROSSWALL || typ === TRWALL || typ === TLWALL;
+}
+
+function extendsEast(typ) {
+    // Types that have east-going connectivity
+    return typ === HWALL || typ === TLCORNER || typ === BLCORNER ||
+           typ === TUWALL || typ === TDWALL || typ === CROSSWALL || typ === TRWALL;
+}
+
+function extendsWest(typ) {
+    // Types that have west-going connectivity
+    return typ === HWALL || typ === TRCORNER || typ === BRCORNER ||
+           typ === TUWALL || typ === TDWALL || typ === CROSSWALL || typ === TLWALL;
+}
+
+/**
  * Apply wall_extends() algorithm to compute correct wall junction types.
  * This implements NetHack's wallification logic for special levels.
+ * C ref: sp_lev.c set_wall_state() and wallification()
+ *
+ * The algorithm checks 4 cardinal neighbors of each wall cell to determine
+ * directional connectivity, then assigns the appropriate junction type.
+ * Must be applied iteratively until wall types stabilize.
  *
  * @param {GameMap} map - The map to wallify
  */
 function wallification(map) {
-    // Import from dungeon.js if available, or implement simplified version
-    // For now, stub - will be implemented when needed
-    // C ref: sp_lev.c finalize_map() calls set_wall_state()
-    console.warn('wallification not yet fully implemented for special levels');
+    const maxIterations = 100;
+    let iteration = 0;
+
+    while (iteration < maxIterations) {
+        let changed = false;
+        iteration++;
+
+        // Create a copy of terrain types to avoid modifying while iterating
+        const newTypes = [];
+        for (let x = 0; x < 80; x++) {
+            newTypes[x] = [];
+            for (let y = 0; y < 21; y++) {
+                newTypes[x][y] = map.locations[x][y].typ;
+            }
+        }
+
+        // Process each cell
+        for (let x = 0; x < 80; x++) {
+            for (let y = 0; y < 21; y++) {
+                const typ = map.locations[x][y].typ;
+                if (!isWall(typ)) {
+                    continue;
+                }
+
+                // Check four neighbors for wall connectivity
+                // North: does the cell to the north extend south?
+                const hasNorth = y > 0 && isWall(map.locations[x][y-1].typ) &&
+                                extendsSouth(map.locations[x][y-1].typ);
+
+                // South: does the cell to the south extend north?
+                const hasSouth = y < 20 && isWall(map.locations[x][y+1].typ) &&
+                                extendsNorth(map.locations[x][y+1].typ);
+
+                // East: does the cell to the east extend west?
+                const hasEast = x < 79 && isWall(map.locations[x+1][y].typ) &&
+                               extendsWest(map.locations[x+1][y].typ);
+
+                // West: does the cell to the west extend east?
+                const hasWest = x > 0 && isWall(map.locations[x-1][y].typ) &&
+                               extendsEast(map.locations[x-1][y].typ);
+
+                // Determine new type based on connectivity
+                let newType;
+                if (hasNorth && hasSouth && hasEast && hasWest) {
+                    newType = CROSSWALL;
+                } else if (hasSouth && hasEast && hasWest && !hasNorth) {
+                    newType = TDWALL;
+                } else if (hasNorth && hasEast && hasWest && !hasSouth) {
+                    newType = TUWALL;
+                } else if (hasNorth && hasSouth && hasEast && !hasWest) {
+                    newType = TRWALL;
+                } else if (hasNorth && hasSouth && hasWest && !hasEast) {
+                    newType = TLWALL;
+                } else if (hasSouth && hasEast && !hasNorth && !hasWest) {
+                    newType = TLCORNER;
+                } else if (hasSouth && hasWest && !hasNorth && !hasEast) {
+                    newType = TRCORNER;
+                } else if (hasNorth && hasEast && !hasSouth && !hasWest) {
+                    newType = BLCORNER;
+                } else if (hasNorth && hasWest && !hasSouth && !hasEast) {
+                    newType = BRCORNER;
+                } else if (hasEast && hasWest) {
+                    newType = HWALL;
+                } else if (hasNorth && hasSouth) {
+                    newType = VWALL;
+                } else {
+                    // Only one direction or none - keep original
+                    newType = typ;
+                }
+
+                newTypes[x][y] = newType;
+                if (newType !== typ) {
+                    changed = true;
+                }
+            }
+        }
+
+        // Apply the new types
+        for (let x = 0; x < 80; x++) {
+            for (let y = 0; y < 21; y++) {
+                map.locations[x][y].typ = newTypes[x][y];
+            }
+        }
+
+        if (!changed) {
+            break; // Converged
+        }
+    }
+
+    if (iteration >= maxIterations) {
+        console.warn('wallification did not converge after', maxIterations, 'iterations');
+    }
 }
 
 /**
@@ -665,11 +793,19 @@ export function exclusion(opts) {
  * Finalize level generation.
  * This should be called after all des.* calls to apply flipping and other
  * post-processing.
- * C ref: sp_lev.c sp_level_loader() calls flip_level_rnd() at the end
+ * C ref: sp_lev.c sp_level_loader() calls wallification(), flip_level_rnd(), solidify_map(), etc.
  */
 export function finalize_level() {
+    // Apply wallification first (before flipping)
+    // C ref: sp_lev.c line 6028 - wallification before flip
+    if (levelState.map) {
+        wallification(levelState.map);
+    }
+
+    // Apply random flipping
     flipLevelRandom();
-    // TODO: Add other finalization steps (solidify, premapping, etc.)
+
+    // TODO: Add other finalization steps (solidify_map, premapping, etc.)
 }
 
 /**
