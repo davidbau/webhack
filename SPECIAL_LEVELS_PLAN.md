@@ -185,7 +185,47 @@ The recommended order prioritizes getting testable results quickly:
 
 ## Lessons Learned
 
-*(This section will be updated as we work through the implementation)*
+### Trace Collection via Wizard Mode
+
+**Cross-branch teleport requires menu navigation, not name-based teleport:**
+- C's `lev_by_name()` has `dlev_in_current_branch()` check that prevents teleporting by name to levels in other branches
+- The `?` menu approach (Ctrl+V → ? → select letter) works for all branches
+- Menu-based approach uses `print_dungeon(TRUE, ...)` with `force_dest = TRUE`, bypassing branch restrictions
+- Implemented in `gen_special_sessions.py` as `wizard_teleport_to_level()` with pattern matching: `^([a-zA-Z])\s+-\s+[*]?\s*levelname:`
+
+**Elemental Planes cannot be reached via wizard teleport:**
+- `In_endgame(&u.uz)` check in `level_tele()` blocks all wizard teleport once in endgame
+- Alternative approaches needed: C binary modification, save file manipulation, or scripted gameplay to reach endgame
+- Deferred to later (tracked in bd issue interface-kr2)
+
+**Sokoban has 2 variants per level, selected by RNG:**
+- `dungeon.lua` specifies `nlevels=2` for each Sokoban level (soko1 through soko4)
+- C randomly picks between variant 1 (`soko1-1.lua`) and variant 2 (`soko1-2.lua`)
+- Each variant can be horizontally/vertically flipped at generation time
+- Collected 5 seeds × 4 levels = 20 traces to ensure coverage of all variants and flips
+
+### Wall Type Computation (wall_extends Algorithm)
+
+**NetHack's wall junction algorithm is directional:**
+- Horizontal walls (`─` HWALL) extend only east/west, not north/south
+- Vertical walls (`│` VWALL) extend only north/south, not east/west
+- Corners and junctions extend in their specific directions (e.g., `┌` extends south and east only)
+- The algorithm must be iterative: changing a wall to a junction changes what extends from that cell
+- Some configurations can oscillate without convergence limits (e.g., narrow `|.|` corridors in soko4-2)
+
+**Directional extension rules:**
+- extends_north: VWALL, BLCORNER, BRCORNER, TUWALL, CROSSWALL, TRWALL, TLWALL
+- extends_south: VWALL, TLCORNER, TRCORNER, TDWALL, CROSSWALL, TRWALL, TLWALL
+- extends_east: HWALL, TLCORNER, BLCORNER, TUWALL, TDWALL, CROSSWALL, TRWALL
+- extends_west: HWALL, TRCORNER, BRCORNER, TUWALL, TDWALL, CROSSWALL, TLWALL
+
+**Spoiler guide DECgraphics inaccuracies:**
+- Analyzed all 8 Sokoban maps: found 67 total mismatches across variants
+- 51 junction errors: spoiler uses plain `│`/`─` where C generates T-junctions (`├`, `┤`, `┬`, `┴`)
+- 4 corner-vs-junction errors: spoiler has T-junction where C generates corner
+- 12 staircase discrepancies: extra upstairs or shifted positions
+- Root cause: spoiler maps drawn visually without applying wall_extends() algorithm
+- Created bd issue interface-llb to fix after debugging convergence issues in wall computation script
 
 ---
 
