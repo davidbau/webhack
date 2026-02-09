@@ -203,14 +203,29 @@ _checkLastMoveFailed() {
 - No shopping
 - No spoiler knowledge integration
 
+## Recent Improvements
+
+### Monster Danger Assessment (2026-02-09)
+
+Added intelligent threat evaluation system in `selfplay/brain/danger.js`:
+
+- **Instadeath Prevention:** Never melee floating eyes (paralyze) or cockatrices (petrification)
+- **Threat Levels:** Assess monsters as SAFE/LOW/MEDIUM/HIGH/CRITICAL/INSTADEATH
+- **Smart Engagement:** Flee from dangerous monsters when HP < 60%, medium threats when HP < 40%
+- **Uppercase Awareness:** Treat uppercase monster letters as more dangerous
+- **Known Threats:** Special handling for dragons, liches, demons, vampires, etc.
+
+The agent now makes informed combat decisions based on spoiler knowledge rather than blindly attacking everything.
+
 ## Test Coverage
 
-38 passing unit tests:
+48 passing unit tests:
 - Pathfinding (10 tests): A*, BFS, exploration, diagonal restrictions
 - Screen Parser (14 tests): message parsing, cell classification, feature detection
 - Status Parser (9 tests): HP, stats, conditions
 - Map Tracker (4 tests): explored cells, level changes, features
 - Tmux capture (1 test): plain text parsing
+- Danger Assessment (10 tests): threat levels, engagement decisions, instadeath prevention
 
 ## Next Steps
 
