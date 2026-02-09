@@ -457,15 +457,42 @@ export function map(data) {
  * @param {number} y - Y coordinate
  * @param {string} type - Terrain character
  */
-export function terrain(x, y, type) {
+export function terrain(x_or_opts, y_or_type, type) {
     if (!levelState.map) {
         levelState.map = new GameMap();
     }
 
-    if (x >= 0 && x < 80 && y >= 0 && y < 21) {
-        const terrainType = mapchrToTerrain(type);
-        if (terrainType !== -1) {
-            levelState.map.locations[x][y].typ = terrainType;
+    // Handle different formats:
+    // des.terrain(x, y, type)
+    // des.terrain({x, y, typ})
+    // des.terrain(selection, type)
+
+    if (typeof x_or_opts === 'object') {
+        if (Array.isArray(x_or_opts)) {
+            // selection.line() returns array of coords
+            const terrainType = mapchrToTerrain(y_or_type);
+            if (terrainType !== -1) {
+                for (const coord of x_or_opts) {
+                    if (coord.x >= 0 && coord.x < 80 && coord.y >= 0 && coord.y < 21) {
+                        levelState.map.locations[coord.x][coord.y].typ = terrainType;
+                    }
+                }
+            }
+        } else if (x_or_opts.x !== undefined && x_or_opts.y !== undefined) {
+            // {x, y, typ} format
+            const terrainType = mapchrToTerrain(x_or_opts.typ);
+            if (terrainType !== -1 && x_or_opts.x >= 0 && x_or_opts.x < 80 &&
+                x_or_opts.y >= 0 && x_or_opts.y < 21) {
+                levelState.map.locations[x_or_opts.x][x_or_opts.y].typ = terrainType;
+            }
+        }
+    } else if (typeof x_or_opts === 'number') {
+        // (x, y, type) format
+        if (x_or_opts >= 0 && x_or_opts < 80 && y_or_type >= 0 && y_or_type < 21) {
+            const terrainType = mapchrToTerrain(type);
+            if (terrainType !== -1) {
+                levelState.map.locations[x_or_opts][y_or_type].typ = terrainType;
+            }
         }
     }
 }
@@ -1083,6 +1110,42 @@ export function ladder(direction, x, y) {
 }
 
 /**
+ * des.altar(opts)
+ * Place an altar at a location.
+ * C ref: sp_lev.c spaltar()
+ *
+ * @param {Object} opts - Altar options (x, y, align, type)
+ */
+export function altar(opts) {
+    // Stub - would place ALTAR terrain and add to altars list
+    // For now, just ignore
+}
+
+/**
+ * des.gold(opts)
+ * Place gold at a location.
+ * C ref: sp_lev.c spgold()
+ *
+ * @param {Object} opts - Gold options (x, y, amount)
+ */
+export function gold(opts) {
+    // Stub - would create gold object with specified amount
+    // For now, just ignore
+}
+
+/**
+ * des.teleport_region(opts)
+ * Define a teleportation region.
+ * C ref: sp_lev.c sp_teleport_region()
+ *
+ * @param {Object} opts - Region options (region, dir)
+ */
+export function teleport_region(opts) {
+    // Stub - would mark region for teleportation behavior
+    // For now, just ignore
+}
+
+/**
  * Finalize level generation.
  * This should be called after all des.* calls to apply flipping and other
  * post-processing.
@@ -1156,6 +1219,36 @@ export const selection = {
     },
 
     /**
+     * selection.line(x1, y1, x2, y2)
+     * Create a line selection between two points using Bresenham's algorithm.
+     */
+    line: (x1, y1, x2, y2) => {
+        const coords = [];
+        const dx = Math.abs(x2 - x1);
+        const dy = Math.abs(y2 - y1);
+        const sx = x1 < x2 ? 1 : -1;
+        const sy = y1 < y2 ? 1 : -1;
+        let err = dx - dy;
+        let x = x1;
+        let y = y1;
+
+        while (true) {
+            coords.push({ x, y });
+            if (x === x2 && y === y2) break;
+            const e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+            }
+        }
+        return coords;
+    },
+
+    /**
      * selection.new()
      * Create a new empty selection (set of coordinates).
      */
@@ -1193,12 +1286,15 @@ export const des = {
     terrain,
     stair,
     ladder,
+    altar,
+    gold,
     object,
     trap,
     region,
     non_diggable,
     non_passwall,
     levregion,
+    teleport_region,
     exclusion,
     monster,
     door,
