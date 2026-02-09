@@ -38,7 +38,7 @@ import { roles } from './player.js';
 import {
     ARROW, DART, ROCK, BOULDER, LARGE_BOX, CHEST, GOLD_PIECE, CORPSE,
     STATUE, TALLOW_CANDLE, WAX_CANDLE, BELL,
-    WEAPON_CLASS, TOOL_CLASS, FOOD_CLASS, GEM_CLASS,
+    WEAPON_CLASS, TOOL_CLASS, FOOD_CLASS, GEM_CLASS, WAND_CLASS,
     ARMOR_CLASS, SCROLL_CLASS, POTION_CLASS, RING_CLASS, SPBOOK_CLASS,
     POT_HEALING, POT_EXTRA_HEALING, POT_SPEED, POT_GAIN_ENERGY,
     SCR_ENCHANT_WEAPON, SCR_ENCHANT_ARMOR, SCR_CONFUSE_MONSTER, SCR_SCARE_MONSTER,
@@ -51,6 +51,11 @@ import { themerooms_generate } from './themerms.js';
 import { parseEncryptedDataFile, parseRumorsFile } from './hacklib.js';
 import { EPITAPH_FILE_TEXT } from './epitaph_data.js';
 import { ENGRAVE_FILE_TEXT } from './engrave_data.js';
+import { shtypes, stock_room } from './shknam.js';
+
+// Module-level game seed for nameshk() — set by setGameSeed() before level gen
+let _gameSeed = 0;
+export function setGameSeed(seed) { _gameSeed = seed; }
 
 // ========================================================================
 // rect.c -- Rectangle pool for BSP room placement
@@ -3131,7 +3136,7 @@ export function makelevel(depth) {
         const room_threshold = 3; // simplified: no branch check
         // C ref: each check consumes one rn2() if it reaches that point
         if (depth > 1 && map.nroom >= room_threshold && rn2(depth) < 3) {
-            // do_mkroom(SHOPBASE) — skip actual shop creation
+            mkshop(map);
         } else if (depth > 4 && !rn2(6)) {
             // do_mkroom(COURT)
         } else if (depth > 5 && !rn2(8)) {
@@ -3191,6 +3196,12 @@ export function makelevel(depth) {
 
     // C ref: mklev.c:1405-1407 — second fill_special_room pass for all rooms.
     // This runs AFTER fill_ordinary_room and BEFORE mineralize.
+    // Shop stocking comes first, then vault gold.
+    for (const croom of map.rooms) {
+        if (croom.rtype >= SHOPBASE && croom.needfill === FILL_NORMAL) {
+            stock_room(croom.rtype - SHOPBASE, croom, map, depth, _gameSeed);
+        }
+    }
     // For VAULT rooms, gold was already placed during vault creation (first fill),
     // so mkgold just adds to existing gold: only rn2 for amount, no rnd(2) since
     // g_at(x,y) finds the existing gold object and skips mksobj_at/newobj.

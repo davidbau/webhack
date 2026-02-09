@@ -9,7 +9,7 @@ import {
     CORR, ROOM, DOOR, isok
 } from '../../js/config.js';
 import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1 } from '../../js/rng.js';
-import { initLevelGeneration, makelevel, wallification } from '../../js/dungeon.js';
+import { initLevelGeneration, makelevel, wallification, setGameSeed } from '../../js/dungeon.js';
 import { simulatePostLevelInit } from '../../js/u_init.js';
 import { Player, roles } from '../../js/player.js';
 import { NORMAL_SPEED, A_DEX, A_CON,
@@ -107,6 +107,7 @@ export function extractTypGrid(map) {
 // Returns { grids: { depth: number[][] }, maps: { depth: GameMap } }
 export function generateMapsSequential(seed, maxDepth) {
     initRng(seed);
+    setGameSeed(seed);
     initLevelGeneration();
     const grids = {};
     const maps = {};
@@ -195,6 +196,7 @@ export function compareRng(jsRng, sessionRng) {
 export function generateMapsWithRng(seed, maxDepth) {
     enableRngLog();
     initRng(seed);
+    setGameSeed(seed);
     initLevelGeneration();
     const grids = {};
     const maps = {};
@@ -242,6 +244,7 @@ function countPreStartupRng(session) {
 export function generateStartupWithRng(seed, session) {
     enableRngLog();
     initRng(seed);
+    setGameSeed(seed);
 
     // Determine role before level generation (needed for role-specific RNG)
     const charOpts = session.character || {};
@@ -455,6 +458,7 @@ export async function replaySession(seed, session) {
     initrack(); // clear hero track buffer between sessions
     enableRngLog();
     initRng(seed);
+    setGameSeed(seed);
     const replayRoleIndex = ROLE_INDEX[session.character?.role] ?? 11;
     initLevelGeneration(replayRoleIndex);
 

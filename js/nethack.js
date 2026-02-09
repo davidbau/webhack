@@ -14,7 +14,7 @@ import { Player, roles, races, validRacesForRole, validAlignsForRoleRace,
          needsGenderMenu, rankOf, godForRoleAlign, isGoddess, greetingForRole,
          roleNameForGender, alignName, formatLoreText } from './player.js';
 import { GameMap } from './map.js';
-import { initLevelGeneration, makelevel, wallification } from './dungeon.js';
+import { initLevelGeneration, makelevel, wallification, setGameSeed } from './dungeon.js';
 import { rhack } from './commands.js';
 import { movemon, settrack } from './monmove.js';
 import { simulatePostLevelInit } from './u_init.js';
@@ -103,6 +103,7 @@ class NetHackGame {
             : Math.floor(Math.random() * 0xFFFFFFFF);
         this.seed = seed;
         initRng(seed);
+        setGameSeed(seed);
 
         // Show welcome message
         // C ref: allmain.c -- welcome messages
@@ -169,6 +170,7 @@ class NetHackGame {
         // Replay o_init: init RNG with saved seed, run initLevelGeneration
         this.seed = gs.seed;
         initRng(gs.seed);
+        setGameSeed(gs.seed);
         initLevelGeneration();
 
         // Now overwrite RNG state with the saved state
