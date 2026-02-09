@@ -343,6 +343,7 @@ const nullDisplay = {
     clearRow() {},
     renderMap() {},
     renderStatus() {},
+    renderChargenMenu() {}, // For inventory and modal menus
 };
 
 // A minimal game object that can be driven by rhack() and movemon() without DOM.
@@ -562,6 +563,14 @@ export async function replaySession(seed, session) {
             }
         }
         const ch = step.key.charCodeAt(0);
+
+        // Modal commands (inventory, etc.) need dismissal key
+        // C ref: invent.c display_inventory() waits for nhgetch() dismissal
+        const needsDismissal = ['i', 'I'].includes(String.fromCharCode(ch));
+        if (needsDismissal) {
+            pushInput(32); // SPACE to dismiss modal display
+        }
+
         const result = await rhack(ch, game);
 
         // If the command took time, run monster movement and turn effects
