@@ -558,6 +558,19 @@ function dog_move(mon, map, player, display, fov) {
     for (let i = 0; i < cnt; i++) {
         const nx = positions[i].x, ny = positions[i].y;
 
+        // C ref: dogmove.c:1182-1203 — pet avoids seen traps
+        // ALLOW_TRAPS is always set for tame monsters (pets)
+        const trap = map.trapAt(nx, ny);
+        if (trap) {
+            if (mon.mleashed) {
+                // whimper — no RNG
+            } else if (trap.tseen) {
+                // C ref: dogmove.c:1200 — 1/40 chance of stepping on trap anyway
+                if (rn2(40))
+                    continue;
+            }
+        }
+
         // Check for food at adjacent position
         // C ref: dogmove.c:1207-1227 — dogfood check at position
         // If food found, goto newdogpos (skip rest of loop)

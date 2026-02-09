@@ -5,6 +5,7 @@
 import { COLNO, ROWNO, DOOR, STAIRS, FOUNTAIN, IS_DOOR, D_CLOSED, D_LOCKED,
          D_ISOPEN, D_NODOOR, ACCESSIBLE, IS_WALL, MAXLEVEL, VERSION_STRING,
          isok, A_STR, A_DEX, A_CON } from './config.js';
+import { SQKY_BOARD } from './symbols.js';
 import { rn2, rnd, rnl, d } from './rng.js';
 import { objectData } from './objects.js';
 import { nhgetch, ynFunction, getlin } from './input.js';
@@ -346,6 +347,21 @@ function handleMovement(dir, player, map, display, game) {
     player.y = ny;
     player.moved = true;
 
+    // Check for traps — C ref: hack.c spoteffects() → dotrap()
+    // C ref: trap.c trapeffect_*() — trap-specific effects
+    const trap = map.trapAt(nx, ny);
+    if (trap) {
+        // C ref: trap.c seetrap() — mark trap as discovered
+        if (!trap.tseen) {
+            trap.tseen = true;
+        }
+        // Trap-specific effects (no RNG for SQKY_BOARD)
+        if (trap.ttyp === SQKY_BOARD) {
+            display.putstr_message('A board beneath you squeaks loudly.');
+        }
+        // TODO: implement other trap effects (fire, pit, etc.) with RNG
+    }
+
     // Show what's here (no auto-pickup; C NetHack 3.7 requires explicit pickup)
     const objs = map.objectsAt(nx, ny);
     if (objs.length > 0) {
@@ -532,8 +548,18 @@ async function handleOpen(player, map, display) {
     }
 
     if (loc.flags & D_CLOSED) {
-        loc.flags = D_ISOPEN;
-        display.putstr_message("The door opens.");
+        // C ref: lock.c:904 doopen_indir — rnl(20) strength check
+        const str = player.attributes ? player.attributes[A_STR] : 18;
+        const dex = player.attributes ? player.attributes[A_DEX] : 11;
+        const con = player.attributes ? player.attributes[A_CON] : 18;
+        const threshold = Math.floor((str + dex + con) / 3);
+        if (rnl(20) < threshold) {
+            loc.flags = D_ISOPEN;
+            display.putstr_message("The door opens.");
+        } else {
+            rn2(19); // exercise(A_STR, TRUE)
+            display.putstr_message("The door resists!");
+        }
         return { moved: false, tookTime: true };
     }
 
