@@ -9,7 +9,7 @@ import {
     COLNO, ROWNO, STONE, VWALL, HWALL, TLCORNER, TRCORNER,
     BLCORNER, BRCORNER, CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL,
     DOOR, CORR, ROOM, STAIRS, LADDER, FOUNTAIN, ALTAR, GRAVE, SINK,
-    SDOOR, SCORR,
+    SDOOR, SCORR, AIR,
     POOL, IRONBARS, ICE, LAVAWALL,
     D_NODOOR, D_CLOSED, D_ISOPEN, D_LOCKED, D_TRAPPED,
     DIR_N, DIR_S, DIR_E, DIR_W, DIR_180,
@@ -3221,4 +3221,168 @@ export function makelevel(depth) {
     mineralize(map, depth);
 
     return map;
+}
+
+// =============================================================================
+// Region placement (place_lregion) — C ref: mkmaze.c:317-469
+// =============================================================================
+
+// Region type constants (C ref: mkmaze.h)
+const LR_TELE = 0;
+const LR_DOWNTELE = 1;
+const LR_UPTELE = 2;
+const LR_PORTAL = 3;
+const LR_BRANCH = 4;
+const LR_UPSTAIR = 5;
+const LR_DOWNSTAIR = 6;
+
+// C ref: mkmaze.c:346 — within_bounded_area
+// Check if (x,y) is within the inclusive rectangle (lx,ly,hx,hy)
+function within_bounded_area(x, y, lx, ly, hx, hy) {
+    return x >= lx && x <= hx && y >= ly && y <= hy;
+}
+
+// C ref: mkmaze.c:317-332 — is_exclusion_zone
+// Check if position is in an exclusion zone for this region type
+// Stub implementation: no exclusion zones for now
+function is_exclusion_zone(rtype, x, y) {
+    // TODO: implement exclusion zones when needed
+    // For now, no exclusion zones
+    return false;
+}
+
+// C ref: mkmaze.c:341-351 — bad_location
+// Returns true if location is unsuitable for region placement:
+// - occupied by monster/object/trap/stairs/altar/etc.
+// - inside restricted region (nlx,nly,nhx,nhy)
+// - NOT (corridor on maze level OR room OR air)
+function bad_location(map, x, y, nlx, nly, nhx, nhy) {
+    // Check if occupied
+    if (occupied(map, x, y)) {
+        return true;
+    }
+
+    // Check if inside restricted region
+    if (within_bounded_area(x, y, nlx, nly, nhx, nhy)) {
+        return true;
+    }
+
+    // Check terrain type - must be CORR (on maze), ROOM, or AIR
+    const loc = map.at(x, y);
+    if (!loc) return true;
+
+    const typ = loc.typ;
+    const isMaze = false; // TODO: check map.flags.is_maze_lev when needed
+
+    // Valid if: (CORR and maze level) OR ROOM OR AIR
+    const isValid = (typ === CORR && isMaze) || typ === ROOM || typ === AIR;
+    return !isValid;
+}
+
+// C ref: mkmaze.c:413-469 — put_lregion_here
+// Try to place region at (x,y). Returns true on success.
+function put_lregion_here(map, x, y, nlx, nly, nhx, nhy, rtype, oneshot) {
+    // Check if location is bad
+    if (bad_location(map, x, y, nlx, nly, nhx, nhy) ||
+        is_exclusion_zone(rtype, x, y)) {
+        if (!oneshot) {
+            return false; // Try again
+        }
+        // In oneshot mode, try to force placement by removing trap
+        // (simplified - C has more complex logic here)
+        if (bad_location(map, x, y, nlx, nly, nhx, nhy) ||
+            is_exclusion_zone(rtype, x, y)) {
+            return false;
+        }
+    }
+
+    // Place the feature based on region type
+    const loc = map.at(x, y);
+    if (!loc) return false;
+
+    switch (rtype) {
+        case LR_TELE:
+        case LR_UPTELE:
+        case LR_DOWNTELE:
+            // Teleport region - not needed for basic implementation
+            break;
+
+        case LR_PORTAL:
+            // Portal - not needed for basic implementation
+            break;
+
+        case LR_DOWNSTAIR:
+            loc.typ = STAIRS;
+            loc.flags = 0; // down
+            map.dnstair = { x, y };
+            break;
+
+        case LR_UPSTAIR:
+            loc.typ = STAIRS;
+            loc.flags = 1; // up
+            map.upstair = { x, y };
+            break;
+
+        case LR_BRANCH:
+            // Branch stairs (entrance to sub-dungeon like Mines)
+            // For Gnomish Mines at depth 2-4, this is a down stair
+            loc.typ = STAIRS;
+            loc.flags = 0; // down (into branch)
+            map.dnstair = { x, y };
+            break;
+    }
+
+    return true;
+}
+
+// C ref: mkmaze.c:356-410 — place_lregion
+// Place a region (stairs/portal/teleport) at a suitable location
+// Parameters:
+//   lx,ly,hx,hy: search area (0 = use full level)
+//   nlx,nly,nhx,nhy: exclusion area (avoid this rectangle)
+//   rtype: region type (LR_BRANCH, LR_TELE, etc.)
+export function place_lregion(map, lx, ly, hx, hy, nlx, nly, nhx, nhy, rtype) {
+    // Default to full level if lx is 0
+    if (!lx) {
+        // Note: C code has special handling for LR_BRANCH with rooms,
+        // calling place_branch() instead. For minimal implementation,
+        // we just use full level bounds.
+        lx = 1;
+        hx = COLNO - 1;
+        ly = 0;
+        hy = ROWNO - 1;
+    }
+
+    // Clamp to level bounds
+    if (lx < 1) lx = 1;
+    if (hx > COLNO - 1) hx = COLNO - 1;
+    if (ly < 0) ly = 0;
+    if (hy > ROWNO - 1) hy = ROWNO - 1;
+
+    // Probabilistic approach: try 200 random locations
+    const oneshot = (lx === hx && ly === hy);
+    let attempts = 0;
+    for (let trycnt = 0; trycnt < 200; trycnt++) {
+        const x = rn1((hx - lx) + 1, lx);
+        const y = rn1((hy - ly) + 1, ly);
+        attempts++;
+        if (put_lregion_here(map, x, y, nlx, nly, nhx, nhy, rtype, oneshot)) {
+            // Debug: uncomment to see attempt count
+            // console.log(`place_lregion succeeded after ${attempts} attempts at (${x},${y})`);
+            return;
+        }
+    }
+
+    // Deterministic fallback: try all positions
+    for (let x = lx; x <= hx; x++) {
+        for (let y = ly; y <= hy; y++) {
+            if (put_lregion_here(map, x, y, nlx, nly, nhx, nhy, rtype, true)) {
+                return;
+            }
+        }
+    }
+
+    // If we get here, couldn't place region
+    // C code calls impossible() here, we'll just log a warning
+    console.warn(`Couldn't place lregion type ${rtype}!`);
 }
