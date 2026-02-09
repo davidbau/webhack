@@ -9,6 +9,7 @@ import { parseStatus } from './perception/status_parser.js';
 import { DungeonTracker } from './perception/map_tracker.js';
 import { findPath, findExplorationTarget, findNearest, directionKey, directionDelta } from './brain/pathing.js';
 import { shouldEngageMonster, getMonsterName } from './brain/danger.js';
+import { InventoryTracker } from './brain/inventory.js';
 
 // Direction keys for movement toward a target
 const DIR_KEYS = {
@@ -40,6 +41,7 @@ export class Agent {
         this.dungeon = new DungeonTracker();
         this.screen = null;
         this.status = null;
+        this.inventory = new InventoryTracker();
 
         // State
         this.turnNumber = 0;
@@ -115,7 +117,7 @@ export class Agent {
             this._updatePets();
 
             // Decide and act
-            const action = this._decide();
+            const action = await this._decide();
             const prePos = { x: this.screen.playerX, y: this.screen.playerY };
             await this._act(action);
 
@@ -284,7 +286,7 @@ export class Agent {
      * Core decision engine: choose the next action.
      * Returns an action object: { type, key, reason }
      */
-    _decide() {
+    async _decide() {
         const level = this.dungeon.currentLevel;
         const px = this.screen.playerX;
         const py = this.screen.playerY;
@@ -365,12 +367,19 @@ export class Agent {
         // If we reached here without returning a rest action, reset rest counter
         // (will be set back to 0 at the end of _decide if we take any other action)
 
-        // 2. If hungry and have food, eat
-        // TODO: Check inventory for food items before trying to eat
-        // For now, skip eating to avoid infinite loop when no food available
-        // if (this.status && this.status.needsFood) {
-        //     return { type: 'eat', key: 'e', reason: 'need food' };
-        // }
+        // 2. If hungry, check inventory and eat if we have food
+        if (this.status && this.status.needsFood) {
+            // Refresh inventory every 100 turns or if never checked
+            if (this.turnNumber - this.inventory.lastUpdate > 100 || this.inventory.lastUpdate === 0) {
+                await this._refreshInventory();
+            }
+
+            // If we have food, eat it
+            if (this.inventory.hasFood()) {
+                return { type: 'eat', key: 'e', reason: 'hungry and have food' };
+            }
+            // No food available - continue exploring (might find food)
+        }
 
         // --- Tactical checks ---
 
@@ -523,6 +532,34 @@ export class Agent {
             this.restTurns = 0;
         }
         await this.adapter.sendKey(action.key);
+    }
+
+    /**
+     * Refresh inventory by sending 'i' and parsing the result.
+     * This is expensive (requires extra key press + screen read), so call sparingly.
+     */
+    async _refreshInventory() {
+        // Send 'i' to view inventory
+        await this.adapter.sendKey('i');
+
+        // Read the inventory screen
+        const rawScreen = await this.adapter.readScreen();
+        const invScreen = this.adapter.isTmux
+            ? parseTmuxCapture(rawScreen)
+            : parseScreen(rawScreen);
+
+        // Parse inventory
+        const success = this.inventory.parseFromScreen(invScreen);
+
+        // Dismiss inventory screen (space or escape)
+        await this.adapter.sendKey(' ');
+
+        // Update last check turn
+        if (success) {
+            this.inventory.lastUpdate = this.turnNumber;
+        }
+
+        return success;
     }
 
     /**
