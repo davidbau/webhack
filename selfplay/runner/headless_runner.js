@@ -14,7 +14,7 @@ import { parseStatus } from '../perception/status_parser.js';
 
 // Import game modules
 import { initRng, rn2, rnd } from '../../js/rng.js';
-import { initLevelGeneration, makelevel, wallification } from '../../js/dungeon.js';
+import { initLevelGeneration, makelevel, wallification, setGameSeed } from '../../js/dungeon.js';
 import { Player, roles } from '../../js/player.js';
 import { rhack } from '../../js/commands.js';
 import { movemon, initrack, settrack } from '../../js/monmove.js';
@@ -70,9 +70,10 @@ class HeadlessGame {
         this.seed = seed;
         this.roleIndex = roleIndex;
 
-        // Initialize RNG and level generation
+        // Initialize RNG and level generation (match test/comparison/session_helpers.js sequence)
+        initrack();  // reset player track buffer
         initRng(seed);
-        initrack();
+        setGameSeed(seed);  // for shopkeeper naming
         initLevelGeneration(roleIndex);
 
         // Generate first level
@@ -89,6 +90,15 @@ class HeadlessGame {
         if (this.map.upstair) {
             this.player.x = this.map.upstair.x;
             this.player.y = this.map.upstair.y;
+            // DEBUG: log upstair position and room info
+            if (process.env.DEBUG_UPSTAIR) {
+                console.log(`DEBUG: upstair at (${this.map.upstair.x}, ${this.map.upstair.y}), player at (${this.player.x}, ${this.player.y})`);
+                console.log(`DEBUG: total rooms: ${this.map.rooms?.length || 0}`);
+                for (let i = 0; i < (this.map.rooms?.length || 0); i++) {
+                    const r = this.map.rooms[i];
+                    console.log(`DEBUG: room[${i}] bounds: lx=${r.lx}, hx=${r.hx}, ly=${r.ly}, hy=${r.hy}`);
+                }
+            }
         }
 
         // Post-level init
@@ -389,10 +399,25 @@ if (process.argv[1] && process.argv[1].endsWith('headless_runner.js')) {
     const opts = {};
 
     for (let i = 0; i < args.length; i++) {
-        if (args[i] === '--seed' && args[i + 1]) opts.seed = parseInt(args[++i]);
-        else if (args[i] === '--turns' && args[i + 1]) opts.maxTurns = parseInt(args[++i]);
-        else if (args[i] === '--verbose' || args[i] === '-v') opts.verbose = true;
-        else if (args[i] === '--help' || args[i] === '-h') {
+        const arg = args[i];
+
+        // Handle --key=value format
+        if (arg.startsWith('--')) {
+            const eqIndex = arg.indexOf('=');
+            if (eqIndex !== -1) {
+                const key = arg.slice(0, eqIndex);
+                const value = arg.slice(eqIndex + 1);
+                if (key === '--seed') opts.seed = parseInt(value);
+                else if (key === '--turns') opts.maxTurns = parseInt(value);
+                continue;
+            }
+        }
+
+        // Handle --key value format
+        if (arg === '--seed' && args[i + 1]) opts.seed = parseInt(args[++i]);
+        else if (arg === '--turns' && args[i + 1]) opts.maxTurns = parseInt(args[++i]);
+        else if (arg === '--verbose' || arg === '-v') opts.verbose = true;
+        else if (arg === '--help' || arg === '-h') {
             console.log('Usage: node headless_runner.js [--seed N] [--turns N] [--verbose]');
             process.exit(0);
         }
