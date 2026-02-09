@@ -635,6 +635,37 @@ export class Agent {
             }
         }
 
+        // 6.5. Systematic wall searching when no stairs found
+        // If we've explored available areas but haven't found stairs, systematically
+        // search walls to reveal secret doors/corridors
+        // Search probability is 1/7, so search each location up to 15 times for ~90% success rate
+        const frontierSmall = level.getExplorationFrontier().length < 30;
+        const shouldSearch = level.stairsDown.length === 0 && this.turnNumber > 60 &&
+            (this.levelStuckCounter > 15 || (frontierSmall && this.turnNumber > 100));
+        if (shouldSearch) {
+            const searchCandidates = level.getSearchCandidates();
+            // Filter to candidates that haven't been heavily searched yet
+            const unsearchedCandidates = searchCandidates.filter(c => c.searched < 15);
+
+
+            if (unsearchedCandidates.length > 0) {
+                // Try to path to the nearest unsearched candidate
+                for (const candidate of unsearchedCandidates.slice(0, 10)) {
+                    const path = findPath(level, px, py, candidate.x, candidate.y, { allowUnexplored: false });
+                    if (path.found) {
+                        // If we're at the candidate, search it
+                        if (px === candidate.x && py === candidate.y) {
+                            const cell = level.at(px, py);
+                            if (cell) cell.searched++;
+                            return { type: 'search', key: 's', reason: `systematic wall search at (${px},${py}) [searched=${cell ? cell.searched : 0}]` };
+                        }
+                        // Otherwise path to it
+                        return this._followPath(path, 'navigate', `heading to search candidate (${candidate.x},${candidate.y})`);
+                    }
+                }
+            }
+        }
+
         // 7. If oscillating / stuck, try different strategies
         // Also trigger if we're totally immobile (same position for 5+ turns)
         const totallyStuck = this.lastPosition &&
