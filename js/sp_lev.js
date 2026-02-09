@@ -15,7 +15,7 @@
 
 import { GameMap } from './map.js';
 import { rn2, rnd } from './rng.js';
-import { mksobj } from './mkobj.js';
+import { mksobj, mkobj } from './mkobj.js';
 import {
     STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,
     CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, ROOM, CORR,
@@ -761,14 +761,33 @@ export function object(name_or_opts, x, y) {
     }
 
     if (typeof name_or_opts === 'string') {
-        // des.object("boulder", x, y) - place named object at position
-        const otyp = objectNameToType(name_or_opts);
-        if (otyp >= 0 && x !== undefined && y !== undefined && x >= 0 && x < 80 && y >= 0 && y < 21) {
-            const obj = mksobj(otyp, true, false);
-            if (obj) {
-                obj.ox = x;
-                obj.oy = y;
-                levelState.map.objects.push(obj);
+        // Check if it's a single-character object class (e.g., '[', ')', '!', etc.)
+        if (name_or_opts.length === 1 && x === undefined) {
+            // des.object('[') - place random object from class at random location
+            const objClass = objectClassToType(name_or_opts);
+            if (objClass >= 0) {
+                // Place random object from this class at random ROOM location
+                // TODO: Implement proper random room location selection
+                // For now, place at a semi-random location based on RNG
+                const randX = rn2(60) + 10;  // Avoid edges
+                const randY = rn2(15) + 3;
+                const obj = mkobj(objClass, true);
+                if (obj) {
+                    obj.ox = randX;
+                    obj.oy = randY;
+                    levelState.map.objects.push(obj);
+                }
+            }
+        } else if (x !== undefined && y !== undefined) {
+            // des.object("boulder", x, y) - place named object at position
+            const otyp = objectNameToType(name_or_opts);
+            if (otyp >= 0 && x >= 0 && x < 80 && y >= 0 && y < 21) {
+                const obj = mksobj(otyp, true, false);
+                if (obj) {
+                    obj.ox = x;
+                    obj.oy = y;
+                    levelState.map.objects.push(obj);
+                }
             }
         }
     } else if (name_or_opts && typeof name_or_opts === 'object') {
@@ -880,6 +899,12 @@ export function trap(type_or_opts, x, y) {
         }
     }
 
+    // Random placement if no coordinates specified
+    if (trapX === undefined || trapY === undefined) {
+        trapX = rn2(60) + 10;  // Avoid edges
+        trapY = rn2(15) + 3;
+    }
+
     // If no trap type specified, use a random one (default to PIT for now)
     let ttyp;
     if (!trapType) {
@@ -888,8 +913,7 @@ export function trap(type_or_opts, x, y) {
         ttyp = trapNameToType(trapType);
     }
 
-    if (ttyp < 0 || trapX === undefined || trapY === undefined ||
-        trapX < 0 || trapX >= 80 || trapY < 0 || trapY >= 21) {
+    if (ttyp < 0 || trapX < 0 || trapX >= 80 || trapY < 0 || trapY >= 21) {
         return;
     }
 
@@ -926,21 +950,38 @@ export function trap(type_or_opts, x, y) {
  * @param {Object} selection - Selection object (from selection.area())
  * @param {string} type - Region type (e.g., "lit")
  */
-export function region(selection, type) {
+export function region(opts) {
     if (!levelState.map) {
         return;
     }
 
-    // Handle "lit" type - mark all cells in selection as lit
-    if (type === 'lit' && selection) {
-        for (let x = selection.x1; x <= selection.x2; x++) {
-            for (let y = selection.y1; y <= selection.y2; y++) {
-                if (x >= 0 && x < 80 && y >= 0 && y < 21) {
-                    levelState.map.locations[x][y].lit = 1;
-                }
+    // Parse region coordinates
+    let x1, y1, x2, y2;
+    if (opts.region) {
+        if (Array.isArray(opts.region)) {
+            [x1, y1, x2, y2] = opts.region;
+        } else {
+            x1 = opts.region.x1;
+            y1 = opts.region.y1;
+            x2 = opts.region.x2;
+            y2 = opts.region.y2;
+        }
+    } else {
+        return; // No region specified
+    }
+
+    // Handle lit flag - mark all cells in region as lit/unlit
+    const lit = opts.lit !== undefined ? opts.lit : false;
+    for (let x = x1; x <= x2; x++) {
+        for (let y = y1; y <= y2; y++) {
+            if (x >= 0 && x < 80 && y >= 0 && y < 21) {
+                levelState.map.locations[x][y].lit = lit ? 1 : 0;
             }
         }
     }
+
+    // Other region properties (type, filled, irregular) are stubs for now
+    // They would affect room generation, monster spawning, etc.
 }
 
 /**
@@ -1018,50 +1059,71 @@ export function exclusion(opts) {
  *   - peaceful: Monster is peaceful
  *   - asleep: Monster is asleep
  */
-export function monster(opts) {
+export function monster(opts_or_class, x, y) {
     if (!levelState.map) {
         levelState.map = new GameMap();
     }
 
-    if (!opts || !opts.id) {
-        return; // Need at least a monster id
+    // Handle different call formats:
+    // 1. des.monster('V') - random monster from class at random location
+    // 2. des.monster('vampire', x, y) - named monster at specific location
+    // 3. des.monster({ id: 'vampire', x, y, ... }) - full options object
+
+    let monsterId, coordX, coordY, opts;
+
+    if (typeof opts_or_class === 'string') {
+        if (x === undefined) {
+            // des.monster('V') - random placement
+            monsterId = opts_or_class;
+            coordX = rn2(60) + 10;  // Avoid edges
+            coordY = rn2(15) + 3;
+            opts = {};
+        } else {
+            // des.monster('vampire', x, y) - specific placement
+            monsterId = opts_or_class;
+            coordX = x;
+            coordY = y;
+            opts = {};
+        }
+    } else if (opts_or_class && typeof opts_or_class === 'object') {
+        // des.monster({ id: 'vampire', x, y, ... })
+        opts = opts_or_class;
+        monsterId = opts.id;
+
+        if (opts.coord) {
+            coordX = opts.coord.x;
+            coordY = opts.coord.y;
+        } else {
+            coordX = opts.x;
+            coordY = opts.y;
+        }
+
+        // Random placement if no coordinates
+        if (coordX === undefined || coordY === undefined) {
+            coordX = rn2(60) + 10;
+            coordY = rn2(15) + 3;
+        }
     }
 
-    // Get coordinates
-    let x, y;
-    if (opts.coord) {
-        x = opts.coord.x;
-        y = opts.coord.y;
-    } else {
-        x = opts.x;
-        y = opts.y;
+    if (!monsterId || coordX === undefined || coordY === undefined ||
+        coordX < 0 || coordX >= 80 || coordY < 0 || coordY >= 21) {
+        return; // Invalid parameters
     }
 
-    if (x === undefined || y === undefined || x < 0 || x >= 80 || y < 0 || y >= 21) {
-        return; // Invalid coordinates
-    }
-
-    // Parse monster id
-    // Can be:
-    // - Single letter class (e.g., "V" for vampires)
-    // - Monster name (e.g., "vampire", "Vlad the Impaler")
-    const monsterId = opts.id;
-
-    // For now, store monster request in levelState
-    // Actual monster creation would happen during level finalization
-    // when the game state is fully initialized
+    // Store monster request in levelState
     if (!levelState.monsters) {
         levelState.monsters = [];
     }
 
     levelState.monsters.push({
         id: monsterId,
-        x,
-        y,
+        x: coordX,
+        y: coordY,
         name: opts.name,
         waiting: opts.waiting || false,
         peaceful: opts.peaceful,
-        asleep: opts.asleep
+        asleep: opts.asleep,
+        align: opts.align
     });
 
     // Note: Full implementation would call makemon() with appropriate parameters
@@ -1195,6 +1257,30 @@ export function gold(opts) {
 }
 
 /**
+ * des.feature(type, x, y)
+ * Place a map feature (fountain, sink, throne, etc.).
+ * C ref: sp_lev.c sp_feature()
+ *
+ * @param {string} type - Feature type ("fountain", "sink", "throne", etc.)
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ */
+export function feature(type, x, y) {
+    const terrainMap = {
+        'fountain': FOUNTAIN,
+        'sink': SINK,
+        'throne': THRONE,
+        'altar': ROOM, // Altar is handled by des.altar()
+        'grave': ROOM  // Grave is a special object
+    };
+
+    const terrain = terrainMap[type];
+    if (terrain !== undefined && x >= 0 && x < 80 && y >= 0 && y < 21) {
+        levelState.map.locations[x][y].typ = terrain;
+    }
+}
+
+/**
  * des.teleport_region(opts)
  * Define a teleportation region.
  * C ref: sp_lev.c sp_teleport_region()
@@ -1213,6 +1299,14 @@ export function teleport_region(opts) {
  * C ref: sp_lev.c sp_level_loader() calls wallification(), flip_level_rnd(), solidify_map(), etc.
  */
 export function finalize_level() {
+    // Copy monster requests to map
+    if (levelState.monsters && levelState.map) {
+        if (!levelState.map.monsters) {
+            levelState.map.monsters = [];
+        }
+        levelState.map.monsters.push(...levelState.monsters);
+    }
+
     // Apply wallification first (before flipping)
     // C ref: sp_lev.c line 6028 - wallification before flip
     if (levelState.map) {
@@ -1355,9 +1449,11 @@ export const des = {
     non_diggable,
     non_passwall,
     levregion,
+    feature,
     teleport_region,
     exclusion,
     monster,
     door,
     engraving,
+    finalize_level,
 };
