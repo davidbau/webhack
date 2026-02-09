@@ -8,6 +8,7 @@ import { parseScreen, parseTmuxCapture, findMonsters, findStairs } from './perce
 import { parseStatus } from './perception/status_parser.js';
 import { DungeonTracker } from './perception/map_tracker.js';
 import { findPath, findExplorationTarget, findNearest, directionKey, directionDelta } from './brain/pathing.js';
+import { shouldEngageMonster, getMonsterName } from './brain/danger.js';
 
 // Direction keys for movement toward a target
 const DIR_KEYS = {
@@ -333,14 +334,41 @@ export class Agent {
 
         // --- Tactical checks ---
 
-        // 3. If there's a monster adjacent, fight it (unless it's dangerous)
+        // 3. If there's a monster adjacent, decide whether to fight it
         const adjacentMonster = this._findAdjacentMonster(px, py);
         if (adjacentMonster) {
+            // Assess danger and decide whether to engage
+            const playerLevel = this.status?.experienceLevel || 1;
+            const engagement = shouldEngageMonster(
+                adjacentMonster.ch,
+                this.status?.hp || 16,
+                this.status?.hpmax || 16,
+                playerLevel
+            );
+
+            if (!engagement.shouldEngage) {
+                // Too dangerous - try to flee
+                const nearbyMonsters = findMonsters(this.screen);
+                const fleeDir = this._fleeFrom(px, py, nearbyMonsters, level);
+                if (fleeDir) {
+                    const monsterName = getMonsterName(adjacentMonster.ch);
+                    return { type: 'flee', key: fleeDir, reason: `fleeing ${monsterName}: ${engagement.reason}` };
+                }
+                // Can't flee - might as well fight
+                const dx = adjacentMonster.x - px;
+                const dy = adjacentMonster.y - py;
+                const key = DIR_KEYS[`${dx},${dy}`];
+                if (key) {
+                    return { type: 'attack', key, reason: `forced to fight ${adjacentMonster.ch} (cornered)` };
+                }
+            }
+
+            // Engage the monster
             const dx = adjacentMonster.x - px;
             const dy = adjacentMonster.y - py;
             const key = DIR_KEYS[`${dx},${dy}`];
             if (key) {
-                return { type: 'attack', key, reason: `attacking ${adjacentMonster.ch} at (${adjacentMonster.x},${adjacentMonster.y})` };
+                return { type: 'attack', key, reason: engagement.reason };
             }
         }
 

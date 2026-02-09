@@ -444,10 +444,177 @@ function wallification(map) {
     console.warn('wallification not yet fully implemented for special levels');
 }
 
+/**
+ * des.stair(direction, x, y)
+ *
+ * Place a staircase at the specified location.
+ * C ref: sp_lev.c lspo_stair()
+ *
+ * @param {string} direction - "up" or "down"
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ */
+export function stair(direction, x, y) {
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+
+    if (x >= 0 && x < 80 && y >= 0 && y < 21) {
+        const stairType = direction === 'up' ? STAIRS_UP : STAIRS_DOWN;
+        levelState.map.locations[x][y].typ = stairType;
+    }
+}
+
+/**
+ * des.object(name_or_opts, x, y)
+ *
+ * Place an object at the specified location.
+ * C ref: sp_lev.c lspo_object()
+ *
+ * @param {string|Object} name_or_opts - Object name or options object
+ * @param {number} x - X coordinate (if name_or_opts is string)
+ * @param {number} y - Y coordinate (if name_or_opts is string)
+ */
+export function object(name_or_opts, x, y) {
+    // Stub implementation - just track that object was requested
+    // Full implementation needs object placement system
+    if (typeof name_or_opts === 'string') {
+        // des.object("boulder", x, y)
+        // TODO: Place object in map.objects array
+    } else {
+        // des.object({ class = "%" }) - random object
+        // TODO: Place random object
+    }
+}
+
+/**
+ * des.trap(type, x, y)
+ *
+ * Place a trap at the specified location.
+ * C ref: sp_lev.c lspo_trap()
+ *
+ * @param {string} type - Trap type name
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ */
+export function trap(type, x, y) {
+    // Stub implementation - just track that trap was requested
+    // Full implementation needs trap placement system
+    // TODO: Place trap in map.traps array
+}
+
+/**
+ * des.region(selection, type)
+ *
+ * Define a region with properties.
+ * C ref: sp_lev.c lspo_region()
+ *
+ * @param {Object} selection - Selection object (from selection.area())
+ * @param {string} type - Region type (e.g., "lit")
+ */
+export function region(selection, type) {
+    if (!levelState.map) {
+        return;
+    }
+
+    // Handle "lit" type - mark all cells in selection as lit
+    if (type === 'lit' && selection) {
+        for (let x = selection.x1; x <= selection.x2; x++) {
+            for (let y = selection.y1; y <= selection.y2; y++) {
+                if (x >= 0 && x < 80 && y >= 0 && y < 21) {
+                    levelState.map.locations[x][y].lit = 1;
+                }
+            }
+        }
+    }
+}
+
+/**
+ * des.non_diggable(selection)
+ *
+ * Make an area non-diggable.
+ * C ref: sp_lev.c lspo_non_diggable()
+ *
+ * @param {Object} selection - Selection object
+ */
+export function non_diggable(selection) {
+    if (!levelState.map || !selection) {
+        return;
+    }
+
+    for (let x = selection.x1; x <= selection.x2; x++) {
+        for (let y = selection.y1; y <= selection.y2; y++) {
+            if (x >= 0 && x < 80 && y >= 0 && y < 21) {
+                levelState.map.locations[x][y].nondiggable = true;
+            }
+        }
+    }
+}
+
+/**
+ * des.non_passwall(selection)
+ *
+ * Make an area non-passwallable.
+ * C ref: sp_lev.c lspo_non_passwall()
+ *
+ * @param {Object} selection - Selection object
+ */
+export function non_passwall(selection) {
+    // Stub - would set W_NONPASSWALL flag on walls
+    // For now, just ignore
+}
+
+/**
+ * des.levregion(opts)
+ *
+ * Define level region (e.g., branch entry point).
+ * C ref: sp_lev.c lspo_levregion()
+ *
+ * @param {Object} opts - Region options
+ */
+export function levregion(opts) {
+    // Stub - would register branch entry point
+    // For now, just ignore
+}
+
+/**
+ * des.exclusion(opts)
+ *
+ * Define monster generation exclusion zone.
+ * C ref: sp_lev.c lspo_exclusion()
+ *
+ * @param {Object} opts - Exclusion options
+ */
+export function exclusion(opts) {
+    // Stub - would mark exclusion zones for monster generation
+    // For now, just ignore
+}
+
+/**
+ * Selection API - create rectangular selections
+ */
+export const selection = {
+    /**
+     * selection.area(x1, y1, x2, y2)
+     * Create a rectangular selection.
+     */
+    area: (x1, y1, x2, y2) => {
+        return { x1, y1, x2, y2 };
+    },
+};
+
 // Export the des.* API
 export const des = {
     level_init,
     level_flags,
     map,
     terrain,
+    stair,
+    object,
+    trap,
+    region,
+    non_diggable,
+    non_passwall,
+    levregion,
+    exclusion,
 };

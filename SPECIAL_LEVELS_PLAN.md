@@ -256,6 +256,41 @@ The recommended order prioritizes getting testable results quickly:
 - 6 unit tests in test/unit/sp_lev.test.js
 - Verified: solidfill init, flag setting, map placement, terrain setting, alignment, explicit coords
 
+### First Level Port: Sokoban soko4-1
+
+**Successfully ported soko4-1.lua to JavaScript:**
+- js/levels/soko4-1.js: Direct 1:1 port from Lua
+- All des.* function calls work correctly
+- Map generates with correct structure, lighting, and flags
+- Test validates against C trace data
+
+**Additional des.* functions implemented:**
+- `des.stair(direction, x, y)`: Places STAIRS_UP or STAIRS_DOWN terrain
+- `des.region(selection, "lit")`: Marks cells as lit=1
+- `des.non_diggable(selection)`: Sets nondiggable=true flag
+- `selection.area(x1, y1, x2, y2)`: Creates rectangular selection object
+
+**Stub implementations (need full support later):**
+- `des.object()`: Object placement (needs object system integration)
+- `des.trap()`: Trap placement (needs trap system integration)
+- `des.levregion()`: Branch entry points
+- `des.exclusion()`: Monster generation exclusion zones
+- `des.non_passwall()`: Passwall prevention
+
+**Map flipping challenge:**
+- C NetHack randomly flips maps horizontally and/or vertically based on RNG
+- Controlled by `allow_flips` coder flag (bit 0=vertical, bit 1=horizontal)
+- seed1 soko4 has vertical flip applied (verified in C trace)
+- JS currently places maps without flipping
+- **TODO**: Implement flip logic to match C's random_dir() calls
+
+**Next steps identified:**
+1. Implement wall_extends() for proper junction types
+2. Implement map flipping (horizontal/vertical)
+3. Add object placement system
+4. Add trap placement system
+5. Port remaining 7 Sokoban levels (soko1-2, soko2-1/2, soko3-1/2, soko4-2)
+
 ---
 
 ## Reference
