@@ -14,7 +14,7 @@ import {
     D_NODOOR, D_CLOSED, D_ISOPEN, D_LOCKED, D_TRAPPED,
     DIR_N, DIR_S, DIR_E, DIR_W, DIR_180,
     xdir, ydir, N_DIRS,
-    OROOM, THEMEROOM, VAULT, MAXNROFROOMS, ROOMOFFSET,
+    OROOM, THEMEROOM, VAULT, SHOPBASE, MAXNROFROOMS, ROOMOFFSET,
     DBWALL,
     IS_WALL, IS_STWALL, IS_DOOR, IS_ROOM, IS_OBSTRUCTED, IS_FURNITURE,
     IS_POOL, IS_LAVA, isok,
@@ -2949,6 +2949,95 @@ function mineralize(map, depth) {
                 }
             }
         }
+    }
+}
+
+// ========================================================================
+// mkshop() — pick a room to be a shop and set its type
+// C ref: mkroom.c:94-216
+// ========================================================================
+
+// C ref: mkroom.c:41-48
+function isbig(sroom) {
+    return (sroom.hx - sroom.lx + 1) * (sroom.hy - sroom.ly + 1) > 20;
+}
+
+// C ref: mkroom.c:640-663
+function has_dnstairs_room(croom, map) {
+    return map.dnstair.x >= croom.lx && map.dnstair.x <= croom.hx
+        && map.dnstair.y >= croom.ly && map.dnstair.y <= croom.hy;
+}
+function has_upstairs_room(croom, map) {
+    return map.upstair.x >= croom.lx && map.upstair.x <= croom.hx
+        && map.upstair.y >= croom.ly && map.upstair.y <= croom.hy;
+}
+
+// C ref: mkroom.c:1049-1096 — check if room shape traps shopkeeper
+function invalid_shop_shape(sroom, map) {
+    const doorx = map.doors[sroom.fdoor].x;
+    const doory = map.doors[sroom.fdoor].y;
+    let insidex = 0, insidey = 0, insidect = 0;
+
+    // Find ROOM squares inside room and adjacent to door
+    for (let x = Math.max(doorx - 1, sroom.lx); x <= Math.min(doorx + 1, sroom.hx); x++) {
+        for (let y = Math.max(doory - 1, sroom.ly); y <= Math.min(doory + 1, sroom.hy); y++) {
+            const loc = map.at(x, y);
+            if (loc && loc.typ === ROOM) {
+                insidex = x;
+                insidey = y;
+                insidect++;
+            }
+        }
+    }
+    if (insidect < 1) return true;
+    if (insidect === 1) {
+        // Only 1 square next to door — check if shopkeeper can move elsewhere
+        insidect = 0;
+        for (let x = Math.max(insidex - 1, sroom.lx); x <= Math.min(insidex + 1, sroom.hx); x++) {
+            for (let y = Math.max(insidey - 1, sroom.ly); y <= Math.min(insidey + 1, sroom.hy); y++) {
+                if (x === insidex && y === insidey) continue;
+                const loc = map.at(x, y);
+                if (loc && loc.typ === ROOM) insidect++;
+            }
+        }
+        if (insidect === 1) return true; // shopkeeper trapped
+    }
+    return false;
+}
+
+function mkshop(map) {
+    // C ref: mkroom.c:158-179 — find eligible room
+    for (const sroom of map.rooms) {
+        if (sroom.hx < 0) return;
+        if (sroom.rtype !== OROOM) continue;
+        if (has_dnstairs_room(sroom, map) || has_upstairs_room(sroom, map)) continue;
+        if (sroom.doorct !== 1) continue;
+        if (invalid_shop_shape(sroom, map)) continue;
+
+        // Found eligible room — light it
+        // C ref: mkroom.c:180-187
+        if (!sroom.rlit) {
+            for (let x = sroom.lx - 1; x <= sroom.hx + 1; x++) {
+                for (let y = sroom.ly - 1; y <= sroom.hy + 1; y++) {
+                    const loc = map.at(x, y);
+                    if (loc) loc.lit = true;
+                }
+            }
+            sroom.rlit = true;
+        }
+
+        // C ref: mkroom.c:189-201 — pick shop type by probability
+        let j = rnd(100);
+        let i = 0;
+        while ((j -= shtypes[i].prob) > 0) i++;
+
+        // Big rooms can't be wand or book shops → general store
+        if (isbig(sroom) && (shtypes[i].symb === WAND_CLASS || shtypes[i].symb === SPBOOK_CLASS))
+            i = 0;
+
+        sroom.rtype = SHOPBASE + i;
+        sroom.needfill = FILL_NORMAL;
+        return;
     }
 }
 

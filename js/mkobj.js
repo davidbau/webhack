@@ -38,6 +38,18 @@ import { mons, G_NOCORPSE, M2_NEUTER, M2_FEMALE, M2_MALE, MZ_SMALL, PM_LIZARD, P
 let _levelDepth = 1;
 export function setLevelDepth(d) { _levelDepth = d; }
 
+// C ref: mkobj.c svc.context.ident — monotonic ID counter for objects and monsters.
+// next_ident() returns current value, then increments by rnd(2).
+// Tracked here so nameshk() can use the shopkeeper's m_id value.
+let _identCounter = 0;
+export function next_ident() {
+    const res = _identCounter;
+    _identCounter += rnd(2);
+    if (_identCounter === 0) _identCounter = rnd(2) + 1;
+    return res;
+}
+export function getIdentCounter() { return _identCounter; }
+
 // C ref: objnam.c rnd_class() -- pick random object in index range by probability
 function rnd_class(first, last) {
     let sum = 0;
@@ -182,9 +194,10 @@ function bcsign(obj) {
 // Create a blank object
 function newobj(otyp) {
     // C ref: mkobj.c:1183 — otmp->o_id = next_ident()
-    // next_ident() consumes rnd(2) for unique object ID
-    rnd(2);
+    // next_ident() returns counter value and consumes rnd(2)
+    const o_id = next_ident();
     return {
+        o_id,
         otyp: otyp,
         oclass: objectData[otyp].oc_class,
         quan: 1,

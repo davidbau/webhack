@@ -3,7 +3,7 @@
 // C ref: makemon.c — monster creation, selection, weapon/inventory assignment
 
 import { rn2, rnd, rn1, d } from './rng.js';
-import { mksobj, mkobj } from './mkobj.js';
+import { mksobj, mkobj, next_ident } from './mkobj.js';
 import { def_monsyms } from './symbols.js';
 import {
     mons, LOW_PM, SPECIAL_PM, MAXMCLASSES,
@@ -22,7 +22,7 @@ import {
     M2_HOSTILE, M2_PEACEFUL, M2_DOMESTIC, M2_NEUTER, M2_GREEDY,
     M1_FLY, M1_NOHANDS,
     PM_ORC, PM_GIANT, PM_ELF, PM_HUMAN,
-    PM_SOLDIER, AT_WEAP,
+    PM_SOLDIER, PM_SHOPKEEPER, AT_WEAP,
     PM_GOBLIN, PM_ORC_CAPTAIN, PM_MORDOR_ORC, PM_URUK_HAI, PM_ORC_SHAMAN,
     PM_OGRE_LEADER, PM_OGRE_TYRANT, PM_GHOST,
 } from './monsters.js';
@@ -54,6 +54,9 @@ import {
     MIRROR, POT_OBJECT_DETECTION, POT_HEALING, POT_EXTRA_HEALING,
     POT_SPEED, CRYSTAL_BALL, BRASS_LANTERN, SKELETON_KEY,
     WAN_STRIKING, FOOD_RATION, TIN_OPENER,
+    WAN_MAGIC_MISSILE, WAN_DEATH, WAN_SLEEP, WAN_FIRE, WAN_COLD, WAN_LIGHTNING,
+    POT_ACID, POT_CONFUSION, POT_BLINDNESS, POT_SLEEPING, POT_PARALYSIS,
+    SCR_EARTH,
     RIN_INVISIBILITY,
     CORPSE,
 } from './objects.js';
@@ -578,8 +581,33 @@ function m_initweap(mndx, depth) {
     // C ref: makemon.c:571 — offensive item check, OUTSIDE the switch,
     // always called for ALL monsters. rn2(75) is always consumed.
     if (ptr.level > rn2(75)) {
-        // rnd_offensive_item → mongets → mksobj
-        // TODO: implement actual offensive item creation
+        // C ref: muse.c rnd_offensive_item()
+        // Skip for animals, exploders, mindless, ghosts, kops
+        const difficulty = ptr.difficulty || ptr.level;
+        let otyp = 0;
+        if (ptr.symbol !== S_GHOST && ptr.symbol !== S_KOP) {
+            if (difficulty > 7 && !rn2(35)) {
+                otyp = WAN_DEATH;
+            } else {
+                const range = 9 - (difficulty < 4 ? 1 : 0) + 4 * (difficulty > 6 ? 1 : 0);
+                const pick = rn2(range);
+                switch (pick) {
+                case 0: otyp = SCR_EARTH; break; // may fall through to case 1 in C, but RNG same
+                case 1: otyp = WAN_STRIKING; break;
+                case 2: otyp = POT_ACID; break;
+                case 3: otyp = POT_CONFUSION; break;
+                case 4: otyp = POT_BLINDNESS; break;
+                case 5: otyp = POT_SLEEPING; break;
+                case 6: otyp = POT_PARALYSIS; break;
+                case 7: case 8: otyp = WAN_MAGIC_MISSILE; break;
+                case 9: otyp = WAN_SLEEP; break;
+                case 10: otyp = WAN_FIRE; break;
+                case 11: otyp = WAN_COLD; break;
+                case 12: otyp = WAN_LIGHTNING; break;
+                }
+            }
+        }
+        if (otyp) mksobj(otyp, true, false);
     }
 }
 
@@ -626,6 +654,15 @@ function m_initinv(mndx, depth, m_lev) {
             if (!rn2(7)) mksobj(ROBE, true, false);
             if (!rn2(3)) mksobj(rn2(2) ? ELVEN_CLOAK : DWARVISH_CLOAK, true, false);
             rn1(10, 20); // gold amount
+        } else if (mndx === PM_SHOPKEEPER) {
+            // C ref: makemon.c:703-721 — SKELETON_KEY + fall-through switch
+            mksobj(SKELETON_KEY, true, false);
+            const w = rn2(4);
+            // MAJOR fall through: case 0 gets all items, case 3 only WAN_STRIKING
+            if (w <= 0) mksobj(WAN_MAGIC_MISSILE, true, false);
+            if (w <= 1) mksobj(POT_EXTRA_HEALING, true, false);
+            if (w <= 2) mksobj(POT_HEALING, true, false);
+            mksobj(WAN_STRIKING, true, false); // case 3 always executes
         }
         break;
 
@@ -839,8 +876,8 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     }
 
     // C ref: makemon.c:1252 — mtmp->m_id = next_ident()
-    // next_ident() consumes rnd(2) for unique monster ID (BEFORE newmonhp)
-    rnd(2);
+    // next_ident() returns counter value and consumes rnd(2)
+    const m_id = next_ident();
 
     // C ref: makemon.c:1259 — newmonhp
     const { hp, m_lev } = newmonhp(mndx);
@@ -924,6 +961,7 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     const symEntry = def_monsyms[ptr.symbol];
     const mon = {
         mndx,
+        m_id,
         type: ptr,
         name: ptr.name,
         displayChar: symEntry ? symEntry.sym : '?',
