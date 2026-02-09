@@ -526,6 +526,22 @@ export class Agent {
                     if (currentCell) currentCell.searched++;
                     return { type: 'search', key: 's', reason: `aggressive search for hidden stairs (stuck ${this.levelStuckCounter})` };
                 }
+
+                // After extensive searching, if still stuck, blacklist nearby targets and try elsewhere
+                if (this.levelStuckCounter > 100) {
+                    // Blacklist all nearby frontier cells (they're probably unreachable)
+                    const frontier = level.getExplorationFrontier();
+                    for (const target of frontier) {
+                        const dist = Math.max(Math.abs(target.x - px), Math.abs(target.y - py));
+                        if (dist <= 5) {
+                            const tKey = target.y * 80 + target.x;
+                            this.failedTargets.add(tKey);
+                        }
+                    }
+                    // Reset stuck counter to try again with new targets
+                    this.stuckCounter = 0;
+                    this.levelStuckCounter = 0;
+                }
             }
         }
 
