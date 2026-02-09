@@ -126,21 +126,80 @@ The JS `dogfood()` in `dog.js` (lines 131-284) implements the full food classifi
 
 ## Debugging approach
 
-To identify the exact cause of the step 22 divergence:
+### Step 1: Instrument JS to log pet position per step
 
-1. **Dump pet position at each step**: Add logging to `dog_move` to print the pet's
-   (mx, my) after each move. Compare against C positions (derivable from the RNG trace).
+Add a diagnostic return value from `dog_move` in `monmove.js` to track the pet's
+position after each movement decision. Then in `replaySession`, accumulate pet
+positions per step and compare against expectations derived from the C trace.
 
-2. **Dump objects in scan range**: At step 22, log all objects within SQSRCHRADIUS of
-   the pet. Compare against C objects.
+```javascript
+// In session_helpers.js replaySession, after movemon:
+const petPositions = game.map.monsters
+    .filter(m => m.tame)
+    .map(m => ({ mx: m.mx, my: m.my, name: m.name }));
+stepResults[i].petPositions = petPositions;
+```
 
-3. **Check `mfndpos` position ordering**: The column-major iteration in `mfndpos` must
-   exactly match C. A difference in iteration order with same RNG values produces
-   different position selections.
+### Step 2: Derive expected C pet positions from RNG trace
 
-4. **Verify `dogfood()` classifications**: Ensure every object type classifies the same
-   way in JS and C. A mis-classification could cause the scan to skip an object that C
-   evaluates.
+The C trace contains `dog_move(dogmove.c:1263)` and `dog_move(dogmove.c:1256)` calls
+that are consumed during position evaluation. By replaying the C trace's rn2 values
+through the JS position eval logic, you can reconstruct where C's pet ended up.
+
+Alternatively: add pet position dumping to the C harness PRNG logging patch
+(at the end of dog_move, emit a log line like `DOG_POS x,y`).
+
+### Step 3: Compare object scan ranges at divergence step
+
+At step 22 (the first divergence), dump all objects within SQSRCHRADIUS=5 of both
+the JS pet position and the expected C pet position. The C trace shows 1 obj_resists
+call from dog_goal, meaning 1 object in range. Finding which object C sees that JS
+doesn't will identify the root cause.
+
+```javascript
+// Diagnostic script to run after step 21 replay
+const pet = game.map.monsters.find(m => m.tame);
+const SQSRCHRADIUS = 5;
+const nearbyObjs = game.map.objects.filter(obj =>
+    Math.abs(obj.ox - pet.mx) <= SQSRCHRADIUS &&
+    Math.abs(obj.oy - pet.my) <= SQSRCHRADIUS
+);
+console.log(`Pet at ${pet.mx},${pet.my}, ${nearbyObjs.length} objects in range`);
+nearbyObjs.forEach(obj => console.log(`  ${obj.name} at ${obj.ox},${obj.oy}`));
+```
+
+### Step 4: Check mfndpos position ordering
+
+The `mfndpos` function collects adjacent positions in column-major order:
+`(x-1,y-1), (x-1,y), (x-1,y+1), (x,y-1), (x,y+1), (x+1,y-1), ...`
+
+If the iteration order differs from C even slightly, the same rn2 values will select
+different positions. Verify by comparing the positions array against C's expected
+output (derivable from the trace's rn2 arguments: `rn2(12)` means `rn2(cnt)` where
+cnt is the number of valid positions).
+
+### Step 5: Verify dogfood() classifications
+
+Each object within SQSRCHRADIUS is evaluated by `dogfood()` which calls
+`obj_resists()` → `rn2(100)`. If JS classifies an object as UNDEF or TABU
+(skipping it) while C classifies it as APPORT (evaluating it), the rn2(100)
+call would be missing. Run dogfood on each nearby object and compare
+classifications.
+
+### Possible root causes (prioritized)
+
+1. **Pet position drift** (most likely) — The position evaluation in dog_move
+   consumes rn2 with arguments that depend on the number of valid positions
+   (`cnt`). If mfndpos returns a different count (e.g., due to boulder/door
+   checks differing), the same rn2 value selects a different square.
+
+2. **Object position mismatch** — If makelevel generates objects at different
+   positions in JS vs C, the scan would find different objects. Verify by
+   comparing the full `map.objects` list against a C object dump.
+
+3. **Missing dog_invent** — If C's pet picked up an object (dog_invent) on an
+   earlier turn and dropped it at a different position, that object would appear
+   in a different scan range. dog_invent is not yet implemented in JS.
 
 ## Related: Eat command RNG (seed42_items step 8)
 
