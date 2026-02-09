@@ -773,6 +773,48 @@ function set_mimic_sym(mndx, x, y, map) {
 export const NO_MM_FLAGS = 0;
 export const MM_NOGRP = 0x08;
 
+// C ref: makemon.c makemon_rnd_goodpos() — find random valid position
+// Tries up to 50 random positions using rn2(COLNO-3)+2, rn2(ROWNO).
+// During mklev, cansee() is FALSE so it always checks goodpos.
+// Simplified goodpos: SPACE_POS(typ) terrain, no monster already there.
+function makemon_rnd_goodpos(map, ptr) {
+    const COLNO = 80, ROWNO = 21;
+    const DOOR = 23; // SPACE_POS(typ) = typ > DOOR
+    for (let tryct = 0; tryct < 50; tryct++) {
+        const nx = rn2(COLNO - 3) + 2; // rn1(COLNO-3, 2)
+        const ny = rn2(ROWNO);
+        if (!map.at) continue;
+        const loc = map.at(nx, ny);
+        if (!loc) continue;
+        // C ref: goodpos checks accessible terrain
+        if (loc.typ <= DOOR) continue; // wall, stone, door — not SPACE_POS
+        // Check no monster at this position
+        let occupied = false;
+        if (map.monsters) {
+            for (const m of map.monsters) {
+                if (m.mx === nx && m.my === ny) { occupied = true; break; }
+            }
+        }
+        if (occupied) continue;
+        return { x: nx, y: ny };
+    }
+    // Exhaustive search fallback (no RNG consumed)
+    for (let nx = 2; nx < COLNO - 1; nx++) {
+        for (let ny = 0; ny < ROWNO; ny++) {
+            const loc = map.at(nx, ny);
+            if (!loc || loc.typ <= DOOR) continue;
+            let occupied = false;
+            if (map.monsters) {
+                for (const m of map.monsters) {
+                    if (m.mx === nx && m.my === ny) { occupied = true; break; }
+                }
+            }
+            if (!occupied) return { x: nx, y: ny };
+        }
+    }
+    return null;
+}
+
 export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     let mndx;
 
@@ -788,6 +830,13 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
 
     if (mndx < 0 || mndx >= mons.length) return null;
     const ptr = mons[mndx];
+
+    // C ref: makemon.c:1173-1178 — random position finding for (0,0)
+    if (x === 0 && y === 0 && map) {
+        const pos = makemon_rnd_goodpos(map, ptr);
+        if (pos) { x = pos.x; y = pos.y; }
+        else return null;
+    }
 
     // C ref: makemon.c:1252 — mtmp->m_id = next_ident()
     // next_ident() consumes rnd(2) for unique monster ID (BEFORE newmonhp)

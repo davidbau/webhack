@@ -1252,6 +1252,27 @@ function inside_room(croom, x, y) {
 function somexy(croom, map) {
     let try_cnt = 0;
 
+    // C ref: mkroom.c somexy() irregular path — !edge && roomno == i
+    if (croom.irregular) {
+        const i = croom.roomnoidx + ROOMOFFSET;
+        while (try_cnt++ < 100) {
+            const x = somex(croom);
+            const y = somey(croom);
+            const loc = map.at(x, y);
+            if (loc && !loc.edge && loc.roomno === i)
+                return { x, y };
+        }
+        // Exhaustive search fallback
+        for (let x = croom.lx; x <= croom.hx; x++) {
+            for (let y = croom.ly; y <= croom.hy; y++) {
+                const loc = map.at(x, y);
+                if (loc && !loc.edge && loc.roomno === i)
+                    return { x, y };
+            }
+        }
+        return null;
+    }
+
     if (!croom.nsubrooms) {
         return { x: somex(croom), y: somey(croom) };
     }
@@ -1289,6 +1310,79 @@ function somexyspace(map, croom) {
         }
         if (okay) return pos;
     } while (trycnt++ < 100);
+    return null;
+}
+
+// C ref: teleport.c collect_coords() — gather coordinates in expanding
+// distance rings from (cx,cy), shuffling each ring independently.
+// Used by enexto() to find nearby unoccupied positions.
+// Returns array of {x,y} coords, RNG-consuming front-to-back Fisher-Yates per ring.
+function collect_coords(cx, cy, maxradius) {
+    const rowrange = (cy < Math.floor(ROWNO / 2)) ? (ROWNO - 1 - cy) : cy;
+    const colrange = (cx < Math.floor(COLNO / 2)) ? (COLNO - 1 - cx) : cx;
+    const k = Math.max(rowrange, colrange);
+    if (!maxradius) maxradius = k;
+    else maxradius = Math.min(maxradius, k);
+
+    const result = [];
+    for (let radius = 1; radius <= maxradius; radius++) {
+        const ringStart = result.length;
+        const lox = cx - radius, hix = cx + radius;
+        const loy = cy - radius, hiy = cy + radius;
+        for (let y = Math.max(loy, 0); y <= hiy; y++) {
+            if (y > ROWNO - 1) break;
+            for (let x = Math.max(lox, 1); x <= hix; x++) {
+                if (x > COLNO - 1) break;
+                // Only edge cells of the ring square
+                if (x !== lox && x !== hix && y !== loy && y !== hiy) continue;
+                result.push({ x, y });
+            }
+        }
+        // Front-to-back Fisher-Yates shuffle for this ring
+        let n = result.length - ringStart;
+        let passIdx = ringStart;
+        while (n > 1) {
+            const swap = rn2(n);
+            if (swap) {
+                const tmp = result[passIdx];
+                result[passIdx] = result[passIdx + swap];
+                result[passIdx + swap] = tmp;
+            }
+            passIdx++;
+            n--;
+        }
+    }
+    return result;
+}
+
+// C ref: teleport.c goodpos() — simplified for level generation.
+// Checks SPACE_POS terrain and no monster at position.
+function sp_goodpos(x, y, map) {
+    if (!isok(x, y)) return false;
+    const loc = map.at(x, y);
+    if (!loc || loc.typ <= DOOR) return false; // !SPACE_POS
+    // Check no monster at position
+    for (const m of map.monsters) {
+        if (m.mx === x && m.my === y) return false;
+    }
+    return true;
+}
+
+// C ref: teleport.c enexto() — find nearest valid position to (cx,cy).
+// First tries radius 3 (collect_coords with shuffled rings), then full map.
+// Always consumes RNG for collect_coords regardless of whether position is found.
+export function enexto(cx, cy, map) {
+    // First pass: radius 3 (with GP_CHECKSCARY — no effect during mklev)
+    const nearCoords = collect_coords(cx, cy, 3);
+    for (const cc of nearCoords) {
+        if (sp_goodpos(cc.x, cc.y, map)) return cc;
+    }
+    // Second pass: full map
+    const allCoords = collect_coords(cx, cy, 0);
+    // Skip the first nearCoords.length entries (already checked, different shuffle order)
+    for (let i = nearCoords.length; i < allCoords.length; i++) {
+        if (sp_goodpos(allCoords[i].x, allCoords[i].y, map)) return allCoords[i];
+    }
     return null;
 }
 

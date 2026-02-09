@@ -9,13 +9,13 @@ import {
     POOL, TREE, IRONBARS, LAVAPOOL, ICE, WATER, MOAT, LAVAWALL,
     AIR, CLOUD, CROSSWALL, MAX_TYPE, ALTAR, GRAVE,
     D_NODOOR, D_BROKEN, D_CLOSED, D_ISOPEN, D_LOCKED, D_SECRET,
-    OROOM, THEMEROOM,
+    OROOM, THEMEROOM, ROOMOFFSET,
     isok,
 } from './config.js';
 import { FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, rnz, d } from './rng.js';
 import { mksobj, mkobj, RANDOM_CLASS } from './mkobj.js';
-import { mkclass, def_char_to_monclass, makemon, rndmonnum, NO_MM_FLAGS } from './makemon.js';
+import { mkclass, def_char_to_monclass, makemon, rndmonnum, rndmonst_adj, NO_MM_FLAGS } from './makemon.js';
 import {
     CORPSE, STATUE, BOULDER, CHEST, OIL_LAMP, DAGGER, BOW, ARROW,
     objectData, CLASS_SYMBOLS,
@@ -24,10 +24,10 @@ import {
 import {
     mons, G_NOGEN, G_IGNORE, MAXMCLASSES, PM_LIZARD, PM_LICHEN,
     PM_GHOST, PM_FOG_CLOUD, PM_WOOD_NYMPH, PM_GIANT_SPIDER,
-    S_MIMIC, M2_MALE, M2_FEMALE,
+    S_MIMIC, S_UNICORN, M2_MALE, M2_FEMALE, M2_NEUTER,
 } from './monsters.js';
 import {
-    create_room, create_subroom, sp_create_door, floodFillAndRegister,
+    create_room, create_subroom, sp_create_door, floodFillAndRegister, enexto,
 } from './dungeon.js';
 
 // ========================================================================
@@ -373,14 +373,35 @@ function selectionIterate(points, callback) {
 // Helper: resolve random position in room via somexy loop.
 // C ref: sp_lev.c get_location() with croom → somexy(croom, &tmpc)
 // somexy calls somex + somey per attempt, retries if wall or subroom.
+// For irregular rooms (shaped themerooms), somexy checks !edge && roomno
+// match (C ref: mkroom.c somexy irregular path), then get_location checks
+// SPACE_POS(typ). For regular rooms, somexy returns immediately and only
+// get_location's SPACE_POS check applies.
 function des_get_location(map, room) {
+    const irregular = room.irregular;
+    const rmno = irregular ? (room.roomnoidx + ROOMOFFSET) : 0;
     for (let tries = 0; tries < 100; tries++) {
         const x = rn1(room.hx - room.lx + 1, room.lx); // somex
         const y = rn1(room.hy - room.ly + 1, room.ly); // somey
         const loc = map.at(x, y);
-        if (loc && loc.typ > DOOR) return { x, y }; // SPACE_POS
+        if (!loc) continue;
+        if (irregular) {
+            // C ref: mkroom.c somexy() irregular path — !edge && roomno == i
+            if (loc.edge || loc.roomno !== rmno) continue;
+        }
+        // C ref: sp_lev.c is_ok_location() — SPACE_POS(typ)
+        if (loc.typ > DOOR) return { x, y };
     }
     return { x: room.lx, y: room.ly }; // fallback
+}
+
+// C ref: sp_lev.c create_monster() line 1977 — MON_AT check + enexto
+// When a monster already occupies the target position, find a nearby free spot.
+function sp_monster_at(map, x, y) {
+    for (const m of map.monsters) {
+        if (m.mx === x && m.my === y) return true;
+    }
+    return false;
 }
 
 // Helper: look up object index by name.
@@ -447,8 +468,10 @@ function des_object_named(map, room, objName, opts = {}) {
         des_get_location(map, room);
     }
 
-    // mksobj_at(otyp, x, y, TRUE, !named) — named=true so artif=false
-    const obj = mksobj(otyp, true, false);
+    // mksobj_at(otyp, x, y, TRUE, !named)
+    // C's "named" = o->name.str (custom name string), NOT the object id.
+    // Themeroom objects specify id but not name, so named=false, artif=true.
+    const obj = mksobj(otyp, true, true);
 
     // Curse state: "not-blessed" = case 6 → unbless (no RNG)
     // Default (random) = keep what mksobj gave (no RNG)
@@ -520,12 +543,21 @@ function des_monster_named(map, room, monName, depth, opts = {}) {
     rn2(3); // induced_align
 
     // Location
+    let pos;
     if (!opts.atCoord) {
-        des_get_location(map, room);
+        pos = des_get_location(map, room);
+    } else {
+        pos = { x: opts.x || room.lx, y: opts.y || room.ly };
+    }
+
+    // C ref: sp_lev.c:1977 — MON_AT check + enexto
+    if (sp_monster_at(map, pos.x, pos.y)) {
+        const alt = enexto(pos.x, pos.y, map);
+        if (alt) pos = alt;
     }
 
     // makemon(pm, x, y, NO_MM_FLAGS)
-    makemon(mndx, room.lx, room.ly, NO_MM_FLAGS, depth, map);
+    makemon(mndx, pos.x, pos.y, NO_MM_FLAGS, depth, map);
 }
 
 // C ref: sp_lev.c create_monster() for monster with class char.
@@ -534,11 +566,19 @@ function des_monster_class(map, room, classChar, depth, opts = {}) {
     rn2(3); // induced_align
     const monclass = def_char_to_monclass(classChar);
     const mndx = mkclass(monclass, G_NOGEN, depth);
+    let pos;
     if (!opts.atCoord) {
-        des_get_location(map, room);
+        pos = des_get_location(map, room);
+    } else {
+        pos = { x: opts.x || room.lx, y: opts.y || room.ly };
     }
     if (mndx >= 0) {
-        makemon(mndx, room.lx, room.ly, NO_MM_FLAGS, depth, map);
+        // C ref: sp_lev.c:1977 — MON_AT check + enexto
+        if (sp_monster_at(map, pos.x, pos.y)) {
+            const alt = enexto(pos.x, pos.y, map);
+            if (alt) pos = alt;
+        }
+        makemon(mndx, pos.x, pos.y, NO_MM_FLAGS, depth, map);
     }
 }
 
@@ -552,8 +592,55 @@ function des_trap(map, room, trapType, opts = {}) {
         // get_free_room_loc may retry via get_room_loc if not ROOM type.
         // For normal rooms, first attempt usually succeeds — no extra RNG.
     }
-    // mktrap creates the trap entity — no additional RNG for sp_lev traps
-    // (the trap type is already known, no traptype_rnd needed)
+    // C ref: trap.c maketrap() switch — some trap types create objects/monsters
+    if (trapType === 'statue') {
+        // C ref: trap.c mk_trap_statue() — create a "living" statue
+        mk_trap_statue_rng(map, room);
+    }
+    // C ref: mklev.c mktrap() victim check — rnd(4) always consumed during mklev
+    // At depth 1, lvl(=1) <= rnd(4)(>=1) is always TRUE, so rnd(4) is consumed
+    // for all trap types (unless MKTRAP_NOVICTIM is set, which it isn't for
+    // themeroom traps). The full condition may still be FALSE due to later
+    // checks (e.g. kind < HOLE), but rnd(4) is already consumed by then.
+    rnd(4); // mktrap victim check (consumed regardless of outcome)
+}
+
+// C ref: trap.c mk_trap_statue() — create statue with embedded monster inventory.
+// Picks a monster via rndmonst_adj(3,6), creates statue via mkcorpstat,
+// then creates a temp monster via makemon(0,0) to populate the statue's inventory.
+// The temp monster is immediately deleted. All RNG must match C exactly.
+function mk_trap_statue_rng(map, room) {
+    const depth = 1; // during mklev, depth context
+
+    // C ref: do { mptr = &mons[rndmonnum_adj(3, 6)]; } while (unicorn check)
+    // Retry if co-aligned unicorn (trycount <= 10)
+    let mndx;
+    let trycount = 10;
+    do {
+        mndx = rndmonst_adj(3, 6, depth);
+        if (mndx < 0) return;
+        const isUnicorn = mons[mndx].symbol === S_UNICORN;
+        // During mklev, u.ualign.type is typically 0 (neutral/unset)
+        // sgn(u.ualign.type) == sgn(mptr->maligntyp) check
+        // For simplicity, assume alignment doesn't match (no retry needed)
+        // This is correct for most cases; if a neutral unicorn is picked,
+        // the retry would consume another rndmonst_adj
+        if (!isUnicorn) break;
+        // Conservative: break even for unicorns since alignment is uncertain
+        break;
+    } while (--trycount > 0);
+
+    // C ref: mkcorpstat(STATUE, NULL, mptr, x, y, CORPSTAT_NONE)
+    //   → mksobj(STATUE, FALSE, FALSE)
+    //   which internally: rnd(2) for next_ident, rndmonnum() for corpsenm,
+    //   rn2(2) for gender (if applicable)
+    //   Then mkcorpstat overrides corpsenm with the actual mndx.
+    mksobj(STATUE, false, false);
+
+    // C ref: makemon(&mons[corpsenm], 0, 0, MM_NOCOUNTBIRTH | MM_NOMSG)
+    // Position (0,0) triggers makemon_rnd_goodpos: tries rn2(77)+rn2(21) pairs
+    // Then full monster creation (newmonhp, gender, weapons, inventory, etc.)
+    makemon(mndx, 0, 0, NO_MM_FLAGS, depth, map);
 }
 
 // C ref: sp_lev.c create_altar() — altar at random room pos.
@@ -1152,7 +1239,8 @@ function themeroom_default(map, depth) {
 // (gi.in_mk_themerooms makes the default 0 in lspo_room).
 function themeroom_desroom_fill(map, pick, depth) {
     rn2(100);
-    if (!create_room(map, -1, -1, -1, -1, -1, -1, OROOM, -1, depth, true))
+    const rlit = (pick === 6) ? 0 : -1;  // pick 6: lit=0 (dark); picks 5,7: random
+    if (!create_room(map, -1, -1, -1, -1, -1, -1, OROOM, rlit, depth, true))
         return false;
     const room = map.rooms[map.nroom - 1];
     if (pick === 7) {

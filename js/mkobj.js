@@ -570,6 +570,7 @@ function mksobj_postinit(obj) {
         obj.corpsenm = undead_to_corpse(rndmonnum());
     }
     // Statue/figurine: if corpsenm not set, assign one
+    // C ref: mkobj.c:1212 — otmp->corpsenm = rndmonnum()
     if ((od.name === 'statue' || od.name === 'figurine') && obj.corpsenm === -1) {
         obj.corpsenm = rndmonnum();
     }

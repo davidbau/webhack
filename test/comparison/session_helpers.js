@@ -128,6 +128,17 @@ function isMidlogEntry(entry) {
     return entry.length > 0 && (entry[0] === '>' || entry[0] === '<');
 }
 
+// Check if a log entry is a composite RNG function whose individual
+// random number consumptions are not visible as separate rn2/rnd entries.
+// - rne/rnz: internal rn2 calls ARE logged separately by C, so these
+//   wrapper entries would cause double-counting during comparison.
+// - d(): internal RND() calls bypass rn2 and are NOT logged individually.
+//   Both C and JS log d() as a single entry, but old C session files
+//   may have d() filtered out.  Skip during comparison for compatibility.
+function isCompositeEntry(entry) {
+    return entry.startsWith('rne(') || entry.startsWith('rnz(') || entry.startsWith('d(');
+}
+
 // Convert JS log entry to compact session format.
 // JS format: "1 rn2(12)=2" or "1 rn2(12)=2 @ caller(file.js:45)"
 // Compact:   "rn2(12)=2" or "rn2(12)=2 @ caller(file.js:45)"
@@ -157,15 +168,18 @@ export function compareRng(jsRng, sessionRng) {
         if (isMidlogEntry(sessionRng[si])) { si++; continue; }
         // Skip midlog entries in JS trace (future-proofing)
         if (isMidlogEntry(jsRng[ji])) { ji++; continue; }
+        // Skip composite RNG entries (rne/rnz/d) in JS trace — see isCompositeEntry().
+        if (isCompositeEntry(rngCallPart(jsRng[ji]))) { ji++; continue; }
+        if (isCompositeEntry(rngCallPart(sessionRng[si]))) { si++; continue; }
         if (rngCallPart(jsRng[ji]) !== rngCallPart(sessionRng[si])) {
             return { index: ji, js: jsRng[ji], session: sessionRng[si] };
         }
         ji++;
         si++;
     }
-    // Skip trailing midlog entries
-    while (si < sessionRng.length && isMidlogEntry(sessionRng[si])) si++;
-    while (ji < jsRng.length && isMidlogEntry(jsRng[ji])) ji++;
+    // Skip trailing midlog/composite entries
+    while (si < sessionRng.length && (isMidlogEntry(sessionRng[si]) || isCompositeEntry(rngCallPart(sessionRng[si])))) si++;
+    while (ji < jsRng.length && (isMidlogEntry(jsRng[ji]) || isCompositeEntry(rngCallPart(jsRng[ji])))) ji++;
     if (ji < jsRng.length || si < sessionRng.length) {
         return {
             index: ji,
