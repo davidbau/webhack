@@ -295,7 +295,7 @@ The recommended order prioritizes getting testable results quickly:
 2. ~~Implement map flipping (horizontal/vertical)~~ ✓ DONE
 3. ~~Add object placement system~~ ✓ DONE
 4. ~~Add trap placement system~~ ✓ DONE
-5. Port remaining 7 Sokoban levels (soko1-2, soko2-1/2, soko3-1/2, soko4-2)
+5. ~~Port all 8 Sokoban levels (soko1-1/2, soko2-1/2, soko3-1/2, soko4-1/2)~~ ✓ DONE
 6. Integrate special level loading into makelevel() flow
 
 ### Wall Junction Computation (wall_extends)
@@ -368,6 +368,47 @@ The recommended order prioritizes getting testable results quickly:
 - 5 tests in object_trap_placement.test.js
 - Validates: named object placement, scroll of earth, trap placement, no duplicates, Sokoban scenario
 - All tests passing
+
+### Sokoban Level Ports (Complete ✓)
+
+**All 8 Sokoban levels ported to JavaScript:**
+- `js/levels/soko1-1.js`: Level 1 variant A (18 boulders, 16 holes, 4 doors, 2 mimics, reward region)
+- `js/levels/soko1-2.js`: Level 1 variant B (20 boulders, 18 holes, 4 doors, 2 mimics, reward region)
+- `js/levels/soko2-1.js`: Level 2 variant A (13 boulders, 10 holes, 1 door)
+- `js/levels/soko2-2.js`: Level 2 variant B (16 boulders, 11 holes, 1 door)
+- `js/levels/soko3-1.js`: Level 3 variant A (18 boulders, 15 holes, 1 door)
+- `js/levels/soko3-2.js`: Level 3 variant B (15 boulders, 12 holes, 1 door)
+- `js/levels/soko4-1.js`: Level 4 variant A (11 boulders, 2 scrolls of earth, 10 pits, upstairs)
+- `js/levels/soko4-2.js`: Level 4 variant B (12 boulders, 2 scrolls of earth, 10 pits, upstairs)
+
+**Porting approach:**
+- Direct 1:1 translation from Lua to JavaScript
+- All des.* calls preserved exactly as in original
+- Stub implementations for features not affecting terrain (monsters, doors, engravings, regions)
+- All levels call finalize_level() for wallification and flipping
+
+**Additional des.* functions added (stubs):**
+- `des.monster(opts)`: Monster placement (stub - ignored for now)
+- `des.door(state, x, y)`: Door placement (stub - ignored for now)
+- `des.engraving(opts)`: Engraving placement (stub - ignored for now)
+
+**Helper functions:**
+- `percent(n)`: Returns true n% of the time via rn2(100) < n
+- `selection.new()`: Creates selection object with coords array and set() method
+- `selection.rndcoord(sel)`: Returns random coordinate from selection
+
+**Level complexity:**
+- Simple levels (soko2/3/4-2): Just boulders, traps, basic features
+- Complex levels (soko1-1/2): Include monsters, doors, reward regions, random object selection
+
+**Known issues:**
+- Wallification convergence warnings on some levels (narrow corridors cause oscillation)
+- Doesn't affect terrain generation, just junction type refinement
+
+**Testing:**
+- Verified soko2-1 generates successfully (13 objects, 10 traps, 80x21 map)
+- All levels use existing object/trap placement systems
+- Ready for integration into level loader
 
 ---
 
