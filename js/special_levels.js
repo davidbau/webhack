@@ -39,6 +39,7 @@ import { generate as generateBigroom5 } from './levels/bigroom-5.js';
 import { generate as generateBigroom6 } from './levels/bigroom-6.js';
 import { generate as generateBigroom7 } from './levels/bigroom-7.js';
 import { generate as generateBigroom8 } from './levels/bigroom-8.js';
+import { generate as generateBigroom9 } from './levels/bigroom-9.js';
 
 // Sokoban levels
 import { generate as generateSoko1a } from './levels/soko1-1.js';
@@ -180,6 +181,7 @@ registerSpecialLevel(SOKOBAN, 4, [generateSoko4a, generateSoko4b], ['soko4-1', '
 // Register special levels in main dungeon
 // In Dungeons of Doom, at depths that vary by dungeon generation
 // Using specific depths for testing (actual depths determined at runtime)
+registerSpecialLevel(DUNGEONS_OF_DOOM, 8, generateBigroom9, 'bigroom-9');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 9, generateBigroom5, 'bigroom-5');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 10, generateBigroom6, 'bigroom-6');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 11, generateBigroom7, 'bigroom-7');
