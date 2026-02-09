@@ -728,13 +728,14 @@ const ROLE_ATTRDIST = {
 
 // Race attribute bounds
 // C ref: role.c races[].attrmin/attrmax
+// STR uses STR18(x) = 18+x encoding (18/xx strength), so STR18(100) = 118
 const RACE_ATTRMIN = [3, 3, 3, 3, 3, 3]; // Same for all races
 const RACE_ATTRMAX = {
-    [RACE_HUMAN]: [18, 18, 18, 18, 18, 18],
+    [RACE_HUMAN]: [118, 18, 18, 18, 18, 18],  // STR18(100)
     [RACE_ELF]:   [18, 20, 20, 18, 16, 18],
-    [RACE_DWARF]: [18, 16, 16, 20, 20, 16],
-    [RACE_GNOME]: [18, 19, 18, 18, 18, 18],
-    [RACE_ORC]:   [18, 16, 16, 18, 18, 16],
+    [RACE_DWARF]: [118, 16, 16, 20, 20, 16],   // STR18(100)
+    [RACE_GNOME]: [68, 19, 18, 18, 18, 18],    // STR18(50)
+    [RACE_ORC]:   [68, 16, 16, 18, 18, 16],    // STR18(50)
 };
 
 // Race HP/PW init bonuses

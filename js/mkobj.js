@@ -15,6 +15,7 @@ import {
     WAN_CANCELLATION, WAN_LIGHT, WAN_LIGHTNING,
     BAG_OF_HOLDING, OILSKIN_SACK, BAG_OF_TRICKS, SACK,
     LARGE_BOX, CHEST, ICE_BOX, CORPSE, STATUE,
+    WORM_TOOTH, UNICORN_HORN,
     CLASS_SYMBOLS,
     initObjectData,
 } from './objects.js';
@@ -147,12 +148,8 @@ export function weight(obj) {
     return wt ? wt * obj.quan : (obj.quan + 1) >> 1;
 }
 
-// Helper: can object generate eroded?
-function may_generate_eroded(obj) {
-    // C ref: may_generate_eroded + erosion_matters
-    // erosion_matters returns true only for WEAPON, ARMOR, BALL, CHAIN,
-    // and TOOL_CLASS items that are weptools (oc_skill != P_NONE)
-    const od = objectData[obj.otyp];
+// C ref: objnam.c erosion_matters() — class-based check for whether erosion is relevant
+function erosion_matters(obj) {
     switch (obj.oclass) {
     case WEAPON_CLASS:
     case ARMOR_CLASS:
@@ -160,12 +157,25 @@ function may_generate_eroded(obj) {
     case CHAIN_CLASS:
         return true;
     case TOOL_CLASS:
-        // C ref: is_weptool(o) = oclass==TOOL_CLASS && oc_skill != P_NONE
-        // In objects.js, 'sub' field = oc_skill
-        return (od.sub || 0) !== 0;
+        return (objectData[obj.otyp].sub || 0) !== 0; // is_weptool
     default:
         return false;
     }
+}
+
+// C ref: objclass.h is_damageable() — material-based check
+function is_damageable(obj) {
+    return is_rustprone(obj) || is_flammable(obj) || is_rottable(obj)
+        || is_corrodeable(obj) || is_crackable(obj);
+}
+
+// C ref: mkobj.c may_generate_eroded(otmp)
+function may_generate_eroded(obj) {
+    if (obj.oerodeproof) return false;
+    if (!erosion_matters(obj) || !is_damageable(obj)) return false;
+    if (obj.otyp === WORM_TOOTH || obj.otyp === UNICORN_HORN) return false;
+    if (obj.oartifact) return false;
+    return true;
 }
 
 // C ref: mkobj.c blessorcurse()
