@@ -227,6 +227,77 @@ The recommended order prioritizes getting testable results quickly:
 - Root cause: spoiler maps drawn visually without applying wall_extends() algorithm
 - Created bd issue interface-llb to fix after debugging convergence issues in wall computation script
 
+### des.* API Implementation
+
+**GameMap coordinate system:**
+- C uses `level.locations[x][y]` (column-major indexing)
+- JS GameMap also uses `locations[x][y]`, NOT `grid[y][x]` (row-major)
+- Always index as `map.locations[x][y]` where x=0..79, y=0..20
+
+**Core des.* functions implemented (js/sp_lev.js):**
+- `des.level_init(opts)`: Initializes level with fill style (solidfill, mazegrid, maze, rogue, mines, swamp)
+- `des.level_flags(...flags)`: Sets level behavior flags (noteleport, hardfloor, mazelevel, premapped, solidify, etc.)
+- `des.map(data)`: Places ASCII map with alignment (halign: left/center/right, valign: top/center/bottom) or explicit x,y coords
+- `des.terrain(x, y, type)`: Sets individual terrain at coordinate
+
+**Map character to terrain type mapping:**
+- Space → STONE, `-` → HWALL, `|` → VWALL, `.` → ROOM, `#` → CORR
+- `+` → DOOR, `<` → STAIRS_UP, `>` → STAIRS_DOWN
+- `{` → FOUNTAIN, `}` → MOAT, `P` → POOL, `L` → LAVAPOOL
+- `I` → ICE, `W` → WATER, `T` → TREE, `F` → IRONBARS
+- `C` → CLOUD, `A` → AIR, `\\` → THRONE, `K` → SINK
+
+**Level state management:**
+- Global `levelState` tracks: map, flags, coder options, init parameters, placement offsets
+- `resetLevelState()` clears state between level generations
+- `getLevelState()` provides access for testing/debugging
+
+**Test coverage:**
+- 6 unit tests in test/unit/sp_lev.test.js
+- Verified: solidfill init, flag setting, map placement, terrain setting, alignment, explicit coords
+
+### First Level Port: Sokoban soko4-1
+
+**Successfully ported soko4-1.lua to JavaScript:**
+- js/levels/soko4-1.js: Direct 1:1 port from Lua
+- All des.* function calls work correctly
+- Map generates with correct structure, lighting, and flags
+- Test validates against C trace data
+
+**Additional des.* functions implemented:**
+- `des.stair(direction, x, y)`: Places STAIRS_UP or STAIRS_DOWN terrain
+- `des.region(selection, "lit")`: Marks cells as lit=1
+- `des.non_diggable(selection)`: Sets nondiggable=true flag
+- `selection.area(x1, y1, x2, y2)`: Creates rectangular selection object
+
+**Stub implementations (need full support later):**
+- `des.object()`: Object placement (needs object system integration)
+- `des.trap()`: Trap placement (needs trap system integration)
+- `des.levregion()`: Branch entry points
+- `des.exclusion()`: Monster generation exclusion zones
+- `des.non_passwall()`: Passwall prevention
+
+**Map flipping implemented:**
+- C NetHack randomly flips entire level after all maps placed
+- `flip_level_rnd()` called at end of sp_level_loader (not per-map)
+- Uses `rn2(2)` to decide each flip: vertical (bit 0), horizontal (bit 1)
+- Controlled by `allow_flips` coder flag: 3=both, 2=horiz only, 1=vert only, 0=none
+- JS implementation in `flipLevelRandom()`:
+  - Finds bounds of non-STONE terrain
+  - Applies FlipX(val) = (maxx - val) + minx for horizontal
+  - Applies FlipY(val) = (maxy - val) + miny for vertical
+  - Swaps cells in-place within flip area
+- Called via `finalize_level()` at end of level generation
+- Tested with seed1 soko4 (vertical flip case) - works correctly
+
+**Next steps identified:**
+1. Implement wall_extends() for proper junction types
+2. ~~Implement map flipping (horizontal/vertical)~~ ✓ DONE
+3. Add object placement system
+4. Add trap placement system
+5. Port remaining 7 Sokoban levels (soko1-2, soko2-1/2, soko3-1/2, soko4-2)
+6. Integrate special level loading into makelevel() flow
+
 ---
 
 ## Reference

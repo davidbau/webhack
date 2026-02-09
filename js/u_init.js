@@ -241,7 +241,8 @@ function makedog(map, player, depth) {
         dead: false,
         passive: false,
         mtrack: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }],
-        mnum: pmIdx,     // C ref: monst.h — index into mons[]
+        mndx: pmIdx,     // C ref: monst.h — index into mons[] (also set mnum for compat)
+        mnum: pmIdx,     // Alias for mndx - some code uses mnum, some uses mndx
         minvent: saddleObj ? [saddleObj] : [],
         // C ref: mextra.h struct edog — pet-specific data
         // C ref: dog.c initedog(mtmp, TRUE) — full initialization

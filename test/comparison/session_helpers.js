@@ -277,11 +277,10 @@ export function generateStartupWithRng(seed, session) {
     const map = makelevel(1);
     wallification(map);
 
-    // Wizard mode: reveal all traps (matching C's `-D` flag behavior)
-    // C harness runs with `nethack -u Wizard -D` which enables omniscience
-    for (const trap of map.traps) {
-        trap.tseen = true;
-    }
+    // NOTE: Wizard mode (-D flag) enables omniscience for the PLAYER,
+    // but does NOT make pets aware of trap locations (trap.tseen).
+    // Traps are only seen when discovered during gameplay.
+    // Removed automatic trap revelation here.
 
     const grid = extractTypGrid(map);
 
@@ -489,11 +488,10 @@ export async function replaySession(seed, session) {
     const map = makelevel(1);
     wallification(map);
 
-    // Wizard mode: reveal all traps (matching C's `-D` flag behavior)
-    // C harness runs with `nethack -u Wizard -D` which enables omniscience
-    for (const trap of map.traps) {
-        trap.tseen = true;
-    }
+    // NOTE: Wizard mode (-D flag) enables omniscience for the PLAYER,
+    // but does NOT make pets aware of trap locations (trap.tseen).
+    // Traps are only seen when discovered during gameplay.
+    // Removed automatic trap revelation here.
 
     const player = new Player();
     player.initRole(replayRoleIndex);
