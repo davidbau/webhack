@@ -17,6 +17,12 @@ import { generate as generateWizard1 } from './levels/wizard1.js';
 import { generate as generateWizard2 } from './levels/wizard2.js';
 import { generate as generateWizard3 } from './levels/wizard3.js';
 
+// Demon lair levels
+import { generate as generateAsmodeus } from './levels/asmodeus.js';
+import { generate as generateBaalz } from './levels/baalz.js';
+import { generate as generateJuiblex } from './levels/juiblex.js';
+import { generate as generateOrcus } from './levels/orcus.js';
+
 // Sokoban levels
 import { generate as generateSoko1a } from './levels/soko1-1.js';
 import { generate as generateSoko1b } from './levels/soko1-2.js';
@@ -93,9 +99,14 @@ registerSpecialLevel(VLADS_TOWER, 3, generateTower3, 'tower3');
 
 // Register Gehennom levels
 // Valley is the entrance to Gehennom (level 1)
-// Wizard's Tower appears after getting the Amulet (levels 11-13)
+// Demon lairs are scattered throughout Gehennom (levels 3-6)
 // Sanctum is the final level (level 10 in a typical game)
+// Wizard's Tower appears after getting the Amulet (levels 11-13)
 registerSpecialLevel(GEHENNOM, 1, generateValley, 'valley');
+registerSpecialLevel(GEHENNOM, 3, generateAsmodeus, 'asmodeus');
+registerSpecialLevel(GEHENNOM, 4, generateBaalz, 'baalz');
+registerSpecialLevel(GEHENNOM, 5, generateJuiblex, 'juiblex');
+registerSpecialLevel(GEHENNOM, 6, generateOrcus, 'orcus');
 registerSpecialLevel(GEHENNOM, 10, generateSanctum, 'sanctum');
 registerSpecialLevel(GEHENNOM, 11, generateWizard1, 'wizard1');
 registerSpecialLevel(GEHENNOM, 12, generateWizard2, 'wizard2');

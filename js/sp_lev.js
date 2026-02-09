@@ -194,8 +194,27 @@ export function level_init(opts = {}) {
                 levelState.map.locations[x][y].typ = fillChar;
             }
         }
+    } else if (style === 'swamp') {
+        // Swamp level - procedurally generate mixture of land, water, and pools
+        // The map will be mostly land with scattered pools and water
+        // Subsequent des.map() calls overlay specific terrain features
+        for (let x = 0; x < 80; x++) {
+            for (let y = 0; y < 21; y++) {
+                const roll = rn2(100);
+                if (roll < 70) {
+                    // 70% land
+                    levelState.map.locations[x][y].typ = ROOM;
+                } else if (roll < 90) {
+                    // 20% water/moat
+                    levelState.map.locations[x][y].typ = POOL;
+                } else {
+                    // 10% deep water
+                    levelState.map.locations[x][y].typ = MOAT;
+                }
+            }
+        }
     } else {
-        // Other styles (rogue, mines, swamp) would need more complex generation
+        // Other styles (rogue, mines) would need more complex generation
         // For now, default to solidfill behavior
         console.warn(`Level init style "${style}" using default solidfill behavior`);
         const fillChar = levelState.init.fg;

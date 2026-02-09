@@ -694,6 +694,13 @@ export class Agent {
                     if (path.found) {
                         return this._followPath(path, 'navigate', `giving up on level, going back up (stuck ${this.levelStuckCounter})`);
                     }
+                    // If can't path to upstairs and VERY stuck (>150 turns), do random movement
+                    // to try to find a way out or discover new areas
+                    if (this.levelStuckCounter > 150) {
+                        const directions = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
+                        const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                        return { type: 'random_move', key: randomDir, reason: `can't reach upstairs, random walk (stuck ${this.levelStuckCounter})` };
+                    }
                 }
 
                 // Search very aggressively for secret doors (might be hiding stairs)
