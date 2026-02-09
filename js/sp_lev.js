@@ -26,7 +26,8 @@ import {
     SQKY_BOARD, BEAR_TRAP, LANDMINE, ROLLING_BOULDER_TRAP,
     SLP_GAS_TRAP, RUST_TRAP, FIRE_TRAP, TELEP_TRAP, LEVEL_TELEP,
     MAGIC_PORTAL, ANTI_MAGIC, POLY_TRAP, STATUE_TRAP, MAGIC_TRAP,
-    VIBRATING_SQUARE
+    VIBRATING_SQUARE,
+    D_NODOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN
 } from './config.js';
 import {
     BOULDER, SCROLL_CLASS, FOOD_CLASS, WEAPON_CLASS, ARMOR_CLASS,
@@ -990,9 +991,60 @@ export function monster(opts) {
  * @param {number} x - X coordinate
  * @param {number} y - Y coordinate
  */
+/**
+ * des.door(state, x, y)
+ * Place a door at a location with specified state.
+ * C ref: sp_lev.c lspo_door()
+ *
+ * @param {string} state - Door state: "open", "closed", "locked", "nodoor", "broken", "secret", "random"
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ */
 export function door(state, x, y) {
-    // Stub - would set location to DOOR with appropriate state
-    // For now, just ignore
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+
+    if (x < 0 || x >= 80 || y < 0 || y >= 21) {
+        return; // Out of bounds
+    }
+
+    const loc = levelState.map.locations[x][y];
+
+    // Map state string to door flags
+    // C ref: sp_lev.c doorstates2i[]
+    let doorFlags;
+    switch (state.toLowerCase()) {
+        case 'open':
+            doorFlags = D_ISOPEN;
+            break;
+        case 'closed':
+            doorFlags = D_CLOSED;
+            break;
+        case 'locked':
+            doorFlags = D_LOCKED;
+            break;
+        case 'nodoor':
+            doorFlags = D_NODOOR;
+            break;
+        case 'broken':
+            doorFlags = D_BROKEN || D_NODOOR; // Broken is like nodoor if constant not defined
+            break;
+        case 'secret':
+            // Secret doors are SDOOR terrain type, not DOOR
+            loc.typ = SDOOR;
+            return;
+        case 'random':
+            // Random door state - C uses rnddoor()
+            doorFlags = rn2(3) === 0 ? D_ISOPEN : (rn2(2) === 0 ? D_CLOSED : D_LOCKED);
+            break;
+        default:
+            doorFlags = D_CLOSED; // Default to closed
+    }
+
+    // Set terrain type and flags
+    loc.typ = DOOR;
+    loc.flags = doorFlags;
 }
 
 /**
@@ -1047,6 +1099,9 @@ export function finalize_level() {
     flipLevelRandom();
 
     // TODO: Add other finalization steps (solidify_map, premapping, etc.)
+
+    // Return the generated map
+    return levelState.map;
 }
 
 /**
