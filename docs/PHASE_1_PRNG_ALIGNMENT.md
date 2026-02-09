@@ -583,6 +583,8 @@ node --test test/comparison/rng_log_compare.test.js
 
 ## Phase 2: Per-Turn Gameplay Matching
 
+> *See [PHASE_2_GAMEPLAY_ALIGNMENT.md](PHASE_2_GAMEPLAY_ALIGNMENT.md) for the full story.*
+
 > *"The dungeon maps match perfectly. But can you survive one turn of play?"*
 
 Phase 2 goes beyond static map comparison to verify that the JS game
