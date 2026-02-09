@@ -492,7 +492,7 @@ function mksobj_init(obj, artif, skipErosion) {
 
     case ROCK_CLASS:
         if (od.name === 'statue') {
-            obj.corpsenm = rndmonnum(); // corpsenm = rndmonnum()
+            obj.corpsenm = rndmonnum(_levelDepth); // Pass depth for correct monster selection
             // C ref: !verysmall() && rn2(level_difficulty()/2+10) > 10
             // verysmall = msize < MZ_SMALL (i.e., MZ_TINY)
             // Short-circuit: skip rn2 if monster is very small
