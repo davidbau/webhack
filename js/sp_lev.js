@@ -1070,6 +1070,18 @@ export function altar(opts) {
 }
 
 /**
+ * des.gold(opts)
+ * Place gold at a location.
+ * C ref: sp_lev.c spgold()
+ *
+ * @param {Object} opts - Gold options (x, y, amount)
+ */
+export function gold(opts) {
+    // Stub - would create gold object with specified amount
+    // For now, just ignore
+}
+
+/**
  * des.teleport_region(opts)
  * Define a teleportation region.
  * C ref: sp_lev.c sp_teleport_region()
@@ -1220,6 +1232,7 @@ export const des = {
     stair,
     ladder,
     altar,
+    gold,
     object,
     trap,
     region,
