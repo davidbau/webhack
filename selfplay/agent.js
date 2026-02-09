@@ -250,9 +250,27 @@ export class Agent {
                     }
                 }
             }
+
+            // Clear failedTargets near the secret (they might now be reachable)
+            if (this.failedTargets) {
+                const newFailedTargets = new Set();
+                for (const key of this.failedTargets) {
+                    const tx = key % 80;
+                    const ty = (key - tx) / 80;
+                    const dist = Math.max(Math.abs(tx - px), Math.abs(ty - py));
+                    if (dist > 8) {
+                        newFailedTargets.add(key); // Keep targets far from the secret
+                    }
+                }
+                this.failedTargets = newFailedTargets;
+            }
+
+            // Mark that we should re-search in this area after exploring
+            this.lastSecretLocation = { x: px, y: py, turn: this.turnNumber };
+
             // Reset stuck counters since we made progress
             this.stuckCounter = 0;
-            this.levelStuckCounter = Math.max(0, this.levelStuckCounter - 20);
+            this.levelStuckCounter = Math.max(0, this.levelStuckCounter - 30);
         }
 
         return false;
@@ -359,6 +377,49 @@ export class Agent {
         this.recentPositionsList.push(posKey);
         if (this.recentPositionsList.length > 30) {
             this.recentPositions.delete(this.recentPositionsList.shift());
+        }
+
+        // Detect and blacklist permanently stuck targets
+        // If we've been at the same position for 20+ turns, blacklist nearby unreachable targets
+        if (this.lastPosition && this.lastPosition.x === px && this.lastPosition.y === py) {
+            if (!this.turnsAtSamePosition) this.turnsAtSamePosition = 1;
+            else this.turnsAtSamePosition++;
+
+            if (this.turnsAtSamePosition >= 20) {
+                // Blacklist only the CLOSEST frontier/search targets (within 3 cells)
+                // Being more conservative to avoid breaking normal exploration
+                if (!this.failedTargets) this.failedTargets = new Set();
+
+                let blacklisted = 0;
+                const frontier = level.getExplorationFrontier();
+                for (const target of frontier) {
+                    const dist = Math.max(Math.abs(target.x - px), Math.abs(target.y - py));
+                    if (dist <= 3) {
+                        const tKey = target.y * 80 + target.x;
+                        this.failedTargets.add(tKey);
+                        blacklisted++;
+                    }
+                }
+
+                const searchCandidates = level.getSearchCandidates();
+                for (const cand of searchCandidates) {
+                    const dist = Math.max(Math.abs(cand.x - px), Math.abs(cand.y - py));
+                    if (dist <= 3) {
+                        const cKey = cand.y * 80 + cand.x;
+                        this.failedTargets.add(cKey);
+                        blacklisted++;
+                    }
+                }
+
+                // Reset counter to try different targets
+                this.turnsAtSamePosition = 0;
+                this.stuckCounter = 0;
+                if (blacklisted > 0) {
+                    console.log(`  [UNSTUCK] Blacklisted ${blacklisted} close targets near (${px},${py})`);
+                }
+            }
+        } else {
+            this.turnsAtSamePosition = 0;
         }
 
         // Track if we're stuck (same position OR oscillating between nearby positions)
@@ -673,34 +734,88 @@ export class Agent {
         // 6.3. Prioritize exploring newly revealed secret doors/corridors
         // When we find a secret, immediately path to it and explore beyond
         if (this.newlyRevealedDoors && this.newlyRevealedDoors.length > 0) {
-            // Remove stale entries (older than 50 turns)
-            this.newlyRevealedDoors = this.newlyRevealedDoors.filter(d => this.turnNumber - d.turn < 50);
+            // Remove stale entries (older than 80 turns to allow thorough exploration)
+            this.newlyRevealedDoors = this.newlyRevealedDoors.filter(d => this.turnNumber - d.turn < 80);
 
             // Try to path to the nearest revealed door
             for (const door of this.newlyRevealedDoors) {
                 const path = findPath(level, px, py, door.x, door.y, { allowUnexplored: false });
                 if (path.found) {
-                    // If we're at the door, move through it to explore beyond
-                    if (px === door.x && py === door.y) {
-                        // Remove this door from the list
-                        this.newlyRevealedDoors = this.newlyRevealedDoors.filter(d => d.x !== door.x || d.y !== door.y);
-                        // Find the best direction to explore through the door
+                    // If we're at or very close to the door, explore beyond
+                    const atDoor = (px === door.x && py === door.y);
+                    const nearDoor = Math.max(Math.abs(px - door.x), Math.abs(py - door.y)) <= 1;
+
+                    if (atDoor || nearDoor) {
+                        // Find ALL frontier cells near the door (within 15 cells)
                         const frontier = level.getExplorationFrontier();
-                        if (frontier.length > 0) {
-                            // Path to nearest frontier beyond the door
-                            const nearestFrontier = frontier[0];
-                            const path2 = findPath(level, px, py, nearestFrontier.x, nearestFrontier.y, { allowUnexplored: true });
-                            if (path2.found) {
-                                return this._followPath(path2, 'explore', `exploring beyond revealed door at (${door.x},${door.y})`);
+                        const nearbyFrontier = frontier.filter(f => {
+                            const dist = Math.max(Math.abs(f.x - door.x), Math.abs(f.y - door.y));
+                            return dist < 15;
+                        });
+
+                        if (nearbyFrontier.length > 0) {
+                            // Try to path to the nearest nearby frontier
+                            for (const target of nearbyFrontier.slice(0, 10)) {
+                                const path2 = findPath(level, px, py, target.x, target.y, { allowUnexplored: true });
+                                if (path2.found) {
+                                    return this._followPath(path2, 'explore', `exploring near revealed door at (${door.x},${door.y})`);
+                                }
                             }
                         }
-                        // If no frontier, just continue normal exploration
-                        this.newlyRevealedDoors = this.newlyRevealedDoors.filter(d => d.x !== door.x || d.y !== door.y);
+
+                        // If no nearby frontier, remove this door and continue
+                        if (atDoor) {
+                            this.newlyRevealedDoors = this.newlyRevealedDoors.filter(d => d.x !== door.x || d.y !== door.y);
+                        }
                     } else {
                         // Path to the door
                         return this._followPath(path, 'navigate', `heading to newly revealed door at (${door.x},${door.y})`);
                     }
                 }
+            }
+        }
+
+        // 6.4. Re-search near recently found secrets
+        // After finding a secret and exploring for a bit, search nearby walls again
+        // to find additional secrets that may lead further
+        if (this.lastSecretLocation && level.stairsDown.length === 0) {
+            const timeSinceSecret = this.turnNumber - this.lastSecretLocation.turn;
+            // After 30-100 turns of exploring the revealed area, search nearby walls
+            if (timeSinceSecret > 30 && timeSinceSecret < 100) {
+                const sx = this.lastSecretLocation.x;
+                const sy = this.lastSecretLocation.y;
+                const dist = Math.max(Math.abs(px - sx), Math.abs(py - sy));
+
+                // If we're within 10 cells of the last secret, look for search candidates nearby
+                if (dist < 10) {
+                    const searchCandidates = level.getSearchCandidates();
+                    const nearbyCandidates = searchCandidates.filter(c => {
+                        const cdist = Math.max(Math.abs(c.x - sx), Math.abs(c.y - sy));
+                        return cdist < 12 && c.searched < 20;
+                    });
+
+                    if (nearbyCandidates.length > 0) {
+                        for (const candidate of nearbyCandidates.slice(0, 5)) {
+                            const candKey = candidate.y * 80 + candidate.x;
+                            if (this.failedTargets && this.failedTargets.has(candKey)) continue;
+
+                            const path = findPath(level, px, py, candidate.x, candidate.y, { allowUnexplored: false });
+                            if (path.found) {
+                                if (px === candidate.x && py === candidate.y) {
+                                    const cell = level.at(px, py);
+                                    if (cell) cell.searched++;
+                                    return { type: 'search', key: 's', reason: `searching near last secret for more hidden doors [${cell ? cell.searched : 0}/20]` };
+                                }
+                                return this._followPath(path, 'navigate', `searching near last secret location (${sx},${sy})`);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Clear the lastSecretLocation after 100 turns
+            if (timeSinceSecret > 100) {
+                this.lastSecretLocation = null;
             }
         }
 
