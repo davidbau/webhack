@@ -171,10 +171,11 @@ export function level_init(opts = {}) {
     levelState.init.lit = opts.lit !== undefined ? opts.lit : 0;
     levelState.init.walled = opts.walled || false;
 
-    // Apply the initialization
-    if (!levelState.map) {
-        levelState.map = new GameMap();
-    }
+    // Apply the initialization - always create fresh map and clear entity arrays
+    levelState.map = new GameMap();
+    levelState.monsters = [];
+    levelState.objects = [];
+    levelState.traps = [];
 
     if (style === 'solidfill') {
         // Fill entire map with foreground character
@@ -835,33 +836,39 @@ export function object(name_or_opts, x, y) {
             coordY = name_or_opts.y;
         }
 
+        // If no coordinates provided, use random placement
+        if (coordX === undefined || coordY === undefined) {
+            coordX = rn2(60) + 10;  // Avoid edges
+            coordY = rn2(15) + 3;
+        }
+
         if (objId) {
             // des.object({ id: 'chest', coord: {x, y} }) or des.object({ id: 'chest', x, y })
+            // des.object({ id: 'corpse', montype: 'wizard' }) - corpse with monster type
             const otyp = objectNameToType(objId);
-            if (otyp >= 0) {
-                // Random placement if no coordinates
-                if (coordX === undefined || coordY === undefined) {
-                    coordX = rn2(60) + 10;
-                    coordY = rn2(15) + 3;
-                }
-
-                if (coordX >= 0 && coordX < 80 && coordY >= 0 && coordY < 21) {
-                    const obj = mksobj(otyp, true, false);
-                    if (obj) {
-                        obj.ox = coordX;
-                        obj.oy = coordY;
-                        levelState.map.objects.push(obj);
+            if (otyp >= 0 && coordX >= 0 && coordX < 80 && coordY >= 0 && coordY < 21) {
+                const obj = mksobj(otyp, true, false);
+                if (obj) {
+                    obj.ox = coordX;
+                    obj.oy = coordY;
+                    // Handle corpse with montype
+                    if (name_or_opts.montype && objId.toLowerCase() === 'corpse') {
+                        // Store montype for corpse generation
+                        obj.corpsenm = name_or_opts.montype;
                     }
+                    levelState.map.objects.push(obj);
                 }
             }
         } else if (name_or_opts.class) {
             // des.object({ class: "%" }) - place random object from class
             const objClass = objectClassToType(name_or_opts.class);
-            if (objClass >= 0) {
-                // Place random object from this class at random location
-                // For now, just create the object without placing (needs random pos logic)
-                // This is acceptable as most special levels place objects at specific coords
-                // TODO: Implement random placement when needed
+            if (objClass >= 0 && coordX >= 0 && coordX < 80 && coordY >= 0 && coordY < 21) {
+                const obj = mkobj(objClass, true);
+                if (obj) {
+                    obj.ox = coordX;
+                    obj.oy = coordY;
+                    levelState.map.objects.push(obj);
+                }
             }
         }
     }
@@ -879,7 +886,7 @@ function trapNameToType(name) {
         case 'arrow': return ARROW_TRAP;
         case 'dart': return DART_TRAP;
         // Note: FALLING_ROCK_TRAP (type 3) not exported from config.js
-        case 'squeaky board': case 'squeaky_board': return SQKY_BOARD;
+        case 'squeaky board': case 'squeaky_board': case 'board': return SQKY_BOARD;
         case 'bear': return BEAR_TRAP;
         case 'land mine': case 'landmine': return LANDMINE;
         case 'rolling boulder': case 'rolling_boulder': return ROLLING_BOULDER_TRAP;
@@ -894,7 +901,7 @@ function trapNameToType(name) {
         case 'teleport': case 'teleportation': return TELEP_TRAP;
         case 'level teleport': case 'level_teleport': return LEVEL_TELEP;
         case 'magic portal': case 'magic_portal': return MAGIC_PORTAL;
-        case 'anti-magic': case 'anti_magic': return ANTI_MAGIC;
+        case 'anti-magic': case 'anti_magic': case 'anti magic': return ANTI_MAGIC;
         case 'polymorph': case 'poly': return POLY_TRAP;
         case 'statue': return STATUE_TRAP;
         case 'magic': return MAGIC_TRAP;
@@ -1198,13 +1205,20 @@ export function monster(opts_or_class, x, y) {
     }
 
     // Handle different call formats:
-    // 1. des.monster('V') - random monster from class at random location
-    // 2. des.monster('vampire', x, y) - named monster at specific location
-    // 3. des.monster({ id: 'vampire', x, y, ... }) - full options object
+    // 1. des.monster() - random monster at random location
+    // 2. des.monster('V') - random monster from class at random location
+    // 3. des.monster('vampire', x, y) - named monster at specific location
+    // 4. des.monster({ id: 'vampire', x, y, ... }) - full options object
 
     let monsterId, coordX, coordY, opts;
 
-    if (typeof opts_or_class === 'string') {
+    if (opts_or_class === undefined) {
+        // des.monster() - completely random monster at random location
+        monsterId = '@';  // Random monster (any class)
+        coordX = rn2(60) + 10;  // Avoid edges
+        coordY = rn2(15) + 3;
+        opts = {};
+    } else if (typeof opts_or_class === 'string') {
         if (x === undefined) {
             // des.monster('V') - random placement
             monsterId = opts_or_class;
@@ -1220,8 +1234,9 @@ export function monster(opts_or_class, x, y) {
         }
     } else if (opts_or_class && typeof opts_or_class === 'object') {
         // des.monster({ id: 'vampire', x, y, ... }) or des.monster({ class: 'S', x, y })
+        // des.monster({ x, y }) - random monster at specific location
         opts = opts_or_class;
-        monsterId = opts.id || opts.class;  // Support both 'id' and 'class' parameters
+        monsterId = opts.id || opts.class || '@';  // Support 'id', 'class', or default to random
 
         if (opts.coord) {
             coordX = opts.coord.x;
