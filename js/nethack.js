@@ -3,7 +3,7 @@
 // This is the heart of the JS port: the game initialization and main loop.
 
 import { COLNO, ROWNO, ROOM, STAIRS, NORMAL_SPEED, ACCESSIBLE, isok, A_DEX, A_CON } from './config.js';
-import { initRng, rn2, rnd, rn1 } from './rng.js';
+import { initRng, rn2, rnd, rn1, getRngState, setRngState, getRngCallCount, setRngCallCount } from './rng.js';
 import { Display } from './display.js';
 import { initInput, nhgetch } from './input.js';
 import { FOV } from './vision.js';
@@ -13,6 +13,12 @@ import { initLevelGeneration, makelevel, wallification } from './dungeon.js';
 import { rhack } from './commands.js';
 import { movemon } from './monmove.js';
 import { simulatePostLevelInit } from './u_init.js';
+import { loadSave, deleteSave, hasSave, saveGame,
+         saveBones, loadOptions, deserializeRng,
+         saveLev, saveMon, saveObjChn,
+         restGameState, restLev } from './storage.js';
+import { mons, PM_GHOST, S_GHOST } from './monsters.js';
+import { def_monsyms } from './symbols.js';
 
 // Parse URL parameters for game options
 // Supports: ?wizard=1, ?seed=N, ?role=X
@@ -39,6 +45,11 @@ class NetHackGame {
         this.turnCount = 0;
         this.wizard = false;  // C ref: flags.debug (wizard mode)
         this.seerTurn = 0;    // C ref: context.seer_turn — clairvoyance timer
+        this.seed = 0;        // original game seed (for save/restore)
+        // RNG accessors for storage.js (avoids circular imports)
+        this._rngAccessors = {
+            getRngState, setRngState, getRngCallCount, setRngCallCount,
+        };
     }
 
     // Initialize a new game
@@ -48,17 +59,31 @@ class NetHackGame {
         const urlOpts = parseUrlParams();
         this.wizard = urlOpts.wizard;
 
-        // Initialize RNG with seed from URL or random
-        const seed = urlOpts.seed !== null
-            ? urlOpts.seed
-            : Math.floor(Math.random() * 0xFFFFFFFF);
-        initRng(seed);
-
         // Initialize display
         this.display = new Display('game');
 
         // Initialize input
         initInput();
+
+        // Load user options
+        const options = loadOptions();
+        this.options = options;
+
+        // Check for saved game before RNG init
+        const saveData = loadSave();
+        if (saveData) {
+            const restored = await this.restoreFromSave(saveData, urlOpts);
+            if (restored) return;
+            // User declined restore -- delete save (NetHack tradition)
+            deleteSave();
+        }
+
+        // Initialize RNG with seed from URL or random
+        const seed = urlOpts.seed !== null
+            ? urlOpts.seed
+            : Math.floor(Math.random() * 0xFFFFFFFF);
+        this.seed = seed;
+        initRng(seed);
 
         // Show welcome message
         // C ref: allmain.c -- welcome messages
@@ -97,10 +122,83 @@ class NetHackGame {
             this.seerTurn = initResult.seerTurn;
         }
 
+        // Apply options
+        this.player.showExp = options.showExp;
+
         // Initial display
         this.fov.compute(this.map, this.player.x, this.player.y);
         this.display.renderMap(this.map, this.player, this.fov);
         this.display.renderStatus(this.player);
+    }
+
+    // Restore game state from a save.
+    // Returns true if restored, false if user declined.
+    async restoreFromSave(saveData, urlOpts) {
+        this.display.putstr_message('Saved game found. Restore? [yn]');
+        const ans = await nhgetch();
+        if (String.fromCharCode(ans) !== 'y') {
+            this.display.putstr_message('Save deleted.');
+            return false;
+        }
+
+        // Restore game state (player, inventory, equip, context)
+        // C ref: dorecover() → restgamestate()
+        const gs = saveData.gameState;
+
+        // Replay o_init: init RNG with saved seed, run initLevelGeneration
+        this.seed = gs.seed;
+        initRng(gs.seed);
+        initLevelGeneration();
+
+        // Now overwrite RNG state with the saved state
+        const restoredCtx = deserializeRng(gs.rng);
+        setRngState(restoredCtx);
+        setRngCallCount(gs.rngCallCount);
+
+        // Restore game state: player + inventory + equip + context
+        const restored = restGameState(gs);
+        this.player = restored.player;
+        this.wizard = restored.wizard;
+        this.turnCount = restored.turnCount;
+        this.seerTurn = restored.seerTurn;
+
+        // Restore current level (saved first in v2 format)
+        // C ref: dorecover() → getlev() for current level
+        const currentDepth = saveData.currentDepth;
+        this.levels = {};
+        if (saveData.currentLevel) {
+            this.levels[currentDepth] = restLev(saveData.currentLevel);
+        }
+
+        // Restore other cached levels
+        // C ref: dorecover() → getlev() loop for other levels
+        for (const [depth, levelData] of Object.entries(saveData.otherLevels || {})) {
+            this.levels[Number(depth)] = restLev(levelData);
+        }
+
+        // Set current level
+        this.player.dungeonLevel = currentDepth;
+        this.map = this.levels[currentDepth];
+
+        // Restore messages
+        if (restored.messages.length > 0) {
+            this.display.messages = restored.messages;
+        }
+
+        // Delete save (single-save semantics)
+        deleteSave();
+
+        // Load options
+        const options = loadOptions();
+        this.options = options;
+        this.player.showExp = options.showExp;
+
+        // Render
+        this.fov.compute(this.map, this.player.x, this.player.y);
+        this.display.renderMap(this.map, this.player, this.fov);
+        this.display.renderStatus(this.player);
+        this.display.putstr_message('Game restored.');
+        return true;
     }
 
     // Player role selection
@@ -172,6 +270,11 @@ class NetHackGame {
         this.player.dungeonLevel = depth;
         this.placePlayerOnLevel();
 
+        // Bones level message
+        if (this.map.isBones) {
+            this.display.putstr_message('You get an eerie feeling...');
+        }
+
         // Update display
         this.fov.compute(this.map, this.player.x, this.player.y);
         this.display.renderMap(this.map, this.player, this.fov);
@@ -237,6 +340,7 @@ class NetHackGame {
                 if (this.player.isDead) {
                     this.gameOver = true;
                     this.gameOverReason = 'killed';
+                    this.saveBonesOnDeath();
                 }
             }
 
@@ -354,6 +458,60 @@ class NetHackGame {
         if (f.has_zoo && !rn2(200)) { return; }
         if (f.has_shop && !rn2(200)) { rn2(2); return; }
         if (f.has_temple && !rn2(200)) { return; }
+    }
+
+    // Save bones level on player death.
+    // Creates a ghost and drops player inventory at death position.
+    // C ref: bones.c savebones()
+    saveBonesOnDeath() {
+        const depth = this.player.dungeonLevel;
+        if (!this.map) return;
+
+        // C ref: savelev() — serialize current level
+        const mapData = saveLev(this.map);
+
+        // Remove tame monsters from bones
+        mapData.monsters = mapData.monsters.filter(m => !m.tame);
+
+        // C ref: savemon() — create a ghost at the player's death position
+        const ghostType = mons[PM_GHOST];
+        const ghost = saveMon({
+            mndx: PM_GHOST,
+            type: ghostType,
+            name: 'Ghost of ' + this.player.name,
+            displayChar: ' ',
+            displayColor: ghostType.color,
+            mx: this.player.x, my: this.player.y,
+            mhp: this.player.level * 10,
+            mhpmax: this.player.level * 10,
+            mlevel: this.player.level,
+            mac: ghostType.ac,
+            speed: ghostType.speed,
+            movement: 0,
+            attacks: ghostType.attacks,
+            peaceful: false, tame: false,
+            flee: false, confused: false, stunned: false,
+            blind: false, sleeping: false, dead: false,
+            passive: false,
+            mtrack: [{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}],
+        });
+        mapData.monsters.push(ghost);
+
+        // Drop player inventory as floor objects at death position
+        // C ref: saveobjchn() for dropped inventory
+        const droppedItems = saveObjChn(this.player.inventory).map(sobj => {
+            sobj.ox = this.player.x;
+            sobj.oy = this.player.y;
+            return sobj;
+        });
+        mapData.objects = [...(mapData.objects || []), ...droppedItems];
+
+        // Mark as bones level
+        mapData.isBones = true;
+
+        saveBones(depth, mapData, this.player.name,
+                  this.player.x, this.player.y,
+                  this.player.level, this.player.inventory);
     }
 
     // Display game over screen

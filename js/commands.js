@@ -3,13 +3,15 @@
 // Maps keyboard input to game actions.
 
 import { COLNO, ROWNO, DOOR, STAIRS, FOUNTAIN, IS_DOOR, D_CLOSED, D_LOCKED,
-         D_ISOPEN, D_NODOOR, ACCESSIBLE, IS_WALL, MAXLEVEL, isok } from './config.js';
-import { rn2, rnd, d } from './rng.js';
+         D_ISOPEN, D_NODOOR, ACCESSIBLE, IS_WALL, MAXLEVEL, isok,
+         A_STR, A_DEX, A_CON } from './config.js';
+import { rn2, rnd, rnl, d } from './rng.js';
 import { nhgetch, ynFunction, getlin } from './input.js';
 import { playerAttackMonster } from './combat.js';
 import { makemon } from './makemon.js';
 import { mons } from './monsters.js';
 import { showPager } from './pager.js';
+import { saveGame, loadOptions, saveOptions, getOption } from './storage.js';
 
 // Direction key mappings
 // C ref: cmd.c -- movement key definitions
@@ -155,8 +157,12 @@ export async function rhack(ch, game) {
 
     // Save (S)
     if (c === 'S') {
-        display.putstr_message('Save not yet implemented.');
-        return { moved: false, tookTime: false };
+        return await handleSave(game);
+    }
+
+    // Options (O)
+    if (c === 'O') {
+        return await handleOptions(game);
     }
 
     // Quit (#quit or Ctrl+C)
@@ -273,9 +279,21 @@ function handleMovement(dir, player, map, display) {
         return { moved: false, tookTime: false };
     }
 
-    // Handle closed doors
+    // Handle closed doors — attempt to open by walking into them
+    // C ref: hack.c domove() → lock.c doopen_indir()
     if (IS_DOOR(loc.typ) && (loc.flags & D_CLOSED)) {
-        display.putstr_message("This door is closed.");
+        const str = player.attributes ? player.attributes[A_STR] : 18;
+        const dex = player.attributes ? player.attributes[A_DEX] : 11;
+        const con = player.attributes ? player.attributes[A_CON] : 18;
+        if (rnl(20) < Math.floor((str + dex + con) / 3)) {
+            // Success — door opens
+            loc.flags = (loc.flags & ~D_CLOSED) | D_ISOPEN;
+            display.putstr_message("The door opens.");
+        } else {
+            // Failed — exercise strength
+            display.putstr_message("The door resists!");
+            rn2(19); // exercise(A_STR, TRUE)
+        }
         return { moved: false, tookTime: false };
     }
     if (IS_DOOR(loc.typ) && (loc.flags & D_LOCKED)) {
@@ -300,10 +318,21 @@ function handleMovement(dir, player, map, display) {
         player.gold += gold.quantity;
         display.putstr_message(`${gold.quantity} gold piece${gold.quantity > 1 ? 's' : ''}.`);
         map.removeObject(gold);
-    } else if (objs.length > 0) {
+    }
+
+    // Autopickup non-gold items if option is on
+    const remaining = map.objectsAt(nx, ny);
+    if (getOption('autopickup') && remaining.length > 0) {
+        const item = remaining.find(o => o.oc_class !== 10);
+        if (item) {
+            player.addToInventory(item);
+            map.removeObject(item);
+            display.putstr_message(`${item.invlet} - ${item.name}.`);
+        }
+    } else if (remaining.length > 0) {
         // Show what's here
-        if (objs.length === 1) {
-            display.putstr_message(`You see here ${objs[0].name}.`);
+        if (remaining.length === 1) {
+            display.putstr_message(`You see here ${remaining[0].name}.`);
         } else {
             display.putstr_message(`You see here several objects.`);
         }
@@ -829,6 +858,7 @@ async function handleHelp(game) {
             ' Other:',
             '   ?    this help menu',
             '   S    save game',
+            '   O    set options',
             '   #    extended command',
             '   ^P   previous messages',
             '   ^R   redraw screen',
@@ -905,6 +935,60 @@ export function dosearch0(player, map, display) {
     if (!found) {
         // No message on search failure (matches C behavior)
     }
+}
+
+// Handle save game (S)
+// C ref: cmd.c dosave()
+async function handleSave(game) {
+    const { display } = game;
+    const ans = await ynFunction('Save and quit?', 'yn', 'n'.charCodeAt(0), display);
+    if (String.fromCharCode(ans) !== 'y') {
+        display.putstr_message('Never mind.');
+        return { moved: false, tookTime: false };
+    }
+    const ok = saveGame(game);
+    if (ok) {
+        display.putstr_message('Game saved.');
+        // Brief delay so the user sees the message, then reload
+        await new Promise(r => setTimeout(r, 500));
+        window.location.reload();
+    } else {
+        display.putstr_message('Save failed (storage full or unavailable).');
+    }
+    return { moved: false, tookTime: false };
+}
+
+// Handle options (O)
+// C ref: cmd.c doset()
+async function handleOptions(game) {
+    const { display, player } = game;
+    const opts = loadOptions();
+    const lines = [
+        'Options (press letter to toggle, ESC to exit):',
+        `  a) autopickup: ${opts.autopickup ? 'ON' : 'OFF'}`,
+        `  b) showExp:    ${opts.showExp ? 'ON' : 'OFF'}`,
+        `  c) color:      ${opts.color ? 'ON' : 'OFF'}`,
+    ];
+    display.putstr_message(lines.join('  '));
+    const ch = await nhgetch();
+    const c = String.fromCharCode(ch);
+    if (c === 'a') {
+        opts.autopickup = !opts.autopickup;
+        display.putstr_message(`autopickup: ${opts.autopickup ? 'ON' : 'OFF'}`);
+    } else if (c === 'b') {
+        opts.showExp = !opts.showExp;
+        player.showExp = opts.showExp;
+        display.putstr_message(`showExp: ${opts.showExp ? 'ON' : 'OFF'}`);
+    } else if (c === 'c') {
+        opts.color = !opts.color;
+        display.putstr_message(`color: ${opts.color ? 'ON' : 'OFF'}`);
+    } else {
+        display.putstr_message('Never mind.');
+        return { moved: false, tookTime: false };
+    }
+    saveOptions(opts);
+    game.options = opts;
+    return { moved: false, tookTime: false };
 }
 
 // Handle extended command (#)

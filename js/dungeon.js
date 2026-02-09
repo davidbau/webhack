@@ -28,6 +28,7 @@ import {
 } from './config.js';
 import { GameMap, makeRoom, FILL_NONE, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, d } from './rng.js';
+import { loadBones, deleteBones, restLev } from './storage.js';
 import { mkobj, mksobj, weight, setLevelDepth } from './mkobj.js';
 import { makemon, NO_MM_FLAGS, MM_NOGRP } from './makemon.js';
 import { init_objects } from './o_init.js';
@@ -2855,9 +2856,17 @@ export function initLevelGeneration(roleIndex) {
 export function makelevel(depth) {
     setLevelDepth(depth);
 
-    // C ref: bones.c getbones() — in wizard mode, always consumes rn2(3)
-    // then returns 0 (no bones file). This happens per-level.
-    rn2(3);
+    // C ref: bones.c getbones() — consumes rn2(3), if 0 attempts bones load
+    const bonesRoll = rn2(3);
+    if (bonesRoll === 0) {
+        const bonesData = loadBones(depth);
+        if (bonesData && bonesData.map) {
+            deleteBones(depth); // single-use (matching C behavior)
+            const bonesMap = restLev(bonesData.map);
+            bonesMap.isBones = true;
+            return bonesMap;
+        }
+    }
 
     const map = new GameMap();
     map.clear();

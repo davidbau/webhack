@@ -201,4 +201,5 @@ export class GameMap {
         const idx = this.objects.indexOf(obj);
         if (idx >= 0) this.objects.splice(idx, 1);
     }
+
 }

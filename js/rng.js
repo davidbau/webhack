@@ -218,5 +218,15 @@ export function setRngState(savedCtx) {
     ctx = savedCtx;
 }
 
+// Get the RNG call count (for save/restore)
+export function getRngCallCount() {
+    return rngCallCount;
+}
+
+// Set the RNG call count (for save/restore)
+export function setRngCallCount(count) {
+    rngCallCount = count;
+}
+
 // Initialize with a random seed by default
 initRng(Math.floor(Math.random() * 0xFFFFFFFF));

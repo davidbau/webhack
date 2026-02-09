@@ -239,4 +239,5 @@ export class Player {
     heal(amount) {
         this.hp = Math.min(this.hp + amount, this.hpmax);
     }
+
 }
