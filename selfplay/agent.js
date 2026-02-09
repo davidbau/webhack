@@ -497,6 +497,10 @@ export class Agent {
                 // Try to flee to upstairs if available and not too far
                 if (level.stairsUp.length > 0) {
                     const stairs = level.stairsUp[0];
+                    // If we're already at the stairs, ascend immediately
+                    if (px === stairs.x && py === stairs.y) {
+                        return { type: 'ascend', key: '<', reason: `ascending to escape (HP ${this.status.hp}/${this.status.hpmax})` };
+                    }
                     const dist = Math.abs(stairs.x - px) + Math.abs(stairs.y - py);
                     // If stairs are close (within 10 steps), path to them
                     if (dist <= 10) {
@@ -677,7 +681,23 @@ export class Agent {
 
         // 6. If we've spent too long stuck on this level, head for stairs
         if (this.levelStuckCounter > 20) {
-            if (level.stairsDown.length > 0) {
+            // If EXTREMELY stuck (>100 turns on same level), give up and retreat upstairs
+            // This handles cases where downstairs exist but are unreachable (secret doors)
+            if (this.levelStuckCounter > 100 && this.dungeon.currentDepth > 1 && level.stairsUp.length > 0) {
+                const stairs = level.stairsUp[0];
+                // If we're already at the stairs, ascend immediately
+                if (px === stairs.x && py === stairs.y) {
+                    return { type: 'ascend', key: '<', reason: `extremely stuck, giving up on level (${this.levelStuckCounter} turns)` };
+                }
+                const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
+                if (path.found) {
+                    return this._followPath(path, 'navigate', `extremely stuck, retreating upstairs (${this.levelStuckCounter} turns)`);
+                }
+            }
+
+            // Only try to path to downstairs if not TOO stuck (≤30 turns)
+            // If stuck >30, let systematic searching (section 6.5) run first
+            if (level.stairsDown.length > 0 && this.levelStuckCounter <= 30) {
                 const stairs = level.stairsDown[0];
                 const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
                 if (path.found) {
@@ -690,6 +710,10 @@ export class Agent {
                 // If we're deep in the dungeon and truly stuck, try going back upstairs
                 if (this.dungeon.currentDepth > 1 && level.stairsUp.length > 0) {
                     const stairs = level.stairsUp[0];
+                    // If we're already at the stairs, ascend immediately
+                    if (px === stairs.x && py === stairs.y) {
+                        return { type: 'ascend', key: '<', reason: `giving up on level, ascending (stuck ${this.levelStuckCounter})` };
+                    }
                     const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
                     if (path.found) {
                         return this._followPath(path, 'navigate', `giving up on level, going back up (stuck ${this.levelStuckCounter})`);
@@ -832,7 +856,9 @@ export class Agent {
         // Search probability is 1/7, so search each location up to 20 times for ~95% success rate
         const frontierSmall = level.getExplorationFrontier().length < 30;
         const exploredPercent = level.exploredCount / (80 * 21);
-        const shouldSearch = level.stairsDown.length === 0 && this.turnNumber > 60 &&
+        // Trigger searching if: no downstairs OR stuck for long time (even with downstairs visible)
+        // The stuck threshold allows searching when downstairs exist but are unreachable
+        const shouldSearch = (level.stairsDown.length === 0 || this.levelStuckCounter > 30) && this.turnNumber > 60 &&
             (this.levelStuckCounter > 15 || (frontierSmall && exploredPercent > 0.10) || this.turnNumber > 200);
         if (shouldSearch) {
             const searchCandidates = level.getSearchCandidates();
