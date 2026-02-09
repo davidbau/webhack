@@ -638,4 +638,9 @@ export function do_clear_area(fov, map, scol, srow, range, func, arg) {
             }
         }
     }
+
+    // Clear module-level references to avoid stale state leaking between tests
+    viz_clear = null;
+    right_ptrs_arr = null;
+    left_ptrs_arr = null;
 }
