@@ -1000,13 +1000,67 @@ export function exclusion(opts) {
 /**
  * des.monster(opts)
  * Place a monster at a location.
- * C ref: sp_lev.c create_monster()
+ * C ref: sp_lev.c lspo_monster()
  *
- * @param {Object} opts - Monster options (id, coord, appear_as, etc.)
+ * @param {Object} opts - Monster options
+ *   - id: Monster name (e.g., "Vlad the Impaler", "vampire", "V")
+ *   - x, y: Coordinates, or
+ *   - coord: {x, y} coordinate object
+ *   - name: Custom name for the monster
+ *   - waiting: If true, monster waits (doesn't move)
+ *   - peaceful: Monster is peaceful
+ *   - asleep: Monster is asleep
  */
 export function monster(opts) {
-    // Stub - would create and place monster
-    // For now, just ignore
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+
+    if (!opts || !opts.id) {
+        return; // Need at least a monster id
+    }
+
+    // Get coordinates
+    let x, y;
+    if (opts.coord) {
+        x = opts.coord.x;
+        y = opts.coord.y;
+    } else {
+        x = opts.x;
+        y = opts.y;
+    }
+
+    if (x === undefined || y === undefined || x < 0 || x >= 80 || y < 0 || y >= 21) {
+        return; // Invalid coordinates
+    }
+
+    // Parse monster id
+    // Can be:
+    // - Single letter class (e.g., "V" for vampires)
+    // - Monster name (e.g., "vampire", "Vlad the Impaler")
+    const monsterId = opts.id;
+
+    // For now, store monster request in levelState
+    // Actual monster creation would happen during level finalization
+    // when the game state is fully initialized
+    if (!levelState.monsters) {
+        levelState.monsters = [];
+    }
+
+    levelState.monsters.push({
+        id: monsterId,
+        x,
+        y,
+        name: opts.name,
+        waiting: opts.waiting || false,
+        peaceful: opts.peaceful,
+        asleep: opts.asleep
+    });
+
+    // Note: Full implementation would call makemon() with appropriate parameters
+    // and set monster properties like mtame, mpeaceful, msleeping, etc.
+    // This requires the game to be fully initialized, which happens during
+    // actual gameplay, not during level generation.
 }
 
 /**

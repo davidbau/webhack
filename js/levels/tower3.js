@@ -70,5 +70,5 @@ export function generate() {
     // Walls in the tower are non diggable
     des.non_diggable(selection.area(0, 0, 18, 12));
 
-    finalize_level();
+    return finalize_level();
 }
