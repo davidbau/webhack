@@ -182,9 +182,35 @@ JS="rn2(40)=21" session="rn2(100)=81 @ obj_resists(zap.c:1467)"
 2. Verify trap avoidance check happens in correct order relative to obj_resists calls
 3. Check if wizard mode was consistently applied in C harness for seed42
 
+### mfndpos ALLOW_TRAPS Implementation (Architectural Fix)
+
+**Discovery**: C's `mfndpos` returns both positions AND info flags (ALLOW_TRAPS) for each position
+
+**Issue**: JS `mfndpos` only returned `{x, y}`, missing the info flags that control trap avoidance
+
+**C Behavior** (dogmove.c:1192):
+```c
+if ((mfp.info[i] & ALLOW_TRAPS) && (trap = t_at(nx, ny))) {
+    if (trap->tseen && rn2(40))
+        continue;
+}
+```
+
+**JS Behavior** (incorrect):
+- Was checking ALL positions for traps
+- Should only check positions with ALLOW_TRAPS flag set
+
+**Fix Applied**:
+- Modified `mfndpos` to return `{x, y, info}` structure
+- Set `info |= 1` (ALLOW_TRAPS) only for positions with harmful traps
+- Updated trap avoidance to check `if (info & 1)` before calling `rn2(40)`
+
+**Result**: Architectural alignment with C, but seed42 still fails (different underlying issue)
+
 ## Commit History (Latest)
 
 ```
+1658b5b Fix mfndpos to return ALLOW_TRAPS info flags
 ffa9b08 Add initrack() calls to reset player track buffer between tests
 70890d4 Add handler for special level sessions in test runner
 ```
