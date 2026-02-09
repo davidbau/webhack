@@ -191,10 +191,10 @@ _checkLastMoveFailed() {
 - 500 turns only covered ~65% of Dlvl 1 (no stairs found yet)
 - Root cause: Dlvl 1 with seed 42 may not have generated downstairs in explored area
 
-### Combat Deaths
-- JS agent dies on Dlvl 3 (HP management minimal)
-- No tactical combat (just walks into adjacent monsters)
-- No inventory management (can't use items)
+### Combat Limitations
+- Basic HP management (rests when low, but no healing items)
+- Limited tactical combat (flee from dangerous monsters, but no kiting/ranged)
+- No inventory management (can't use healing potions, scrolls, wands)
 
 ### No Strategic Play
 - Can't identify items
@@ -216,6 +216,18 @@ Added intelligent threat evaluation system in `selfplay/brain/danger.js`:
 - **Known Threats:** Special handling for dragons, liches, demons, vampires, etc.
 
 The agent now makes informed combat decisions based on spoiler knowledge rather than blindly attacking everything.
+
+### HP Management and Rest System (2026-02-09)
+
+Implemented intelligent HP recovery to prevent agent from fighting at dangerously low HP:
+
+- **Probabilistic Regen:** NetHack HP regen is (XL + CON)% chance per turn (only ~11% at level 1!)
+- **Rest Strategy:** Agent rests when HP < 50% and no monsters nearby
+- **Rest Limits:** Cap at 50 turns (moderate HP) or 100 turns (critical HP < 25%)
+- **Progress Tracking:** Reset counter when HP increases (natural regen occurred)
+- **Prevent Infinite Loop:** After max rest turns, give up and continue (HP heals while exploring)
+
+Key insight: Since HP regeneration is probabilistic, the agent can't wait indefinitely for full HP. The rest limit ensures the agent doesn't get stuck in an infinite rest loop when regeneration is slow.
 
 ## Test Coverage
 
