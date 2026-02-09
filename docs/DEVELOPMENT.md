@@ -34,37 +34,75 @@ npm test && node --test test/comparison/session_runner.test.js
 ## Project Structure
 
 ```
-js/                    26 ES6 modules — the game engine
+js/                    32 ES6 modules — the game engine
+│
+│  Core
 ├── nethack.js         Entry point, game loop           ← allmain.c
-├── dungeon.js         Level generation (~99KB)         ← mklev.c, mkroom.c
-├── makemon.js         Monster creation                 ← makemon.c
-├── mkobj.js           Object creation                  ← mkobj.c
-├── combat.js          Hit/damage/death                 ← uhitm.c, mhitu.c
-├── monmove.js         Monster AI                       ← mon.c, dog.c
-├── vision.js          Field of view (Algorithm C)      ← vision.c
-├── rng.js             PRNG (ISAAC64, bit-exact)        ← rnd.c
-├── isaac64.js         ISAAC64 core                     ← isaac64.c
+├── config.js          Constants (terrain types, etc.)  ← rm.h, hack.h
+├── player.js          Player state                     ← you.h, decl.h
+├── commands.js        Command dispatch                 ← cmd.c
+│
+│  Display & I/O
 ├── display.js         Browser terminal rendering       ← win/tty/*.c
 ├── input.js           Async keyboard queue
-├── config.js          Constants (terrain types, etc.)   ← rm.h, hack.h
+├── symbols.js         Display symbols & colors         ← defsym.h, drawing.c
+├── pager.js           In-terminal text pager           ← pager.c
+│
+│  RNG
+├── isaac64.js         ISAAC64 core (BigInt)            ← isaac64.c
+├── rng.js             PRNG interface: rn2, rnd, d      ← rnd.c
+│
+│  World Generation
+├── dungeon.js         Level generation                 ← mklev.c, mkroom.c, sp_lev.c
+├── map.js             Map data structures              ← rm.h, mkmap.c
 ├── themerms.js        Theme room generation            ← dat/themerms.lua
+├── vision.js          Field of view (Algorithm C)      ← vision.c
+│
+│  Creatures
 ├── monsters.js        Monster data table (generated)
+├── mondata.js         Monster predicate functions      ← mondata.h
+├── makemon.js         Monster creation                 ← makemon.c
+├── monmove.js         Monster AI                       ← monmove.c
+├── dog.js             Pet AI helpers                   ← dog.c
+│
+│  Objects
 ├── objects.js         Object data table (generated)
-└── ...                More modules
+├── objdata.js         Object predicate functions       ← objclass.h
+├── mkobj.js           Object creation                  ← mkobj.c
+├── o_init.js          Object init & desc shuffle       ← o_init.c
+│
+│  Character Creation
+├── u_init.js          Post-level init: pet, inv, attrs ← u_init.c
+│
+│  Combat
+├── combat.js          Hit/damage/death                 ← uhitm.c, mhitu.c
+│
+│  Persistence
+├── storage.js         Save/restore via localStorage    ← save.c, restore.c
+├── bones.js           Bones file management            ← bones.c
+├── topten.js          High score list                  ← topten.c
+│
+│  Data Files
+├── hacklib.js         xcrypt cipher & data parsing     ← hacklib.c
+├── epitaph_data.js    Encrypted epitaphs               ← dat/epitaph
+├── engrave_data.js    Encrypted engravings             ← dat/engrave
+└── rumor_data.js      Encrypted rumors                 ← dat/rumors
 
 test/
-├── unit/              18 unit test files (150 tests, ~0.3s)
+├── unit/              26 unit test files (node --test)
 ├── e2e/               2 Puppeteer browser tests
 └── comparison/        C-vs-JS comparison testing
     ├── seeds.json     Central config: which seeds to test, with RNG traces
-    ├── sessions/      Gameplay + chargen session JSON files (C-captured)
+    ├── sessions/      96 gameplay + chargen session JSON files (C-captured)
     ├── maps/          C map sessions with RNG traces (for divergence debugging)
-    ├── golden/        ISAAC64 reference values
+    ├── golden/        ISAAC64 reference values (4 seeds)
     ├── session_runner.test.js   Unified test runner
     ├── session_helpers.js       Grid compare, RNG compare, structural tests
     ├── gen_typ_grid.js          JS map generation (for comparison)
+    ├── gen_rng_log.js           Generate JS RNG logs
     └── c-harness/               C build + capture infrastructure
 
+dat/                   Help text files (help.txt, hh.txt, etc.)
 docs/                  You are here
 spoilers/              The guide content (guide.md → HTML/PDF)
 ```
@@ -221,7 +259,7 @@ Patches live in `test/comparison/c-harness/patches/` and are applied by
 The C harness builds a patched NetHack 3.7 binary for ground-truth comparison.
 The C source is **frozen at commit `79c688cc6`** and never modified directly —
 only patches in `test/comparison/c-harness/patches/` are applied on top.
-Three patches make the C binary testable:
+Five patches make the C binary testable:
 
 **`001-deterministic-seed.patch`** — Reads `NETHACK_SEED` from the environment
 instead of `/dev/urandom`. Crucially, does NOT set `has_strong_rngseed`, so
@@ -233,6 +271,12 @@ instead of `/dev/urandom`. Crucially, does NOT set `has_strong_rngseed`, so
 **`003-prng-logging.patch`** — When `NETHACK_RNGLOG` is set, logs every
 `rn2()`/`rnd()`/`d()` call with args, result, and caller context
 (`__func__`, `__FILE__`, `__LINE__`). Format: `rn2(12)=2 @ shuffle(o_init.c:128)`.
+
+**`004-obj-dumper.patch`** — Adds object inspection/dumping support for
+verifying inventory and object creation against JS.
+
+**`005-midlog-infrastructure.patch`** — Enables mid-session RNG log control
+for capturing traces at specific points during gameplay.
 
 ### Why raw terrain grids instead of terminal output?
 
@@ -285,7 +329,9 @@ symbols mapped to Unicode box-drawing characters. No canvas, no WebGL.
 - **[DESIGN.md](DESIGN.md)** — Detailed architecture and module design
 - **[DECISIONS.md](DECISIONS.md)** — Design decision log with rationale
 - **[SESSION_FORMAT.md](SESSION_FORMAT.md)** — Session JSON format specification
+- **[COLLECTING_SESSIONS.md](COLLECTING_SESSIONS.md)** — How to capture C reference sessions
 - **[PHASE_1_PRNG_ALIGNMENT.md](PHASE_1_PRNG_ALIGNMENT.md)** — The story of achieving bit-exact C-JS parity
+- **[PHASE_2_GAMEPLAY_ALIGNMENT.md](PHASE_2_GAMEPLAY_ALIGNMENT.md)** — Gameplay session alignment goals & progress
 
 ---
 

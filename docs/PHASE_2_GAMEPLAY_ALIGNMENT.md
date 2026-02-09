@@ -1,14 +1,18 @@
-# Achieving Bit-Exact Per-Turn Gameplay Between C NetHack and JavaScript
+# Phase 2: Achieving Bit-Exact Gameplay
 
 > *"The dungeon maps match perfectly. But can you survive one turn of play?"*
 
-Phase 1 proved that WebHack could generate **identical dungeon maps** to C
-NetHack, cell for cell. But a map is just the starting position. The moment
-a player takes a step, the kitten follows, a jackal wakes up, and the game
-loop ticks forward — consuming dozens of RNG calls per turn in an order
-dictated by monster AI, vision geometry, combat tables, and a hundred other
-subsystems. A single missing `rn2(100)` anywhere makes every subsequent
-random decision diverge.
+Phase 1 ended with a party trick: generate a dungeon on seed 42, and the
+JavaScript port produces the exact same map as C NetHack, cell for cell, wall
+for wall, fountain for fountain. A scroll of mapping would reveal no
+difference.
+
+But a map is just the starting position. The moment a player takes a step,
+the kitten follows, a jackal wakes up, and the game loop ticks forward —
+consuming dozens of RNG calls per turn in an order dictated by monster AI,
+vision geometry, combat tables, and a hundred other subsystems. A single
+missing `rn2(100)` anywhere makes every subsequent random decision diverge.
+The dungeon is the easy part. The *game* is the hard part.
 
 Phase 2 extends the bit-exact alignment from static map generation to
 **live gameplay**: 66 turns of a human-played session on seed 1, every RNG
@@ -16,20 +20,27 @@ call in every turn matching the C reference, turn for turn, call for call.
 
 ## Table of Contents
 
-1. [The Goal](#1-the-goal)
-2. [The Session Format](#2-the-session-format)
-3. [Capturing C Reference Data](#3-capturing-c-reference-data)
-4. [Post-Level Initialization](#4-post-level-initialization)
-5. [The Per-Turn Game Loop](#5-the-per-turn-game-loop)
-6. [Monster Movement AI](#6-monster-movement-ai)
-7. [Pet Behavior: dog_move](#7-pet-behavior-dog_move)
-8. [The Vision System](#8-the-vision-system)
-9. [Combat](#9-combat)
-10. [The Long Tail of Gameplay Bugs](#10-the-long-tail-of-gameplay-bugs)
-11. [Final Result](#11-final-result)
-12. [Architecture of the Test Infrastructure](#12-architecture-of-the-test-infrastructure)
-13. [Lessons Learned](#13-lessons-learned)
-14. [The Art of RNG Forensics](#14-the-art-of-rng-forensics)
+**The Challenge**
+1. [The Goal](#1-the-goal) -- what "bit-exact gameplay" means
+2. [The Session Format](#2-the-session-format) -- capturing ground truth
+3. [Capturing C Reference Data](#3-capturing-c-reference-data) -- the tmux harness
+
+**The Subsystems**
+4. [Post-Level Initialization](#4-post-level-initialization) -- pet, inventory, attributes
+5. [The Per-Turn Game Loop](#5-the-per-turn-game-loop) -- sounds, hunger, exercise
+6. [Monster Movement AI](#6-monster-movement-ai) -- movemon, dochug, mfndpos
+7. [Pet Behavior: dog_move](#7-pet-behavior-dog_move) -- the final boss
+8. [The Vision System](#8-the-vision-system) -- zero RNG, infinite influence
+9. [Combat](#9-combat) -- attack, damage, corpse
+
+**The Bugs and the Fixes**
+10. [The Long Tail of Gameplay Bugs](#10-the-long-tail-of-gameplay-bugs) -- terrain, themerooms, HP sync
+11. [Final Result](#11-final-result) -- 66/67 steps matching
+
+**The Craft**
+12. [Architecture of the Test Infrastructure](#12-architecture-of-the-test-infrastructure) -- HeadlessGame, session replay
+13. [Lessons Learned](#13-lessons-learned) -- hard-won rules for RNG alignment
+14. [The Art of RNG Forensics](#14-the-art-of-rng-forensics) -- reading traces like a mechanic reads engine sounds
 
 ---
 
@@ -129,6 +140,9 @@ stair descent. The `run_session.py` script then plays these keystrokes
 through C NetHack, capturing the full session.
 
 ## 4. Post-Level Initialization
+
+> *"You see here a kitten named Tabby. She's not randomly generated — she's
+> deterministically generated."*
 
 Before the first turn, C NetHack runs a startup sequence that consumes
 ~100 RNG calls after map generation: creating the pet, distributing the
@@ -237,9 +251,11 @@ the turn-1 fire.
 
 ## 6. Monster Movement AI
 
-The most complex Phase 2 subsystem. Every non-sleeping monster on the level
-gets a chance to act each turn, and the order and logic of their actions
-must match C exactly.
+> *"The jackal moves. The kitten moves. The newt moves. You feel overwhelmed."*
+
+The most complex Phase 2 subsystem — and the most rewarding to debug.
+Every non-sleeping monster on the level gets a chance to act each turn,
+and the order and logic of their actions must match C exactly.
 
 ### movemon: the outer loop
 
@@ -330,6 +346,8 @@ This technique — **inferring C's internal state from RNG arguments** —
 became the primary debugging method for Phase 2.
 
 ## 7. Pet Behavior: dog_move
+
+> *"The kitten picks up a tripe ration. Good strider!"*
 
 Pet AI is the most RNG-intensive subsystem per turn. A single kitten
 evaluating its options can consume 5–15 RNG calls, and the logic has
@@ -423,14 +441,22 @@ whether the pet had found a better position before that evaluation point.
 
 ## 8. The Vision System
 
-NetHack's vision system determines what the player can see, which affects
-screen rendering and, indirectly, monster behavior (pets check whether
-they can see the player). The JS port implements Algorithm C from
-`vision.c` — a recursive line-of-sight scanner.
+> *"It is dark. You are likely to be eaten by a grue."*
+
+The vision system consumes zero RNG calls, which might suggest it's
+irrelevant to Phase 2. It isn't. Vision determines what the player sees
+on screen (used for screen comparison), and what the *pet* sees (used for
+`in_masters_sight`, which changes which code path the pet takes, which
+changes how many RNG calls it makes). Getting the FOV wrong doesn't shift
+the PRNG stream directly, but it changes which branches of monster AI
+execute — and those branches are full of `rn2()` calls.
+
+The JS port implements Algorithm C from `vision.c` — C NetHack's actual
+recursive line-of-sight scanner, not an approximation.
 
 ### Algorithm C
 
-The algorithm works by scanning outward from the player in both directions
+The algorithm scans outward from the player in both directions
 (up and down), maintaining left and right shadow boundaries:
 
 ```javascript
@@ -474,17 +500,22 @@ The pet AI uses `couldsee` to check `in_masters_sight` (whether the pet is
 visible to the player), and `m_cansee` in the `wantdoor` fallback to find
 cells the pet can actually see.
 
-### No RNG, but affects everything
+### No RNG, but load-bearing
 
-The vision system consumes zero RNG calls. But it affects what appears on
-screen, which is used for screen comparison testing. Getting the FOV wrong
-doesn't cause RNG divergence, but it does cause screen mismatches — a
-different class of bug that's tested separately.
+The vision system's influence is entirely indirect. A wrong FOV doesn't
+cause RNG divergence directly — but it causes screen mismatches (a
+separate class of test failure), and it changes pet behavior by altering
+`in_masters_sight`. The pet AI fork between "follow player directly" and
+"use gettrack/ogoal/wantdoor" depends entirely on whether the pet can see
+the player. Get the shadow boundaries wrong by one column, and the kitten
+takes a different code path, consuming a different number of `rn2()` calls.
 
 ## 9. Combat
 
-When the player walks into a monster (or vice versa), combat fires. The
-RNG consumption is specific and ordered:
+> *"You hit the jackal! The jackal is killed!"*
+
+Combat is mercifully predictable compared to pet AI. When the player walks
+into a monster (or vice versa), the RNG consumption follows a rigid script:
 
 ### Player attacking monster
 
@@ -495,7 +526,8 @@ rnd(weapon.wsdam)    — damage roll (small monsters)
 rn2(3)               — passive damage (if monster survives)
 ```
 
-On kill, corpse generation consumes additional RNG:
+Killing a monster is expensive. Corpse generation alone can consume over
+a hundred RNG calls:
 ```
 rn2(6)               — treasure drop check
 rnd(2)               — object identifier
@@ -503,6 +535,12 @@ rndmonst_adj()       — corpse monster type (110+ rn2 calls!)
 rn2(2)               — corpse gender
 rnz(10)              — corpse rot timer
 ```
+
+The `rndmonst_adj()` call is a landmine — it iterates the entire monster
+table to find monsters of the same difficulty, consuming one `rn2()` per
+eligible monster. A level-1 grid bug corpse generates different RNG than
+a level-1 jackal corpse because they have different difficulty classes,
+changing which monsters are eligible.
 
 ### Monster attacking player
 
@@ -517,24 +555,28 @@ with one claw attack generates different RNG than a soldier with three.
 
 ## 10. The Long Tail of Gameplay Bugs
 
+> *"You feel a mild case of the strstrstrstrfumbles."*
+
 Like Phase 1, the final stretch was a series of specific bugs found by
-diffing RNG traces. Each bug had a characteristic signature in the
-divergence pattern.
+diffing RNG traces. Each had a characteristic signature — a fingerprint
+in the divergence pattern that pointed to the cause.
 
 ### The somexyspace terrain check
 
-`somexyspace()` finds an empty position in a room for monster/object
-placement. C checks `SPACE_POS(typ)` which means `typ > DOOR`, excluding
-stairs and positions with the `SPCFLG_NOMON` flag. JS initially checked
-`IS_ROOM || IS_CORR || IS_ICE` — a different set. Fixing the terrain
-check to match C's `typ > DOOR` predicate aligned the position selection.
+The first clue was an extra `rn2()` call during monster placement.
+`somexyspace()` finds an empty position in a room; C checks
+`SPACE_POS(typ)` which means `typ > DOOR`, excluding stairs and no-monster
+zones. JS checked `IS_ROOM || IS_CORR || IS_ICE` — close, but a different
+set. The extra eligible positions meant extra placement attempts, each
+consuming RNG. One predicate, one constant, a cascade of shifted calls.
 
 ### The mineralize overcounting
 
-C's `mineralize()` uses `rn2(1000)` not `rn2(100)` for placing gold and
-gem deposits in walls (mklev.c:1504). The factor-of-10 difference meant
-JS was placing deposits far too frequently, consuming extra RNG calls for
-`mksobj()` and shifting everything after.
+A typo that hid in plain sight: C's `mineralize()` uses `rn2(1000)` for
+placing gold and gem deposits in walls (mklev.c:1504). JS had `rn2(100)`.
+A factor-of-ten difference. Instead of gold appearing in 0.1% of wall
+tiles, it appeared in 1% — ten times too many, each calling `mksobj()`,
+each consuming a burst of RNG for object properties.
 
 ### The themeroom fill per-tile RNG
 
@@ -542,15 +584,18 @@ NetHack 3.7's themed rooms use Lua scripts that iterate every tile in a
 room, calling `rn2(100)` per tile to decide whether to place a feature
 (via `selection:percentage()` in sp_lev.c). JS was doing the selection at
 the room level instead of per-tile, consuming one call instead of
-`width × height` calls.
+`width × height` calls. For an 8×4 room, that's 1 call instead of 32 —
+a 31-call deficit that shifted everything downstream.
 
 ### The HP sync technique
 
 Player HP changes during gameplay (damage from monsters, natural
 regeneration). The regeneration check `rn2(100)` only fires when
 `hp < hpmax`, so the JS engine must know the exact HP at each turn.
-Rather than simulating all damage sources, the replay engine syncs HP
-from the session's screen capture after each step:
+But perfectly simulating every damage source requires implementing the
+entire combat system — a Phase 2 chicken-and-egg problem.
+
+The solution was pragmatic: read the answer off the screen.
 
 ```javascript
 // session_helpers.js — sync HP from C's status line
@@ -560,11 +605,15 @@ for (const line of step.screen) {
 }
 ```
 
-This "ground truth sync" approach sidesteps the need to perfectly simulate
-every damage source — a pragmatic choice that let the RNG alignment work
-proceed while combat simulation matured.
+Each C session captures the 24×80 terminal state, including the status
+line showing `HP:16(16)`. The replay engine reads this after each step,
+syncing HP to the C ground truth. This let RNG alignment proceed
+independently from combat simulation — a deliberate decoupling that paid
+for itself many times over.
 
 ## 11. Final Result
+
+> *"You feel a great sense of accomplishment."*
 
 ```
 Seed 1, Valkyrie — 67 steps, 66 turns of gameplay
@@ -584,13 +633,18 @@ Steps 0–65: 66/66 PERFECT MATCH
 Step 66: level descent — requires getbones (not yet implemented)
 ```
 
-Every turn of surface gameplay — 66 turns of movement, monster AI, pet
-behavior, ambient effects, hunger, exercise — produces identical RNG traces
-between C and JS. The only remaining divergence is step 66, where the
-player descends stairs and C calls `getbones()` to check for bones files,
-a system outside the scope of the current port.
+Sixty-six turns. Roughly 23,000 RNG calls. Movement, pet AI, monster
+spawning, ambient sounds, hunger, exercise, combat, corpse creation,
+regeneration — all matching the C binary call for call.  The only
+remaining divergence is step 66, where the player descends stairs and
+C calls `getbones()` to check for bones files, a system outside the scope
+of the current port.
 
-### Progress through the debugging sessions
+### The road there
+
+The progress table tells the story of Phase 2 better than prose can.
+Each row is a debugging session; each key fix extended the matching
+prefix by a handful of steps.
 
 | Session | Steps Passing | Key Fix |
 |---------|--------------|---------|
@@ -604,11 +658,21 @@ a system outside the scope of the current port.
 | +dog_invent | 45/67 | Pet inventory management |
 | +diagonal-through-door | **66/67** | mfndpos position filtering |
 
+The jump from 0 to 8 was just wiring — building the per-turn loop
+skeleton. The jump from 8 to 28 was the monster AI framework, the biggest
+single piece of new code. After that, each fix was smaller and more
+precise: a missing exercise check, a pet inventory scan, a diagonal door
+rule. The bug that took the longest to find — the diagonal-through-door
+rule — was also the smallest fix: two lines of code.
+
 ## 12. Architecture of the Test Infrastructure
+
+> *"You hear the tinkering of automated tools."*
 
 ### Session replay engine
 
-The `HeadlessGame` class provides a minimal game engine for testing:
+The `HeadlessGame` class provides a minimal game engine that runs without
+a browser — no DOM, no display, just the game logic and RNG:
 
 ```javascript
 class HeadlessGame {
@@ -647,40 +711,23 @@ appropriate tests based on session type:
 
 ### Key files
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `js/monmove.js` | 745 | Monster AI: movemon, dochug, dog_move, m_move, mfndpos |
-| `js/vision.js` | 600 | Algorithm C FOV, couldsee, m_cansee, clear_path |
-| `js/dog.js` | 492 | Pet food classification, dog_eat, can_carry |
-| `js/u_init.js` | 802 | Post-level init: makedog, inventory, attributes |
-| `js/commands.js` | 600 | Player command dispatch: rhack, movement, stairs |
-| `js/combat.js` | 250 | Attack rolls, damage, corpse creation, level-up |
-| `js/player.js` | 242 | Player class with 13 roles, attributes, equipment |
-| `test/comparison/session_helpers.js` | 500 | HeadlessGame, replaySession, grid/RNG comparison |
-| `test/comparison/session_runner.test.js` | 350 | Unified test runner for all session types |
-
-### The debugging method
-
-The workflow for finding each gameplay bug:
-
-1. Run `session_runner.test.js` — see which step fails
-2. Look at the C trace annotation at the divergence point
-3. The annotation tells you the function and context (`[dog_goal]`, etc.)
-4. **Read the RNG argument** to infer internal state:
-   - `rn2(3)` vs `rn2(12)`: has the pet found a better position?
-   - `rn2(MTSZ*(k-j))`: how many positions does C's mfndpos return?
-   - Count of `rn2(100)`: how many objects are being evaluated?
-5. Compare inferred C state with JS state to identify the mismatch
-6. Fix the bug, verify the step passes, check for new failures
-
-This "inference from RNG arguments" technique was the breakthrough that
-made Phase 2 debugging tractable. Rather than instrumenting both codebases
-with matching debug output, the RNG trace itself encodes enough information
-to reconstruct the internal decision state.
+| File | Purpose |
+|------|---------|
+| `js/monmove.js` | Monster AI: movemon, dochug, dog_move, m_move, mfndpos |
+| `js/vision.js` | Algorithm C FOV, couldsee, m_cansee, clear_path |
+| `js/dog.js` | Pet food classification, dog_eat, can_carry |
+| `js/u_init.js` | Post-level init: makedog, inventory, attributes |
+| `js/commands.js` | Player command dispatch: rhack, movement, stairs |
+| `js/combat.js` | Attack rolls, damage, corpse creation, level-up |
+| `js/player.js` | Player class with 13 roles, attributes, equipment |
+| `test/comparison/session_helpers.js` | HeadlessGame, replaySession, grid/RNG comparison |
+| `test/comparison/session_runner.test.js` | Unified test runner for all session types |
 
 ---
 
 ## 13. Lessons Learned
+
+> *"You triggered a trap! You feel as if you need a shower."*
 
 Six months from now, someone will add a helpful feature to the JS port —
 auto-pickup gold, or a shortcut that opens doors silently — and 45 tests
@@ -807,9 +854,27 @@ you must get right.
 
 ## 14. The Art of RNG Forensics
 
-Section 12 described the debugging *workflow*. This section is about
-the deeper skill: reading an RNG trace the way a mechanic reads engine
-sounds — hearing the misfire in a stream of numbers.
+> *"You carefully examine the RNG trace. It looks like gibberish."*
+
+Debugging RNG alignment is not normal debugging. You can't set a
+breakpoint. You can't add a `printf`. You have two streams of numbers —
+one from C, one from JS — and when they diverge, the divergence point
+is your only clue. This section is about reading an RNG trace the way a
+mechanic reads engine sounds — hearing the misfire in a stream of numbers.
+
+### The workflow
+
+1. Run `session_runner.test.js` — see which step fails
+2. Look at the C trace annotation at the divergence point
+3. The annotation tells you the function and context (`[dog_goal]`, etc.)
+4. **Read the RNG argument** to infer C's internal state (see below)
+5. Compare inferred C state with JS state to identify the mismatch
+6. Fix the bug, verify the step passes, check for new failures
+
+This "inference from RNG arguments" technique was the breakthrough that
+made Phase 2 debugging tractable. Rather than instrumenting both codebases
+with matching debug output, the RNG trace itself encodes enough information
+to reconstruct the internal decision state.
 
 ### The annotation is the autopsy report
 
@@ -922,16 +987,17 @@ The C source is the spec. The spec has quirks. The quirks are load-bearing.
 | Commit | Milestone |
 |--------|-----------|
 | `2bd7eb0` | Document Phase 2 plan: 10 steps to gameplay matching |
+| `6a9dd33` | Fix mineralize RNG overcounting, add startup RNG verification |
 | `5afc46b` | Per-turn loop: dosounds, seerTurn, regen_hp, step replay |
 | `26dc783` | Combat RNG: hero attack, monster attack, dochug Phase 3 |
-| `d1aeb6b` | End-of-turn exercise/exerper, dochug condition fix |
+| `d1aeb6b` | End-of-turn exercise/exerper, dochug Phase 3 condition fix |
 | `13fea84` | Weapon enchantment to-hit, corpse placement |
 | `9c8c95e` | dog_eat, IS_ROOM/ACCESSIBLE terrain fixes |
 | `fcda4e5` | Pet eating counter, dog_nutrition size multipliers |
 | `d71904d` | HP sync from session screen data |
-| *session* | +gettrack/ogoal: player track system, out-of-sight redirect |
-| *session* | +dog_invent: pet inventory management |
-| *session* | +diagonal-through-door: mfndpos position filtering — **66/67 steps** |
+| `7022681` | mfndpos diagonal-through-door, dog_invent — **66/67 steps** |
+| `0c97856` | Fix pet AI RNG divergence: gold pickup, door RNG, tracking |
+| `39e3849` | Add lessons learned and RNG forensics sections |
 
 ---
 

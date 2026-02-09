@@ -37,38 +37,156 @@ the original C source files and line numbers.
 
 ```
 webhack/
-├── index.html              Main HTML page (80×24 terminal)
-├── docs/
-│   ├── DESIGN.md           This file
-│   └── DECISIONS.md        Design decision log
-├── js/
-│   ├── nethack.js          Entry point, game init (← allmain.c)
-│   ├── display.js          Browser TTY display (← win/tty/*.c)
-│   ├── input.js            Async keyboard queue (← tty input)
-│   ├── dungeon.js          Level generation (← mklev.c, mkroom.c)
-│   ├── monsters.js         Monster data table (← monsters.h)
-│   ├── objects.js          Object data table (← objects.h)
-│   ├── symbols.js          Display symbols & colors (← defsym.h, drawing.c)
-│   ├── player.js           Player state (← you.h, decl.h)
-│   ├── commands.js         Command dispatch (← cmd.c)
-│   ├── movement.js         Hero/monster movement (← hack.c, monmove.c)
-│   ├── combat.js           Combat (← uhitm.c, mhitu.c, mhitm.c)
-│   ├── inventory.js        Inventory management (← invent.c)
-│   ├── rng.js              Random number gen (← rnd.c, isaac64.c)
-│   ├── fov.js              Field of view (← vision.c)
-│   ├── map.js              Map data structures (← rm.h)
-│   ├── monmove.js          Monster movement AI (← monmove.c)
-│   ├── makemon.js          Monster creation (← makemon.c)
-│   ├── mkobj.js            Object creation (← mkobj.c)
-│   └── config.js           Game constants & configuration
-├── test/
-│   ├── test_rng.js         RNG unit tests
-│   ├── test_dungeon.js     Dungeon generation tests
-│   ├── test_movement.js    Movement tests
-│   ├── test_combat.js      Combat tests
-│   ├── test_display.js     Display rendering tests
-│   └── test_e2e.html       End-to-end browser tests
-└── nethack-c/              Original C source (reference)
+├── index.html                 Main HTML page (80×24 terminal)
+├── package.json               Node.js project config (ES modules, test scripts)
+├── CNAME                      GitHub Pages domain (mazesofmenace.net)
+├── Guidebook.txt              Original NetHack Guidebook
+├── README.md                  Project overview and status
+├── AGENTS.md                  Agent workflow instructions
+├── gen_monsters.py            Code generator: C monsters.h → JS monsters.js
+├── gen_objects.py             Code generator: C objects.h → JS objects.js
+│
+├── js/                        ── Game Source (32 modules) ──
+│   │
+│   │  ┌─ Core ─────────────────────────────────────────────┐
+│   ├── nethack.js             Entry point, game init (← allmain.c)
+│   ├── config.js              Game constants & terrain types (← rm.h, hack.h)
+│   ├── player.js              Player state (← you.h, decl.h)
+│   ├── commands.js            Command dispatch (← cmd.c)
+│   │
+│   │  ┌─ Display & I/O ───────────────────────────────────┐
+│   ├── display.js             Browser TTY display (← win/tty/*.c)
+│   ├── input.js               Async keyboard queue (← tty input)
+│   ├── symbols.js             Display symbols & colors (← defsym.h, drawing.c)
+│   ├── pager.js               In-terminal text pager (← pager.c)
+│   │
+│   │  ┌─ RNG ─────────────────────────────────────────────┐
+│   ├── isaac64.js             ISAAC64 PRNG engine, BigInt (← isaac64.c)
+│   ├── rng.js                 RNG interface: rn2, rnd, d (← rnd.c)
+│   │
+│   │  ┌─ World Generation ────────────────────────────────┐
+│   ├── dungeon.js             Level generation (← mklev.c, mkroom.c, sp_lev.c)
+│   ├── map.js                 Map data structures (← rm.h, mkmap.c)
+│   ├── themerms.js            Themeroom definitions (← dat/themerms.lua)
+│   ├── vision.js              Field of view, Algorithm C (← vision.c)
+│   │
+│   │  ┌─ Creatures ───────────────────────────────────────┐
+│   ├── monsters.js            Monster data table (← monsters.h)
+│   ├── mondata.js             Monster predicate functions (← mondata.h)
+│   ├── makemon.js             Monster creation (← makemon.c)
+│   ├── monmove.js             Monster movement AI (← monmove.c)
+│   ├── dog.js                 Pet AI helpers (← dog.c)
+│   │
+│   │  ┌─ Objects ─────────────────────────────────────────┐
+│   ├── objects.js             Object data table (← objects.h)
+│   ├── objdata.js             Object predicate functions (← objclass.h)
+│   ├── mkobj.js               Object creation (← mkobj.c)
+│   ├── o_init.js              Object init & description shuffle (← o_init.c)
+│   │
+│   │  ┌─ Character Creation ──────────────────────────────┐
+│   ├── u_init.js              Post-level init: pet, inventory, attrs (← u_init.c)
+│   │
+│   │  ┌─ Combat ──────────────────────────────────────────┐
+│   ├── combat.js              Combat system (← uhitm.c, mhitu.c, mhitm.c)
+│   │
+│   │  ┌─ Persistence ─────────────────────────────────────┐
+│   ├── storage.js             Save/restore via localStorage (← save.c, restore.c)
+│   ├── bones.js               Bones file management (← bones.c)
+│   ├── topten.js              High score list (← topten.c)
+│   │
+│   │  ┌─ Data Files ──────────────────────────────────────┐
+│   ├── hacklib.js             xcrypt cipher & data parsing (← hacklib.c)
+│   ├── epitaph_data.js        Encrypted epitaphs (← dat/epitaph)
+│   ├── engrave_data.js        Encrypted engravings (← dat/engrave)
+│   └── rumor_data.js          Encrypted rumors (← dat/rumors)
+│
+├── dat/                       ── Help Text Data ──
+│   ├── help.txt               General help
+│   ├── hh.txt                 Quick reference
+│   ├── history.txt            Version history
+│   ├── opthelp.txt            Options help
+│   └── wizhelp.txt            Wizard mode help
+│
+├── docs/                      ── Documentation ──
+│   ├── DESIGN.md              This file
+│   ├── DECISIONS.md           Design decision log
+│   ├── SESSION_FORMAT.md      Session file format spec (v2)
+│   ├── COLLECTING_SESSIONS.md How to capture C reference sessions
+│   ├── DEVELOPMENT.md         Development workflow
+│   ├── PHASE_1_PRNG_ALIGNMENT.md   Phase 1 goals & progress
+│   ├── PHASE_2_GAMEPLAY_ALIGNMENT.md Phase 2 goals & progress
+│   └── bugs/
+│       └── pet-ai-rng-divergence.md Known pet AI divergence
+│
+├── test/                      ── Test Infrastructure ──
+│   ├── unit/                  26 unit test files (node --test)
+│   │   ├── rng.test.js        PRNG functions
+│   │   ├── isaac64.test.js    ISAAC64 engine
+│   │   ├── dungeon.test.js    Level generation
+│   │   ├── map.test.js        Map structures
+│   │   ├── combat.test.js     Combat system
+│   │   ├── makemon.test.js    Monster creation
+│   │   ├── mkobj.test.js      Object creation
+│   │   ├── o_init.test.js     Object shuffling
+│   │   ├── u_init.test.js     Character init
+│   │   ├── chargen.test.js    Character creation (90 golden sessions)
+│   │   ├── monsters.test.js   Monster data
+│   │   ├── objects.test.js    Object data
+│   │   ├── player.test.js     Player state
+│   │   ├── monmove.test.js    Monster movement
+│   │   ├── config.test.js     Configuration
+│   │   ├── fov.test.js        Field of view
+│   │   ├── gameloop.test.js   Game loop
+│   │   ├── bones.test.js      Bones system
+│   │   ├── storage.test.js    Save/restore
+│   │   ├── topten.test.js     High scores
+│   │   ├── epitaph.test.js    Epitaph decryption
+│   │   ├── hacklib.test.js    hacklib utilities
+│   │   ├── wizard.test.js     Wizard mode
+│   │   ├── gameover.test.js   Game over logic
+│   │   ├── display_gameover.test.js  Death screen
+│   │   └── screen_compare.test.js    Screen comparison
+│   │
+│   ├── e2e/                   End-to-end browser tests (Puppeteer)
+│   │   ├── game.e2e.test.js
+│   │   └── gameplay.e2e.test.js
+│   │
+│   └── comparison/            ── C Comparison Testing ──
+│       ├── session_runner.test.js  Session replay test runner
+│       ├── gen_rng_log.js     Generate JS RNG logs
+│       ├── gen_typ_grid.js    Generate JS terrain grids
+│       ├── sessions/          96 golden session files (.session.json)
+│       ├── golden/            ISAAC64 reference outputs (4 seeds)
+│       ├── isaac64_reference.c  C ISAAC64 for golden generation
+│       └── c-harness/         C NetHack build & capture tools
+│           ├── setup.sh           Build patched C NetHack
+│           ├── macosx-minimal     macOS build hints file
+│           ├── run_session.py     Capture gameplay sessions via tmux
+│           ├── run_dumpmap.py     Capture map grids
+│           ├── run_trace.py       Capture RNG traces
+│           ├── gen_chargen_sessions.py  Generate chargen sessions
+│           ├── gen_map_sessions.py     Generate map sessions
+│           ├── capture_inventory.py    Capture inventory data
+│           ├── plan_session.py    Session planning helper
+│           └── patches/
+│               ├── 001-deterministic-seed.patch
+│               ├── 002-map-dumper.patch
+│               ├── 003-prng-logging.patch
+│               ├── 004-obj-dumper.patch
+│               └── 005-midlog-infrastructure.patch
+│
+├── spoilers/                  ── Spoiler Guide (separate site) ──
+│   ├── guide.md               Guide source (Markdown)
+│   ├── index.html             Built HTML guide
+│   ├── style.css              Guide styling
+│   ├── template.html          Pandoc HTML template
+│   ├── template.tex           Pandoc LaTeX template
+│   ├── latex-filter.lua       Pandoc Lua filter
+│   ├── build.sh               Build HTML version
+│   └── build-latex.sh         Build PDF version
+│
+└── nethack-c/                 ── Reference C Source (git-ignored) ──
+    └── (cloned & patched by test/comparison/c-harness/setup.sh)
 ```
 
 ### Display Architecture
@@ -192,12 +310,10 @@ hits hero). The core flow:
 
 > *"It is dark. You can see four directions."*
 
-The C version uses a sophisticated raycasting algorithm in `vision.c`. For the
-initial port, we implement a simplified but correct line-of-sight algorithm
-that produces equivalent results for standard room-and-corridor levels:
-- Inside a lit room: see the entire room
-- In a corridor: see adjacent squares
-- Dark rooms: see only adjacent squares
+The JS `vision.js` is a faithful port of the C's Algorithm C from `vision.c`,
+the recursive line-of-sight scanner that NetHack actually uses. It traces
+visibility along octant rays, handling walls, doors, and partial occlusion
+exactly as the C does. This replaced an earlier simplified rule-based approach.
 
 ## Global State Management
 
@@ -265,25 +381,38 @@ The porting requires three foundation pieces:
 
 > *You sense the presence of determinism.*
 
-The C and JS versions share an identical PRNG (ISAAC64, BigInt-based).  To verify
-that level generation matches, we compare PRNG call sequences:
+The C and JS versions share an identical PRNG (ISAAC64, BigInt-based).  The
+core verification strategy: replay the same deterministic seed through both
+implementations and compare PRNG call sequences, screen output, and map grids.
 
-```
-C binary (with 003-prng-logging.patch):
-  NETHACK_RNGLOG=/tmp/c.log ./nethack ...
-  → 258 rn2(5) = 2 @ mklev.c:1276
+**C harness** (`test/comparison/c-harness/`): Patches applied to C NetHack
+enable deterministic seeding, PRNG call logging with caller context, map
+grid dumping, and object inspection. Python scripts drive tmux sessions to
+capture reference data as JSON session files.
 
-JS (with enableRngLog()):
-  enableRngLog(); initRng(42); skipRng(257); makelevel(1);
-  → 1 rn2(6) = 0    ← different! (algorithms diverge)
-```
+**Session files** (`test/comparison/sessions/`): 96 golden reference files
+in a unified format (see `docs/SESSION_FORMAT.md`). Two session types:
+- **`"gameplay"`** -- full playthrough with RNG traces, screens, and step data
+- **`"map"`** -- terrain type grids at multiple dungeon depths
 
-The C consumes 257 PRNG values before level generation (object shuffling,
-dungeon init, etc.).  `skipRng(257)` fast-forwards the JS PRNG past these,
-aligning the state.  Even so, the algorithms currently diverge at call #1
-because the room placement algorithms differ.  As we port C's `rect.c` and
-`mklev.c` more faithfully, the divergence point moves later, and the diff
-count drops.  The goal: zero divergence.
+**Session runner** (`test/comparison/session_runner.test.js`): Replays each
+session through the JS engine, comparing RNG traces call-by-call, screen
+output character-by-character, and terrain grids cell-by-cell.
+
+**Current status**: Character creation (90 chargen sessions across 13 roles,
+5 races, all alignments) matches the C bit-identically. Gameplay sessions
+track RNG through dungeon generation and into the game loop, with remaining
+divergences in unimplemented subsystems (shops, some special levels).
+
+### Encrypted Data Files
+
+> *"You try to read the scroll. It's encrypted!"*
+
+NetHack's `makedefs` tool encrypts data files (epitaphs, rumors, engravings)
+with a trivial XOR cipher defined in `hacklib.c`. Rather than running makedefs
+at build time, we embed the encrypted strings directly in JS modules
+(`epitaph_data.js`, `rumor_data.js`, `engrave_data.js`) and decrypt them at
+load time using `hacklib.js`'s `xcrypt()` -- the same self-inverse cipher.
 
 ---
 
