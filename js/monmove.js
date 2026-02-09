@@ -71,6 +71,46 @@ function dist2(x1, y1, x2, y2) {
 }
 
 // ========================================================================
+// Trap harmlessness check — C ref: trap.c m_harmless_trap()
+// ========================================================================
+// Returns true if the trap is harmless to this monster (no avoidance needed).
+function m_harmless_trap(mon, trap) {
+    const mdat = mons[mon.mndx] || {};
+    const flags1 = mdat.flags1 || 0;
+    const mr1 = mdat.mr1 || 0;
+    const msize = mdat.size || 0;
+
+    // C ref: floor_trigger + check_in_air — flyers avoid floor traps
+    const isFloor = trap.ttyp >= 1 && trap.ttyp <= TRAPDOOR; // ARROW..TRAPDOOR
+    if (isFloor && (flags1 & M1_FLY)) return true;
+
+    switch (trap.ttyp) {
+    case STATUE_TRAP:
+    case MAGIC_TRAP:
+    case VIBRATING_SQUARE:
+        return true;
+    case RUST_TRAP:
+        // Only harmful to iron golems
+        return mon.mndx !== PM_IRON_GOLEM;
+    case FIRE_TRAP:
+        return !!(mr1 & MR_FIRE);
+    case SLP_GAS_TRAP:
+        return !!(mr1 & MR_SLEEP);
+    case BEAR_TRAP:
+        return msize <= MZ_SMALL || !!(flags1 & M1_AMORPHOUS);
+    case PIT: case SPIKED_PIT: case HOLE: case TRAPDOOR:
+        return !!(flags1 & M1_CLING);
+    case WEB:
+        return !!(flags1 & M1_AMORPHOUS);
+    case ANTI_MAGIC:
+        // Simplified: no resists_magm check yet
+        return false;
+    default:
+        return false;
+    }
+}
+
+// ========================================================================
 // mfndpos — collect valid adjacent positions in column-major order
 // ========================================================================
 // C ref: mon.c mfndpos() — returns positions a monster can move to
@@ -124,50 +164,24 @@ function mfndpos(mon, map, player) {
             }
             if (hasBoulder) continue;
 
-            positions.push({ x: nx, y: ny });
+            // C ref: t_at() — check for traps and set ALLOW_TRAPS flag
+            // C ref: mon.c:2337-2352 — trap handling in mfndpos
+            let allowTraps = false;
+            const trap = map.trapAt(nx, ny);
+            if (trap) {
+                // C ref: line 2347 — if (!m_harmless_trap(mon, ttmp))
+                // Only set ALLOW_TRAPS if trap is NOT harmless
+                if (!m_harmless_trap(mon, trap)) {
+                    // C ref: For pets (ALLOW_TRAPS in flags), include position with flag
+                    // Non-pets would skip here if they know the trap type, but pets always include it
+                    allowTraps = true;
+                }
+            }
+
+            positions.push({ x: nx, y: ny, allowTraps });
         }
     }
     return positions;
-}
-
-// ========================================================================
-// Trap harmlessness check — C ref: trap.c m_harmless_trap()
-// ========================================================================
-// Returns true if the trap is harmless to this monster (no avoidance needed).
-function m_harmless_trap(mon, trap) {
-    const mdat = mons[mon.mndx] || {};
-    const flags1 = mdat.flags1 || 0;
-    const mr1 = mdat.mr1 || 0;
-    const msize = mdat.size || 0;
-
-    // C ref: floor_trigger + check_in_air — flyers avoid floor traps
-    const isFloor = trap.ttyp >= 1 && trap.ttyp <= TRAPDOOR; // ARROW..TRAPDOOR
-    if (isFloor && (flags1 & M1_FLY)) return true;
-
-    switch (trap.ttyp) {
-    case STATUE_TRAP:
-    case MAGIC_TRAP:
-    case VIBRATING_SQUARE:
-        return true;
-    case RUST_TRAP:
-        // Only harmful to iron golems
-        return mon.mndx !== PM_IRON_GOLEM;
-    case FIRE_TRAP:
-        return !!(mr1 & MR_FIRE);
-    case SLP_GAS_TRAP:
-        return !!(mr1 & MR_SLEEP);
-    case BEAR_TRAP:
-        return msize <= MZ_SMALL || !!(flags1 & M1_AMORPHOUS);
-    case PIT: case SPIKED_PIT: case HOLE: case TRAPDOOR:
-        return !!(flags1 & M1_CLING);
-    case WEB:
-        return !!(flags1 & M1_AMORPHOUS);
-    case ANTI_MAGIC:
-        // Simplified: no resists_magm check yet
-        return false;
-    default:
-        return false;
-    }
 }
 
 // ========================================================================
@@ -604,11 +618,14 @@ function dog_move(mon, map, player, display, fov) {
 
         // Trap avoidance — C ref: dogmove.c:1182-1204
         // Pets avoid harmful seen traps with 39/40 probability
-        const trap = map.trapAt(nx, ny);
-        if (trap && !m_harmless_trap(mon, trap)) {
-            if (!mon.mleashed) {
-                if (trap.tseen && rn2(40))
-                    continue;
+        // Only check if mfndpos flagged this position as having a trap (ALLOW_TRAPS)
+        if (positions[i].allowTraps) {
+            const trap = map.trapAt(nx, ny);
+            if (trap && !m_harmless_trap(mon, trap)) {
+                if (!mon.mleashed) {
+                    if (trap.tseen && rn2(40))
+                        continue;
+                }
             }
         }
 
