@@ -9,7 +9,7 @@ ASCII terminal display with DEC line-drawing graphics, native keyboard
 commands, no build step required. The Strstrstrstrstrength of this port
 lies in its fidelity to the original C source.
 
-**Play it now:** [https://baukit.org/u/davidbau/webhack/](https://baukit.org/u/davidbau/webhack/)
+**Play it now:** [https://mazesofmenace.net/](https://mazesofmenace.net/)
 
 ## An Experiment in Vibe Coding
 
@@ -19,14 +19,16 @@ This project was created as an experiment in **vibe coding** -- building
 a complex, faithful game port by collaborating with an AI coding assistant
 (Claude) rather than writing every line by hand.
 
-The entire codebase -- 17 JavaScript modules, 285 passing tests, two Python
-code generators, and this README -- was produced through natural-language
-conversation. The human provided direction, taste, and domain knowledge
-about NetHack; the AI wrote the code, tests, and documentation.
+The entire codebase -- 32 JavaScript modules, 498 passing unit tests,
+96 golden C-comparison sessions, and a suite of Python test harness
+scripts -- was produced through natural-language conversation. The human
+provided direction, taste, and domain knowledge about NetHack; the AI
+wrote the code, tests, and documentation.
 
 The goal was to see how far vibe coding can go on a project that demands
 real fidelity: porting thousands of lines of C game logic to JavaScript
-while preserving NetHack's distinctive feel, mechanics, and visual style.
+while preserving NetHack's distinctive feel, mechanics, and visual style
+-- including bit-identical PRNG alignment with the original C binary.
 
 The DevTeam thinks this is uncanny.
 
@@ -61,27 +63,32 @@ throughout. See the full architecture and design documents:
 
 *You see here a partly ported game.*
 
-- Dungeon generation (rooms, corridors, doors, stairs, traps)
-- All 13 player roles with correct starting attributes
+- PRNG-faithful gameplay (ISAAC64, bit-identical to C NetHack)
+- Dungeon generation (rooms, corridors, doors, stairs, traps, themerooms)
+- All 13 player roles and 5 races with correct starting inventories
+- Character creation with C-faithful attribute distribution
 - Movement (vi keys, arrow keys, running)
 - Melee combat with C-faithful to-hit and damage formulas
 - 382 monster types with AI movement, attacks, and special abilities
+- Pet AI with taming, feeding, and movement
 - 478 object types (weapons, armor, potions, scrolls, etc.)
-- Object and gold pickup
+- Object and gold pickup, multi-turn eating system
+- Engravings, epitaphs, and rumors (with xcrypt decryption)
 - Field of view with room lighting and terrain memory
-- Multi-level dungeon descent
+- Multi-level dungeon with level caching
 - DECGraphics (Unicode box-drawing walls, centered dot floors)
 - Status bar with HP, AC, experience, hunger, conditions
-- PRNG-faithful dungeon generation (ISAAC64, bit-identical to C)
+- High scores, tombstone display, and end-of-game sequence
+- Bones file system and game reset
 
 ## What's Not Yet Implemented
 
 *A cloud of gas surrounds you! You have a peculiar feeling about your code.*
 
-Special levels, shops, altars/prayer, spellcasting, wand/potion/scroll
-effects, pets, eating system, polymorph, full inventory management
-(wear/wield/quaff/read/zap), and many other subsystems. NetHack has
-~150,000 lines of C -- this port covers the core loop and early gameplay.
+Shops, special levels, altars/prayer, spellcasting, wand/potion/scroll
+effects, polymorph, full inventory management (wear/wield/quaff/read/zap),
+and many other subsystems. NetHack has ~150,000 lines of C -- this port
+covers the core loop and early gameplay.
 
 The DevTeam is aware of this.
 
@@ -109,20 +116,22 @@ Straying from the path (of proper HTTP serving) leads to certain doom.
 
 *You hear a sound reminiscent of a test suite passing.*
 
-285 tests across three suites:
+498 unit tests, 96 golden C-comparison sessions, and E2E browser tests:
 
 ```bash
 npm install          # install puppeteer for E2E tests
 npm test             # run all tests
-npm run test:unit    # 130 unit tests only
-npm run test:e2e     # 34 E2E browser tests only
+npm run test:unit    # unit tests only
+npm run test:e2e     # E2E browser tests only
 ```
 
-The C comparison tests verify PRNG-faithful dungeon generation against
-the original C NetHack binary, cell by cell:
+The C comparison tests replay recorded sessions against the original
+C NetHack binary, verifying bit-identical RNG, screen output, and
+dungeon maps:
 
 ```bash
-node --test test/comparison/c_vs_js_map.test.js
+node --test test/comparison/session_runner.test.js
+node --test test/comparison/c_vs_js_golden.test.js
 ```
 
 ## Data Generation
