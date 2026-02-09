@@ -245,10 +245,13 @@ export function generateMapsWithRng(seed, maxDepth) {
         const fullLog = getRngLog();
         const depthLog = fullLog.slice(prevCount);
         const compactRng = depthLog.map(toCompactRng);
-        // Count only non-midlog, non-composite entries to match C's rngCalls counting
-        const rngCalls = compactRng.filter(e =>
-            !isMidlogEntry(e) && !isCompositeEntry(rngCallPart(e))).length;
-        rngLogs[depth] = { rngCalls, rng: compactRng };
+        // Filter out composite entries (rne, rnz) to match C map session format
+        // (C logs them but gen_map_sessions.py filters them out at line 93)
+        const filteredRng = compactRng.filter(e =>
+            !isCompositeEntry(rngCallPart(e)));
+        // Count only non-midlog entries to match C's rngCalls counting
+        const rngCalls = filteredRng.filter(e => !isMidlogEntry(e)).length;
+        rngLogs[depth] = { rngCalls, rng: filteredRng };
         prevCount = fullLog.length;
     }
     disableRngLog();
