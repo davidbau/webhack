@@ -241,21 +241,35 @@ Implemented inventory tracking and basic item usage for survival:
 
 Item usage priority:
 1. HP < 30%: Drink healing potion if available
-2. HP critical: Flee from monsters
-3. HP < 50%: Rest when safe (up to 50 turns)
-4. Hungry: Eat food if available
+2. HP < 20%: Pray to god if no items and can't flee
+3. HP critical: Flee from monsters
+4. HP < 50%: Rest when safe (up to 50 turns)
+5. Hungry: Eat food if available
 
 This significantly improves survival by using available resources before relying on fleeing or natural regeneration.
 
+### Prayer System (2026-02-09)
+
+Implemented divine intervention as a last-resort survival mechanism:
+
+- **Prayer Tracker:** Monitors god timeout (300 turns minimum between prayers)
+- **Smart Prayer:** Only pray when HP < 20%, no healing items, and can't flee
+- **Priority System:** Healing potions > prayer > fleeing (use resources wisely)
+- **Timeout Management:** Prevents angering god by praying too frequently
+
+Prayer is NetHack's most powerful survival tool - the god can fully heal, cure sickness, and save from certain death. The agent now uses this strategically as a last resort when all other options are exhausted.
+
 ## Test Coverage
 
-48 passing unit tests:
+63 passing unit tests:
 - Pathfinding (10 tests): A*, BFS, exploration, diagonal restrictions
 - Screen Parser (14 tests): message parsing, cell classification, feature detection
 - Status Parser (9 tests): HP, stats, conditions
 - Map Tracker (4 tests): explored cells, level changes, features
 - Tmux capture (1 test): plain text parsing
 - Danger Assessment (10 tests): threat levels, engagement decisions, instadeath prevention
+- Inventory Tracking (6 tests): parsing, food/potion detection, item queries
+- Prayer Timing (9 tests): timeout management, decision logic, priority system
 
 ## Next Steps
 
