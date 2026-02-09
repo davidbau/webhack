@@ -408,6 +408,20 @@ export class Agent {
         if (this.status && this.status.hpCritical) {
             const nearbyMonsters = findMonsters(this.screen);
             if (nearbyMonsters.length > 0) {
+                // Try to flee to upstairs if available and not too far
+                if (level.stairsUp.length > 0) {
+                    const stairs = level.stairsUp[0];
+                    const dist = Math.abs(stairs.x - px) + Math.abs(stairs.y - py);
+                    // If stairs are close (within 10 steps), path to them
+                    if (dist <= 10) {
+                        const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: false });
+                        if (path.found && path.path.length <= 10) {
+                            return this._followPath(path, 'flee', `fleeing to upstairs (HP ${this.status.hp}/${this.status.hpmax})`);
+                        }
+                    }
+                }
+
+                // Otherwise just move away from monsters
                 const fleeDir = this._fleeFrom(px, py, nearbyMonsters, level);
                 if (fleeDir) {
                     return { type: 'flee', key: fleeDir, reason: 'HP critical, fleeing' };
@@ -548,6 +562,30 @@ export class Agent {
             level.stairsDown.some(s => s.x === px && s.y === py);
         if (onDownstairs) {
             return { type: 'descend', key: '>', reason: 'descending stairs' };
+        }
+
+        // 5b. Proactive descent: if we've found stairs and explored enough, head down
+        // This encourages forward progress instead of exhaustive exploration
+        if (level.stairsDown.length > 0 && this.turnNumber > 30) {
+            const exploredPercent = level.exploredCount / (80 * 21); // rough estimate
+            const frontierCells = level.getExplorationFrontier().length;
+
+            // Head to stairs if:
+            // - We've explored at least 10% of the map (found main areas), AND
+            // - HP is above 50%, AND
+            // - Frontier is small (< 20 unexplored areas) OR we've been on level for 50+ turns
+            const hpGood = this.status && (this.status.hp / this.status.hpmax) > 0.5;
+            const exploredEnough = exploredPercent > 0.10;
+            const frontierSmall = frontierCells < 20;
+            const beenHereLong = this.turnNumber > 50;
+
+            if (hpGood && exploredEnough && (frontierSmall || beenHereLong)) {
+                const stairs = level.stairsDown[0];
+                const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: false });
+                if (path.found) {
+                    return this._followPath(path, 'navigate', `heading to downstairs (explored ${Math.round(exploredPercent*100)}%, frontier ${frontierCells})`);
+                }
+            }
         }
 
         // 6. If we've spent too long stuck on this level, head for stairs

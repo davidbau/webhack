@@ -26,7 +26,8 @@ import {
     SQKY_BOARD, BEAR_TRAP, LANDMINE, ROLLING_BOULDER_TRAP,
     SLP_GAS_TRAP, RUST_TRAP, FIRE_TRAP, TELEP_TRAP, LEVEL_TELEP,
     MAGIC_PORTAL, ANTI_MAGIC, POLY_TRAP, STATUE_TRAP, MAGIC_TRAP,
-    VIBRATING_SQUARE
+    VIBRATING_SQUARE,
+    D_NODOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN
 } from './config.js';
 import {
     BOULDER, SCROLL_CLASS, FOOD_CLASS, WEAPON_CLASS, ARMOR_CLASS,
@@ -1006,13 +1007,67 @@ export function exclusion(opts) {
 /**
  * des.monster(opts)
  * Place a monster at a location.
- * C ref: sp_lev.c create_monster()
+ * C ref: sp_lev.c lspo_monster()
  *
- * @param {Object} opts - Monster options (id, coord, appear_as, etc.)
+ * @param {Object} opts - Monster options
+ *   - id: Monster name (e.g., "Vlad the Impaler", "vampire", "V")
+ *   - x, y: Coordinates, or
+ *   - coord: {x, y} coordinate object
+ *   - name: Custom name for the monster
+ *   - waiting: If true, monster waits (doesn't move)
+ *   - peaceful: Monster is peaceful
+ *   - asleep: Monster is asleep
  */
 export function monster(opts) {
-    // Stub - would create and place monster
-    // For now, just ignore
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+
+    if (!opts || !opts.id) {
+        return; // Need at least a monster id
+    }
+
+    // Get coordinates
+    let x, y;
+    if (opts.coord) {
+        x = opts.coord.x;
+        y = opts.coord.y;
+    } else {
+        x = opts.x;
+        y = opts.y;
+    }
+
+    if (x === undefined || y === undefined || x < 0 || x >= 80 || y < 0 || y >= 21) {
+        return; // Invalid coordinates
+    }
+
+    // Parse monster id
+    // Can be:
+    // - Single letter class (e.g., "V" for vampires)
+    // - Monster name (e.g., "vampire", "Vlad the Impaler")
+    const monsterId = opts.id;
+
+    // For now, store monster request in levelState
+    // Actual monster creation would happen during level finalization
+    // when the game state is fully initialized
+    if (!levelState.monsters) {
+        levelState.monsters = [];
+    }
+
+    levelState.monsters.push({
+        id: monsterId,
+        x,
+        y,
+        name: opts.name,
+        waiting: opts.waiting || false,
+        peaceful: opts.peaceful,
+        asleep: opts.asleep
+    });
+
+    // Note: Full implementation would call makemon() with appropriate parameters
+    // and set monster properties like mtame, mpeaceful, msleeping, etc.
+    // This requires the game to be fully initialized, which happens during
+    // actual gameplay, not during level generation.
 }
 
 /**
@@ -1024,9 +1079,60 @@ export function monster(opts) {
  * @param {number} x - X coordinate
  * @param {number} y - Y coordinate
  */
+/**
+ * des.door(state, x, y)
+ * Place a door at a location with specified state.
+ * C ref: sp_lev.c lspo_door()
+ *
+ * @param {string} state - Door state: "open", "closed", "locked", "nodoor", "broken", "secret", "random"
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ */
 export function door(state, x, y) {
-    // Stub - would set location to DOOR with appropriate state
-    // For now, just ignore
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+
+    if (x < 0 || x >= 80 || y < 0 || y >= 21) {
+        return; // Out of bounds
+    }
+
+    const loc = levelState.map.locations[x][y];
+
+    // Map state string to door flags
+    // C ref: sp_lev.c doorstates2i[]
+    let doorFlags;
+    switch (state.toLowerCase()) {
+        case 'open':
+            doorFlags = D_ISOPEN;
+            break;
+        case 'closed':
+            doorFlags = D_CLOSED;
+            break;
+        case 'locked':
+            doorFlags = D_LOCKED;
+            break;
+        case 'nodoor':
+            doorFlags = D_NODOOR;
+            break;
+        case 'broken':
+            doorFlags = D_BROKEN || D_NODOOR; // Broken is like nodoor if constant not defined
+            break;
+        case 'secret':
+            // Secret doors are SDOOR terrain type, not DOOR
+            loc.typ = SDOOR;
+            return;
+        case 'random':
+            // Random door state - C uses rnddoor()
+            doorFlags = rn2(3) === 0 ? D_ISOPEN : (rn2(2) === 0 ? D_CLOSED : D_LOCKED);
+            break;
+        default:
+            doorFlags = D_CLOSED; // Default to closed
+    }
+
+    // Set terrain type and flags
+    loc.typ = DOOR;
+    loc.flags = doorFlags;
 }
 
 /**
@@ -1117,6 +1223,9 @@ export function finalize_level() {
     flipLevelRandom();
 
     // TODO: Add other finalization steps (solidify_map, premapping, etc.)
+
+    // Return the generated map
+    return levelState.map;
 }
 
 /**

@@ -24,7 +24,7 @@ const NEVER_MELEE = new Set([
 ]);
 
 /**
- * Monster classes that are generally dangerous
+ * Monster classes that are very dangerous (avoid when weak)
  */
 const DANGEROUS_CLASSES = new Set([
     'D',  // dragons - powerful breath weapons
@@ -36,6 +36,16 @@ const DANGEROUS_CLASSES = new Set([
     'H',  // giants - strong melee
     'T',  // trolls - regenerate
     'U',  // umber hulks - confuse on sight
+]);
+
+/**
+ * Early-game threats (risky but not instant death)
+ */
+const EARLY_THREATS = new Set([
+    'N',  // nymphs - steal items and teleport (annoying, fight from range if possible)
+    'b',  // blobs - acid blobs do passive acid damage
+    'j',  // jellies - passive acid damage on melee
+    'F',  // fungi - shriekers summon monsters
 ]);
 
 /**
@@ -59,6 +69,16 @@ export function assessMonsterDanger(monsterChar, playerHP, playerMaxHP, playerLe
     // Check against known dangerous classes
     if (DANGEROUS_CLASSES.has(monsterChar)) {
         return DangerLevel.HIGH;
+    }
+
+    // Early-game threats (nymphs, blobs, jellies, fungi)
+    // These are annoying/risky but not instant death
+    if (EARLY_THREATS.has(monsterChar)) {
+        // At low levels or low HP, these are quite dangerous
+        if (playerLevel < 3 || playerHP < playerMaxHP * 0.5) {
+            return DangerLevel.HIGH;
+        }
+        return DangerLevel.MEDIUM;
     }
 
     // Uppercase monsters are generally more threatening
@@ -158,10 +178,13 @@ export const MONSTER_NAMES = {
     'j': 'jelly',
     ':': 'lizard',
     'D': 'dragon',
+    'F': 'fungi',
     'H': 'giant',
     'L': 'lich',
-    'V': 'vampire',
+    'N': 'nymph',
     'T': 'troll',
+    'U': 'umber hulk',
+    'V': 'vampire',
     '&': 'demon',
     '@': 'human',
 };

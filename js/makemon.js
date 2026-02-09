@@ -28,7 +28,7 @@ import {
     M2_HOSTILE, M2_PEACEFUL, M2_DOMESTIC, M2_NEUTER, M2_GREEDY,
     M1_FLY, M1_NOHANDS,
     PM_ORC, PM_GIANT, PM_ELF, PM_HUMAN,
-    PM_SOLDIER, PM_SHOPKEEPER, AT_WEAP,
+    PM_SOLDIER, PM_SHOPKEEPER, AT_WEAP, AT_EXPL, PM_PESTILENCE,
     PM_GOBLIN, PM_ORC_CAPTAIN, PM_MORDOR_ORC, PM_URUK_HAI, PM_ORC_SHAMAN,
     PM_OGRE_LEADER, PM_OGRE_TYRANT, PM_GHOST,
 } from './monsters.js';
@@ -58,11 +58,13 @@ import {
     HELM_OF_BRILLIANCE, ROBE, MUMMY_WRAPPING,
     K_RATION, C_RATION, TIN_WHISTLE, BUGLE, SADDLE,
     MIRROR, POT_OBJECT_DETECTION, POT_HEALING, POT_EXTRA_HEALING,
+    POT_FULL_HEALING, POT_SICKNESS,
     POT_SPEED, CRYSTAL_BALL, BRASS_LANTERN, SKELETON_KEY,
     WAN_STRIKING, FOOD_RATION, TIN_OPENER,
     WAN_MAGIC_MISSILE, WAN_DEATH, WAN_SLEEP, WAN_FIRE, WAN_COLD, WAN_LIGHTNING,
+    WAN_TELEPORTATION, WAN_CREATE_MONSTER, WAN_DIGGING,
     POT_ACID, POT_CONFUSION, POT_BLINDNESS, POT_SLEEPING, POT_PARALYSIS,
-    SCR_EARTH,
+    SCR_EARTH, SCR_TELEPORTATION, SCR_CREATE_MONSTER,
     RIN_INVISIBILITY,
     CORPSE,
 } from './objects.js';
@@ -85,6 +87,9 @@ function is_dwarf(ptr) { return ptr.symbol === S_HUMANOID && ptr.name && ptr.nam
 function is_hobbit(ptr) { return ptr.symbol === S_HUMANOID && ptr.name && ptr.name.includes('hobbit'); }
 // C ref: mondata.h:87 — #define is_armed(ptr) attacktype(ptr, AT_WEAP)
 function is_armed(ptr) { return ptr.attacks && ptr.attacks.some(a => a.type === AT_WEAP); }
+function attacktype(ptr, atyp) { return ptr.attacks && ptr.attacks.some(a => a.type === atyp); }
+function is_animal(ptr) { return !!(ptr.flags1 & 0x00000001); } // M1_ANIMAL
+function mindless(ptr) { return !!(ptr.flags1 & 0x00008000); } // M1_MINDLESS
 
 // ========================================================================
 // rndmonst_adj -- weighted reservoir sampling (exact C port)
@@ -522,7 +527,7 @@ function m_initweap(mndx, depth) {
         break;
 
     case S_KOBOLD:
-        if (!rn2(4)) m_initthrow(DART, 6);
+        if (!rn2(4)) m_initthrow(DART, 12);
         break;
 
     case S_CENTAUR:
@@ -614,6 +619,58 @@ function m_initweap(mndx, depth) {
             }
         }
         if (otyp) mksobj(otyp, true, false);
+    }
+}
+
+// ========================================================================
+// rnd_defensive_item -- select random defensive item for monster
+// C ref: muse.c:1221-1274
+// ========================================================================
+
+function rnd_defensive_item(mndx) {
+    const ptr = mons[mndx];
+    const difficulty = ptr.difficulty || 0;
+    let trycnt = 0;
+
+    // Animals, exploders, mindless, ghosts, Kops don't get defensive items
+    if (is_animal(ptr) || attacktype(ptr, AT_EXPL) || mindless(ptr)
+        || ptr.symbol === S_GHOST || ptr.symbol === S_KOP) {
+        return 0;
+    }
+
+    // Difficulty-based item selection (with retry loop for teleport cases)
+    while (true) {
+        const roll = rn2(8 + (difficulty > 3 ? 1 : 0) + (difficulty > 6 ? 1 : 0) + (difficulty > 8 ? 1 : 0));
+
+        switch (roll) {
+        case 6:
+        case 9:
+            // Note: noteleport_level check omitted (always false at level gen)
+            if (++trycnt < 2) {
+                continue; // try_again
+            }
+            if (!rn2(3)) return WAN_TELEPORTATION;
+            // Fall through
+        case 0:
+        case 1:
+            return SCR_TELEPORTATION;
+        case 8:
+        case 10:
+            if (!rn2(3)) return WAN_CREATE_MONSTER;
+            // Fall through
+        case 2:
+            return SCR_CREATE_MONSTER;
+        case 3:
+            return POT_HEALING;
+        case 4:
+            return POT_EXTRA_HEALING;
+        case 5:
+            return (mndx !== PM_PESTILENCE) ? POT_FULL_HEALING : POT_SICKNESS;
+        case 7:
+            // Note: Sokoban check omitted (not during level gen), shopkeeper/priest checks omitted
+            return WAN_DIGGING;
+        }
+        return 0;
     }
 }
 
@@ -730,12 +787,12 @@ function m_initinv(mndx, depth, m_lev) {
     // These rn2 checks always fire; the item creation only triggers when m_lev > result
     // At depth 1 (m_lev typically 0-1), the checks almost never pass
     if (m_lev > rn2(50)) {
-        // rnd_defensive_item → mongets → mksobj
-        // Complex item selection; accept divergence here if it triggers
+        const otyp = rnd_defensive_item(mndx);
+        if (otyp) mksobj(otyp, true, false);
     }
     if (m_lev > rn2(100)) {
         // rnd_misc_item → mongets → mksobj
-        // Complex item selection; accept divergence here if it triggers
+        // TODO: Implement rnd_misc_item when needed
     }
     if ((ptr.flags2 & M2_GREEDY) && !rn2(5)) {
         // mkmonmoney: d(level_difficulty(), minvent ? 5 : 10)

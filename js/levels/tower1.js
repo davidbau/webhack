@@ -72,5 +72,5 @@ export function generate() {
     // Protect tower against outside attacks
     des.non_diggable(selection.area(0, 0, 14, 10));
 
-    finalize_level();
+    return finalize_level();
 }
