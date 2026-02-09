@@ -20,7 +20,7 @@
     "_comment": "Seeds for full gameplay sessions (C run_session.py). Each entry has a move sequence.",
     "sessions": [
       {"seed": 42, "moves": ":hhlhhhh.hhs"},
-      {"seed": 1,  "moves": ":hhhhhhhhhhhhhhjhhkkhhhhjjhhhhhhhhhhhjjjhhjhhhjhhjhhjjllllllllllll>"},
+      {"seed": 1,  "moves": ":hhhhhhhhhhhhhhjhhkkhhhhjjhhhhhhhhhhhjjjhhjhhhjhhjhhjjllllllllllll>....."},
       {"seed": 42, "label": "items", "moves": ":hhwb.w-wa.ed"}
     ]
   },
