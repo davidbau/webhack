@@ -29,9 +29,9 @@ import {
 import { GameMap, makeRoom, FILL_NONE, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, d } from './rng.js';
 import { getbones } from './bones.js';
-import { mkobj, mksobj, weight, setLevelDepth } from './mkobj.js';
+import { mkobj, mksobj, mkcorpstat, weight, setLevelDepth } from './mkobj.js';
 import { makemon, mkclass, NO_MM_FLAGS, MM_NOGRP } from './makemon.js';
-import { S_HUMAN } from './monsters.js';
+import { S_HUMAN, PM_ELF, PM_HUMAN, PM_GNOME, PM_DWARF, PM_ORC, PM_ARCHEOLOGIST, PM_WIZARD } from './monsters.js';
 import { init_objects } from './o_init.js';
 import { roles } from './player.js';
 import {
@@ -1976,32 +1976,34 @@ function mktrap_victim(map, trap, depth) {
     let victim_mnum;
     const race = rn2(15);
     if (race === 0) {
-        victim_mnum = 0; // PM_ELF placeholder
+        victim_mnum = PM_ELF;
         if (trap.ttyp === SLP_GAS_TRAP && !(depth <= 2 && rn2(2))) {
-            victim_mnum = 1; // PM_HUMAN placeholder
+            victim_mnum = PM_HUMAN;
         }
+    } else if (race >= 1 && race <= 2) {
+        victim_mnum = PM_DWARF;
+    } else if (race >= 3 && race <= 5) {
+        victim_mnum = PM_ORC;
     } else if (race >= 6 && race <= 9) {
-        victim_mnum = 2; // PM_GNOME placeholder
+        victim_mnum = PM_GNOME;
         if (!rn2(10)) {
             otmp = mksobj(rn2(4) ? TALLOW_CANDLE : WAX_CANDLE, true, false);
             otmp.cursed = true; // C ref: curse(otmp) at mklev.c:1905
             placeObj(otmp);
         }
-    } else if (race >= 10) {
-        victim_mnum = 1; // PM_HUMAN placeholder
     } else {
-        victim_mnum = 3; // PM_DWARF/ORC placeholder
+        victim_mnum = PM_HUMAN;
     }
 
     // Human → adventurer conversion
     // C ref: mklev.c:1919-1920
-    if (victim_mnum === 1 && rn2(25)) {
-        rn1(12, 0); // random role: PM_WIZARD - PM_ARCHEOLOGIST = 12
+    if (victim_mnum === PM_HUMAN && rn2(25)) {
+        victim_mnum = rn1(PM_WIZARD - PM_ARCHEOLOGIST, PM_ARCHEOLOGIST);
     }
 
-    // mkcorpstat(CORPSE, ...) — calls mksobj(CORPSE, TRUE, FALSE) internally
-    // C ref: mklev.c:1921
-    otmp = mksobj(CORPSE, true, false);
+    // C ref: mklev.c:1921 — mkcorpstat(CORPSE, NULL, &mons[victim_mnum], ...)
+    // Uses mkcorpstat which handles special_corpse restart logic for start_corpse_timeout
+    otmp = mkcorpstat(CORPSE, victim_mnum, true);
     placeObj(otmp);
 }
 
