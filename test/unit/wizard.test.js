@@ -20,6 +20,7 @@ function mockDisplay() {
         putstr() {},
         renderMap() {},
         renderStatus() {},
+        renderChargenMenu() {},
         clearRow() {},
     };
 }
@@ -178,7 +179,6 @@ describe('Wizard mode', () => {
             pushInput('q'.charCodeAt(0));  // dismiss help menu
             const result = await rhack('?'.charCodeAt(0), game);
             assert.equal(result.tookTime, false);
-            assert.ok(game.display.messages.length > 0, 'Help should display a message');
         });
 
         it('look command does not take time', async () => {
@@ -192,6 +192,127 @@ describe('Wizard mode', () => {
             const result = await rhack('i'.charCodeAt(0), game);
             assert.equal(result.tookTime, false);
             assert.ok(game.display.messages.some(m => m.includes('Not carrying')));
+        });
+    });
+
+    describe('Help menu (?)', () => {
+        it('help menu shows lettered options via renderChargenMenu', async () => {
+            const game = mockGame({ wizard: false });
+            let menuLines = null;
+            game.display.renderChargenMenu = (lines) => { menuLines = lines; };
+            pushInput('q'.charCodeAt(0));  // dismiss menu
+            await rhack('?'.charCodeAt(0), game);
+            assert.ok(menuLines, 'renderChargenMenu should have been called');
+            assert.ok(menuLines.some(l => l.includes('Select one item')));
+            assert.ok(menuLines.some(l => l.includes('a - About NetHack')));
+            assert.ok(menuLines.some(l => l.includes('j - The NetHack Guidebook')));
+        });
+
+        it('help menu shows wizard option when in wizard mode', async () => {
+            const game = mockGame({ wizard: true });
+            let menuLines = null;
+            game.display.renderChargenMenu = (lines) => { menuLines = lines; };
+            pushInput('q'.charCodeAt(0));
+            await rhack('?'.charCodeAt(0), game);
+            assert.ok(menuLines.some(l => l.includes('w - List of wizard-mode commands')));
+        });
+
+        it('help menu does not show wizard option in normal mode', async () => {
+            const game = mockGame({ wizard: false });
+            let menuLines = null;
+            game.display.renderChargenMenu = (lines) => { menuLines = lines; };
+            pushInput('q'.charCodeAt(0));
+            await rhack('?'.charCodeAt(0), game);
+            assert.ok(!menuLines.some(l => l.includes('wizard')));
+        });
+
+        it('help option "a" shows version message', async () => {
+            const game = mockGame({ wizard: false });
+            pushInput('a'.charCodeAt(0));
+            await rhack('?'.charCodeAt(0), game);
+            assert.ok(game.display.messages.some(m => m.includes('NetHack') && m.includes('Version')));
+        });
+    });
+
+    describe('Whatdoes command (&)', () => {
+        it('describes a known command', async () => {
+            const game = mockGame({ wizard: false });
+            pushInput('.'.charCodeAt(0));
+            const result = await rhack('&'.charCodeAt(0), game);
+            assert.equal(result.tookTime, false);
+            assert.ok(game.display.messages.some(m => m.includes("'.'") && m.includes('Rest')));
+        });
+
+        it('describes another known command', async () => {
+            const game = mockGame({ wizard: false });
+            pushInput('i'.charCodeAt(0));
+            const result = await rhack('&'.charCodeAt(0), game);
+            assert.ok(game.display.messages.some(m => m.includes("'i'") && m.includes('inventory')));
+        });
+
+        it('reports unknown for unbound key', async () => {
+            const game = mockGame({ wizard: false });
+            pushInput('X'.charCodeAt(0));
+            const result = await rhack('&'.charCodeAt(0), game);
+            assert.equal(result.tookTime, false);
+            assert.ok(game.display.messages.some(m => m.includes('unknown')));
+        });
+
+        it('handles control characters', async () => {
+            const game = mockGame({ wizard: false });
+            pushInput(16);  // ^P
+            const result = await rhack('&'.charCodeAt(0), game);
+            assert.ok(game.display.messages.some(m => m.includes('^P') && m.includes('message')));
+        });
+
+        it('cancelled with ESC', async () => {
+            const game = mockGame({ wizard: false });
+            pushInput(27);  // ESC
+            const result = await rhack('&'.charCodeAt(0), game);
+            assert.equal(result.tookTime, false);
+        });
+    });
+
+    describe('Whatis command (/)', () => {
+        it('identifies a known symbol', async () => {
+            const game = mockGame({ wizard: false });
+            pushInput('>'.charCodeAt(0));
+            const result = await rhack('/'.charCodeAt(0), game);
+            assert.equal(result.tookTime, false);
+            assert.ok(game.display.messages.some(m => m.includes("'>'") && m.includes('stairs down')));
+        });
+
+        it('identifies a letter as monster', async () => {
+            const game = mockGame({ wizard: false });
+            pushInput('d'.charCodeAt(0));
+            const result = await rhack('/'.charCodeAt(0), game);
+            assert.ok(game.display.messages.some(m => m.includes("'d'") && m.includes('monster')));
+        });
+
+        it('reports unknown for unrecognized symbol', async () => {
+            const game = mockGame({ wizard: false });
+            pushInput('~'.charCodeAt(0));
+            const result = await rhack('/'.charCodeAt(0), game);
+            assert.ok(game.display.messages.some(m => m.includes("don't know")));
+        });
+
+        it('cancelled with ESC', async () => {
+            const game = mockGame({ wizard: false });
+            pushInput(27);
+            const result = await rhack('/'.charCodeAt(0), game);
+            assert.equal(result.tookTime, false);
+            // Only the prompt message should be shown, no identification result
+            assert.equal(game.display.messages.length, 1);
+            assert.ok(game.display.messages[0].includes('identify'));
+        });
+    });
+
+    describe('Discoveries command (\\)', () => {
+        it('shows placeholder message', async () => {
+            const game = mockGame({ wizard: false });
+            const result = await rhack('\\'.charCodeAt(0), game);
+            assert.equal(result.tookTime, false);
+            assert.ok(game.display.messages.some(m => m.includes('discovered')));
         });
     });
 

@@ -3,7 +3,8 @@
 // Maps keyboard input to game actions.
 
 import { COLNO, ROWNO, DOOR, STAIRS, FOUNTAIN, IS_DOOR, D_CLOSED, D_LOCKED,
-         D_ISOPEN, D_NODOOR, ACCESSIBLE, IS_WALL, MAXLEVEL, isok } from './config.js';
+         D_ISOPEN, D_NODOOR, ACCESSIBLE, IS_WALL, MAXLEVEL, VERSION_STRING,
+         isok } from './config.js';
 import { rn2, rnd, d } from './rng.js';
 import { nhgetch, ynFunction, getlin } from './input.js';
 import { playerAttackMonster } from './combat.js';
@@ -136,6 +137,31 @@ export async function rhack(ch, game) {
     if (c === ';') {
         display.putstr_message('Pick a position to identify (use movement keys, . when done)');
         return { moved: false, tookTime: false };
+    }
+
+    // Whatis (/)
+    // C ref: pager.c dowhatis()
+    if (c === '/') {
+        return await handleWhatis(game);
+    }
+
+    // Whatdoes (&)
+    // C ref: pager.c dowhatdoes()
+    if (c === '&') {
+        return await handleWhatdoes(game);
+    }
+
+    // Discoveries (\)
+    // C ref: o_init.c dodiscovered()
+    if (c === '\\') {
+        display.putstr_message("You haven't discovered anything yet.");
+        return { moved: false, tookTime: false };
+    }
+
+    // History (V)
+    // C ref: pager.c dohistory()
+    if (c === 'V') {
+        return await handleHistory(game);
     }
 
     // Kick (Ctrl+D)
@@ -795,58 +821,317 @@ function handlePrevMessages(display) {
     return { moved: false, tookTime: false };
 }
 
+// Data file cache (same pattern as guidebook)
+const dataFileCache = {};
+
+// Fetch a data file from dat/ directory with caching
+async function fetchDataFile(filename) {
+    if (dataFileCache[filename]) return dataFileCache[filename];
+    try {
+        const resp = await fetch(filename);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const text = await resp.text();
+        dataFileCache[filename] = text;
+        return text;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Command descriptions for & (whatdoes)
+// C ref: pager.c dowhatdoes() / dat/cmdhelp
+const COMMAND_DESCRIPTIONS = {
+    '?': 'Display one of several informative help texts.',
+    '/': 'Tell what a map symbol represents.',
+    '&': 'Tell what a command does.',
+    '<': 'Go up a staircase.',
+    '>': 'Go down a staircase.',
+    '.': 'Rest, do nothing for one turn.',
+    ',': 'Pick up things at the current location.',
+    ':': 'Look at what is here.',
+    ';': 'Look at what is somewhere else.',
+    '\\': 'Show what types of objects have been discovered.',
+    '#': 'Perform an extended command.',
+    'a': 'Apply (use) a tool.',
+    'c': 'Close a door.',
+    'd': 'Drop an item. d7a: drop seven items of object a.',
+    'e': 'Eat something.',
+    'i': 'Show your inventory.',
+    'o': 'Open a door.',
+    'q': 'Drink (quaff) a potion.',
+    's': 'Search for secret doors and traps around you.',
+    'w': 'Wield a weapon. w- means wield bare hands.',
+    'S': 'Save the game.',
+    'T': 'Take off armor.',
+    'V': 'Display the version and history of the game.',
+    'W': 'Wear armor.',
+};
+
+// Symbol descriptions for / (whatis)
+// C ref: dat/help symbol legend
+const SYMBOL_DESCRIPTIONS = {
+    '-': 'wall of a room, or an open door',
+    '|': 'wall of a room, or an open door',
+    '.': 'floor of a room, or a doorway',
+    '#': 'a corridor, or iron bars, or a tree',
+    '>': 'stairs down: a way to the next level',
+    '<': 'stairs up: a way to the previous level',
+    '@': 'you (usually), or another human',
+    ')': 'a weapon',
+    '[': 'a suit or piece of armor',
+    '%': 'something edible (not necessarily healthy)',
+    '/': 'a wand',
+    '=': 'a ring',
+    '?': 'a scroll',
+    '!': 'a potion',
+    '(': 'a useful item (pick-axe, key, lamp...)',
+    '$': 'a pile of gold',
+    '*': 'a gem or rock',
+    '+': 'a closed door, or a spellbook',
+    '^': 'a trap (once you detect it)',
+    '"': 'an amulet, or a spider web',
+    '0': 'an iron ball',
+    '_': 'an altar, or an iron chain',
+    '{': 'a fountain',
+    '}': 'a pool of water or moat or lava',
+    '\\': 'an opulent throne',
+    '`': 'a boulder or statue',
+    ' ': 'dark part of a room, or solid rock',
+    '\u00b7': 'floor of a room (middle dot)',
+};
+
 // Handle help (?)
-// C ref: cmd.c dohelp() -- shows help menu
+// C ref: pager.c dohelp() -> help_menu_items[]
 async function handleHelp(game) {
     const { display } = game;
 
-    display.putstr_message('Help menu: ? keys, g guidebook, q quit [?gq]');
+    // Build menu lines matching C's help menu structure
+    const menuLines = [
+        ' Select one item:',
+        '',
+        ' a - About NetHack (version information).',
+        ' b - Long description of the game and commands.',
+        ' c - List of game commands.',
+        ' d - Concise history of NetHack.',
+        ' e - Info on a character in the game display.',
+        ' f - Info on what a given key does.',
+        ' g - Longer explanation of game options.',
+        ' h - Full list of keyboard commands.',
+        ' i - List of extended commands.',
+        ' j - The NetHack Guidebook.',
+    ];
+    if (game.wizard) {
+        menuLines.push(' w - List of wizard-mode commands.');
+    }
+    menuLines.push(' (end)');
+
+    display.renderChargenMenu(menuLines, true);
+
     const ch = await nhgetch();
     const c = String.fromCharCode(ch);
 
-    if (c === '?' || c === 'k') {
-        // Show key bindings
-        const keyHelp = [
-            '                    NetHack Command Reference',
-            '',
-            ' Movement:',
-            '   y k u      Also: arrow keys, or numpad',
-            '    \\|/',
-            '   h-.-l      Shift + direction = run',
-            '    /|\\',
-            '   b j n',
-            '',
-            ' Actions:',
-            '   .  wait/rest           s  search adjacent',
-            '   ,  pick up item        d  drop item',
-            '   o  open door           c  close door',
-            '   >  go downstairs       <  go upstairs',
-            '   e  eat food            q  quaff potion',
-            '   w  wield weapon        W  wear armor',
-            '   T  take off armor      i  inventory',
-            '   :  look here           ;  identify position',
-            '',
-            ' Other:',
-            '   ?    this help menu',
-            '   S    save game',
-            '   #    extended command',
-            '   ^P   previous messages',
-            '   ^R   redraw screen',
-            '   ^C   quit',
-            '',
-            ' In pager (guidebook, help):',
-            '   space/enter  next page     b  previous page',
-            '   /  search    n  next match',
-            '   g  first page              G  last page',
-            '   q/ESC  exit',
-        ].join('\n');
-        await showPager(display, keyHelp, 'Key Bindings');
+    if (c === 'a') {
+        // About NetHack
+        display.putstr_message(`${VERSION_STRING} -- a game by the NetHack DevTeam.`);
+    } else if (c === 'b') {
+        // Long description
+        const text = await fetchDataFile('dat/help.txt');
+        if (text) {
+            await showPager(display, text, 'Long Description');
+        } else {
+            display.putstr_message('Failed to load help text.');
+        }
+    } else if (c === 'c') {
+        // List of game commands
+        const text = await fetchDataFile('dat/hh.txt');
+        if (text) {
+            await showPager(display, text, 'Game Commands');
+        } else {
+            display.putstr_message('Failed to load command list.');
+        }
+    } else if (c === 'd') {
+        // History
+        const text = await fetchDataFile('dat/history.txt');
+        if (text) {
+            await showPager(display, text, 'History of NetHack');
+        } else {
+            display.putstr_message('Failed to load history.');
+        }
+    } else if (c === 'e') {
+        // Whatis (same as /)
+        return await handleWhatis(game);
+    } else if (c === 'f') {
+        // Whatdoes (same as &)
+        return await handleWhatdoes(game);
     } else if (c === 'g') {
-        // Show guidebook
+        // Game options
+        const text = await fetchDataFile('dat/opthelp.txt');
+        if (text) {
+            await showPager(display, text, 'Game Options');
+        } else {
+            display.putstr_message('Failed to load options help.');
+        }
+    } else if (c === 'h') {
+        // Full list of keyboard commands
+        await showPager(display, keyHelpText, 'Key Bindings');
+    } else if (c === 'i') {
+        // Extended commands list
+        await showPager(display, extendedCommandsText, 'Extended Commands');
+    } else if (c === 'j') {
+        // Guidebook
         await showGuidebook(display);
+    } else if (c === 'w' && game.wizard) {
+        // Wizard help
+        const text = await fetchDataFile('dat/wizhelp.txt');
+        if (text) {
+            await showPager(display, text, 'Wizard Mode Commands');
+        } else {
+            display.putstr_message('Failed to load wizard help.');
+        }
     }
-    // q, ESC, or anything else = dismiss
+    // ESC, q, or anything else = dismiss
 
+    return { moved: false, tookTime: false };
+}
+
+// Inline key bindings text for help option 'h'
+const keyHelpText = [
+    '                    NetHack Command Reference',
+    '',
+    ' Movement:',
+    '   y k u      Also: arrow keys, or numpad',
+    '    \\|/',
+    '   h-.-l      Shift + direction = run',
+    '    /|\\',
+    '   b j n',
+    '',
+    ' Actions:',
+    '   .  wait/rest           s  search adjacent',
+    '   ,  pick up item        d  drop item',
+    '   o  open door           c  close door',
+    '   >  go downstairs       <  go upstairs',
+    '   e  eat food            q  quaff potion',
+    '   w  wield weapon        W  wear armor',
+    '   T  take off armor      i  inventory',
+    '   :  look here           ;  identify position',
+    '',
+    ' Information:',
+    '   ?    help menu',
+    '   /    identify a map symbol (whatis)',
+    '   &    describe what a key does (whatdoes)',
+    '   \\    show discovered object types',
+    '   V    version and history of the game',
+    '',
+    ' Other:',
+    '   S    save game',
+    '   #    extended command',
+    '   ^P   previous messages',
+    '   ^R   redraw screen',
+    '   ^D   kick',
+    '   ^C   quit',
+    '',
+    ' In pager (guidebook, help):',
+    '   space/enter  next page     b  previous page',
+    '   /  search    n  next match',
+    '   g  first page              G  last page',
+    '   q/ESC  exit',
+].join('\n');
+
+// Extended commands list text for help option 'i'
+const extendedCommandsText = [
+    '         Extended Commands',
+    '',
+    ' #quit          quit the game without saving',
+    ' #levelchange   change dungeon level (debug mode)',
+    ' #map           reveal entire map (debug mode)',
+    ' #teleport      teleport to coordinates (debug mode)',
+    ' #genesis       create a monster by name (debug mode)',
+].join('\n');
+
+// Handle / (whatis) command
+// C ref: pager.c dowhatis()
+async function handleWhatis(game) {
+    const { display } = game;
+
+    display.putstr_message('What do you want to identify? [type a symbol or ESC]');
+    const ch = await nhgetch();
+
+    if (ch === 27) {
+        // ESC - cancel
+        return { moved: false, tookTime: false };
+    }
+
+    const c = String.fromCharCode(ch);
+
+    // Check for letter - could be a monster
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+        display.putstr_message(`'${c}': a monster (or straddling the letter range).`);
+    } else if (SYMBOL_DESCRIPTIONS[c]) {
+        display.putstr_message(`'${c}': ${SYMBOL_DESCRIPTIONS[c]}.`);
+    } else {
+        display.putstr_message(`I don't know what '${c}' represents.`);
+    }
+
+    return { moved: false, tookTime: false };
+}
+
+// Handle & (whatdoes) command
+// C ref: pager.c dowhatdoes()
+async function handleWhatdoes(game) {
+    const { display } = game;
+
+    display.putstr_message('What command?');
+    const ch = await nhgetch();
+
+    if (ch === 27) {
+        return { moved: false, tookTime: false };
+    }
+
+    const c = String.fromCharCode(ch);
+    let desc;
+
+    // Check for control characters
+    if (ch < 32) {
+        const ctrlChar = '^' + String.fromCharCode(ch + 64);
+        const ctrlDescs = {
+            '^C': 'Quit the game.',
+            '^D': 'Kick something (usually a door).',
+            '^P': 'Repeat previous message (consecutive ^P\'s show earlier ones).',
+            '^R': 'Redraw the screen.',
+        };
+        if (game.wizard) {
+            ctrlDescs['^F'] = 'Map the level (wizard mode).';
+            ctrlDescs['^G'] = 'Create a monster (wizard mode).';
+            ctrlDescs['^I'] = 'Identify items in pack (wizard mode).';
+            ctrlDescs['^T'] = 'Teleport (wizard mode).';
+            ctrlDescs['^V'] = 'Level teleport (wizard mode).';
+            ctrlDescs['^W'] = 'Wish (wizard mode).';
+        }
+        desc = ctrlDescs[ctrlChar];
+        if (desc) {
+            display.putstr_message(`${ctrlChar}: ${desc}`);
+        } else {
+            display.putstr_message(`${ctrlChar}: unknown command.`);
+        }
+    } else if (COMMAND_DESCRIPTIONS[c]) {
+        display.putstr_message(`'${c}': ${COMMAND_DESCRIPTIONS[c]}`);
+    } else {
+        display.putstr_message(`'${c}': unknown command.`);
+    }
+
+    return { moved: false, tookTime: false };
+}
+
+// Handle V (history) command
+// C ref: pager.c dohistory()
+async function handleHistory(game) {
+    const { display } = game;
+    const text = await fetchDataFile('dat/history.txt');
+    if (text) {
+        await showPager(display, text, 'History of NetHack');
+    } else {
+        display.putstr_message('Failed to load history.');
+    }
     return { moved: false, tookTime: false };
 }
 

@@ -1,6 +1,12 @@
 // config.js -- Game constants and configuration
 // Mirrors constants from include/hack.h, include/global.h, include/rm.h
 
+// Version (patchlevel.h)
+export const VERSION_MAJOR = 3;
+export const VERSION_MINOR = 7;
+export const PATCHLEVEL = 0;
+export const VERSION_STRING = `NetHack JS Version ${VERSION_MAJOR}.${VERSION_MINOR}.${PATCHLEVEL}`;
+
 // Map dimensions (global.h)
 export const COLNO = 80;   // number of columns
 export const ROWNO = 21;   // number of rows (map area)

@@ -210,7 +210,11 @@ describe('E2E: Movement and interaction', () => {
 
     it('help command shows key bindings (no-turn)', async () => {
         await sendChar(page, '?');  // open help menu
-        await sendChar(page, '?');  // select "keys" to show key bindings in pager
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        const menuText = await getTerminalText(page);
+        assert.ok(menuText.includes('Select one item'),
+            `Help should show lettered menu`);
+        await sendChar(page, 'h');  // select "Full list of keyboard commands"
         await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
         const text = await getTerminalText(page);
         assert.ok(text.includes('Move') || text.includes('Command Reference'),
@@ -300,6 +304,144 @@ describe('E2E: Movement and interaction', () => {
             }
         }
         assert.ok(moved, 'Player should move with at least one arrow key');
+    });
+});
+
+describe('E2E: Help and information commands', () => {
+    let page;
+
+    before(async () => {
+        page = await browser.newPage();
+        page.on('pageerror', err => console.error(`  [browser] ${err.message}`));
+        await page.goto(serverInfo.url);
+        await waitForGameLoad(page);
+        await selectRoleAndStart(page);
+    });
+
+    after(async () => {
+        if (page) await page.close();
+    });
+
+    it('? shows lettered help menu', async () => {
+        await sendChar(page, '?');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        const text = await getTerminalText(page);
+        assert.ok(text.includes('Select one item'), 'Help should show selection menu');
+        assert.ok(text.includes('a - About NetHack'), 'Should list option a');
+        assert.ok(text.includes('j - The NetHack Guidebook'), 'Should list option j');
+        await sendChar(page, 'q');  // dismiss
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+    });
+
+    it('? then a shows version info', async () => {
+        await sendChar(page, '?');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await sendChar(page, 'a');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        const msg = await getRow(page, 0);
+        assert.ok(msg.includes('NetHack') && msg.includes('Version'),
+            `About should show version, got: "${msg.trim()}"`);
+    });
+
+    it('? then c shows game commands in pager', async () => {
+        await sendChar(page, '?');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await sendChar(page, 'c');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
+        const text = await getTerminalText(page);
+        assert.ok(text.includes('Game Commands') || text.includes('Move commands'),
+            'Should show game commands from hh.txt');
+        await sendChar(page, 'q');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+    });
+
+    it('? then d shows history in pager', async () => {
+        await sendChar(page, '?');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await sendChar(page, 'd');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
+        const text = await getTerminalText(page);
+        assert.ok(text.includes('History') || text.includes('NetHack'),
+            'Should show history');
+        await sendChar(page, 'q');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+    });
+
+    it('& (whatdoes) describes a known key', async () => {
+        await sendChar(page, '&');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await sendChar(page, 'o');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        const msg = await getRow(page, 0);
+        assert.ok(msg.includes('Open') || msg.includes('door'),
+            `Whatdoes should describe 'o', got: "${msg.trim()}"`);
+    });
+
+    it('& (whatdoes) reports unknown for unbound key', async () => {
+        await sendChar(page, '&');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await sendChar(page, 'X');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        const msg = await getRow(page, 0);
+        assert.ok(msg.includes('unknown'),
+            `Whatdoes should report unknown for 'X', got: "${msg.trim()}"`);
+    });
+
+    it('/ (whatis) identifies a symbol', async () => {
+        await sendChar(page, '/');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await sendChar(page, '>');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        const msg = await getRow(page, 0);
+        assert.ok(msg.includes('stairs'),
+            `Whatis should identify '>', got: "${msg.trim()}"`);
+    });
+
+    it('/ (whatis) identifies letters as monsters', async () => {
+        await sendChar(page, '/');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await sendChar(page, 'd');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        const msg = await getRow(page, 0);
+        assert.ok(msg.includes('monster'),
+            `Whatis should identify 'd' as monster, got: "${msg.trim()}"`);
+    });
+
+    it('\\ (discoveries) shows placeholder', async () => {
+        await sendChar(page, '\\');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        const msg = await getRow(page, 0);
+        assert.ok(msg.includes('discovered'),
+            `Discoveries should show placeholder, got: "${msg.trim()}"`);
+    });
+
+    it('turn counter does not increment after info commands', async () => {
+        const statusBefore = await getRow(page, 23);
+        const turnMatch = statusBefore.match(/T:(\d+)/);
+        if (!turnMatch) return;
+        const turnBefore = parseInt(turnMatch[1]);
+
+        // Run several info commands that should not take a turn
+        await sendChar(page, '\\');  // discoveries
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+
+        await sendChar(page, '&');  // whatdoes
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await sendChar(page, '.');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+
+        await sendChar(page, '/');  // whatis
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await sendChar(page, '@');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+
+        const statusAfter = await getRow(page, 23);
+        const turnMatchAfter = statusAfter.match(/T:(\d+)/);
+        if (!turnMatchAfter) return;
+        const turnAfter = parseInt(turnMatchAfter[1]);
+
+        assert.equal(turnAfter, turnBefore,
+            `Info commands should not take turns: was ${turnBefore}, now ${turnAfter}`);
     });
 });
 

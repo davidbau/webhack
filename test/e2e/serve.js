@@ -12,6 +12,7 @@ const MIME_TYPES = {
     '.json': 'application/json',
     '.png':  'image/png',
     '.svg':  'image/svg+xml',
+    '.txt':  'text/plain',
 };
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
