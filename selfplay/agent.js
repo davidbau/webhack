@@ -8,7 +8,7 @@ import { parseScreen, findMonsters, findStairs } from './perception/screen_parse
 import { parseStatus } from './perception/status_parser.js';
 import { DungeonTracker } from './perception/map_tracker.js';
 import { findPath, findExplorationTarget, findNearest, directionKey, directionDelta, analyzeCorridorPosition } from './brain/pathing.js';
-import { shouldEngageMonster, getMonsterName } from './brain/danger.js';
+import { shouldEngageMonster, getMonsterName, countNearbyMonsters } from './brain/danger.js';
 import { InventoryTracker } from './brain/inventory.js';
 import { PrayerTracker } from './brain/prayer.js';
 import { EquipmentManager } from './brain/equipment.js';
@@ -761,12 +761,25 @@ export class Agent {
 
             // Assess danger and decide whether to engage
             const playerLevel = this.status?.experienceLevel || 1;
+            const dungeonLevel = this.status?.dungeonLevel || 1;
+
+            // Count nearby monsters (excluding the adjacent one)
+            const nearbyMonsters = findMonsters(this.screen);
+            const nearbyCount = countNearbyMonsters(nearbyMonsters, px, py, 3) - 1; // -1 to exclude adjacent monster
+
+            // Check if we're in a corridor (tactical advantage)
+            const corridorAnalysis = analyzeCorridorPosition(level, px, py);
+            const inCorridor = corridorAnalysis.inCorridor;
+
             const engagement = shouldEngageMonster(
                 adjacentMonster.ch,
                 this.status?.hp || 16,
                 this.status?.hpmax || 16,
                 playerLevel,
-                isBlocking
+                isBlocking,
+                dungeonLevel,
+                nearbyCount,
+                inCorridor
             );
 
             // If we should ignore this monster (harmless), just continue exploring

@@ -49,15 +49,29 @@ const EARLY_THREATS = new Set([
 ]);
 
 /**
+ * Dlvl 3-5 specific threats
+ */
+const MID_GAME_THREATS = new Set([
+    's',  // giant spider - level 5, AC 4, speed 15, poisonous!
+    'S',  // snake - poisonous
+    'q',  // rothe - appears in herds (group threat)
+    'o',  // hill orc - level 2, appears in groups
+    'g',  // hobgoblin - level 1, but common on Dlvl 3-5
+    'Z',  // dwarf zombie - level 2, undead
+    'w',  // worm - can grow large
+]);
+
+/**
  * Assess the danger level of a monster.
  *
  * @param {string} monsterChar - The character representing the monster
  * @param {number} playerHP - Current player HP
  * @param {number} playerMaxHP - Player's maximum HP
  * @param {number} playerLevel - Player's experience level (XL)
+ * @param {number} dungeonLevel - Current dungeon level (for context)
  * @returns {number} - DangerLevel constant
  */
-export function assessMonsterDanger(monsterChar, playerHP, playerMaxHP, playerLevel = 1) {
+export function assessMonsterDanger(monsterChar, playerHP, playerMaxHP, playerLevel = 1, dungeonLevel = 1) {
     // Never melee floating eyes or cockatrices
     if (NEVER_MELEE.has(monsterChar)) {
         return DangerLevel.INSTADEATH;
@@ -81,6 +95,23 @@ export function assessMonsterDanger(monsterChar, playerHP, playerMaxHP, playerLe
         return DangerLevel.MEDIUM;
     }
 
+    // Dlvl 3-5 specific threats
+    // These are more dangerous than basic monsters but manageable with good HP
+    if (MID_GAME_THREATS.has(monsterChar)) {
+        // Giant spiders are especially dangerous (poisonous, fast)
+        if (monsterChar === 's' && dungeonLevel >= 3) {
+            if (playerLevel < 4 || playerHP < playerMaxHP * 0.7) {
+                return DangerLevel.HIGH;
+            }
+            return DangerLevel.MEDIUM;
+        }
+        // Other mid-game threats
+        if (playerLevel < 3 || playerHP < playerMaxHP * 0.6) {
+            return DangerLevel.MEDIUM;
+        }
+        return DangerLevel.LOW;
+    }
+
     // Uppercase monsters are generally more threatening
     if (isUppercase) {
         // If we're low level or low HP, treat uppercase as high danger
@@ -100,20 +131,79 @@ export function assessMonsterDanger(monsterChar, playerHP, playerMaxHP, playerLe
 }
 
 /**
+ * Count nearby hostile monsters.
+ *
+ * @param {Array} monsters - List of monster objects with {ch, x, y}
+ * @param {number} playerX - Player X position
+ * @param {number} playerY - Player Y position
+ * @param {number} range - Maximum distance to count (default 3)
+ * @returns {number} - Count of nearby hostile monsters
+ */
+export function countNearbyMonsters(monsters, playerX, playerY, range = 3) {
+    let count = 0;
+    for (const monster of monsters) {
+        const dist = Math.max(Math.abs(monster.x - playerX), Math.abs(monster.y - playerY));
+        if (dist <= range && dist > 0) {
+            count++;
+        }
+    }
+    return count;
+}
+
+/**
  * Decide whether to engage a monster in combat.
  *
  * @param {string} monsterChar - The monster character
  * @param {number} playerHP - Current HP
  * @param {number} playerMaxHP - Max HP
  * @param {number} playerLevel - Experience level
- * @returns {Object} - { shouldEngage: boolean, reason: string }
+ * @param {boolean} isBlocking - Is monster blocking our path?
+ * @param {number} dungeonLevel - Current dungeon level
+ * @param {number} nearbyMonsterCount - Count of other nearby monsters
+ * @param {boolean} inCorridor - Are we in a corridor (tactical advantage)?
+ * @returns {Object} - { shouldEngage: boolean, shouldFlee: boolean, ignore: boolean, reason: string }
  */
-export function shouldEngageMonster(monsterChar, playerHP, playerMaxHP, playerLevel = 1, isBlocking = false) {
-    const danger = assessMonsterDanger(monsterChar, playerHP, playerMaxHP, playerLevel);
+export function shouldEngageMonster(
+    monsterChar,
+    playerHP,
+    playerMaxHP,
+    playerLevel = 1,
+    isBlocking = false,
+    dungeonLevel = 1,
+    nearbyMonsterCount = 0,
+    inCorridor = false
+) {
+    const danger = assessMonsterDanger(monsterChar, playerHP, playerMaxHP, playerLevel, dungeonLevel);
 
     // Strategy: FLEE MORE, FIGHT LESS
     // Only fight when necessary (blocking path or already attacking)
     // Target: <20% of turns in combat (down from 53%)
+    //
+    // New tactical considerations:
+    // 1. Multiple monsters = higher danger (risk of being surrounded)
+    // 2. Corridors = tactical advantage (monsters can't surround us)
+    // 3. Open rooms = tactical disadvantage (can be surrounded)
+
+    // CRITICAL: Never engage when outnumbered unless in a corridor
+    // Being surrounded is extremely dangerous even against weak monsters
+    if (nearbyMonsterCount >= 2 && !inCorridor) {
+        return {
+            shouldEngage: false,
+            shouldFlee: true,
+            ignore: false,
+            reason: `outnumbered (${nearbyMonsterCount + 1} monsters) in open space - flee to corridor`,
+        };
+    }
+
+    // Even in corridor, don't engage multiple HIGH/CRITICAL threats
+    if (nearbyMonsterCount >= 2 && danger >= DangerLevel.HIGH) {
+        return {
+            shouldEngage: false,
+            shouldFlee: true,
+            ignore: false,
+            reason: `multiple dangerous monsters (${nearbyMonsterCount + 1} total) - too risky`,
+        };
+    }
 
     if (danger === DangerLevel.INSTADEATH) {
         return {
@@ -224,11 +314,19 @@ export const MONSTER_NAMES = {
     'i': 'imp',
     'j': 'jelly',
     ':': 'lizard',
+    's': 'giant spider',
+    'S': 'snake',
+    'q': 'rothe',
+    'o': 'hill orc',
+    'w': 'worm',
+    'Z': 'dwarf zombie',
     'D': 'dragon',
     'F': 'fungi',
+    'G': 'gnome lord',
     'H': 'giant',
     'L': 'lich',
     'N': 'nymph',
+    'O': 'ogre',
     'T': 'troll',
     'U': 'umber hulk',
     'V': 'vampire',
