@@ -146,6 +146,20 @@ LEVEL_GROUPS = {
             {'name': 'bigrm', 'branch': 'Dungeons of Doom', 'nlevels': 13},
         ],
     },
+    'filler': {
+        'description': 'Filler levels (procedural maze levels)',
+        'levels': [
+            {'name': 'minefill', 'branch': 'Gnomish Mines'},
+            {'name': 'hellfill', 'branch': 'Gehennom'},
+        ],
+    },
+    'tutorial': {
+        'description': 'Tutorial levels',
+        'levels': [
+            {'name': 'tut-1', 'branch': 'Tutorial'},
+            {'name': 'tut-2', 'branch': 'Tutorial'},
+        ],
+    },
     'quest': {
         'description': 'Quest levels (13 roles × 3 levels: start/locate/goal)',
         'levels': [

@@ -1847,6 +1847,33 @@ export function engraving(opts) {
 }
 
 /**
+ * des.message(text)
+ * Display a message to the player.
+ * C ref: sp_lev.c spmessage()
+ *
+ * @param {string} text - Message text
+ */
+export function message(text) {
+    // Stub - would display message to player
+    // For terrain generation, we can ignore this
+}
+
+/**
+ * des.wallify()
+ * Run wallification on the current level.
+ * C ref: sp_lev.c wallify_map()
+ *
+ * This is normally called automatically by finalize_level(), but some
+ * levels (like astral) call it explicitly.
+ */
+export function wallify() {
+    // Call the internal wallification
+    if (levelState.map) {
+        wallification(levelState.map);
+    }
+}
+
+/**
  * des.ladder(direction, x, y)
  * Place a ladder at a location.
  * C ref: sp_lev.c spladder()
@@ -1966,6 +1993,7 @@ export function random_corridors() {
  * Called from finalize_level() after corridor generation
  */
 function executeDeferredObjects() {
+    console.log(`executeDeferredObjects: ${levelState.deferredObjects.length} deferred objects`);
     for (const deferred of levelState.deferredObjects) {
         const { name_or_opts, x, y } = deferred;
 
@@ -2057,6 +2085,7 @@ function executeDeferredObjects() {
  * Called from finalize_level() after corridor generation
  */
 function executeDeferredMonsters() {
+    console.log(`executeDeferredMonsters: ${levelState.deferredMonsters.length} deferred monsters`);
     for (const deferred of levelState.deferredMonsters) {
         const { opts_or_class, x, y } = deferred;
 
@@ -2133,6 +2162,7 @@ function executeDeferredMonsters() {
  * Called from finalize_level() after corridor generation
  */
 function executeDeferredTraps() {
+    console.log(`executeDeferredTraps: ${levelState.deferredTraps.length} deferred traps`);
     for (const deferred of levelState.deferredTraps) {
         const { type_or_opts, x, y } = deferred;
 
@@ -2225,6 +2255,10 @@ export function finalize_level() {
         levelState.map.monsters.push(...levelState.monsters);
     }
 
+    // TEMPORARILY DISABLED for investigation: Fill ordinary rooms with random content
+    // This is causing 1.3M RNG calls in seed2 startup (should be ~3k)
+    // TODO: Investigate why trap loop in fill_ordinary_room runs so many times
+    /*
     // C ref: mklev.c:1388-1422 — Fill ordinary rooms with random content
     // This happens AFTER deferred content but BEFORE wallification
     if (levelState.map) {
@@ -2258,6 +2292,7 @@ export function finalize_level() {
             if (fillable) bonusCountdown--;
         }
     }
+    */
 
     // Apply wallification first (before flipping)
     // C ref: sp_lev.c line 6028 - wallification before flip
