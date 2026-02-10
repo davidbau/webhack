@@ -14,9 +14,9 @@
  */
 
 import fs from 'fs';
-import { initRng, rn2, enableRngLog, getRngLog } from './js/rng.js';
-import { generate as generateOracle } from './js/levels/oracle.js';
-import { getLevelState, getTypGrid } from './js/sp_lev.js';
+import { initRng, rn2, enableRngLog, getRngLog } from '../../js/rng.js';
+import { generate as generateOracle } from '../../js/levels/oracle.js';
+import { getLevelState, getTypGrid } from '../../js/sp_lev.js';
 
 function loadCTrace(seed) {
     const path = `./test/comparison/traces/oracle_seed${seed}_c.json`;

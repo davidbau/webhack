@@ -51,6 +51,12 @@ export async function rhack(ch, game) {
 
     // Movement keys
     if (DIRECTION_KEYS[c]) {
+        // Check if 'G' or 'g' prefix was used (run/rush mode)
+        if (game.runMode) {
+            const mode = game.runMode;
+            game.runMode = 0; // Clear prefix
+            return handleRun(DIRECTION_KEYS[c], player, map, display, fov, game);
+        }
         return handleMovement(DIRECTION_KEYS[c], player, map, display, game);
     }
 
@@ -262,9 +268,62 @@ export async function rhack(ch, game) {
         return { moved: false, tookTime: false };
     }
 
+    // Prefix commands (modifiers for next command)
+    // C ref: cmd.c:1624 do_reqmenu() — 'm' prefix
+    if (c === 'm') {
+        if (game.menuRequested) {
+            display.putstr_message('Double m prefix, canceled.');
+            game.menuRequested = false;
+        } else {
+            game.menuRequested = true;
+            display.putstr_message('Next command will request menu or move without autopickup/attack.');
+        }
+        return { moved: false, tookTime: false };
+    }
+
+    // C ref: cmd.c:1671 do_fight() — 'F' prefix
+    if (c === 'F') {
+        if (game.forceFight) {
+            display.putstr_message('Double fight prefix, canceled.');
+            game.forceFight = false;
+        } else {
+            game.forceFight = true;
+            display.putstr_message('Next movement will force fight even if no monster visible.');
+        }
+        return { moved: false, tookTime: false };
+    }
+
+    // C ref: cmd.c:1655 do_run() — 'G' prefix (run)
+    if (c === 'G') {
+        if (game.runMode) {
+            display.putstr_message('Double run prefix, canceled.');
+            game.runMode = 0;
+        } else {
+            game.runMode = 3; // run mode
+            display.putstr_message('Next direction will run until something interesting.');
+        }
+        return { moved: false, tookTime: false };
+    }
+
+    // C ref: cmd.c:1639 do_rush() — 'g' prefix (rush)
+    if (c === 'g') {
+        if (game.runMode) {
+            display.putstr_message('Double rush prefix, canceled.');
+            game.runMode = 0;
+        } else {
+            game.runMode = 2; // rush mode
+            display.putstr_message('Next direction will rush until something interesting.');
+        }
+        return { moved: false, tookTime: false };
+    }
+
     // Escape -- ignore silently (cancels pending prompts)
     // C ref: cmd.c -- ESC aborts current command
     if (ch === 27) {
+        // Also clear prefix flags
+        game.menuRequested = false;
+        game.forceFight = false;
+        game.runMode = 0;
         return { moved: false, tookTime: false };
     }
 
@@ -291,7 +350,10 @@ function handleMovement(dir, player, map, display, game) {
     if (mon) {
         // C ref: hack.c domove() — check for pet displacement
         // Simplified: tame/peaceful monsters are displaced (swap positions)
-        if (mon.tame || mon.peaceful) {
+        // BUT: 'F' prefix (forceFight) forces attack even on peaceful monsters
+        const shouldDisplace = (mon.tame || mon.peaceful) && !game.forceFight;
+
+        if (shouldDisplace) {
             // Pet displacement: swap positions
             // C ref: hack.c:2142-2156 — remove_monster + place_monster swaps positions
             const oldPlayerX = player.x;
@@ -302,10 +364,12 @@ function handleMovement(dir, player, map, display, game) {
             player.y = ny;
             player.moved = true;
             display.putstr_message(`You swap places with ${mon.name}.`);
+            game.forceFight = false; // Clear prefix (shouldn't reach here but be safe)
             return { moved: true, tookTime: true };
         }
 
-        // Attack the monster
+        // Attack the monster (or forced attack on peaceful)
+        game.forceFight = false; // Clear prefix after use
         // C ref: hack.c domove() -> do_attack() -> attack() -> hitum()
         // C ref: hack.c:3036 overexertion() unconditionally calls gethungry() -> rn2(20)
         rn2(20); // overexertion/gethungry before attack
@@ -362,6 +426,10 @@ function handleMovement(dir, player, map, display, game) {
     player.x = nx;
     player.y = ny;
     player.moved = true;
+
+    // Clear prefix flags after successful movement
+    game.menuRequested = false;
+    game.forceFight = false;
 
     // Check for traps — C ref: hack.c spoteffects() → dotrap()
     // C ref: trap.c trapeffect_*() — trap-specific effects

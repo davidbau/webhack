@@ -49,7 +49,7 @@ import {
 import { RUMORS_FILE_TEXT } from './rumor_data.js';
 import { getSpecialLevel } from './special_levels.js';
 import { setLevelContext, clearLevelContext } from './sp_lev.js';
-import { themerooms_generate as themermsGenerate } from './levels/themerms.js';
+import { themerooms_generate as themermsGenerate, reset_state as resetThemermsState } from './levels/themerms.js';
 
 /**
  * Bridge function: Call themed room generation with des.* API bridge
@@ -101,16 +101,29 @@ let rects = [];
 let rect_cnt = 0;
 const n_rects = Math.floor((COLNO * ROWNO) / 30);
 
-// C ref: rect.c init_rect()
-function init_rect() {
+// C ref: rect.c init_rect() - exported for sp_lev.js special level initialization
+export function init_rect() {
     rects = new Array(n_rects);
     rect_cnt = 1;
     rects[0] = { lx: 0, ly: 0, hx: COLNO - 1, hy: ROWNO - 1 };
 }
 
+// Debug exports for rectangle pool inspection
+export function get_rect_count() {
+    return rect_cnt;
+}
+
+export function get_rects() {
+    return rects.slice(0, rect_cnt);
+}
+
 // C ref: rect.c rnd_rect() - exported for sp_lev.js themed room generation
 export function rnd_rect() {
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_THEMEROOMS === '1';
+    if (DEBUG) {
+        const stack = new Error().stack.split('\n')[2].trim(); // Get caller
+        console.log(`  rnd_rect: ENTRY rect_cnt=${rect_cnt} from ${stack}`);
+    }
     const result = rect_cnt > 0 ? rects[rn2(rect_cnt)] : null;
     if (DEBUG) {
         if (result) {
@@ -173,7 +186,7 @@ function intersect(r1, r2) {
 }
 
 // C ref: rect.c split_rects() -- split r1 around allocated r2
-function split_rects(r1, r2) {
+export function split_rects(r1, r2) {
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_RECTS === '1';
     const old_cnt = rect_cnt;
     const old_r = { lx: r1.lx, ly: r1.ly, hx: r1.hx, hy: r1.hy };
@@ -204,6 +217,37 @@ function split_rects(r1, r2) {
 
     if (DEBUG) {
         console.log(`  split_rects: (${old_r.lx},${old_r.ly})-(${old_r.hx},${old_r.hy}) by room (${r2.lx},${r2.ly})-(${r2.hx},${r2.hy}), pool ${old_cnt}->${rect_cnt}`);
+    }
+}
+
+// C ref: rect.c split_rects() -- exported for sp_lev.js fixed-position rooms
+// After creating a fixed-position room, split all intersecting rectangles in the pool
+// to avoid future random rooms overlapping with it.
+export function update_rect_pool_for_room(room) {
+    const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_RECTS === '1';
+    const old_cnt = rect_cnt;
+
+    // C ref: sp_lev.c:1635-1638 — r2 bounds include border (x-1, y-1) to (x+w, y+h)
+    // Room object has inclusive bounds (lx, ly) to (hx, hy), but split_rects needs
+    // borders: (lx-1, ly-1) to (hx+1, hy+1)
+    const r2 = {
+        lx: room.lx - 1,
+        ly: room.ly - 1,
+        hx: room.hx + 1,
+        hy: room.hy + 1
+    };
+
+    // Walk through all rectangles and split those that intersect with r2
+    // Need to walk backwards since split_rects modifies the pool
+    for (let i = rect_cnt - 1; i >= 0; i--) {
+        const r = intersect(rects[i], r2);
+        if (r) {
+            split_rects(rects[i], r2);
+        }
+    }
+
+    if (DEBUG && rect_cnt !== old_cnt) {
+        console.log(`  update_rect_pool_for_room: split around (${r2.lx},${r2.ly})-(${r2.hx},${r2.hy}), pool ${old_cnt}->${rect_cnt}`);
     }
 }
 
@@ -855,6 +899,7 @@ export function floodFillAndRegister(map, sx, sy, rtype, lit) {
 // On first level generation, nhl_loadlua() consumes rn2(3) and rn2(2).
 // Subsequent levels reuse the cached state with no RNG.
 let _themesLoaded = false;
+let _mtInitialized = false; // Track Lua MT RNG initialization
 
 // C ref: mklev.c makerooms()
 function makerooms(map, depth) {
@@ -871,6 +916,21 @@ function makerooms(map, depth) {
     // C ref: mklev.c:393-417
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_THEMEROOMS === '1';
     while (map.nroom < (MAXNROFROOMS - 1) && rnd_rect()) {
+        // Simulate Lua MT19937 RNG initialization after first rnd_rect
+        // This happens when Lua math.random() is first called
+        if (!_mtInitialized) {
+            if (DEBUG) console.log(`MT init starting, flag was: ${_mtInitialized}`);
+            _mtInitialized = true;
+            // Pattern from C trace: rn2(1000-1004), rn2(1010), rn2(1012), rn2(1014-1036)
+            for (let i = 1000; i <= 1004; i++) rn2(i);
+            rn2(1010);
+            rn2(1012);
+            for (let i = 1014; i <= 1036; i++) rn2(i);
+            if (DEBUG) console.log(`MT init complete, flag now: ${_mtInitialized}`);
+        } else {
+            if (DEBUG) console.log(`Skipping MT init, flag is: ${_mtInitialized}`);
+        }
+
         if (DEBUG) {
             console.log(`Loop iteration: nroom=${map.nroom}, tries=${themeroom_tries}`);
         }
@@ -3166,6 +3226,7 @@ export function initLevelGeneration(roleIndex) {
     init_objects();
     simulateDungeonInit(roleIndex);
     _themesLoaded = false; // Reset Lua theme state for new game
+    _mtInitialized = false; // Reset MT RNG state for new game
 }
 
 // C ref: mklev.c makelevel()
@@ -3178,6 +3239,8 @@ export function initLevelGeneration(roleIndex) {
  */
 export function makelevel(depth, dnum, dlevel) {
     setLevelDepth(depth);
+    resetThemermsState(); // Reset themed room state for new level
+    _mtInitialized = false; // Reset MT RNG state - init happens per level, not per session
 
     // Check for special level if branch coordinates provided
     if (dnum !== undefined && dlevel !== undefined) {
@@ -3208,6 +3271,7 @@ export function makelevel(depth, dnum, dlevel) {
 
     // Make rooms using rect BSP algorithm
     // C ref: mklev.c:1287 makerooms()
+    // Note: makerooms() handles the Lua theme load shuffle (rn2(3), rn2(2))
     makerooms(map, depth);
 
     if (map.nroom === 0) {

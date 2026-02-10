@@ -6,10 +6,13 @@
 import * as des from '../sp_lev.js';
 
 export function generate() {
+    // Initialize level state (includes BSP rectangle pool initialization)
+    des.resetLevelState();
+
     // NetHack oracle oracle.lua	$NHDT-Date: 1652196033 2022/5/10 15:20:33 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.1 $
     // Copyright (c) 2015 by Pasi Kallinen
     // NetHack may be freely redistributed.  See license for details.
-    // 
+    //
     // Oracle level
     des.level_flags("noflip");
 

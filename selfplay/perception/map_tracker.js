@@ -405,6 +405,176 @@ export class LevelMap {
 
         return false;
     }
+
+    /**
+     * Analyze corridor structure around a position to understand dungeon layout.
+     * Returns: { inCorridor, corridorDirection, corridorLength, likelyRoomDirection }
+     */
+    analyzeCorridorStructure(px, py) {
+        const cell = this.at(px, py);
+        if (!cell || !cell.explored) {
+            return { inCorridor: false };
+        }
+
+        const isCorridor = cell.type === 'corridor';
+        if (!isCorridor) {
+            return { inCorridor: false };
+        }
+
+        // Detect corridor direction by checking which directions have corridor/walkable cells
+        const directions = {
+            north: this._hasCorridorInDirection(px, py, 0, -1),
+            south: this._hasCorridorInDirection(px, py, 0, 1),
+            east: this._hasCorridorInDirection(px, py, 1, 0),
+            west: this._hasCorridorInDirection(px, py, -1, 0),
+        };
+
+        // Count how many directions the corridor extends
+        const openDirections = Object.entries(directions).filter(([_, open]) => open);
+
+        // Trace corridor length in each direction
+        const lengths = {};
+        for (const [dir, open] of Object.entries(directions)) {
+            if (open) {
+                const [dx, dy] = this._directionToDelta(dir);
+                lengths[dir] = this._traceCorridorLength(px, py, dx, dy);
+            }
+        }
+
+        // Predict where rooms might be: at corridor endpoints with unexplored space beyond
+        const likelyRoomDirections = [];
+        for (const [dir, length] of Object.entries(lengths)) {
+            if (length > 0) {
+                const [dx, dy] = this._directionToDelta(dir);
+                const endX = px + dx * length;
+                const endY = py + dy * length;
+
+                // Check if corridor ends at unexplored space (likely room beyond)
+                const endCell = this.at(endX, endY);
+                if (endCell && endCell.explored && endCell.type === 'corridor') {
+                    // Check one cell beyond for unexplored space
+                    const beyondCell = this.at(endX + dx, endY + dy);
+                    if (!beyondCell || !beyondCell.explored) {
+                        likelyRoomDirections.push({ direction: dir, distance: length });
+                    }
+                }
+            }
+        }
+
+        return {
+            inCorridor: true,
+            openDirections: openDirections.map(([dir, _]) => dir),
+            corridorLengths: lengths,
+            likelyRoomDirections,
+            isJunction: openDirections.length >= 3,
+            isStraight: openDirections.length === 2 && this._isOppositePair(openDirections.map(([d, _]) => d)),
+        };
+    }
+
+    /**
+     * Check if there's a corridor extending in a given direction.
+     */
+    _hasCorridorInDirection(x, y, dx, dy) {
+        const neighbor = this.at(x + dx, y + dy);
+        if (!neighbor || !neighbor.explored) return false;
+        return neighbor.walkable && (neighbor.type === 'corridor' || neighbor.type === 'room' || neighbor.type === 'door');
+    }
+
+    /**
+     * Trace how far a corridor extends in a direction (up to 10 cells).
+     */
+    _traceCorridorLength(x, y, dx, dy, maxDist = 10) {
+        let length = 0;
+        for (let i = 1; i <= maxDist; i++) {
+            const cell = this.at(x + dx * i, y + dy * i);
+            if (!cell || !cell.explored) break;
+            if (cell.type !== 'corridor' && cell.type !== 'door') break;
+            length = i;
+        }
+        return length;
+    }
+
+    /**
+     * Convert direction name to delta coordinates.
+     */
+    _directionToDelta(direction) {
+        switch (direction) {
+            case 'north': return [0, -1];
+            case 'south': return [0, 1];
+            case 'east': return [1, 0];
+            case 'west': return [-1, 0];
+            default: return [0, 0];
+        }
+    }
+
+    /**
+     * Check if two directions are opposite (north/south or east/west).
+     */
+    _isOppositePair(dirs) {
+        if (dirs.length !== 2) return false;
+        return (dirs.includes('north') && dirs.includes('south')) ||
+               (dirs.includes('east') && dirs.includes('west'));
+    }
+
+    /**
+     * Get frontier cells weighted by structural analysis.
+     * Prioritizes: corridor endpoints, unexplored branches, predicted room locations.
+     */
+    getStructurallyPrioritizedFrontier(px, py) {
+        const frontier = this.getExplorationFrontier();
+        const structure = this.analyzeCorridorStructure(px, py);
+
+        // Enhance frontier with structural priorities
+        const prioritized = frontier.map(f => {
+            let structuralPriority = 0;
+            const fCell = this.at(f.x, f.y);
+
+            if (!fCell) return { ...f, structuralPriority: 0 };
+
+            // High priority: corridor cells (lead to new areas)
+            if (fCell.type === 'corridor') {
+                structuralPriority += 10;
+            }
+
+            // If we're in a corridor, prioritize cells in predicted room directions
+            if (structure.inCorridor && structure.likelyRoomDirections.length > 0) {
+                for (const roomDir of structure.likelyRoomDirections) {
+                    const [dx, dy] = this._directionToDelta(roomDir.direction);
+                    const fDx = f.x - px;
+                    const fDy = f.y - py;
+
+                    // Check if frontier cell is in the predicted direction
+                    const sameDirection = (
+                        (dx > 0 && fDx > 0) || (dx < 0 && fDx < 0) ||
+                        (dy > 0 && fDy > 0) || (dy < 0 && fDy < 0)
+                    );
+
+                    if (sameDirection) {
+                        structuralPriority += 20; // Very high priority for predicted room direction
+                    }
+                }
+            }
+
+            // If we're in a corridor, deprioritize going backwards
+            if (structure.inCorridor && structure.isStraight) {
+                // Detect if this frontier cell is "behind" us in the corridor
+                // (implementation would need to track which direction we came from)
+                // For now, prioritize cells ahead
+            }
+
+            return { ...f, structuralPriority };
+        });
+
+        // Sort by structural priority (descending), then by searchScore (ascending)
+        prioritized.sort((a, b) => {
+            if (a.structuralPriority !== b.structuralPriority) {
+                return b.structuralPriority - a.structuralPriority;
+            }
+            return a.searchScore - b.searchScore;
+        });
+
+        return prioritized;
+    }
 }
 
 /**

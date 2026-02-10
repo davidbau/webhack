@@ -41,6 +41,7 @@ const obj = {
 // Reset state between level generations
 export function reset_state() {
     postprocess = [];
+    _initialized = false;
 }
 
 // themeroom_fills: Contents that can fill any room shape
@@ -170,7 +171,7 @@ export const themeroom_fills = [
             const o = des.object({ id: "corpse", montype: zombifiable[0],
                                  buried: true });
             o.stop_timer("rot-corpse");
-            o.start_timer("zombify-mon", Math.floor(Math.random() * 21) + 990);
+            o.start_timer("zombify-mon", rn2(21) + 990);
          }
       },
    },
@@ -186,9 +187,9 @@ export const themeroom_fills = [
                      "priest", "monk", "knight", "healer",
                      "cavewoman", "caveman", "barbarian",
                      "archeologist" ];
-         let idx = Math.floor(Math.random() * mon.length);
+         let idx = rn2(mon.length);
          for (let i = 1; i <= d(5,5); i++) {
-            if (percent(10)) { idx = Math.floor(Math.random() * mon.length); }
+            if (percent(10)) { idx = rn2(mon.length); }
             des.object({ id: "corpse", montype: mon[idx] });
          }
       },
@@ -355,8 +356,13 @@ export const themerooms = [
          des.room({ type: "ordinary", w: 9 + rn2(4), h: 9 + rn2(4),
                     filled: 1,
             contents: function(rm) {
-               const wid = Math.floor(Math.random() * (rm.width - Math.floor(rm.width / 2))) + Math.floor(rm.width / 2);
-               const hei = Math.floor(Math.random() * (rm.height - Math.floor(rm.height / 2))) + Math.floor(rm.height / 2);
+               // Lua: math.random(floor(rm.width/2), rm.width-2) -> rn2(range)+min
+               const minWid = Math.floor(rm.width / 2);
+               const maxWid = rm.width - 2;
+               const wid = rn2(maxWid - minWid + 1) + minWid;
+               const minHei = Math.floor(rm.height / 2);
+               const maxHei = rm.height - 2;
+               const hei = rn2(maxHei - minHei + 1) + minHei;
                des.room({ type: "ordinary", w: wid, h: hei, filled: 1,
                   contents: function() {
                      if (percent(90)) {
@@ -779,7 +785,7 @@ xx|.....|xx
                "scroll of teleportation", "ring of teleportation",
                "wand of teleportation", "wand of digging"
             ];
-            const itm = obj.new(escape_items[Math.floor(Math.random() * escape_items.length)]);
+            const itm = obj.new(escape_items[rn2(escape_items.length)]);
             const itmcls = itm.class()
             let box;
             if (itmcls[ "material" ] === "glass") {
@@ -862,6 +868,9 @@ xx|.....|xx
 let debug_rm_idx = null;
 let debug_fill_idx = null;
 
+// Track whether themerms has been initialized for current level
+let _initialized = false;
+
 // Given a point in a themed room, ensure that themed room is stocked with
 // regular room contents.
 // With 30% chance, also give it a random themed fill.
@@ -913,6 +922,13 @@ function lookup_by_name(name, checkfills) {
 // called repeatedly until the core decides there are enough rooms
 export function themerooms_generate(map, depth) {
    _levelDepth = depth; // Update module-level depth for nh.level_difficulty()
+
+   // First-time initialization for this level: shuffle align and init Lua MT RNG
+   if (!_initialized) {
+      pre_themerooms_generate();
+      _initialized = true;
+   }
+
    if (debug_rm_idx !== null) {
       // room may not be suitable for stairs/portals, so create the "default"
       // room half of the time
@@ -929,7 +945,7 @@ export function themerooms_generate(map, depth) {
          }
       }
       themerooms[actualrm].contents();
-      return;
+      return true;
    } else if (debug_fill_idx !== null) {
       // when a fill is requested but not a room, still create the "default"
       // room half of the time, and "default with themed fill" half of the time
@@ -937,7 +953,7 @@ export function themerooms_generate(map, depth) {
       const actualrm = lookup_by_name(percent(50) ? "Default room with themed fill"
                                                   : "default", false);
       themerooms[actualrm].contents();
-      return;
+      return true;
    }
    let pick = null;
    let total_frequency = 0;
@@ -962,13 +978,17 @@ export function themerooms_generate(map, depth) {
    }
    if (pick === null) {
       nh.impossible('no eligible themed rooms?');
-      return;
+      return false;
    }
    themerooms[pick].contents();
+   return true;
 }
 
 // called before any rooms are generated
 export function pre_themerooms_generate() {
+   // Note: The align shuffle (rn2(3), rn2(2)) and MT RNG initialization
+   // are now done in dungeon.js makerooms() to match C's timing
+
    const debug_themerm = nh.debug_themerm(false);
    const debug_fill = nh.debug_themerm(true);
    let xtrainfo = "";

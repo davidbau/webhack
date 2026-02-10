@@ -155,6 +155,79 @@ export async function ynFunction(query, choices, def, display) {
     }
 }
 
+// Gather typed digits into a number; return the next non-digit
+// C ref: cmd.c:4851 get_count()
+// Returns: { count: number, key: number }
+export async function getCount(firstKey, maxCount, display) {
+    let cnt = 0;
+    let key = firstKey || 0;
+    let backspaced = false;
+    let showzero = true;
+    const LARGEST_INT = 32767; // C ref: global.h:133 LARGEST_INT (2^15 - 1)
+    const MAX_COUNT = maxCount || LARGEST_INT;
+    const ERASE_CHAR = 127; // DEL
+
+    // If first key is provided and it's a digit, use it
+    if (key && isDigit(key)) {
+        cnt = key - 48; // '0' = 48
+        key = 0; // Clear so we read next key
+    }
+
+    while (true) {
+        // If we don't have a key yet, read one
+        if (!key) {
+            key = await nhgetch();
+        }
+
+        if (isDigit(key)) {
+            const digit = key - 48;
+            // cnt = (10 * cnt) + digit
+            cnt = (cnt * 10) + digit;
+            if (cnt < 0) {
+                cnt = 0;
+            } else if (cnt > MAX_COUNT) {
+                cnt = MAX_COUNT;
+            }
+            showzero = (key === 48); // '0'
+            key = 0; // Read next key
+        } else if (key === 8 || key === ERASE_CHAR) { // Backspace
+            if (!cnt) {
+                break; // No count entered, just cancel
+            }
+            showzero = false;
+            cnt = Math.floor(cnt / 10);
+            backspaced = true;
+            key = 0; // Read next key
+        } else if (key === 27) { // ESC
+            cnt = 0;
+            break;
+        } else {
+            // Non-digit, non-backspace, non-ESC: this is the command key
+            break;
+        }
+
+        // Show "Count: N" when cnt > 9 or after backspace
+        // C ref: cmd.c:4911 - shows count when cnt > 9 || backspaced || echoalways
+        if (cnt > 9 || backspaced) {
+            if (display) {
+                if (backspaced && !cnt && !showzero) {
+                    display.putstr_message('Count: ');
+                } else {
+                    display.putstr_message(`Count: ${cnt}`);
+                }
+            }
+            backspaced = false;
+        }
+    }
+
+    return { count: cnt, key: key };
+}
+
+// Helper: check if character code is a digit '0'-'9'
+function isDigit(ch) {
+    return ch >= 48 && ch <= 57; // '0' = 48, '9' = 57
+}
+
 // Clear the input queue
 export function clearInputQueue() {
     inputQueue.length = 0;

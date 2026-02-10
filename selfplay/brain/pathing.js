@@ -247,9 +247,20 @@ export function findExplorationTarget(levelMap, sx, sy, recentTargets = null, op
 
     const candidates = [];
 
-    // Check if player is in a corridor
+    // Check if player is in a corridor and analyze structure
     const playerCell = levelMap.at(sx, sy);
     const playerInCorridor = playerCell && playerCell.type === 'corridor';
+
+    // Analyze corridor structure to predict where rooms might be
+    let structure = { inCorridor: false, likelyRoomDirections: [] };
+    try {
+        if (levelMap.analyzeCorridorStructure) {
+            structure = levelMap.analyzeCorridorStructure(sx, sy) || structure;
+        }
+    } catch (err) {
+        // Gracefully handle any errors in structural analysis
+        console.error('[STRUCTURE] Analysis error:', err.message);
+    }
 
     while (queue.length > 0) {
         const { x, y, dist } = queue.shift();
@@ -281,7 +292,32 @@ export function findExplorationTarget(levelMap, sx, sy, recentTargets = null, op
                 // Check if target continues the corridor (player in corridor moving to adjacent corridor)
                 const continuesCorridor = playerInCorridor && isCorridor && dist <= 3;
 
-                candidates.push({ x, y, dist, chebyshev, isRecent, searched, isCorridor, continuesCorridor });
+                // Structural priority: is this target in a predicted room direction?
+                let inPredictedDirection = false;
+                if (structure.inCorridor && structure.likelyRoomDirections && structure.likelyRoomDirections.length > 0 && levelMap._directionToDelta) {
+                    try {
+                        for (const roomDir of structure.likelyRoomDirections) {
+                            const [dx, dy] = levelMap._directionToDelta(roomDir.direction);
+                            const targetDx = x - sx;
+                            const targetDy = y - sy;
+
+                            // Check if target is in the same direction as predicted room
+                            const sameDirection = (
+                                (dx > 0 && targetDx > 0) || (dx < 0 && targetDx < 0) ||
+                                (dy > 0 && targetDy > 0) || (dy < 0 && targetDy < 0)
+                            );
+
+                            if (sameDirection) {
+                                inPredictedDirection = true;
+                                break;
+                            }
+                        }
+                    } catch (err) {
+                        // Gracefully handle direction calculation errors
+                    }
+                }
+
+                candidates.push({ x, y, dist, chebyshev, isRecent, searched, isCorridor, continuesCorridor, inPredictedDirection });
             }
         }
 
@@ -305,9 +341,10 @@ export function findExplorationTarget(levelMap, sx, sy, recentTargets = null, op
     // Sort by priority:
     // 1. Strongly prefer non-recently-visited
     // 2. Strongly prefer corridor continuation when in corridor (keeps exploring corridors to completion)
-    // 3. Prefer corridor cells over room cells (corridors lead to new areas)
-    // 4. Prefer less-searched cells (more likely to lead somewhere)
-    // 5. Among remaining, prefer nearest by BFS distance (or farthest if preferFar)
+    // 3. Prefer targets in predicted room directions (map shape assessment)
+    // 4. Prefer corridor cells over room cells (corridors lead to new areas)
+    // 5. Prefer less-searched cells (more likely to lead somewhere)
+    // 6. Among remaining, prefer nearest by BFS distance (or farthest if preferFar)
     //
     // Note: we do NOT penalize adjacent cells. In corridors, the next
     // frontier cell IS adjacent and we want to keep moving forward.
@@ -317,6 +354,9 @@ export function findExplorationTarget(levelMap, sx, sy, recentTargets = null, op
 
         // Corridor continuation gets highest priority (when player is in corridor)
         if (a.continuesCorridor !== b.continuesCorridor) return a.continuesCorridor ? -1 : 1;
+
+        // Predicted room direction (based on corridor structure analysis)
+        if (a.inPredictedDirection !== b.inPredictedDirection) return a.inPredictedDirection ? -1 : 1;
 
         // Corridor cells generally preferred over room cells
         if (a.isCorridor !== b.isCorridor) return a.isCorridor ? -1 : 1;
