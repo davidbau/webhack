@@ -651,7 +651,7 @@ export class Agent {
         const onDownstairs = (currentCell && currentCell.type === 'stairs_down') ||
             level.stairsDown.some(s => s.x === px && s.y === py);
         if (onDownstairs) {
-            return { type: 'descend', key: '>', reason: 'descending stairs' };
+            console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: 'descending stairs' };
         }
 
         // 5b. Proactive descent: if we've found stairs and explored enough, head down
@@ -674,7 +674,7 @@ export class Agent {
                 const stairs = level.stairsDown[0];
                 // If we're already at the downstairs, descend immediately
                 if (px === stairs.x && py === stairs.y) {
-                    return { type: 'descend', key: '>', reason: `descending (explored ${Math.round(exploredPercent*100)}%)` };
+                    console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: `descending (explored ${Math.round(exploredPercent*100)}%)` };
                 }
                 const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: false });
                 if (path.found) {
@@ -705,7 +705,7 @@ export class Agent {
                 const stairs = level.stairsDown[0];
                 // If we're already at the downstairs, descend immediately
                 if (px === stairs.x && py === stairs.y) {
-                    return { type: 'descend', key: '>', reason: `descending (stuck ${this.levelStuckCounter})` };
+                    console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: `descending (stuck ${this.levelStuckCounter})` };
                 }
                 const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
                 if (path.found) {
@@ -1007,7 +1007,7 @@ export class Agent {
                     const stairs = level.stairsDown[0];
                     // If we're already at the downstairs, descend immediately
                     if (px === stairs.x && py === stairs.y) {
-                        return { type: 'descend', key: '>', reason: 'descending (stuck)' };
+                        console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: 'descending (stuck)' };
                     }
                     const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
                     if (path.found) {
@@ -1092,7 +1092,8 @@ export class Agent {
             const stairs = level.stairsDown[0];
             // If we're already at the downstairs, descend immediately
             if (px === stairs.x && py === stairs.y) {
-                return { type: 'descend', key: '>', reason: 'descending (exploration complete)' };
+                console.log(`[DEBUG] At downstairs (${px},${py}), attempting descent with '>'`);
+                console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: 'descending (exploration complete)' };
             }
             const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
             if (path.found) {

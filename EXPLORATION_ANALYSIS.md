@@ -62,19 +62,25 @@ This is a significant pathfinding refactor beyond quick fixes.
    - **Issue**: Seed 55555 explores east (x=44-59) while downstairs are west (x=34)
    - Reveals deeper problem: agent finds downstairs but gets stuck navigating to them
 
-## Key Discovery: Navigation Failure
+## Key Discovery: Navigation Failure - SOLVED!
 
 Investigation of seed 55555 revealed:
 - Agent **finds** downstairs at (34, 7) around turn 150
 - Agent tries to navigate: "heading to downstairs (level stuck 22)"
-- Agent gets **stuck at same position (46, 8) for 50+ turns**
-- Agent abandons navigation and returns to exploration
+- Agent gets **stuck at position (35, 9) trying to move to (35, 8)**
+- Screen shows '·' at (35,8), agent memory says `door_open`
+- **Message: "This door is locked."**
 
-**Root cause**: Movement execution failure, not pathfinding. Possible causes:
-- Closed door not being opened properly
-- Pet/monster blocking path
-- PathResult.firstKey bug (returns null for 1-element paths)
-- Missing "already at stairs" check for downstairs (only exists for upstairs)
+**ROOT CAUSE**: The agent tries to path through a **LOCKED DOOR** at (35,8).
+- Perception bug: agent doesn't distinguish locked vs unlocked doors
+- Path appears valid (door_open, walkable=true) but is actually impassable
+- Agent needs to: unlock door, kick it down, or find alternate route
+- Currently agent just keeps retrying the same blocked path
+
+**Fix needed**:
+1. Detect locked door message and mark cell as non-walkable
+2. Implement door unlocking/kicking
+3. Find alternate paths when doors are locked
 
 ## Files
 - `diagnose_stuck.mjs` - Ground truth map analysis tool
