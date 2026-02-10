@@ -10,9 +10,9 @@ import { rn2 } from './rng.js';
 // Import special level generators
 // import { generate as generateKnox } from './levels/knox.js';
 // import { generate as generateMedusa } from './levels/medusa.js';
-// TEMP: Commented out due to syntax errors from Lua converter
-// import { generate as generateMedusa2 } from './levels/medusa-2.js';
-// import { generate as generateMedusa3 } from './levels/medusa-3.js';
+import { generate as generateMedusa1 } from './levels/medusa-1.js';
+import { generate as generateMedusa2 } from './levels/medusa-2.js';
+import { generate as generateMedusa3 } from './levels/medusa-3.js';
 // import { generate as generateSanctum } from './levels/sanctum.js';
 // import { generate as generateValley } from './levels/valley.js';
 // import { generate as generateTower1 } from './levels/tower1.js';
@@ -29,12 +29,11 @@ import { rn2 } from './rng.js';
 // import { generate as generateOrcus } from './levels/orcus.js';
 
 // Main dungeon special levels
-// import { generate as generateCastle } from './levels/castle.js';
-// import { generate as generateOracle } from './levels/oracle.js';
+import { generate as generateCastle } from './levels/castle.js';
+import { generate as generateOracle } from './levels/oracle.js';
 
-// Medusa levels (4 variants)
-// import { generate as generateMedusa1 } from './levels/medusa-1.js';
-// import { generate as generateMedusa4 } from './levels/medusa-4.js';
+// Medusa levels (4 variants) - medusa1-3 imported above
+import { generate as generateMedusa4 } from './levels/medusa-4.js';
 
 // Mine levels
 import { generate as generateMinefill } from './levels/minefill.js';
@@ -50,11 +49,11 @@ import { generate as generateMinetn6 } from './levels/minetn-6.js';
 import { generate as generateMinetn7 } from './levels/minetn-7.js';
 
 // Elemental planes
-// import { generate as generateAir } from './levels/air.js';
-// import { generate as generateEarth } from './levels/earth.js';
-// import { generate as generateFire } from './levels/fire.js';
-// import { generate as generateWater } from './levels/water.js';
-// import { generate as generateAstral } from './levels/astral.js';
+import { generate as generateAir } from './levels/air.js';
+import { generate as generateEarth } from './levels/earth.js';
+import { generate as generateFire } from './levels/fire.js';
+import { generate as generateWater } from './levels/water.js';
+import { generate as generateAstral } from './levels/astral.js';
 
 // Special room variants (all 13 bigrooms)
 import { generate as generateBigroom1 } from './levels/bigrm-1.js';
@@ -466,28 +465,26 @@ export const bigroomVariants = [
 ];
 
 // Export medusa variants for random selection
-// TEMP: Commented out because medusa level imports are commented out
-// export const medusaVariants = [
-//     generateMedusa1,
-//     generateMedusa2,
-//     generateMedusa3,
-//     generateMedusa4
-// ];
+export const medusaVariants = [
+    generateMedusa1,
+    generateMedusa2,
+    generateMedusa3,
+    generateMedusa4
+];
 
 // Export elemental plane generators
-// TEMP: All commented out due to Lua syntax errors in elemental plane files
-// export const elementalPlanes = {
-//     air: generateAir,
-//     earth: generateEarth,
-//     fire: generateFire,
-//     water: generateWater,
-//     astral: generateAstral
-// };
+export const elementalPlanes = {
+    air: generateAir,
+    earth: generateEarth,
+    fire: generateFire,
+    water: generateWater,
+    astral: generateAstral
+};
 
 // Export other special level generators
 export const otherSpecialLevels = {
-    // oracle: generateOracle,  // Commented out (import disabled)
-    // castle: generateCastle,  // Commented out (import disabled)
+    oracle: generateOracle,
+    castle: generateCastle,
     dungeon: generateDungeon,
     hellfill: generateHellfill,
     minefill: generateMinefill,

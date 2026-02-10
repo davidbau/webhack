@@ -7,9 +7,10 @@ import { ROOM, CORR, DOOR, SDOOR, SCORR } from './js/config.js';
 
 console.log('Testing depth 2 generation for seed163...\n');
 
-// Enable debug flags
-process.env.DEBUG_CORRIDORS = '0';  // Disable corridor spam
-process.env.DEBUG_ROOM_FILL = '1';   // Enable room fill debug
+// Enable debug flags (only if not already set)
+if (!process.env.DEBUG_CORRIDORS) process.env.DEBUG_CORRIDORS = '0';
+if (!process.env.DEBUG_CORRIDOR_DETAIL) process.env.DEBUG_CORRIDOR_DETAIL = '0';
+if (!process.env.DEBUG_ROOM_FILL) process.env.DEBUG_ROOM_FILL = '0';
 
 // Initialize for seed 163, Valkyrie (role 11)
 initRng(163);
@@ -55,8 +56,9 @@ console.log('DOOR: 23');
 console.log('SDOOR: 4');
 
 console.log(`\n=== Difference ===`);
-console.log(`ROOM: ${counts[1] - 219} (JS has ${counts[1] - 219 < 0 ? 'fewer' : 'more'})`);
-console.log(`CORR: ${counts[2] - 192} (JS has ${counts[2] - 192 < 0 ? 'fewer' : 'more'})`);
-console.log(`DOOR: ${counts[8] - 23} (JS has ${counts[8] - 23 < 0 ? 'fewer' : 'more'})`);
+console.log(`ROOM: ${(counts[ROOM] || 0) - 219} (JS has ${(counts[ROOM] || 0) - 219 < 0 ? 'fewer' : 'more'})`);
+console.log(`CORR: ${(counts[CORR] || 0) - 192} (JS has ${(counts[CORR] || 0) - 192 < 0 ? 'fewer' : 'more'})`);
+console.log(`DOOR: ${(counts[DOOR] || 0) - 23} (JS has ${(counts[DOOR] || 0) - 23 < 0 ? 'fewer' : 'more'})`);
+console.log(`SDOOR: ${(counts[SDOOR] || 0) - 4} (JS has ${(counts[SDOOR] || 0) - 4 < 0 ? 'fewer' : 'more'})`);
 
 console.log('\nDone!');

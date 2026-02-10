@@ -50,6 +50,17 @@ import { RUMORS_FILE_TEXT } from './rumor_data.js';
 import { getSpecialLevel } from './special_levels.js';
 // TEMP: Disabled due to syntax errors
 // import { themerooms_generate } from './themerms.js';
+// Stub function - creates regular rooms instead of themerooms
+function themerooms_generate(map, depth) {
+    const DEBUG = process.env.DEBUG_THEMEROOMS === '1';
+    // Create a regular room with automatic sizing (like C does when no theme)
+    // Use -1 for automatic placement, no size constraints
+    const result = create_room(map, -1, -1, -1, -1, -1, -1, OROOM, false, depth);
+    if (DEBUG) {
+        console.log(`themerooms_generate stub: create_room returned ${result}, nroom=${map.nroom}`);
+    }
+    return result;
+}
 import { parseEncryptedDataFile, parseRumorsFile } from './hacklib.js';
 import { EPITAPH_FILE_TEXT } from './epitaph_data.js';
 import { ENGRAVE_FILE_TEXT } from './engrave_data.js';
@@ -237,6 +248,8 @@ export function litstate_rnd(litstate, depth) {
 // C ref: sp_lev.c create_room() -- create a random room using rect BSP
 // Returns true if room was created, false if failed.
 export function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth, inThemerooms) {
+    const DEBUG_THEME = process.env.DEBUG_THEMEROOMS === '1';
+    const nroom_before = map.nroom;
     let xabs = 0, yabs = 0;
     let wtmp, htmp, xtmp, ytmp;
     let r1 = null;
@@ -261,7 +274,10 @@ export function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth, inThe
         if ((xtmp < 0 && ytmp < 0 && wtmp < 0 && xal < 0 && yal < 0)
             || vault) {
             r1 = rnd_rect();
-            if (!r1) return false;
+            if (!r1) {
+                if (DEBUG_THEME) console.log(`  create_room: no rect, rtype=${rtype}, VAULT=${rtype===VAULT}`);
+                return false;
+            }
 
             const hx = r1.hx, hy = r1.hy, lx = r1.lx, ly = r1.ly;
             let dx, dy;
@@ -372,16 +388,19 @@ export function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth, inThe
         if (vault) {
             map.vault_x = xabs;
             map.vault_y = yabs;
+            if (DEBUG_THEME) console.log(`  create_room: vault special case SUCCESS, nroom=${nroom_before}->${map.nroom}`);
             return true;
         }
 
         // Actually create the room
         add_room_to_map(map, xabs, yabs, xabs + wtmp - 1, yabs + htmp - 1,
                         lit, rtype, false);
+        if (DEBUG_THEME) console.log(`  create_room: SUCCESS, rtype=${rtype}, VAULT=${rtype===VAULT}, nroom=${nroom_before}->${map.nroom}`);
         return true;
 
     } while (++trycnt <= 100); // C ref: sp_lev.c trycnt limit is 100
 
+    if (DEBUG_THEME) console.log(`  create_room: FAILED after 100 tries, rtype=${rtype}, VAULT=${rtype===VAULT}`);
     return false;
 }
 
@@ -813,24 +832,38 @@ function makerooms(map, depth) {
 
     // Make rooms until satisfied (no more rects available)
     // C ref: mklev.c:393-417
+    const DEBUG = process.env.DEBUG_THEMEROOMS === '1';
     while (map.nroom < (MAXNROFROOMS - 1) && rnd_rect()) {
+        if (DEBUG) {
+            console.log(`Loop iteration: nroom=${map.nroom}, tries=${themeroom_tries}`);
+        }
         if (map.nroom >= Math.floor(MAXNROFROOMS / 6) && rn2(2)
             && !tried_vault) {
             tried_vault = true;
             // C ref: mklev.c:396-399 — create_vault()
+            if (DEBUG) console.log(`Creating vault...`);
             create_room(map, -1, -1, 2, 2, -1, -1, VAULT, true, depth, true);
         } else {
             // C ref: mklev.c:402-407
-            // TEMP: Disabled due to syntax errors in themerms.js
-            if (true) { // was: !themerooms_generate(map, depth)
+            const result = themerooms_generate(map, depth);
+            if (!result) {
                 // themeroom_failed
+                if (DEBUG) {
+                    console.log(`themeroom failed, tries=${themeroom_tries + 1}, nroom=${map.nroom}, breaking=${(themeroom_tries + 1) > 10 || map.nroom >= Math.floor(MAXNROFROOMS / 6)}`);
+                }
                 if (++themeroom_tries > 10
                     || map.nroom >= Math.floor(MAXNROFROOMS / 6))
                     break;
             } else {
+                if (DEBUG) {
+                    console.log(`themeroom succeeded, resetting tries, nroom=${map.nroom}`);
+                }
                 themeroom_tries = 0;
             }
         }
+    }
+    if (DEBUG) {
+        console.log(`Exited loop: nroom=${map.nroom}, tries=${themeroom_tries}`);
     }
 }
 

@@ -28,9 +28,9 @@ export function generate() {
        pools.set();
     }
     // some bigger ones
-    pools: pools | selection.grow(selection.set(selection.new()), "west")
-    pools: pools | selection.grow(selection.set(selection.new()), "north")
-    pools: pools | selection.grow(selection.set(selection.new()), "random")
+    pools = pools | selection.grow(selection.set(selection.new()), "west");
+    pools = pools | selection.grow(selection.set(selection.new()), "north");
+    pools = pools | selection.grow(selection.set(selection.new()), "random");
 
     // Lava pools surrounded by water
     des.terrain(pools.clone().grow("all"), "P");
