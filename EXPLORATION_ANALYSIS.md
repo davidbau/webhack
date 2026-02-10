@@ -51,10 +51,11 @@ Improve `findExplorationTarget()` to:
 
 This is a significant pathfinding refactor beyond quick fixes.
 
-## Current Results (After Secret Door Improvements)
-- **4/8 seeds (50%)** reach Dlvl 2+ with 500 turn limit
-- **Working seeds**: 11111 (Dlvl 2), 33333 (Dlvl 2), 55555 (Dlvl 2-3), 77777 (Dlvl 2)
-- **Stuck seeds**: 22222, 44444, 66666, 88888 (all stuck at Dlvl 1)
+## Current Results
+- **1-4/8 seeds** reach Dlvl 2+ with 500 turn limit (high RNG variability)
+- **Success rate varies**: 12.5% to 50% depending on monster encounters
+- **Typical working seeds**: 33333 (Dlvl 2), 77777 (Dlvl 2)
+- **Typical stuck seeds**: 22222, 44444, 66666, 88888 (stuck at Dlvl 1)
 
 ### Deep Investigation: Secret Doors & Disconnected Maps
 
@@ -114,6 +115,14 @@ This is a significant architectural refactor beyond incremental fixes.
 
 ## Previous Attempts
 
+3. **Waypoint Search Restriction** (failed):
+   - Attempted to only search at committed targets or stuck positions (not waypoints)
+   - **Result**: Success rate dropped from 4/8 (50%) to 1/8 (12.5%)
+   - **Key Insight**: Searching at waypoints is BENEFICIAL, not harmful
+   - Concentrated searching (21x at same position) likely finds secret doors
+   - The "repeated position" pattern is actually agent passing through critical junctions
+   - **Conclusion**: Opportunistic waypoint searching should remain enabled
+
 4. **Directional Diversification** (failed):
    - Pick from farther candidates every N turns to break directional bias
    - **Result**: No improvement; agent still stuck exploring wrong side of map
@@ -148,7 +157,55 @@ Seed 55555 testing with diagnostic tools:
 
 **Remaining issue**: Seeds 22222 and 44444 are stuck, but this is due to exploration/pathfinding problems, NOT movement execution failure. The agent correctly sends movement commands and they execute - the problem is choosing the right targets to navigate to.
 
+## Latest Investigation: Blacklist Management & Stuck Detection (Session 2)
+
+### Key Finding: Stuck Exploration Never Triggers
+Tested seed 22222 with instrumentation:
+- Stuck exploring detection: **0 times** in 300 turns
+- Blacklist clears from stuck detection: **0**
+- This explains why distant targets remain permanently blacklisted
+
+### Stuck Detection Thresholds (lines 1406-1412 in agent.js)
+```javascript
+const isStuckExploring = (
+    this.turnNumber > 100 &&
+    frontier.length > 50 &&      // Current condition
+    exploredPercent < 0.20       // Compares to full 80x21 grid
+);
+```
+
+**Problem**: The thresholds don't match NetHack's actual dungeon structure:
+- frontier.length > 50 may be too high for disconnected map sections
+- exploredPercent < 0.20 means < 336 cells of 1680 total
+- Seed 22222 explores ~190 cells (11.3%) but stuck detection still doesn't fire
+- Likely frontier.length is < 50 due to disconnected sections
+
+### Attempted Fix: Periodic Blacklist Clearing
+Added: Clear failedTargets every 50 turns when isStuckExploring (line 1413-1416)
+**Result**: No improvement because isStuckExploring never triggers
+
+### Root Cause Confirmed
+1. **Premature blacklisting**: Distant targets like (3,15) get blacklisted early
+2. **Insufficient clearing**: Blacklist only clears when stuck counter hits multiples of 30
+3. **Stuck detection gap**: Agent can be "moving without progressing" without triggering stuck
+4. **Threshold mismatch**: Current thresholds don't detect stuck state in disconnected maps
+
+### Blocked by Fundamental Architecture
+The stuck exploration detection logic cannot reliably identify when the agent is:
+- Moving locally without expanding to new areas
+- In a disconnected map section with low frontier but high total frontier
+- Making "movement progress" but no "exploration progress"
+
+**Next Steps** (requires major refactor):
+- Redesign stuck detection to track exploration progress (new cells/turn) not just position
+- Lower frontier threshold or make it adaptive to map structure
+- Track "exploration velocity" to detect slowdown even when moving
+- Or: Implement systematic exploration (flood-fill/wall-following) that doesn't rely on stuck detection
+
 ## Files
 - `diagnose_stuck.mjs` - Ground truth map analysis tool
-- `selfplay/agent.js` - Exploration priority fixes (commit e08b771)
-- Test results: 3/8 seeds reach Dlvl 2+, 1/8 reaches Dlvl 3
+- `check_connectivity.mjs` - BFS reachability checker
+- `visualize_with_secrets.mjs` - Map visualization with secret doors
+- `selfplay/agent.js` - Exploration improvements and opportunistic searching
+- `selfplay/brain/pathing.js` - Exploration target selection (findExplorationTarget)
+- Test results: 1-4/8 seeds reach Dlvl 2+ (high variance)
