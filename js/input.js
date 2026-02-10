@@ -163,7 +163,8 @@ export async function getCount(firstKey, maxCount, display) {
     let key = firstKey || 0;
     let backspaced = false;
     let showzero = true;
-    const MAX_COUNT = maxCount || 999999;
+    const LARGEST_INT = 32767; // C ref: global.h:133 LARGEST_INT (2^15 - 1)
+    const MAX_COUNT = maxCount || LARGEST_INT;
     const ERASE_CHAR = 127; // DEL
 
     // If first key is provided and it's a digit, use it

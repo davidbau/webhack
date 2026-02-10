@@ -1159,8 +1159,9 @@ class NetHackGame {
                 const firstCh = await nhgetch();
 
                 // Check if it's a digit - if so, collect count
+                // C ref: cmd.c:4958 — uses LARGEST_INT (32767) as max count
                 if (firstCh >= 48 && firstCh <= 57) { // '0'-'9'
-                    const { count, key } = await getCount(firstCh, 999999, this.display);
+                    const { count, key } = await getCount(firstCh, 32767, this.display);
                     this.commandCount = count;
                     ch = key;
 
