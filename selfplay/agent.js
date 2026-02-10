@@ -82,6 +82,7 @@ export class Agent {
             kills: 0,
             levelsExplored: 0,
             maxDepth: 0,
+            died: false,
             deathCause: '',
         };
     }
@@ -108,7 +109,14 @@ export class Agent {
                 });
             }
 
-            // Check for game over
+            // Check for death (HP <= 0)
+            if (this.status && this.status.hp <= 0) {
+                this.stats.died = true;
+                this.stats.deathCause = 'died (HP reached 0)';
+                break;
+            }
+
+            // Check for other game over conditions
             if (!(await this.adapter.isRunning())) {
                 this.stats.deathCause = 'game over';
                 break;
@@ -499,10 +507,14 @@ export class Agent {
             }
         }
 
-        // 1. If HP is critical and we have no way to heal, try to flee
-        if (this.status && this.status.hpCritical) {
+        // 1. If HP is low and monsters are chasing us, try to flee to upstairs
+        // Use threshold <= 50% to ensure we escape even at exactly 50% HP
+        const hpPercent = this.status ? this.status.hp / this.status.hpmax : 1;
+        if (this.status && hpPercent <= 0.5) {
             const nearbyMonsters = findMonsters(this.screen);
-            if (nearbyMonsters.length > 0) {
+            const adjacentMonster = this._findAdjacentMonster(px, py);
+            const hasHostileMonsters = nearbyMonsters.length > 0 || adjacentMonster !== null;
+            if (hasHostileMonsters) {
                 // Try to flee to upstairs if available and not too far
                 if (level.stairsUp.length > 0) {
                     const stairs = level.stairsUp[0];
@@ -534,7 +546,8 @@ export class Agent {
         if (this.status && this.status.hp < this.status.hpmax) {
             const hpPercent = this.status.hp / this.status.hpmax;
             const nearbyMonsters = findMonsters(this.screen);
-            const monstersNearby = nearbyMonsters.length > 0;
+            const adjacentMonster = this._findAdjacentMonster(px, py);
+            const monstersNearby = nearbyMonsters.length > 0 || adjacentMonster !== null;
 
             // Check if HP increased since last check (natural regen occurred)
             if (this.lastHP !== null && this.status.hp > this.lastHP) {
@@ -542,14 +555,16 @@ export class Agent {
             }
             this.lastHP = this.status.hp;
 
-            // Rest if HP is low and no monsters nearby
-            // Critical HP < 25%: rest for up to 100 turns
-            // Moderate HP < 50%: rest for up to 50 turns
+            // Rest if HP is low and no monsters nearby (including adjacent)
+            // Critical HP <= 50%: rest for up to 100 turns (MUST be >= MEDIUM monster threshold of 40%)
+            // Moderate HP < 70%: rest for up to 50 turns
             // (HP regen is probabilistic: (XL+CON)% chance per turn)
-            if (hpPercent < 0.25 && !monstersNearby && this.restTurns < 100) {
+            // Note: These thresholds MUST be higher than combat engagement thresholds
+            // to prevent flee-loops where agent can't rest but won't fight
+            if (hpPercent <= 0.5 && !monstersNearby && this.restTurns < 100) {
                 this.restTurns++;
-                return { type: 'rest', key: '.', reason: `HP critical, resting (${this.status.hp}/${this.status.hpmax}, ${this.restTurns}/100)` };
-            } else if (hpPercent < 0.5 && !monstersNearby && this.restTurns < 50) {
+                return { type: 'rest', key: '.', reason: `HP low, resting (${this.status.hp}/${this.status.hpmax}, ${this.restTurns}/100)` };
+            } else if (hpPercent < 0.7 && !monstersNearby && this.restTurns < 50) {
                 this.restTurns++;
                 return { type: 'rest', key: '.', reason: `resting to heal (${this.status.hp}/${this.status.hpmax}, ${this.restTurns}/50)` };
             }
