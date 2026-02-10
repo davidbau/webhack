@@ -51,10 +51,22 @@ Improve `findExplorationTarget()` to:
 
 This is a significant pathfinding refactor beyond quick fixes.
 
-## Current Results
-- **3/8 seeds** reach Dlvl 2+ (baseline was 5/8 after upstairs fix)
-- **1/8 seeds** reach Dlvl 3 (seed 44444, up from Dlvl 1)
-- Stuck seeds: 55555 (was 2→1 regression), 77777 (1), 88888 (1), 66666 (0)
+## Current Results (After Exploration Improvements)
+- **4/8 seeds (50%)** reach Dlvl 2+ with 500 turn limit
+- **Working seeds**: 11111 (Dlvl 2), 33333 (Dlvl 2), 55555 (Dlvl 2-3), 77777 (Dlvl 2)
+- **Stuck seeds**: 22222, 44444, 66666, 88888 (all stuck at Dlvl 1)
+
+### Improvements Made
+1. **Far target selection when stuck** - When frontier > 50 and explored < 20%, pick farthest targets instead of nearest to break out of local loops (pathing.js)
+2. **Early secret door searching** - Start searching at turn 150 if stuck (frontier high, exploration low) even if not thoroughly explored (agent.js)
+
+### Remaining Issues
+- Stuck seeds (22222, 44444) explore only ~15-17% of map with ~100 frontier cells
+- Agent tries far targets but can't reach them (likely behind multiple secret doors)
+- Search actions increase but don't find the critical secret doors in time
+- Some map layouts may require more sophisticated exploration strategies
+
+## Previous Attempts
 
 4. **Directional Diversification** (failed):
    - Pick from farther candidates every N turns to break directional bias

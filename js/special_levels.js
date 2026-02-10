@@ -22,17 +22,28 @@ import { generate as generateWizard2 } from './levels/wizard2.js';
 import { generate as generateWizard3 } from './levels/wizard3.js';
 
 // Demon lair levels
-// TEMP: Commented out due to syntax error in asmodeus.js from Lua converter
-// import { generate as generateAsmodeus } from './levels/asmodeus.js';
+import { generate as generateAsmodeus } from './levels/asmodeus.js';
 import { generate as generateBaalz } from './levels/baalz.js';
 import { generate as generateJuiblex } from './levels/juiblex.js';
 import { generate as generateOrcus } from './levels/orcus.js';
 
 // Main dungeon special levels
 import { generate as generateCastle } from './levels/castle.js';
+import { generate as generateOracle } from './levels/oracle.js';
 
-// Special room variants
-import { generate as generateBigroom } from './levels/bigroom.js';
+// Medusa levels (4 variants)
+import { generate as generateMedusa1 } from './levels/medusa-1.js';
+import { generate as generateMedusa4 } from './levels/medusa-4.js';
+
+// Elemental planes
+import { generate as generateAir } from './levels/air.js';
+import { generate as generateEarth } from './levels/earth.js';
+import { generate as generateFire } from './levels/fire.js';
+import { generate as generateWater } from './levels/water.js';
+import { generate as generateAstral } from './levels/astral.js';
+
+// Special room variants (all 13 bigrooms)
+import { generate as generateBigroom1 } from './levels/bigroom-1.js';
 import { generate as generateBigroom2 } from './levels/bigroom-2.js';
 import { generate as generateBigroom3 } from './levels/bigroom-3.js';
 import { generate as generateBigroom4 } from './levels/bigroom-4.js';
@@ -42,6 +53,7 @@ import { generate as generateBigroom7 } from './levels/bigroom-7.js';
 import { generate as generateBigroom8 } from './levels/bigroom-8.js';
 import { generate as generateBigroom9 } from './levels/bigroom-9.js';
 import { generate as generateBigroom10 } from './levels/bigroom-10.js';
+import { generate as generateBigroom11 } from './levels/bigroom-11.js';
 import { generate as generateBigroom12 } from './levels/bigroom-12.js';
 import { generate as generateBigroom13 } from './levels/bigroom-13.js';
 
@@ -164,8 +176,7 @@ registerSpecialLevel(VLADS_TOWER, 3, generateTower3, 'tower3');
 // Sanctum is the final level (level 10 in a typical game)
 // Wizard's Tower appears after getting the Amulet (levels 11-13)
 registerSpecialLevel(GEHENNOM, 1, generateValley, 'valley');
-// TEMP: Commented out due to syntax error in asmodeus.js
-// registerSpecialLevel(GEHENNOM, 3, generateAsmodeus, 'asmodeus');
+registerSpecialLevel(GEHENNOM, 3, generateAsmodeus, 'asmodeus');
 registerSpecialLevel(GEHENNOM, 4, generateBaalz, 'baalz');
 registerSpecialLevel(GEHENNOM, 5, generateJuiblex, 'juiblex');
 registerSpecialLevel(GEHENNOM, 6, generateOrcus, 'orcus');

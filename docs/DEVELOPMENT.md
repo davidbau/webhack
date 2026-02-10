@@ -302,6 +302,82 @@ python3 gen_monsters.py > js/monsters.js
 python3 gen_objects.py > js/objects.js
 ```
 
+### Converting Lua special levels to JavaScript
+
+NetHack 3.7 uses Lua scripts for special level generation (Castle, Asmodeus, Oracle,
+etc.). The `tools/lua_to_js.py` converter translates these to JavaScript modules:
+
+```bash
+# Convert a single level
+python3 tools/lua_to_js.py nethack-c/dat/asmodeus.lua > js/levels/asmodeus.js
+
+# Regenerate all converted levels (131 Lua files → 38 active JS files)
+for lua_file in nethack-c/dat/*.lua; do
+    base=$(basename "$lua_file" .lua)
+    # Convert names: bigrm-XX to bigroom-XX
+    js_name=$(echo "$base" | sed 's/^bigrm-/bigroom-/')
+    python3 tools/lua_to_js.py "$lua_file" > "js/levels/$js_name.js"
+done
+```
+
+#### What the converter handles
+
+The converter performs careful syntax translation to preserve game semantics:
+
+**String handling:**
+- Lua multiline strings `[[ ... ]]` → JavaScript template literals `` `...` ``
+- Backticks inside multiline strings are escaped: `` `liberated` `` → `` \`liberated\` ``
+- Template literals are protected from regex replacements during expression conversion
+- Regular quoted strings (`"..."`, `'...'`) are preserved as-is
+
+**Comments:**
+- Lua comments `--` → JavaScript comments `//`
+- Comment detection uses string tracking to avoid false matches inside strings
+
+**Expression conversion:**
+- String concatenation: `..` → `+`
+- Logical operators: `and` → `&&`, `or` → `||`, `not` → `!`
+- Method calls: `obj:method()` → `obj.method()`
+- Inequality: `~=` → `!==`
+- Equality: `==` → `===`
+- Table length: `#tbl` → `tbl.length`
+- Boolean/null: `nil` → `null`
+
+**Control flow:**
+- `for i = 1, n do ... end` → `for (let i = 1; i <= n; i++) { ... }`
+- `if ... then ... end` → `if (...) { ... }`
+- `function name() ... end` → `function name() { ... }`
+
+**Data structures:**
+- Arrays: `{ 1, 2, 3 }` → `[ 1, 2, 3 ]` (simple arrays only)
+- Objects: `{ key = value }` → `{ key: value }`
+
+**Special level DSL:**
+- Preserves `des.*` calls as-is (same API between Lua and JS)
+- Handles nested `des.map({ ..., contents: function() { ... } })` structures
+- Maintains proper statement boundaries with depth tracking
+
+#### Known limitations
+
+- Template literals with `${}` interpolation syntax would break (none found in NetHack Lua)
+- Complex nested table expressions may need manual adjustment
+- Assumes `des.*` functions have identical signatures between Lua and JS
+
+#### Debugging converter issues
+
+When a converted file has problems:
+
+1. **Check ASCII maps** — dots becoming `+` means template literal protection failed
+2. **Check comments** — comments eating code means statement splitting is wrong
+3. **Check syntax errors** — unbalanced braces usually means multiline collection broke
+4. **Run all Lua files** — `for f in nethack-c/dat/*.lua; do python3 tools/lua_to_js.py "$f" > /tmp/test.js || echo "FAILED: $f"; done`
+
+The converter tracks several state machines simultaneously:
+- String tracking (single/double quote detection)
+- Brace/paren depth (for multiline call collection)
+- Template literal extraction (to protect from regex corruption)
+- Comment context (to avoid converting `--` inside strings)
+
 ### Adding a new C patch
 
 Patches live in `test/comparison/c-harness/patches/` and are applied by

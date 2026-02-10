@@ -1,76 +1,83 @@
 /**
- * Vlad's Tower - Level 1 (Upper stage)
- * Ported from nethack-c/dat/tower1.lua
+ * tower1 - NetHack special level
+ * Converted from: tower1.lua
  */
 
-import { des, selection, shuffle, nh, finalize_level } from '../sp_lev.js';
+import * as des from '../sp_lev.js';
+import { selection } from '../sp_lev.js';
+import * as nh from '../sp_lev.js';
+import { shuffle } from '../sp_lev.js';
 
 export function generate() {
-    des.level_init({ style: 'solidfill', fg: ' ' });
+    // NetHack tower tower1.lua	$NHDT-Date: 1717178759 2024/05/31 18:05:59 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.3 $
+    // Copyright (c) 1989 by Jean-Christophe Collet
+    // NetHack may be freely redistributed.  See license for details.
+    // 
+    // 
+    // Upper stage of Vlad's tower
+    des.level_init({ style: "solidfill", fg: " " });
 
-    des.level_flags('mazelevel', 'noteleport', 'hardfloor', 'solidify');
+    des.level_flags("mazelevel", "noteleport", "hardfloor", "solidify");
+    des.map({ halign: "half-left", valign: "center", map: `
 
-    des.map({
-        halign: 'half-left',
-        valign: 'center',
-        map: `
-  --- --- ---
-  |.| |.| |.|
----S---S---S---
-|.......+.+...|
----+-----.-----
-  |...\\.|.+.|
----+-----.-----
-|.......+.+...|
----S---S---S---
-  |.| |.| |.|
-  --- --- ---
-`
-    });
+      --- --- ---  
+      |.| |.| |.|  
+    ---S---S---S---
+    |.......+.+...|
+    ---+-----.-----
+      |...\.|.+.|  
+    ---+-----.-----
+    |.......+.+...|
+    ---S---S---S---
+      |.| |.| |.|  
+      --- --- ---  
 
-    const niches = [
-        { x: 3, y: 1 }, { x: 3, y: 9 },
-        { x: 7, y: 1 }, { x: 7, y: 9 },
-        { x: 11, y: 1 }, { x: 11, y: 9 }
-    ];
+    ` });
+
+    const niches = [ [3,1], [3,9], [7,1], [7,9], [11,1], [11,9] ];
     shuffle(niches);
 
-    des.ladder('down', 11, 5);
-
+    des.ladder("down", 11,5);
     // The lord and his court
-    des.monster({ id: 'Vlad the Impaler', x: 6, y: 5 });
-    des.monster({ id: 'V', coord: niches[0] });
-    des.monster({ id: 'V', coord: niches[1] });
-    des.monster({ id: 'V', coord: niches[2] });
-
-    // The brides - only if vampires not genocided
-    const vgenod = nh.is_genocided('vampire');
-    if (!vgenod) {
-        des.monster({ id: 'vampire lady', coord: niches[3], name: 'Madame', waiting: 1 });
-        des.monster({ id: 'vampire lady', coord: niches[4], name: 'Marquise', waiting: 1 });
-        des.monster({ id: 'vampire lady', coord: niches[5], name: 'Countess', waiting: 1 });
+    des.monster("Vlad the Impaler", 6, 5);
+    des.monster("V",niches[1]);
+    des.monster("V",niches[2]);
+    des.monster("V",niches[3]);
+    // The brides; they weren't named in Bram Stoker's original _Dracula_
+    // and when appearing in umpteen subsequent books and movies there is
+    // no consensus for their names.  According to the Wikipedia entry for
+    // "Brides of Dracula", the "Czechoslovakian TV film Hrabe Drakula (1971)"
+    // gave them titles rather than (or perhaps in addition to) specific names
+    // and we use those titles here.  Marking them as 'waiting' forces them to
+    // start in vampire form instead of vampshifted into bat/fog/wolf form.
+    const Vgenod = nh.is_genocided("vampire");
+    const Vnames = [ null, null, null ];
+    if ((! Vgenod)) {
+       Vnames = ["Madame", "Marquise", "Countess"]
     }
-
+    des.monster({ id: "vampire lady", coord: niches[4], name: Vnames[1], waiting: 1 });
+    des.monster({ id: "vampire lady", coord: niches[5], name: Vnames[2], waiting: 1 });
+    des.monster({ id: "vampire lady", coord: niches[6], name: Vnames[3], waiting: 1 });
     // The doors
-    des.door('closed', 8, 3);
-    des.door('closed', 10, 3);
-    des.door('closed', 3, 4);
-    des.door('locked', 10, 5);
-    des.door('locked', 8, 7);
-    des.door('locked', 10, 7);
-    des.door('closed', 3, 6);
+    des.door("closed",8,3);
+    des.door("closed",10,3);
+    des.door("closed",3,4);
+    des.door("locked",10,5);
+    des.door("locked",8,7);
+    des.door("locked",10,7);
+    des.door("closed",3,6);
+    // treasures
+    des.object("chest", 7,5);
 
-    // Treasures - basic chests (TODO: add contents function support)
-    des.object({ id: 'chest', x: 7, y: 5 });
-    des.object({ id: 'chest', coord: niches[5] });
-    des.object({ id: 'chest', coord: niches[0] });
-    des.object({ id: 'chest', coord: niches[1] });
-    des.object({ id: 'chest', coord: niches[2] });
-    des.object({ id: 'chest', coord: niches[3] });
-    des.object({ id: 'chest', coord: niches[4] });
+    des.object("chest",niches[6]);
+    des.object("chest",niches[1]);
+    des.object("chest",niches[2]);
+    des.object("chest",niches[3]);
+    des.object({ id: "chest", coord: niches[4], contents: function() { des.object({ id: "wax candle", quantity: Math.random(4,8) }); } });
+    des.object({ id: "chest", coord: niches[5], contents: function() { des.object({ id: "tallow candle", quantity: Math.random(4,8) }); } });
+    // We have to protect the tower against outside attacks
+    des.non_diggable(selection.area(0,0,14,10));
 
-    // Protect tower against outside attacks
-    des.non_diggable(selection.area(0, 0, 14, 10));
 
-    return finalize_level();
+    return des.finalize_level();
 }

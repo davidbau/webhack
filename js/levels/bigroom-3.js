@@ -1,69 +1,98 @@
 /**
- * Big Room variant 3 (oval/elliptical shape)
- * Simplified port from nethack-c/dat/bigrm-4.lua
+ * bigrm-3 - NetHack special level
+ * Converted from: bigrm-3.lua
  */
 
-import { des, selection, finalize_level } from '../sp_lev.js';
+import * as des from '../sp_lev.js';
+import { selection } from '../sp_lev.js';
 
 export function generate() {
-    des.level_init({ style: 'solidfill', fg: ' ' });
+    // NetHack bigroom bigrm-3.lua	$NHDT-Date: 1652196021 2022/05/10 15:20:21 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.1 $
+    // Copyright (c) 1989 by Jean-Christophe Collet
+    // Copyright (c) 1990 by M. Stephenson
+    // NetHack may be freely redistributed.  See license for details.
+    // 
+    des.level_init({ style: "solidfill", fg: " " });
+    des.level_flags("mazelevel", "noflip");
 
-    des.level_flags('mazelevel', 'noflip');
+    des.map(`
 
-    // Oval-shaped big room with lava pools
-    des.map({
-        map: `
------------                                                     -----------
-|.........|                                                     |.........|
-|.........-------------                             -------------.........|
----...................------------       ------------...................---
-  --.............................---------.............................--
-   --.................................................................--
-    --...............................................................--
-     --......LLLLL.......................................LLLLL......--
-      --.....LLLLL.......................................LLLLL.....--
-      --.....LLLLL.......................................LLLLL.....--
-     --......LLLLL.......................................LLLLL......--
-    --...............................................................--
-   --.................................................................--
-  --.............................---------.............................--
----...................------------       ------------...................---
-|.........-------------                             -------------.........|
-|.........|                                                     |.........|
------------                                                     -----------
-`
-    });
+    ---------------------------------------------------------------------------
+    |.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|
+    |.........................................................................|
+    |.........................................................................|
+    |.........................................................................|
+    |..............---.......................................---..............|
+    |...............|.........................................|...............|
+    |.....|.|.|.|.|---|.|.|.|.|...................|.|.|.|.|.|---|.|.|.|.|.....|
+    |.....|--------   --------|...................|----------   --------|.....|
+    |.....|.|.|.|.|---|.|.|.|.|...................|.|.|.|.|.|---|.|.|.|.|.....|
+    |...............|.........................................|...............|
+    |..............---.......................................---..............|
+    |.........................................................................|
+    |.........................................................................|
+    |.........................................................................|
+    |.........................................................................|
+    |.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|.|
+    ---------------------------------------------------------------------------
 
-    // Fountains at corners
-    des.feature({ type: 'fountain', x: 5, y: 2 });
-    des.feature({ type: 'fountain', x: 5, y: 15 });
-    des.feature({ type: 'fountain', x: 69, y: 2 });
-    des.feature({ type: 'fountain', x: 69, y: 15 });
+    `);
 
-    // Light the room
-    des.region(selection.area(1, 1, 73, 16), 'lit');
+    // Dungeon Description
+    des.region(selection.area(1,1,73,16), "lit");
+
+    // replace some walls
+    if (percent(66)) {
+       const sel = selection.match("[.w.]");
+       const terrains = ["F", "T", "W", "Z"];
+       const choice = terrains[Math.random(1, terrains.length)];
+       des.terrain(sel, choice);
+    }
 
     // Stairs
-    des.stair('up');
-    des.stair('down');
+    des.stair("up");
+    des.stair("down");
 
-    // Non-diggable walls
+    // Non diggable walls
     des.non_diggable();
 
-    // Objects
-    for (let i = 0; i < 15; i++) {
-        des.object();
+    for (let i = 1; i <= 15; i++) {
+       des.object();
     }
 
-    // Traps
-    for (let i = 0; i < 6; i++) {
-        des.trap();
+    for (let i = 1; i <= 6; i++) {
+       des.trap();
     }
 
-    // Monsters
-    for (let i = 0; i < 28; i++) {
-        des.monster();
-    }
+    des.monster({ x: 1, y: 1 });
+    des.monster({ x: 13, y: 1 });
+    des.monster({ x: 25, y: 1 });
+    des.monster({ x: 37, y: 1 });
+    des.monster({ x: 49, y: 1 });
+    des.monster({ x: 61, y: 1 });
+    des.monster({ x: 73, y: 1 });
+    des.monster({ x: 7, y: 7 });
+    des.monster({ x: 13, y: 7 });
+    des.monster({ x: 25, y: 7 });
+    des.monster({ x: 37, y: 7 });
+    des.monster({ x: 49, y: 7 });
+    des.monster({ x: 61, y: 7 });
+    des.monster({ x: 67, y: 7 });
+    des.monster({ x: 7, y: 9 });
+    des.monster({ x: 13, y: 9 });
+    des.monster({ x: 25, y: 9 });
+    des.monster({ x: 37, y: 9 });
+    des.monster({ x: 49, y: 9 });
+    des.monster({ x: 61, y: 9 });
+    des.monster({ x: 67, y: 9 });
+    des.monster({ x: 1, y: 16 });
+    des.monster({ x: 13, y: 16 });
+    des.monster({ x: 25, y: 16 });
+    des.monster({ x: 37, y: 16 });
+    des.monster({ x: 49, y: 16 });
+    des.monster({ x: 61, y: 16 });
+    des.monster({ x: 73, y: 16 });
 
-    return finalize_level();
+
+    return des.finalize_level();
 }

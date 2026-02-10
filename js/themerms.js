@@ -1181,6 +1181,7 @@ function themeroom_pick8_pillars(map, depth) {
     if (!create_room(map, -1, -1, 10, 10, -1, -1, THEMEROOM, -1, depth, true))
         return false;
     const room = map.rooms[map.nroom - 1];
+    room.needfill = FILL_NORMAL;
     // Lua: { "-", "-", "-", "-", "L", "P", "T" }
     // → [HWALL, HWALL, HWALL, HWALL, LAVAPOOL, POOL, TREE]
     const terrains = [HWALL, HWALL, HWALL, HWALL, LAVAPOOL, POOL, TREE];
@@ -1211,6 +1212,7 @@ function themeroom_pick9_mausoleum(map, depth) {
     if (!create_room(map, -1, -1, 5 + w * 2, 5 + h * 2, -1, -1, THEMEROOM, -1, depth, true))
         return false;
     const outer = map.rooms[map.nroom - 1];
+    outer.needfill = FILL_NORMAL;
     // Inner 1×1 sub-room at center
     const oW = outer.hx - outer.lx + 1;
     const oH = outer.hy - outer.ly + 1;
@@ -1221,6 +1223,7 @@ function themeroom_pick9_mausoleum(map, depth) {
     rn2(100);
     const inner = create_subroom(map, outer, cx, cy, 1, 1, THEMEROOM, -1, depth);
     if (inner) {
+        inner.needfill = FILL_NORMAL;
         inner.needjoining = false;
         if (rn2(100) < 50) { // percent(50) — monster
             const monClasses = ['M', 'V', 'L', 'Z']; // mummy, vampire, lich, zombie

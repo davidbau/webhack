@@ -912,8 +912,16 @@ export class Agent {
         // Don't waste time searching when there are still many unexplored frontier cells
         const thoroughlyExplored = frontierSmall || exploredPercent > 0.50;  // Explored 50%+ of map
 
-        // Trigger searching if: no downstairs found AND explored most reachable areas
-        const shouldSearch = level.stairsDown.length === 0 && this.turnNumber > 60 && thoroughlyExplored;
+        // Also consider stuck: high frontier but very low exploration progress
+        // This indicates frontier cells are unreachable without finding secrets
+        const stuckExploring = (
+            this.turnNumber > 150 &&
+            frontier.length > 50 &&   // Many frontier cells
+            exploredPercent < 0.20    // But low overall coverage
+        );
+
+        // Trigger searching if: no downstairs found AND (explored most reachable areas OR stuck)
+        const shouldSearch = level.stairsDown.length === 0 && this.turnNumber > 60 && (thoroughlyExplored || stuckExploring);
         if (shouldSearch) {
             const searchCandidates = level.getSearchCandidates();
             // Filter to candidates that haven't been heavily searched yet
@@ -1351,7 +1359,19 @@ export class Agent {
 
         // Find a new target: use findExplorationTarget but commit to its destination
         // Skip blacklisted targets we've failed to reach
-        const explorationPath = findExplorationTarget(level, px, py, this.recentPositions);
+        //
+        // Stuck detection: If frontier is high but exploration progress is low,
+        // switch to picking FAR targets to break out of local loops
+        const frontier = level.getExplorationFrontier();
+        const exploredPercent = level.exploredCount / (80 * 21);
+        const isStuckExploring = (
+            this.turnNumber > 100 &&
+            frontier.length > 50 &&  // High frontier
+            exploredPercent < 0.20   // But low coverage
+        );
+
+        const options = { preferFar: isStuckExploring };
+        const explorationPath = findExplorationTarget(level, px, py, this.recentPositions, options);
         if (explorationPath && explorationPath.found) {
             const dest = explorationPath.path[explorationPath.path.length - 1];
             const destKey = dest.y * 80 + dest.x;
@@ -1359,6 +1379,9 @@ export class Agent {
                 this.committedTarget = { x: dest.x, y: dest.y };
                 this.committedPath = explorationPath;
                 this.consecutiveWaits = 0;
+                if (isStuckExploring) {
+                    return this._followPath(explorationPath, 'explore', `[STUCK-FAR] exploring toward distant (${dest.x},${dest.y})`);
+                }
                 return this._followPath(explorationPath, 'explore', `exploring toward (${dest.x},${dest.y})`);
             }
         }

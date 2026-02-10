@@ -232,10 +232,14 @@ export function findNearest(levelMap, sx, sy, predicate) {
  * @param {Set} [recentTargets] - recently-visited target positions to deprioritize
  * @returns {PathResult|null}
  */
-export function findExplorationTarget(levelMap, sx, sy, recentTargets = null) {
+export function findExplorationTarget(levelMap, sx, sy, recentTargets = null, options = {}) {
     // BFS outward from player, collecting ALL reachable frontier cells.
     // A frontier cell is an explored walkable cell that borders unexplored space.
     // Pick the best one considering: search history, distance, and recency.
+    //
+    // options.preferFar: When true, prefer distant targets to break out of local loops
+    const preferFar = options.preferFar || false;
+
     const visited = new Uint8Array(MAP_COLS * MAP_ROWS);
     const queue = [{ x: sx, y: sy, dist: 0 }];
     const idx = (x, y) => y * MAP_COLS + x;
@@ -291,7 +295,7 @@ export function findExplorationTarget(levelMap, sx, sy, recentTargets = null) {
     // Sort by priority:
     // 1. Strongly prefer non-recently-visited
     // 2. Prefer less-searched cells (more likely to lead somewhere)
-    // 3. Among remaining, prefer nearest by BFS distance
+    // 3. Among remaining, prefer nearest by BFS distance (or farthest if preferFar)
     //
     // Note: we do NOT penalize adjacent cells. In corridors, the next
     // frontier cell IS adjacent and we want to keep moving forward.
@@ -301,7 +305,9 @@ export function findExplorationTarget(levelMap, sx, sy, recentTargets = null) {
         // Strongly prefer unsearched over heavily-searched
         if (a.searched >= 3 && b.searched < 3) return 1;
         if (b.searched >= 3 && a.searched < 3) return -1;
-        return a.dist - b.dist;
+        // When stuck, prefer FAR targets to break out of local loops
+        if (preferFar) return b.dist - a.dist;  // Reverse sort for farthest first
+        return a.dist - b.dist;  // Normal: nearest first
     });
 
     const target = candidates[0];
