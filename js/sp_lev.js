@@ -13,10 +13,10 @@
  * - The API is designed to be called from transpiled Lua → JS level files
  */
 
-import { GameMap } from './map.js';
+import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1 } from './rng.js';
 import { mksobj, mkobj } from './mkobj.js';
-import { create_room, makecorridors, init_rect, update_rect_pool_for_room, bound_digging, mineralize } from './dungeon.js';
+import { create_room, makecorridors, init_rect, update_rect_pool_for_room, bound_digging, mineralize, fill_ordinary_room } from './dungeon.js';
 import {
     STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,
     CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, ROOM, CORR,
@@ -215,6 +215,13 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth) {
 
         // Extract the last room that was added to map.rooms
         const room = levelState.map.rooms[levelState.map.rooms.length - 1];
+
+        // C ref: mklev.c - OROOM and THEMEROOM rooms get needfill=FILL_NORMAL
+        const OROOM_LOCAL = 0;
+        const THEMEROOM_LOCAL = 1;
+        if (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL) {
+            room.needfill = FILL_NORMAL;
+        }
 
         // Mark this room as already added to map so caller knows to skip duplicate work
         room._alreadyAdded = true;
@@ -1281,6 +1288,8 @@ export function room(opts = {}) {
     }
 
     // Create room entry in map.rooms array
+    const OROOM_LOCAL = 0;
+    const THEMEROOM_LOCAL = 1;
     const room = {
         lx: roomX,
         ly: roomY,
@@ -1288,7 +1297,9 @@ export function room(opts = {}) {
         hy: roomY + roomH - 1,
         rtype: rtype,
         rlit: lit >= 0 ? lit : (rn2(2) === 1 ? 1 : 0),
-        irregular: false
+        irregular: false,
+        // C ref: mklev.c - OROOM and THEMEROOM get needfill=FILL_NORMAL by default
+        needfill: (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL) ? FILL_NORMAL : undefined
     };
 
     // Mark floor tiles for the room
@@ -2212,6 +2223,40 @@ export function finalize_level() {
             levelState.map.monsters = [];
         }
         levelState.map.monsters.push(...levelState.monsters);
+    }
+
+    // C ref: mklev.c:1388-1422 — Fill ordinary rooms with random content
+    // This happens AFTER deferred content but BEFORE wallification
+    if (levelState.map) {
+        const map = levelState.map;
+        const depth = levelState.levelDepth || 1;
+        const OROOM = 0;
+        const THEMEROOM = 1;
+        const DEBUG = false;
+
+        // Count fillable rooms (only top-level rooms, not subrooms)
+        const isFillable = (r) => (r.rtype === OROOM || r.rtype === THEMEROOM)
+                                  && r.needfill === FILL_NORMAL;
+        let fillableCount = 0;
+        for (let i = 0; i < map.nroom; i++) {
+            const croom = map.rooms[i];
+            if (DEBUG) console.log(`  Room ${i}: rtype=${croom.rtype}, needfill=${croom.needfill}, fillable=${isFillable(croom)}`);
+            if (isFillable(croom)) fillableCount++;
+        }
+
+        if (DEBUG) console.log(`fillable_level: ${fillableCount} fillable rooms, depth=${depth}`);
+
+        // One random fillable room gets bonus items
+        let bonusCountdown = fillableCount > 0 ? rn2(fillableCount) : -1;
+
+        for (let i = 0; i < map.nroom; i++) {
+            const croom = map.rooms[i];
+            const fillable = isFillable(croom);
+            if (DEBUG && fillable) console.log(`  Filling room ${i}, bonus=${bonusCountdown === 0}`);
+            fill_ordinary_room(map, croom, depth,
+                               fillable && bonusCountdown === 0);
+            if (fillable) bonusCountdown--;
+        }
     }
 
     // Apply wallification first (before flipping)

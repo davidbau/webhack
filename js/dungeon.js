@@ -2383,7 +2383,7 @@ const extra_classes = [
 
 // C ref: mklev.c fill_ordinary_room()
 // C ref: ROOM_IS_FILLABLE: (rtype == OROOM || rtype == THEMEROOM) && needfill == FILL_NORMAL
-function fill_ordinary_room(map, croom, depth, bonusItems) {
+export function fill_ordinary_room(map, croom, depth, bonusItems) {
     if (croom.rtype !== OROOM && croom.rtype !== THEMEROOM) return;
 
     // C ref: mklev.c:944-952 — recursively fill subrooms first, before
