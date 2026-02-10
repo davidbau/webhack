@@ -56,6 +56,11 @@ class NetHackGame {
         this.multi = 0;       // C ref: allmain.c gm.multi — remaining command repeats
         this.commandCount = 0; // C ref: cmd.c gc.command_count — user-entered count
         this.cmdKey = 0;      // C ref: cmd.c gc.cmd_key — command to repeat
+        this.lastCommand = null; // C ref: cmd.c CQ_REPEAT — last command for Ctrl+A repeat
+        // Prefix command flags
+        this.menuRequested = false; // C ref: iflags.menu_requested — 'm' prefix
+        this.forceFight = false;    // C ref: context.forcefight — 'F' prefix
+        this.runMode = 0;           // C ref: context.run — 'G'/'g' prefix (2=rush, 3=run)
         // RNG accessors for storage.js (avoids circular imports)
         this._rngAccessors = {
             getRngState, setRngState, getRngCallCount, setRngCallCount,
@@ -1158,9 +1163,19 @@ class NetHackGame {
                 // Read first character
                 const firstCh = await nhgetch();
 
-                // Check if it's a digit - if so, collect count
-                // C ref: cmd.c:4958 — uses LARGEST_INT (32767) as max count
-                if (firstCh >= 48 && firstCh <= 57) { // '0'-'9'
+                // C ref: cmd.c:1687 do_repeat() — Ctrl+A repeats last command
+                if (firstCh === 1) { // Ctrl+A
+                    if (this.lastCommand) {
+                        // Replay the last command
+                        this.commandCount = this.lastCommand.count;
+                        ch = this.lastCommand.key;
+                    } else {
+                        this.display.putstr_message('There is no command available to repeat.');
+                        ch = 0; // No command
+                    }
+                } else if (firstCh >= 48 && firstCh <= 57) { // '0'-'9'
+                    // Check if it's a digit - if so, collect count
+                    // C ref: cmd.c:4958 — uses LARGEST_INT (32767) as max count
                     const { count, key } = await getCount(firstCh, 32767, this.display);
                     this.commandCount = count;
                     ch = key;
@@ -1190,8 +1205,24 @@ class NetHackGame {
                 continue;
             }
 
+            // Save command for repeat (but don't save Ctrl+A itself)
+            // C ref: cmd.c:3575 — stores command in CQ_REPEAT queue
+            if (ch !== 1 && this.multi === 0) { // Don't save during multi-repeat
+                this.lastCommand = { key: ch, count: this.commandCount };
+            }
+
             // Process command
             const result = await rhack(ch, this);
+
+            // C ref: allmain.c:948 interrupt_multi() — check for interruptions
+            // Interrupt multi-command sequences if something interesting happens
+            if (this.multi > 0 && result.tookTime) {
+                if (this.shouldInterruptMulti()) {
+                    this.multi = 0;
+                    this.display.putstr_message('--More--');
+                    await nhgetch(); // Wait for keypress
+                }
+            }
 
             // If time passed, process turn effects
             // C ref: allmain.c moveloop_core() -- context.move handling
@@ -1227,6 +1258,36 @@ class NetHackGame {
 
         // Game over
         await this.showGameOver();
+    }
+
+    // Check if multi-command sequence should be interrupted
+    // C ref: allmain.c:948 interrupt_multi()
+    shouldInterruptMulti() {
+        // Don't interrupt during run mode (handled separately)
+        if (this.runMode > 0) {
+            return false;
+        }
+
+        // Interrupt if there's a hostile monster adjacent to player
+        const { x, y } = this.player;
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                if (dx === 0 && dy === 0) continue;
+                const mon = this.map.monsterAt(x + dx, y + dy);
+                if (mon && !mon.tame && !mon.peaceful) {
+                    return true; // Hostile monster nearby!
+                }
+            }
+        }
+
+        // Interrupt if HP changed (took damage or healed)
+        if (this.lastHP !== undefined && this.player.hp !== this.lastHP) {
+            this.lastHP = this.player.hp;
+            return true;
+        }
+        this.lastHP = this.player.hp;
+
+        return false;
     }
 
     // C ref: mon.c mcalcmove() — calculate monster's movement for a turn

@@ -84,6 +84,7 @@ could pray — read on. We'll do our best to keep you alive.
 
 **Appendices**
 
+- [Advanced Controls](#advanced-controls) — Command counts, prefixes, and efficiency techniques
 - [Sokoban Solutions](#sokoban-solutions) — All eight level variants, solved
 - [Voluntary Challenges](#voluntary-challenges) — Conducts and self-imposed restrictions
 - [Shopping and Shopkeeper Pricing](#shopping-and-shopkeeper-pricing) — Commerce in the dungeon
@@ -3643,6 +3644,137 @@ altar, make one sacrifice, and end this.
 ---
 
 ## Appendices
+
+---
+
+### Advanced Controls
+
+Or: *How to Stop Typing the Same Thing Over and Over*
+
+The basic commands get you through most situations: `h` moves west, `s` searches, `.` waits. But there's a layer of control built on top of these basics that experienced players use constantly. These are the commands that let you say "do that ten more times" or "fight even though you don't see anything" or "yes, I know I just typed that, do it again."
+
+If you're new to NetHack, skip this section. Learn to walk before you learn to run. But if you've been playing for a while and you're tired of mashing the same key twenty times in a row, read on.
+
+#### Command Counts (Multi-Digit Prefixes)
+
+**The Problem:** You want to search the same spot ten times. You type `s` ten times. Your finger hurts. There must be a better way.
+
+**The Solution:** Type `10s`. The dungeon will search ten times in a row, stopping early if something interesting happens (like finding a secret door, or a monster appearing, or your HP changing).
+
+This works for any command. `20.` waits twenty turns. `5h` moves west five times. `99s` searches ninety-nine times (though you'll probably find the secret door before then, or conclude it doesn't exist).
+
+**The Limits:** You can type up to five digits, for a maximum count of 32,767. If you type more, the count caps at 32,767. If you need to repeat something more than 32,767 times, you have bigger problems than this guide can solve.
+
+**When It Stops:** Multi-command sequences are interrupted automatically when:
+- A hostile monster appears adjacent to you
+- Your HP changes (you take damage or heal)
+- A `--More--` prompt appears
+
+Press ESC to cancel a multi-command sequence early.
+
+**Example:** Standing next to a likely secret door location, you type `10s`. The game searches once. Twice. Three times. On the fourth search: "You find a hidden door!" The sequence stops. You didn't type `s` ten times — you told the dungeon to search *up to* ten times, and it knew to stop when it found something.
+
+#### Repeat Last Command (Ctrl+A)
+
+**The Problem:** You searched. Nothing. You want to search again. You could type `s` again, but there must be a better way.
+
+**The Solution:** Press **Ctrl+A**. The game repeats whatever you just did — same command, same count if you used one.
+
+Searched once? Ctrl+A searches again. Moved west with `h`? Ctrl+A moves west again. Searched ten times with `10s`? Ctrl+A searches ten more times.
+
+This is one of the most commonly used advanced commands. Once you learn it, you'll use it constantly. It's faster than retyping, and it works for *any* command.
+
+**What It Remembers:** The last command you executed successfully. Not attempts that failed or were canceled — the last thing that actually happened.
+
+**When to Use It:** Whenever you want to "do that again." Searching repeatedly. Moving in the same direction. Waiting multiple times. Reading the same scroll. (Okay, maybe not that last one.)
+
+#### Prefix Commands (Command Modifiers)
+
+Sometimes you want to modify how the next command behaves. NetHack has a system for this: type a prefix command, then type the command you want to modify. The prefix applies to the next command only, then clears.
+
+##### Fight Prefix (`F`)
+
+**What It Does:** Forces your next movement to attack, even if you don't see a monster there.
+
+**When to Use It:**
+- You suspect an invisible monster is adjacent
+- A monster is displaced (you see it as being somewhere it isn't)
+- You want to attack your own pet (please don't)
+
+**Example:** You hear something breathing nearby, but you don't see anything. You type `Fh` (F, then h). Your character swings west. If there's an invisible monster there, you attack it. If not, you just move west normally.
+
+**The Double-Press Cancel:** Type `F` twice in a row and it cancels. This applies to all prefix commands.
+
+##### Run and Rush Prefixes (`G` and `g`)
+
+**What They Do:**
+- `G` (run): Next direction key runs until something interesting appears
+- `g` (rush): Like run, but... honestly, in practice they work the same
+
+This is an alternative to capital letters. `Gh` runs west. `H` also runs west. Use whichever you prefer.
+
+**When to Use Them:** When you want to move quickly across explored territory. The run stops when you encounter:
+- A monster
+- An item you haven't seen before
+- A trap
+- A branch in the corridor
+- A closed door
+
+**Example:** You're in a long explored corridor. Type `Gh`. Your character runs west until the corridor ends or something interesting appears.
+
+##### Modify Prefix (`m`)
+
+**What It Does:** Modifies the next command. For movement, it means "move without attacking" (when implemented). For other commands, it may request a menu instead of a default action (when implemented).
+
+**Current Status:** The `m` prefix is recognized but doesn't fully affect behavior yet. It's here for completeness and will be fully functional soon.
+
+**When It Will Matter:** Once pets are more common, `m` will let you swap places with them without accidentally attacking. Once autopickup exists, `m` will let you move over items without picking them up.
+
+#### Navigation Tips
+
+**Capital Letters = Run:** `H` runs west. `J` runs south. `K` runs north. `L` runs east. The diagonals work too: `Y` runs northwest, `U` runs northeast, `B` runs southwest, `N` runs southeast.
+
+**The Run Rule:** Running stops when something interesting appears. A monster. An item. A branch. A door. Anything that might require a decision. The dungeon is trying to help you not run into trouble.
+
+**Arrow Keys:** Work like you'd expect. Arrow key movement also runs if you hold Shift, but capital letters are usually faster for experienced players.
+
+#### Message History (Ctrl+P)
+
+Press **Ctrl+P** to see the last message. Press it again to see the one before that. Keep pressing to scroll back through message history.
+
+**When to Use It:** You saw something important flash by. A warning about poison. A monster's special ability. A shopkeeper's price quote. Ctrl+P lets you review it.
+
+**The Limit:** Message history stores the last several dozen messages. Beyond that, they're gone. Write down the important ones.
+
+#### Redraw Screen (Ctrl+R)
+
+Press **Ctrl+R** to redraw the screen. Useful if your terminal gets garbled or if you suspect a display bug.
+
+**When to Use It:** Rarely. But when you need it, you really need it.
+
+#### The Learning Curve
+
+You don't need to memorize all of these at once. Start with command counts (`10s`) and repeat last command (Ctrl+A). Those two alone will save you thousands of keystrokes over the course of a game.
+
+The prefix commands can wait until you need them. The first time you suspect an invisible monster, you'll remember `F` exists and look it up. The first time you're running across a long corridor, you'll remember `G` or capital letters exist. Let the game teach you when the tools are useful.
+
+The dungeon rewards efficiency, but it doesn't demand it on day one.
+
+#### Related Options
+
+Several options affect how commands and controls work. Access them with the `O` command (that's capital O, not zero).
+
+**`number_pad`**: Enables numeric keypad for movement (1-9 for directions). Off by default. If you enable this, digit prefixes for command counts work differently — you'll need to press `n` first to enter a count.
+
+**`autopickup`**: When implemented, this will make you automatically pick up certain items when you walk over them. The `m` prefix will let you move over items without triggering autopickup. Currently not yet implemented in this version.
+
+**`DECgraphics`**: Changes how walls and corridors are drawn. Doesn't affect controls, but might affect how quickly you can read the map.
+
+**`verbose`**: Controls whether the game gives you detailed messages. When on, interruptions to multi-command sequences explain *why* they stopped.
+
+**`msg_window`**: Lets you see multiple messages at once in a dedicated message window, rather than one message at a time on the status line. Extremely useful for reviewing what just happened without Ctrl+P.
+
+The options system is deep and intimidating. Don't worry about most of them when starting out. The defaults are reasonable. But if you find yourself annoyed by some aspect of the interface, check the options — there's probably a setting for it.
 
 ---
 
