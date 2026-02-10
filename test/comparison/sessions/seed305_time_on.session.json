@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "seed": 305,
+  "type": "option_test",
+  "option": "time",
+  "option_value": true,
+  "description": "Test time=on - should show turn counter T:N in status line",
+  "character": {
+    "name": "Wizard",
+    "role": "Wizard",
+    "race": "elf",
+    "gender": "male",
+    "align": "chaotic"
+  },
+  "startup": {
+    "rngCalls": 3873,
+    "screen": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "              ----- --------",
+      "              |....../.@f...",
+      "              |............|",
+      "              |....:.......+",
+      "              |............|",
+      "              --------------",
+      "",
+      "",
+      "",
+      "Wizard the Evoker              St:10 Dx:13 Co:13 In:16 Wi:14 Ch:9 Chaotic",
+      "Dlvl:1 $:0 HP:11(11) Pw:9(9) AC:9 Xp:1 T:1"
+    ]
+  },
+  "steps": []
+}
