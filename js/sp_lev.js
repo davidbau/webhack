@@ -2427,6 +2427,16 @@ export const selection = {
                 const idx = rn2(coords.length);
                 return coords[idx];
             },
+            /**
+             * iterate(func)
+             * Call a function for each coordinate in the selection.
+             * The function receives (x, y) as parameters.
+             */
+            iterate: (func) => {
+                for (const coord of coords) {
+                    func(coord.x, coord.y);
+                }
+            },
         };
         return sel;
     },

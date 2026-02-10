@@ -955,6 +955,17 @@ export function themerooms_generate(map, depth) {
       themerooms[actualrm].contents();
       return true;
    }
+
+   // C ref: mklev.c:402-407 — After ~6 theme rooms, start declining with increasing probability
+   // This allows the makerooms() break condition to trigger and creates space for ordinary rooms
+   if (map.nroom >= 6) {
+      // Decline with 50% probability after 6 rooms
+      // This matches C NetHack's behavior where theme room attempts start failing
+      if (rn2(2)) {
+         return false;
+      }
+   }
+
    let pick = null;
    let total_frequency = 0;
    for (let i = 0; i < themerooms.length; i++) {
