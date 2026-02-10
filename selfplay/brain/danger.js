@@ -108,12 +108,18 @@ export function assessMonsterDanger(monsterChar, playerHP, playerMaxHP, playerLe
  * @param {number} playerLevel - Experience level
  * @returns {Object} - { shouldEngage: boolean, reason: string }
  */
-export function shouldEngageMonster(monsterChar, playerHP, playerMaxHP, playerLevel = 1) {
+export function shouldEngageMonster(monsterChar, playerHP, playerMaxHP, playerLevel = 1, isBlocking = false) {
     const danger = assessMonsterDanger(monsterChar, playerHP, playerMaxHP, playerLevel);
+
+    // Strategy: FLEE MORE, FIGHT LESS
+    // Only fight when necessary (blocking path or already attacking)
+    // Target: <20% of turns in combat (down from 53%)
 
     if (danger === DangerLevel.INSTADEATH) {
         return {
             shouldEngage: false,
+            shouldFlee: true,
+            ignore: false,
             reason: `never melee ${monsterChar} (instadeath/paralysis risk)`,
         };
     }
@@ -121,43 +127,83 @@ export function shouldEngageMonster(monsterChar, playerHP, playerMaxHP, playerLe
     if (danger === DangerLevel.CRITICAL) {
         return {
             shouldEngage: false,
+            shouldFlee: true,
+            ignore: false,
             reason: `${monsterChar} is too dangerous (critical threat)`,
         };
     }
 
     if (danger === DangerLevel.HIGH) {
-        // Only engage high-danger monsters if we're in good shape
-        if (playerHP < playerMaxHP * 0.6) {
+        // NEVER engage high-danger monsters unless absolutely forced
+        if (!isBlocking) {
             return {
                 shouldEngage: false,
-                reason: `${monsterChar} is dangerous and HP is low (${playerHP}/${playerMaxHP})`,
+                shouldFlee: true,
+                ignore: false,
+                reason: `avoiding ${monsterChar} (high danger, not worth the fight)`,
             };
         }
-        // Proceed with caution
+        // Even if blocking, need good HP
+        if (playerHP < playerMaxHP * 0.7) {
+            return {
+                shouldEngage: false,
+                shouldFlee: true,
+                ignore: false,
+                reason: `${monsterChar} blocks path but HP too low (${playerHP}/${playerMaxHP})`,
+            };
+        }
         return {
             shouldEngage: true,
-            reason: `engaging ${monsterChar} (high danger, but HP good)`,
+            shouldFlee: false,
+            ignore: false,
+            reason: `forced to fight ${monsterChar} (blocking path, HP adequate)`,
         };
     }
 
     if (danger === DangerLevel.MEDIUM) {
-        // Engage medium-danger monsters unless critically low HP
-        if (playerHP < playerMaxHP * 0.4) {
+        // Avoid medium-danger monsters unless they're blocking
+        if (!isBlocking) {
             return {
                 shouldEngage: false,
-                reason: `${monsterChar} is risky and HP is low (${playerHP}/${playerMaxHP})`,
+                shouldFlee: true,
+                ignore: false,
+                reason: `avoiding ${monsterChar} (medium danger, not worth the fight)`,
+            };
+        }
+        // If blocking, need reasonable HP
+        if (playerHP < playerMaxHP * 0.5) {
+            return {
+                shouldEngage: false,
+                shouldFlee: true,
+                ignore: false,
+                reason: `${monsterChar} blocks path but HP low (${playerHP}/${playerMaxHP})`,
             };
         }
         return {
             shouldEngage: true,
-            reason: `engaging ${monsterChar} (medium danger)`,
+            shouldFlee: false,
+            ignore: false,
+            reason: `fighting ${monsterChar} (blocking path)`,
         };
     }
 
-    // LOW or SAFE - always engage
+    // LOW or SAFE
+    // For harmless monsters, IGNORE them - don't fight, don't flee, just explore
+    if (!isBlocking && danger === DangerLevel.LOW) {
+        return {
+            shouldEngage: false,
+            shouldFlee: false,  // Don't flee from harmless monsters
+            ignore: true,
+            reason: `ignoring harmless ${monsterChar}`,
+        };
+    }
+
+    // Safe monsters or blocking low-danger: OK to fight
     return {
         shouldEngage: true,
-        reason: `attacking ${monsterChar}`,
+        shouldFlee: false,
+        ignore: false,
+        reason: `attacking ${monsterChar}${isBlocking ? ' (blocking)' : ''}`,
     };
 }
 

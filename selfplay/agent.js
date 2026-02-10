@@ -712,17 +712,46 @@ export class Agent {
                 return { type: 'wait', key: '.', reason: `holding position (oscillation prevention, ${this.oscillationHoldTurns + 1} turns left)` };
             }
 
+            // Determine if monster is blocking our path
+            // A monster is "blocking" if:
+            // 1. We have a committed target/path (actively exploring)
+            // 2. The monster is on or adjacent to our intended next move
+            let isBlocking = false;
+            if (this.committedPath && this.committedPath.path && this.committedPath.path.length > 0) {
+                const nextStep = this.committedPath.path[0]; // Next position we want to move to
+                const distToPath = Math.max(
+                    Math.abs(nextStep.x - adjacentMonster.x),
+                    Math.abs(nextStep.y - adjacentMonster.y)
+                );
+                // Monster is blocking if it's on the next step or very close to it
+                isBlocking = distToPath <= 1;
+            } else if (this.committedTarget) {
+                // Or if monster is directly between us and our target
+                const dx = this.committedTarget.x - px;
+                const dy = this.committedTarget.y - py;
+                const mdx = adjacentMonster.x - px;
+                const mdy = adjacentMonster.y - py;
+                // Monster is blocking if it's in the general direction of our target
+                isBlocking = (Math.sign(mdx) === Math.sign(dx) || dx === 0) &&
+                             (Math.sign(mdy) === Math.sign(dy) || dy === 0);
+            }
+
             // Assess danger and decide whether to engage
             const playerLevel = this.status?.experienceLevel || 1;
             const engagement = shouldEngageMonster(
                 adjacentMonster.ch,
                 this.status?.hp || 16,
                 this.status?.hpmax || 16,
-                playerLevel
+                playerLevel,
+                isBlocking
             );
 
-            if (!engagement.shouldEngage) {
-                // Too dangerous - try to flee
+            // If we should ignore this monster (harmless), just continue exploring
+            if (engagement.ignore) {
+                // Don't fight, don't flee - just let normal exploration handle it
+                // Fall through to exploration logic
+            } else if (!engagement.shouldEngage && engagement.shouldFlee) {
+                // Dangerous monster - try to flee
                 const nearbyMonsters = findMonsters(this.screen);
                 const fleeDir = this._fleeFrom(px, py, nearbyMonsters, level);
                 if (fleeDir) {
@@ -736,14 +765,14 @@ export class Agent {
                 if (key) {
                     return { type: 'attack', key, reason: `forced to fight ${adjacentMonster.ch} (cornered)` };
                 }
-            }
-
-            // Engage the monster
-            const dx = adjacentMonster.x - px;
-            const dy = adjacentMonster.y - py;
-            const key = DIR_KEYS[`${dx},${dy}`];
-            if (key) {
-                return { type: 'attack', key, reason: engagement.reason };
+            } else if (engagement.shouldEngage) {
+                // Engage the monster
+                const dx = adjacentMonster.x - px;
+                const dy = adjacentMonster.y - py;
+                const key = DIR_KEYS[`${dx},${dy}`];
+                if (key) {
+                    return { type: 'attack', key, reason: engagement.reason };
+                }
             }
         } else {
             // No adjacent monster - clear combat state
@@ -773,7 +802,9 @@ export class Agent {
 
         // 5b. Check for obvious dead-end situations needing secret door search
         // Do this BEFORE normal exploration to avoid wasting time wandering
-        if (level.isDeadEnd(px, py) && level.stairsDown.length === 0) {
+        // BUT: Don't trigger this when coverage is very low (< 15%) - we probably just need to explore more
+        const exploredPercentDeadEnd = level.exploredCount / (80 * 21);
+        if (level.isDeadEnd(px, py) && level.stairsDown.length === 0 && exploredPercentDeadEnd > 0.15) {
             const candidates = level.getSecretDoorCandidates(px, py);
             if (candidates.length > 0 && candidates[0].searchCount < 10) {
                 // We're adjacent to unsearched walls in a dead-end - search now!
@@ -854,7 +885,11 @@ export class Agent {
             }
 
             // No downstairs found and very stuck - try systematic secret door searching
-            if (this.levelStuckCounter > 30 && level.stairsDown.length === 0) {
+            // Allow searching even at low coverage if genuinely trapped (frontier=0, very stuck)
+            const coverageForSearch = level.exploredCount / (80 * 21);
+            const frontierForSearch = level.getExplorationFrontier();
+            const genuinelyTrapped = frontierForSearch.length === 0 && this.levelStuckCounter > 50;
+            if (this.levelStuckCounter > 30 && level.stairsDown.length === 0 && (coverageForSearch > 0.20 || genuinelyTrapped)) {
                 // Systematic wall searching for secret doors
                 if (!this.secretDoorSearch) {
                     // Check if we're in a dead-end situation
@@ -1295,6 +1330,41 @@ export class Agent {
                     }
                 }
 
+                // If frontier empty but coverage is low, we need to EXPAND VISION
+                // Move toward unexplored areas to reveal more of the map
+                const exploredPercent = level.exploredCount / (80 * 21);
+                if (frontier.length === 0 && exploredPercent < 0.30) {
+                    console.log(`[EXPAND] Frontier empty, coverage ${Math.round(exploredPercent*100)}% - expanding vision`);
+                    // Find the nearest unexplored cell and move toward it
+                    let nearestUnexplored = null;
+                    let minDist = Infinity;
+
+                    for (let y = 0; y < 21; y++) {
+                        for (let x = 0; x < 80; x++) {
+                            const cell = level.at(x, y);
+                            if (!cell || !cell.explored) {
+                                const dist = Math.abs(x - px) + Math.abs(y - py);
+                                if (dist < minDist) {
+                                    minDist = dist;
+                                    nearestUnexplored = { x, y };
+                                }
+                            }
+                        }
+                    }
+
+                    if (nearestUnexplored) {
+                        console.log(`[EXPAND] Found nearest unexplored: (${nearestUnexplored.x},${nearestUnexplored.y}), dist=${minDist}`);
+                        // Try to path there with allowUnexplored=true
+                        const path = findPath(level, px, py, nearestUnexplored.x, nearestUnexplored.y, { allowUnexplored: true });
+                        console.log(`[EXPAND] Path to unexplored: found=${path.found}, cost=${path.cost}`);
+                        if (path.found) {
+                            return this._followPath(path, 'explore', `expanding vision toward (${nearestUnexplored.x},${nearestUnexplored.y}) - low coverage ${Math.round(exploredPercent*100)}%`);
+                        }
+                    } else {
+                        console.log(`[EXPAND] No unexplored cells found!`);
+                    }
+                }
+
                 // If exhaustive search needed and frontier empty, search for secret doors
                 if (needsExhaustiveSearch && frontier.length === 0) {
                     const dirs = [
@@ -1668,6 +1738,57 @@ export class Agent {
                     return this._followPath(explorationPath, 'explore', `[STUCK-FAR] exploring toward distant (${dest.x},${dest.y})`);
                 }
                 return this._followPath(explorationPath, 'explore', `exploring toward (${dest.x},${dest.y})`);
+            }
+        }
+
+        // No frontier found - need to expand vision by moving toward unexplored areas
+        if (exploredPercent < 0.50 && frontier.length === 0) {
+            console.log(`[EXPAND-VISION] No frontier, coverage ${Math.round(exploredPercent*100)}% - trying to break out of room`);
+
+            // Strategy: Try to move in a direction that has unexplored cells nearby
+            // Count unexplored cells in each direction
+            const directions = [
+                { dx: 0, dy: -1, key: 'k', name: 'north' },
+                { dx: 0, dy: 1, key: 'j', name: 'south' },
+                { dx: -1, dy: 0, key: 'h', name: 'west' },
+                { dx: 1, dy: 0, key: 'l', name: 'east' },
+            ];
+
+            let bestDir = null;
+            let bestScore = -1;
+
+            for (const dir of directions) {
+                const nx = px + dir.dx;
+                const ny = py + dir.dy;
+                const ncell = level.at(nx, ny);
+
+                // Skip if out of bounds or definitely a wall
+                if (!ncell || (ncell.explored && !ncell.walkable)) continue;
+
+                // Count unexplored cells in a 5x5 area in this direction
+                let unexploredCount = 0;
+                for (let dy = -2; dy <= 2; dy++) {
+                    for (let dx = -2; dx <= 2; dx++) {
+                        const tx = nx + dx;
+                        const ty = ny + dy;
+                        const tcell = level.at(tx, ty);
+                        if (!tcell || !tcell.explored) {
+                            unexploredCount++;
+                        }
+                    }
+                }
+
+                if (unexploredCount > bestScore) {
+                    bestScore = unexploredCount;
+                    bestDir = dir;
+                }
+            }
+
+            if (bestDir) {
+                console.log(`[EXPAND-VISION] Moving ${bestDir.name} toward unexplored area (score=${bestScore})`);
+                return { type: 'explore', key: bestDir.key, reason: `expanding vision ${bestDir.name} - ${Math.round(exploredPercent*100)}% coverage` };
+            } else {
+                console.log(`[EXPAND-VISION] All directions blocked!`);
             }
         }
 
