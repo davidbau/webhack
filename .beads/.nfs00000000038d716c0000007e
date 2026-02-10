@@ -2412,3 +2412,11 @@ time=2026-02-09T20:10:01.588-05:00 level=INFO msg="Skipping: in backoff period" 
 time=2026-02-09T20:10:04.595-05:00 level=INFO msg="Git ref change detected" path=/share/u/davidbau/git/mazesofmenace/.git/refs/heads/main.lock
 time=2026-02-09T20:10:05.596-05:00 level=INFO msg="Import triggered by file change"
 time=2026-02-09T20:10:05.600-05:00 level=INFO msg="Skipping: in backoff period" mode=auto-import
+time=2026-02-09T20:13:54.020-05:00 level=INFO msg="Git ref change detected" path=/share/u/davidbau/git/mazesofmenace/.git/refs/heads/main.lock
+time=2026-02-09T20:13:54.502-05:00 level=INFO msg="JSONL file created" path=/share/u/davidbau/git/mazesofmenace/.beads/issues.jsonl
+time=2026-02-09T20:13:54.502-05:00 level=INFO msg="File change detected" path=/share/u/davidbau/git/mazesofmenace/.beads/issues.jsonl
+time=2026-02-09T20:13:55.504-05:00 level=INFO msg="Import triggered by file change"
+time=2026-02-09T20:13:55.512-05:00 level=INFO msg="Starting auto-import" mode=auto-import
+time=2026-02-09T20:13:56.004-05:00 level=INFO msg="Pulled from remote"
+time=2026-02-09T20:13:56.004-05:00 level=INFO msg="🔍 Checking JSONL content hash AFTER pull (fix: auto-pull-not-pulling)"
+time=2026-02-09T20:13:56.006-05:00 level=INFO msg="Skipping: JSONL content unchanged" mode=auto-import

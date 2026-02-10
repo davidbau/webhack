@@ -226,7 +226,7 @@ function check_room(map, lowx, ddx, lowy, ddy, vault, inThemerooms) {
 }
 
 // C ref: mkmap.c litstate_rnd() -- determine if room is lit
-function litstate_rnd(litstate, depth) {
+export function litstate_rnd(litstate, depth) {
     if (litstate < 0)
         return (rnd(1 + Math.abs(depth)) < 11 && rn2(77)) ? true : false;
     return !!litstate;
