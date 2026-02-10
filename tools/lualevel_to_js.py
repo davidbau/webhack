@@ -561,6 +561,38 @@ class SimpleLuaConverter:
             js = re.sub(r'(postprocess = \[ \];)\s*\n\s*\}\]',
                        r'\1\n    }', js)
 
+            # Fix 9: Add missing semicolons to nh.impossible calls
+            js = re.sub(r"(nh\.impossible\([^)]+\))(?!;)", r"\1;", js)
+
+            # Fix 10: Add 'let' to bare variable assignments in function scope
+            # Pattern: indented line starting with lowercase identifier followed by =
+            # But NOT: object properties (has : before =), comparisons (==, !=, <=, >=),
+            #          arrow functions (=>), or already declared (let/const/var)
+            # This is a heuristic fix for ES6 strict mode compatibility
+            lines = js.split('\n')
+            fixed_lines = []
+            for line in lines:
+                # Skip if already has let/const/var, is a comment, or is blank
+                if any(x in line for x in ['let ', 'const ', 'var ', '//', 'return ']) or not line.strip():
+                    fixed_lines.append(line)
+                    continue
+                # Check if it's a bare assignment (starts with spaces, then lowercase var, then =)
+                match = re.match(r'^(\s+)([a-z_][a-z_0-9]*)\s*=\s*(.+)$', line)
+                if match and '==' not in line and '!=' not in line and '<=' not in line and '>=' not in line and '=>' not in line:
+                    indent, varname, rest = match.groups()
+                    # Skip object properties (they have : before the =) and reassignments
+                    # For reassignments, we keep a list of commonly reassigned vars
+                    # Most other bare assignments should get 'let' added
+                    if varname in ['box', 'rmtyp', 'func', 'actualrm']:
+                        # These are commonly reassigned after declaration
+                        fixed_lines.append(line)
+                    else:
+                        # Add 'let' to first declarations
+                        fixed_lines.append(f'{indent}let {varname} = {rest}')
+                else:
+                    fixed_lines.append(line)
+            js = '\n'.join(fixed_lines)
+
         return js
 
     def _wrap_module(self, js, filename):

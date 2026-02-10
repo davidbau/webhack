@@ -875,7 +875,7 @@ export function generate() {
                    northeast = function() { return percent(50) && "north" || "east" }
                    northwest = function() { return percent(50) && "north" || "west" }
                    southwest = function() { return percent(50) && "south" || "west" }
-                   placements = [
+                   let placements = [
                       { lx: 1, ly: 1, rx: 4, ry: 1, lwall: "south", rwall: southeast() },
                       { lx: 1, ly: 2, rx: 4, ry: 2, lwall: "north", rwall: northeast() },
                       { lx: 1, ly: 1, rx: 5, ry: 1, lwall: southeast(), rwall: southwest() },
@@ -889,7 +889,7 @@ export function generate() {
                    if (percent(50)) {
                       [ltype, rtype] = [rtype, ltype];
                    }
-                   shopdoorstate = function() {
+                   let shopdoorstate = function() {
                       if (percent(1)) {
                          // return "locked"
                       } else if (percent(50)) {
@@ -898,7 +898,7 @@ export function generate() {
                          // return "open"
                       }
                    }
-                   p = placements[d(placements.length)]
+                   let p = placements[d(placements.length)]
                    des.room({ type: ltype, x: p["lx"], y: p["ly"], w: 3, h: 3, filled: 1, joined: false,
                                contents: function() {
                          des.door({ state: shopdoorstate(), wall: p["lwall"] });
@@ -918,8 +918,8 @@ export function generate() {
 
     // store these at global scope, they will be reinitialized in
     // pre_themerooms_generate
-    debug_rm_idx = null
-    debug_fill_idx = null
+    let debug_rm_idx = null
+    let debug_fill_idx = null
 
     // Given a point in a themed room, ensure that themed room is stocked with
     // regular room contents.
@@ -936,7 +936,7 @@ export function generate() {
 
     let is_eligible = function(room, mkrm) {
        let t = type(room);
-       diff = nh.level_difficulty();
+       let diff = nh.level_difficulty();
        if ((room.mindiff !== null && diff < room.mindiff)) {
           // return false
        } else if ((room.maxdiff !== null && diff > room.maxdiff)) {
@@ -998,25 +998,25 @@ export function generate() {
        let total_frequency = 0;
        for (let i = 1; i <= themerooms.length; i++) {
           if ((type(themerooms[i]) !== "table")) {
-             nh.impossible('themed room ' + i + ' is ! a table')
+             nh.impossible('themed room ' + i + ' is ! a table');
           } else if (is_eligible(themerooms[i], null)) {
              // Reservoir sampling: select one room from the set of eligible rooms,
              // which may change on different levels because of level difficulty.
              let this_frequency;
              if ((themerooms[i].frequency !== null)) {
-                this_frequency = themerooms[i].frequency;
+                let this_frequency = themerooms[i].frequency;
              } else {
-                this_frequency = 1;
+                let this_frequency = 1;
              }
-             total_frequency = total_frequency + this_frequency;
+             let total_frequency = total_frequency + this_frequency;
              // avoid rn2(0) if a room has freq 0
              if (this_frequency > 0 && nh.rn2(total_frequency) < this_frequency) {
-                pick = i;
+                let pick = i;
              }
           }
        }
        if (pick == null) {
-          nh.impossible('no eligible themed rooms?')
+          nh.impossible('no eligible themed rooms?');
           // return }
        themerooms[pick].contents();
     }
@@ -1026,17 +1026,17 @@ export function generate() {
        let debug_themerm = nh.debug_themerm(false)
        let debug_fill = nh.debug_themerm(true)
        let xtrainfo = ""
-       debug_rm_idx = lookup_by_name(debug_themerm, false)
-       debug_fill_idx = lookup_by_name(debug_fill, true)
+       let debug_rm_idx = lookup_by_name(debug_themerm, false)
+       let debug_fill_idx = lookup_by_name(debug_fill, true)
        if (debug_themerm !== null && debug_rm_idx == null) {
           if (lookup_by_name(debug_themerm, true) !== null) {
-             xtrainfo = "; it is a fill type"
+             let xtrainfo = "; it is a fill type"
           }
           pline("Warning: themeroom '" + debug_themerm + "' ! found in themerooms" + xtrainfo, true)
        }
        if (debug_fill !== null && debug_fill_idx == null) {
           if (lookup_by_name(debug_fill, false) !== null) {
-             xtrainfo = "; it is a room type"
+             let xtrainfo = "; it is a room type"
           }
           pline("Warning: themeroom fill '" + debug_fill + "' ! found in themeroom_fills" + xtrainfo, true)
        }
@@ -1059,29 +1059,29 @@ export function generate() {
              pline("Warning: fill '" + themeroom_fills[debug_fill_idx].name + "' is ! eligible in room that generated it")
           }
           // return }
-       pick = null;
-       total_frequency = 0;
+       let pick = null;
+       let total_frequency = 0;
        for (let i = 1; i <= themeroom_fills.length; i++) {
           if ((type(themeroom_fills[i]) !== "table")) {
-             nh.impossible('themeroom fill ' + i + ' must be a table')
+             nh.impossible('themeroom fill ' + i + ' must be a table');
           } else if (is_eligible(themeroom_fills[i], rm)) {
              // Reservoir sampling: select one room from the set of eligible rooms,
              // which may change on different levels because of level difficulty.
              let this_frequency;
              if ((themeroom_fills[i].frequency !== null)) {
-                this_frequency = themeroom_fills[i].frequency;
+                let this_frequency = themeroom_fills[i].frequency;
              } else {
-                this_frequency = 1;
+                let this_frequency = 1;
              }
-             total_frequency = total_frequency + this_frequency;
+             let total_frequency = total_frequency + this_frequency;
              // avoid rn2(0) if a fill has freq 0
              if (this_frequency > 0 && nh.rn2(total_frequency) < this_frequency) {
-                pick = i;
+                let pick = i;
              }
           }
        }
        if (pick == null) {
-          nh.impossible('no eligible themed room fills?')
+          nh.impossible('no eligible themed room fills?');
           // return }
        themeroom_fills[pick].contents(rm);
     }
@@ -1089,18 +1089,18 @@ export function generate() {
     // postprocess callback: create an engraving pointing at a location
     let make_dig_engraving = function(data) {
        let floors = selection.negate().filter_mapchar(".");
-       pos = floors.rndcoord(0);
+       let pos = floors.rndcoord(0);
        let tx = data.x - pos.x - 1;
        let ty = data.y - pos.y;
        let dig = "";
        if ((tx == 0 && ty == 0)) {
-          dig = " here";
+          let dig = " here";
        } else {
           if ((tx < 0 || tx > 0)) {
-             dig = string.format(" %i %s", Math.abs(tx), (tx > 0) && "east" || "west");
+             let dig = string.format(" %i %s", Math.abs(tx), (tx > 0) && "east" || "west");
           }
           if ((ty < 0 || ty > 0)) {
-             dig = dig + string.format(" %i %s", Math.abs(ty), (ty > 0) && "south" || "north");
+             let dig = dig + string.format(" %i %s", Math.abs(ty), (ty > 0) && "south" || "north");
           }
        }
        des.engraving({ coord: pos, type: "burn", text: "Dig" + dig });
@@ -1118,7 +1118,7 @@ export function generate() {
     // postprocess callback: make a trap
     let make_a_trap = function(data) {
        if ((data.teledest == 1 && data.type == "teleport")) {
-          locs = selection.negate().filter_mapchar(".");
+          let locs = selection.negate().filter_mapchar(".");
           do {             data.teledest = locs.rndcoord(1);
           } while (!(data.teledest.x !== data.coord.x && data.teledest.y !== data.coord.y));
        }
@@ -1131,7 +1131,7 @@ export function generate() {
           let v = postprocess[i];
           v.handler(v.data);
        }
-       postprocess = [ ];
+       let postprocess = [ ];
     }
 
     return des.finalize_level();

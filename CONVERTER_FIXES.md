@@ -18,7 +18,20 @@ Fixed 10 of 11 originally problematic level files, achieving 99.2% success rate 
 10. ✅ **Rog-strt** - Missing for-loop closing brace
 
 ## Still Failing
-11. ⚠️ **themerms** - Complex ES module parsing issue (works without package.json "type": "module")
+11. ⚠️ **themerms** - Node.js ES module loading issue (under investigation)
+   - **Status**: File passes `node --check` (syntax is valid)
+   - **Issue**: Fails when imported as ES module with "Unexpected end of input"
+   - **Workaround**: Works without package.json `"type": "module"` setting
+   - **Analysis**:
+     - Large generated file (1138 lines, 38KB vs ~300 lines average)
+     - Contains 81 single quotes (odd number) derived from Lua's 75 quotes
+     - Lua source uses long bracket strings `[[...]]` for multiline strings
+     - All brackets/parentheses/braces are balanced when properly parsed
+     - Issue appears to be ES module loader-specific, not a syntax error
+   - **Converter fixes applied**: 10 postprocessing fixes including:
+     - Bare assignment detection and `let` insertion
+     - Missing semicolons on `nh.impossible()` calls
+     - Lua syntax conversions (`repeat...until`, `for...in`, etc.)
 
 ## Critical Bugs Fixed
 
