@@ -289,7 +289,9 @@ export async function handleZap(player, map, display, game) {
     const itemChar = String.fromCharCode(itemCh);
 
     if (itemCh === 27) { // ESC
-        display.putstr_message('Never mind.');
+        if (game.flags.verbose) {
+            display.putstr_message('Never mind.');
+        }
         return { moved: false, tookTime: false };
     }
 
@@ -306,7 +308,9 @@ export async function handleZap(player, map, display, game) {
     const dir = DIRECTION_KEYS[dirChar];
 
     if (!dir) {
-        display.putstr_message('Never mind.');
+        if (game.flags.verbose) {
+            display.putstr_message('Never mind.');
+        }
         return { moved: false, tookTime: false };
     }
 

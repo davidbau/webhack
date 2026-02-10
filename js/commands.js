@@ -151,7 +151,9 @@ export async function rhack(ch, game) {
 
     // What is (;)
     if (c === ';') {
-        display.putstr_message('Pick a position to identify (use movement keys, . when done)');
+        if (game.flags.verbose) {
+            display.putstr_message('Pick a position to identify (use movement keys, . when done)');
+        }
         return { moved: false, tookTime: false };
     }
 
@@ -272,11 +274,15 @@ export async function rhack(ch, game) {
     // C ref: cmd.c:1624 do_reqmenu() — 'm' prefix
     if (c === 'm') {
         if (game.menuRequested) {
-            display.putstr_message('Double m prefix, canceled.');
+            if (game.flags.verbose) {
+                display.putstr_message('Double m prefix, canceled.');
+            }
             game.menuRequested = false;
         } else {
             game.menuRequested = true;
-            display.putstr_message('Next command will request menu or move without autopickup/attack.');
+            if (game.flags.verbose) {
+                display.putstr_message('Next command will request menu or move without autopickup/attack.');
+            }
         }
         return { moved: false, tookTime: false };
     }
@@ -284,11 +290,15 @@ export async function rhack(ch, game) {
     // C ref: cmd.c:1671 do_fight() — 'F' prefix
     if (c === 'F') {
         if (game.forceFight) {
-            display.putstr_message('Double fight prefix, canceled.');
+            if (game.flags.verbose) {
+                display.putstr_message('Double fight prefix, canceled.');
+            }
             game.forceFight = false;
         } else {
             game.forceFight = true;
-            display.putstr_message('Next movement will force fight even if no monster visible.');
+            if (game.flags.verbose) {
+                display.putstr_message('Next movement will force fight even if no monster visible.');
+            }
         }
         return { moved: false, tookTime: false };
     }
@@ -296,11 +306,15 @@ export async function rhack(ch, game) {
     // C ref: cmd.c:1655 do_run() — 'G' prefix (run)
     if (c === 'G') {
         if (game.runMode) {
-            display.putstr_message('Double run prefix, canceled.');
+            if (game.flags.verbose) {
+                display.putstr_message('Double run prefix, canceled.');
+            }
             game.runMode = 0;
         } else {
             game.runMode = 3; // run mode
-            display.putstr_message('Next direction will run until something interesting.');
+            if (game.flags.verbose) {
+                display.putstr_message('Next direction will run until something interesting.');
+            }
         }
         return { moved: false, tookTime: false };
     }
@@ -308,11 +322,15 @@ export async function rhack(ch, game) {
     // C ref: cmd.c:1639 do_rush() — 'g' prefix (rush)
     if (c === 'g') {
         if (game.runMode) {
-            display.putstr_message('Double rush prefix, canceled.');
+            if (game.flags.verbose) {
+                display.putstr_message('Double rush prefix, canceled.');
+            }
             game.runMode = 0;
         } else {
             game.runMode = 2; // rush mode
-            display.putstr_message('Next direction will rush until something interesting.');
+            if (game.flags.verbose) {
+                display.putstr_message('Next direction will rush until something interesting.');
+            }
         }
         return { moved: false, tookTime: false };
     }
@@ -457,7 +475,8 @@ function handleMovement(dir, player, map, display, game) {
     }
 
     // Check for stairs
-    if (loc.typ === STAIRS) {
+    // C ref: do.c:738 flags.verbose gates "There is a staircase..."
+    if (game.flags.verbose && loc.typ === STAIRS) {
         if (loc.flags === 1) {
             display.putstr_message('There is a staircase up here.');
         } else {
@@ -465,7 +484,8 @@ function handleMovement(dir, player, map, display, game) {
         }
     }
 
-    if (loc.typ === FOUNTAIN) {
+    // C ref: do.c:774 flags.verbose gates terrain feature descriptions
+    if (game.flags.verbose && loc.typ === FOUNTAIN) {
         display.putstr_message('There is a fountain here.');
     }
 
@@ -608,7 +628,9 @@ async function handleOpen(player, map, display) {
     const c = String.fromCharCode(dirCh);
     const dir = DIRECTION_KEYS[c];
     if (!dir) {
-        display.putstr_message("Never mind.");
+        if (game.flags.verbose) {
+            display.putstr_message("Never mind.");
+        }
         return { moved: false, tookTime: false };
     }
 
@@ -658,7 +680,9 @@ async function handleClose(player, map, display) {
     const c = String.fromCharCode(dirCh);
     const dir = DIRECTION_KEYS[c];
     if (!dir) {
-        display.putstr_message("Never mind.");
+        if (game.flags.verbose) {
+            display.putstr_message("Never mind.");
+        }
         return { moved: false, tookTime: false };
     }
 
@@ -1039,7 +1063,9 @@ async function handleKick(player, map, display) {
     const c = String.fromCharCode(dirCh);
     const dir = DIRECTION_KEYS[c];
     if (!dir) {
-        display.putstr_message("Never mind.");
+        if (game.flags.verbose) {
+            display.putstr_message("Never mind.");
+        }
         return { moved: false, tookTime: false };
     }
 
