@@ -75,6 +75,7 @@ export class Agent {
         this.consecutiveFailedMoves = 0; // consecutive turns where movement failed
         this.restTurns = 0; // consecutive turns spent resting
         this.lastHP = null; // track HP to detect healing progress
+        this.pendingLockedDoor = null; // {x, y, attempts} for locked door we're trying to kick
 
         // Statistics
         this.stats = {
@@ -144,6 +145,9 @@ export class Agent {
             const action = await this._decide();
             const prePos = { x: this.screen.playerX, y: this.screen.playerY };
             await this._act(action);
+
+            // Save action for stuck detection (don't count resting as stuck)
+            this.lastAction = action;
 
             // Detect movement failure: if we sent a movement/explore key and didn't move,
             // mark the target cell as not walkable (wall, closed door, etc.)
@@ -440,13 +444,17 @@ export class Agent {
         }
 
         // Track if we're stuck (same position OR oscillating between nearby positions)
+        // But don't count resting as stuck - resting is intentional healing
+        const wasResting = this.lastAction && this.lastAction.type === 'rest';
         if (this.lastPosition && this.lastPosition.x === px && this.lastPosition.y === py) {
-            this.stuckCounter++;
-            this.levelStuckCounter++;
+            if (!wasResting) {
+                this.stuckCounter++;
+                this.levelStuckCounter++;
+            }
         } else {
             // Detect short-term oscillation: if we've been in this position in the last 6 turns
             const recentCount = this.recentPositionsList.slice(-6).filter(k => k === posKey).length;
-            if (recentCount >= 2) {
+            if (recentCount >= 2 && !wasResting) {
                 this.stuckCounter++;
                 this.levelStuckCounter++;
             } else {
@@ -454,7 +462,8 @@ export class Agent {
                 if (this.recentPositionsList.length >= 30) {
                     const uniquePositions = new Set(this.recentPositionsList.slice(-30));
                     // If we've only been in 3 or fewer positions in last 30 turns, we're stuck
-                    if (uniquePositions.size <= 3) {
+                    // (unless we were intentionally resting)
+                    if (uniquePositions.size <= 3 && !wasResting) {
                         this.stuckCounter++;
                         this.levelStuckCounter++;
                     } else {
@@ -581,7 +590,40 @@ export class Agent {
         // If we reached here without returning a rest action, reset rest counter
         // (will be set back to 0 at the end of _decide if we take any other action)
 
-        // 2. If hungry, check inventory and eat if we have food
+        // 2. If there's a locked door blocking our path, try to kick it open
+        if (this.pendingLockedDoor) {
+            const door = this.pendingLockedDoor;
+            const doorCell = level.at(door.x, door.y);
+
+            // Check if we're adjacent to the door
+            const dist = Math.abs(door.x - px) + Math.abs(door.y - py);
+            const isAdjacent = dist === 1;
+
+            // If door is now open/gone, clear pending door
+            if (!doorCell || doorCell.type !== 'door_locked') {
+                this.pendingLockedDoor = null;
+            }
+            // If adjacent and haven't tried too many times, kick it
+            else if (isAdjacent && door.attempts < 5) {
+                this.pendingLockedDoor.attempts++;
+                // NetHack kick: Ctrl+D, then direction
+                const dx = door.x - px;
+                const dy = door.y - py;
+                const dir = DIR_KEYS[`${dx},${dy}`];
+                if (dir) {
+                    this.pendingDoorDir = dir;
+                    return { type: 'kick', key: '\x04', reason: `kicking locked door at (${door.x},${door.y})` };
+                }
+            }
+            // If tried too many times or not adjacent, give up and mark as unwalkable
+            else if (door.attempts >= 5 || !isAdjacent) {
+                console.log(`[DOOR KICK] Giving up on door at (${door.x},${door.y}) after ${door.attempts} attempts`);
+                if (doorCell) doorCell.walkable = false;
+                this.pendingLockedDoor = null;
+            }
+        }
+
+        // 3. If hungry, check inventory and eat if we have food
         if (this.status && this.status.needsFood) {
             // Refresh inventory every 100 turns or if never checked
             if (this.turnNumber - this.inventory.lastUpdate > 100 || this.inventory.lastUpdate === 0) {
@@ -1530,12 +1572,18 @@ export class Agent {
                 const isDoorCell = cell && (cell.type === 'door_open' || cell.type === 'door_closed');
 
                 if ((isLockedDoorMessage || (isDoorCell && this.consecutiveFailedMoves >= 2)) && cell) {
-                    // Mark door as locked and non-walkable
+                    // Mark door as locked
                     console.log(`[LOCKED DOOR] Detected at (${tx},${ty}), cellType=${cell.type}, failedMoves=${this.consecutiveFailedMoves}, msg="${message}"`);
                     cell.type = 'door_locked';
-                    cell.walkable = false;
                     cell.explored = true;
-                    // Clear committed target since we can't reach it
+                    // Don't mark as unwalkable yet - we'll try to kick it first
+
+                    // Store locked door position for potential kicking
+                    if (!this.pendingLockedDoor) {
+                        this.pendingLockedDoor = { x: tx, y: ty, attempts: 0 };
+                    }
+
+                    // Clear committed target since current path is blocked
                     if (this.committedTarget) {
                         const tKey = this.committedTarget.y * 80 + this.committedTarget.x;
                         this.failedTargets.add(tKey);
