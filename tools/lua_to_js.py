@@ -17,6 +17,7 @@ class LuaToJsConverter:
         self.imports_needed = set()
         self.in_multiline_string = False
         self.multiline_string_lines = []
+        self.indent_level = 0
 
     def convert_file(self, lua_content, filename):
         """Convert a Lua special level file to JavaScript."""
@@ -210,6 +211,16 @@ class LuaToJsConverter:
             comment_text = stripped[2:].strip()
             return f"{indent}// {comment_text}"
 
+        # Local variable declarations (check BEFORE inline comments to avoid false positives)
+        if stripped.startswith('local '):
+            var_decl = stripped[6:]  # Remove 'local '
+            # Check if it's a des.* call assignment
+            if 'des.' in var_decl and '({' in var_decl and ' = des.' in var_decl:
+                # Use convert_statement to handle the object literal conversion
+                result = self.convert_statement(var_decl)
+                return indent + result
+            return indent + 'const ' + self.convert_expression(var_decl)
+
         # Handle inline comments (but not -- inside strings or template literals)
         if '--' in stripped and not stripped.startswith('--'):
             # Find -- that's not inside a string or template literal
@@ -250,15 +261,6 @@ class LuaToJsConverter:
         if stripped in ['end', 'end;', 'end,']:
             suffix = stripped[3:] if len(stripped) > 3 else ''
             return indent + '}' + suffix
-
-        # Local variable declarations
-        if stripped.startswith('local '):
-            var_decl = stripped[6:]  # Remove 'local '
-            # Check if it's a des.* call assignment
-            if 'des.' in var_decl and '({' in var_decl and ' = des.' in var_decl:
-                # Use convert_statement to handle the object literal conversion
-                return indent + self.convert_statement(var_decl)
-            return indent + 'const ' + self.convert_expression(var_decl)
 
         # If statements
         if stripped.startswith('if ') and ' then' in stripped:
@@ -388,7 +390,11 @@ class LuaToJsConverter:
 
             # Direct des.* call
             if stmt.startswith('des.'):
-                return self.convert_des_call_with_object(stmt)
+                result = self.convert_des_call_with_object(stmt)
+                # Add semicolon if not already present
+                if not result.endswith(';'):
+                    result += ';'
+                return result
 
         # Otherwise convert as expression
         result = self.convert_expression(stmt)
@@ -584,12 +590,19 @@ class LuaToJsConverter:
             if stmt:
                 statements.append(self.convert_statement(stmt))
 
-            converted_body = ' '.join(statements)
+            # Format with line breaks if multiple statements
+            if len(statements) > 1:
+                converted_body = '\n        ' + '\n        '.join(statements) + '\n    '
+            else:
+                converted_body = ' ' + statements[0] + ' ' if statements else ''
         else:
-            converted_body = self.convert_statement(body) if body else ''
+            converted_body = ' ' + (self.convert_statement(body) if body else '') + ' '
 
         # Return as function expression
-        return f"function({params}) {{ {converted_body} }}"
+        if '\n' in converted_body:
+            return f"function({params}) {{{converted_body}}}"
+        else:
+            return f"function({params}) {{{converted_body}}}"
 
     def convert_expression(self, expr):
         """Convert a Lua expression to JavaScript."""

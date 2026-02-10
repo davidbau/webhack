@@ -656,29 +656,31 @@ export class Agent {
 
         // 5b. Proactive descent: if we've found stairs and explored enough, head down
         // This encourages forward progress instead of exhaustive exploration
-        // BUT: if we're stuck, skip this and let section 6 handle it with allowUnexplored
-        if (level.stairsDown.length > 0 && this.turnNumber > 30 && this.levelStuckCounter <= 15) {
+        if (level.stairsDown.length > 0 && this.turnNumber > 30) {
             const exploredPercent = level.exploredCount / (80 * 21); // rough estimate
             const frontierCells = level.getExplorationFrontier().length;
 
             // Head to stairs if:
-            // - We've explored at least 10% of the map (found main areas), AND
+            // - We've explored at least 15% of the map (found main areas), AND
             // - HP is above 50%, AND
-            // - Frontier is small (< 20 unexplored areas) OR we've been on level for 50+ turns
+            // - Either: frontier is small (< 30) OR we've been here 100+ turns OR path is cheap (< 30)
             const hpGood = this.status && (this.status.hp / this.status.hpmax) > 0.5;
-            const exploredEnough = exploredPercent > 0.10;
-            const frontierSmall = frontierCells < 20;
-            const beenHereLong = this.turnNumber > 50;
+            const exploredEnough = exploredPercent > 0.15;  // Raised from 10% to ensure basic exploration
+            const frontierSmall = frontierCells < 30;        // Raised from 20 to be less restrictive
+            const beenHereLong = this.turnNumber > 100;      // Raised from 50 to avoid premature descent
 
-            if (hpGood && exploredEnough && (frontierSmall || beenHereLong)) {
-                const stairs = level.stairsDown[0];
-                // If we're already at the downstairs, descend immediately
-                if (px === stairs.x && py === stairs.y) {
-                    console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: `descending (explored ${Math.round(exploredPercent*100)}%)` };
-                }
-                const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: false });
+            // Check if path to stairs is short (if so, worth going even with more frontier)
+            const stairs = level.stairsDown[0];
+            if (px === stairs.x && py === stairs.y) {
+                console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: `descending (explored ${Math.round(exploredPercent*100)}%)` };
+            }
+
+            const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: false });
+            const pathIsCheap = path.found && path.cost < 30;  // Stairs are nearby
+
+            if (hpGood && exploredEnough && (frontierSmall || beenHereLong || pathIsCheap)) {
                 if (path.found) {
-                    return this._followPath(path, 'navigate', `heading to downstairs (explored ${Math.round(exploredPercent*100)}%, frontier ${frontierCells})`);
+                    return this._followPath(path, 'navigate', `heading to downstairs (explored ${Math.round(exploredPercent*100)}%, frontier ${frontierCells}, cost ${Math.round(path.cost)})`);
                 }
             }
         }
