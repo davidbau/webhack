@@ -672,6 +672,10 @@ export class Agent {
 
             if (hpGood && exploredEnough && (frontierSmall || beenHereLong)) {
                 const stairs = level.stairsDown[0];
+                // If we're already at the downstairs, descend immediately
+                if (px === stairs.x && py === stairs.y) {
+                    return { type: 'descend', key: '>', reason: `descending (explored ${Math.round(exploredPercent*100)}%)` };
+                }
                 const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: false });
                 if (path.found) {
                     return this._followPath(path, 'navigate', `heading to downstairs (explored ${Math.round(exploredPercent*100)}%, frontier ${frontierCells})`);
@@ -699,6 +703,10 @@ export class Agent {
             // If stuck >30, let systematic searching (section 6.5) run first
             if (level.stairsDown.length > 0 && this.levelStuckCounter <= 30) {
                 const stairs = level.stairsDown[0];
+                // If we're already at the downstairs, descend immediately
+                if (px === stairs.x && py === stairs.y) {
+                    return { type: 'descend', key: '>', reason: `descending (stuck ${this.levelStuckCounter})` };
+                }
                 const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
                 if (path.found) {
                     return this._followPath(path, 'navigate', `heading to downstairs (level stuck ${this.levelStuckCounter}) at (${stairs.x},${stairs.y})`);
@@ -997,6 +1005,10 @@ export class Agent {
                 // Head for downstairs if known
                 if (level.stairsDown.length > 0) {
                     const stairs = level.stairsDown[0];
+                    // If we're already at the downstairs, descend immediately
+                    if (px === stairs.x && py === stairs.y) {
+                        return { type: 'descend', key: '>', reason: 'descending (stuck)' };
+                    }
                     const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
                     if (path.found) {
                         return this._followPath(path, 'navigate', `heading to downstairs (stuck) at (${stairs.x},${stairs.y})`);
@@ -1078,6 +1090,10 @@ export class Agent {
         // 9. No unexplored areas -- head for downstairs
         if (level.stairsDown.length > 0) {
             const stairs = level.stairsDown[0];
+            // If we're already at the downstairs, descend immediately
+            if (px === stairs.x && py === stairs.y) {
+                return { type: 'descend', key: '>', reason: 'descending (exploration complete)' };
+            }
             const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
             if (path.found) {
                 return this._followPath(path, 'navigate', `heading to downstairs at (${stairs.x},${stairs.y})`);
@@ -1247,7 +1263,14 @@ export class Agent {
      * and the C binary's "This door is closed" is handled by _handleUIState.
      */
     _followPath(path, actionType, reason) {
-        return { type: actionType, key: path.firstKey, reason };
+        const key = path.firstKey;
+        // Safety check: if firstKey is null (path too short), we're likely already at destination
+        if (!key) {
+            console.warn(`_followPath: path.firstKey is null (path length ${path.path.length}), reason: ${reason}`);
+            // Return a wait action instead of invalid movement
+            return { type: 'wait', key: '.', reason: `path.firstKey null: ${reason}` };
+        }
+        return { type: actionType, key, reason };
     }
 
     /**
