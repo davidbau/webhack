@@ -17,6 +17,7 @@ import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1 } from './rng.js';
 import { mksobj, mkobj } from './mkobj.js';
 import { create_room, makecorridors, init_rect, update_rect_pool_for_room, bound_digging, mineralize, fill_ordinary_room } from './dungeon.js';
+import { set_themeroom_failed } from './levels/themerms.js';
 import {
     STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,
     CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, ROOM, CORR,
@@ -1116,11 +1117,11 @@ export function room(opts = {}) {
     const chance = opts.chance ?? 100;
     const contents = opts.contents;
 
-    // C ref: sp_lev.c:2803 build_room() — calls rn2(100) ONLY for fixed-position rooms
+    // C ref: sp_lev.c:2803 build_room() — calls rn2(100) for ALL rooms when chance > 0
+    // C code: xint16 rtype = (!r->chance || rn2(100) < r->chance) ? r->rtype : OROOM;
+    // Default chance=100 means rn2(100) IS called (even though result is always < 100)
     // If roll >= chance, room becomes OROOM (ordinary) instead of requested type.
-    // For chance=100, the roll doesn't matter (room always gets requested type),
-    // but C still makes the rn2(100) call for RNG alignment.
-    // Random-placement rooms (no x/y/w/h) do NOT call rn2(100) for chance check.
+    // For chance=100, room always gets requested type, but RNG call still happens for alignment.
     const requestedRtype = roomTypeMap[type] ?? 0;
 
     // Validate x,y pair (both must be -1 or both must be specified)
@@ -1150,17 +1151,17 @@ export function room(opts = {}) {
     // If -1, would need random placement (not implemented yet)
     let roomX, roomY, roomW, roomH, rtype;
 
+    // C ref: sp_lev.c:4063 — chance defaults to 100, and rn2(100) is called for ALL rooms
+    // Exception: nested rooms (roomDepth > 0) skip the chance check in C
+    if (chance > 0 && levelState.roomDepth === 0) {
+        const roll = rn2(100);
+        rtype = (roll >= chance) ? 0 : requestedRtype; // 0 = OROOM
+    } else {
+        rtype = requestedRtype;
+    }
+
     if (x >= 0 && y >= 0 && w > 0 && h > 0) {
         // Fixed position special level room
-        // C ref: sp_lev.c:2803 — rn2(100) called for TOP-LEVEL fixed-position rooms only
-        // Nested rooms (roomDepth > 0) do NOT call rn2(100) for chance check
-        if (levelState.roomDepth === 0) {
-            const roll = rn2(100);
-            rtype = (roll >= chance) ? 0 : requestedRtype; // 0 = OROOM
-        } else {
-            // Nested rooms use requested type directly, no chance roll
-            rtype = requestedRtype;
-        }
 
         if (DEBUG) {
             console.log(`des.room(): FIXED position x=${x}, y=${y}, w=${w}, h=${h}, xalign=${xalign}, yalign=${yalign}, rtype=${rtype}, lit=${lit}, depth=${levelState.roomDepth}`);
@@ -1225,9 +1226,8 @@ export function room(opts = {}) {
         lit = litstate_rnd(lit, levelState.depth || 1);
     } else {
         // Random placement - use sp_lev.c's create_room algorithm
-        // C ref: sp_lev.c:1486 create_room() — NO rn2(100) call for random-placement rooms
-        // The room type is used directly without a chance roll
-        rtype = requestedRtype;
+        // C ref: sp_lev.c:1486 — calls create_room() with already-calculated rtype
+        // Note: rtype was already calculated above with rn2(100) chance check
 
         if (DEBUG) {
             console.log(`des.room(): RANDOM placement x=${x}, y=${y}, w=${w}, h=${h}, xalign=${xalign}, yalign=${yalign}, rtype=${rtype}, lit=${lit}`);
@@ -1240,6 +1240,9 @@ export function room(opts = {}) {
             if (DEBUG) {
                 console.log(`des.room(): create_room_splev failed, no space available`);
             }
+            // C ref: sp_lev.c:4094,4103 — set themeroom_failed flag when room creation fails
+            // This allows makerooms() to detect failure and break after max attempts
+            set_themeroom_failed();
             return false;
         }
 
