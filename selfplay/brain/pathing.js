@@ -93,6 +93,12 @@ export class PathResult {
 export function findPath(levelMap, sx, sy, gx, gy, opts = {}) {
     const { allowUnexplored = false, avoidPositions = null } = opts;
 
+    // Edge case: if start equals goal, return empty path (not found)
+    // This prevents returning a 1-element path with firstKey=null
+    if (sx === gx && sy === gy) {
+        return new PathResult([], Infinity);
+    }
+
     // A* with Manhattan distance heuristic
     const openSet = new MinHeap();
     const gScore = new Float64Array(MAP_COLS * MAP_ROWS).fill(Infinity);
