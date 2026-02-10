@@ -166,7 +166,7 @@ export function generate() {
     des.levregion({ region: [1,0,12,20], region_islev: 1, exclude: [20,1,70,20], exclude_islev: 1, type: "branch" });
     des.teleport_region({ region: [1,0,12,20], region_islev: 1, exclude: [20,1,70,20], exclude_islev: 1 });
 
-    let protected_region = bounds2.negate() | orcus1;
+    let protected_region = bounds2.negate().union(orcus1);
     hell_tweaks(protected_region);
     return des.finalize_level();
 }

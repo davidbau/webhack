@@ -6,18 +6,26 @@
 import * as des from '../sp_lev.js';
 import { selection, percent, shuffle } from '../sp_lev.js';
 
+// hell_tweaks - Add Gehennom-specific features to a selection
+// C ref: Not in C - Lua runtime function for special level generation
+export function hell_tweaks(protected_region) {
+    // Stub implementation - adds Gehennom decorations
+    // TODO: Implement full hell_tweaks logic when needed
+    // (extra monsters, lava pools, themed decorations, etc.)
+}
+
 export function generate() {
     // NetHack 3.7	hellfill.des	$NHDT-Date: 1432512783 2015/5/25 0:13:3 $  $NHDT-Branch: master $:$NHDT-Revision: 1.25 $
     // Copyright (c) 2022 by Pasi Kallinen
     // NetHack may be freely redistributed.  See license for details.
-    // 
-    // 
+    //
+    //
 
     // The "fill" level for gehennom.
-    // 
+    //
     // This level is used to fill out any levels ! occupied by
     // specific levels.
-    // 
+    //
 
     function hellobjects() {
        let objclass = [ "(", "/", "=", "+", ")", "[", "?", "*", "%" ];

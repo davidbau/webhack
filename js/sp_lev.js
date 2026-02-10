@@ -1776,40 +1776,77 @@ export const selection = {
      * @returns {Object} Negated selection with coords array
      */
     negate: (sel) => {
+        let coords;
         if (!sel) {
             // No selection means select everything
-            const coords = [];
+            coords = [];
             for (let y = 0; y < ROWNO; y++) {
                 for (let x = 1; x < COLNO; x++) {
                     coords.push({ x, y });
                 }
             }
-            return { coords };
-        }
+        } else {
+            // Convert to coord set for fast lookup
+            const coordSet = new Set();
+            if (sel.coords) {
+                sel.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
+            } else if (sel.x1 !== undefined) {
+                // Rectangle format
+                for (let y = sel.y1; y <= sel.y2; y++) {
+                    for (let x = sel.x1; x <= sel.x2; x++) {
+                        coordSet.add(`${x},${y}`);
+                    }
+                }
+            }
 
-        // Convert to coord set for fast lookup
-        const coordSet = new Set();
-        if (sel.coords) {
-            sel.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
-        } else if (sel.x1 !== undefined) {
-            // Rectangle format
-            for (let y = sel.y1; y <= sel.y2; y++) {
-                for (let x = sel.x1; x <= sel.x2; x++) {
-                    coordSet.add(`${x},${y}`);
+            // Select all tiles NOT in the set
+            coords = [];
+            for (let y = 0; y < ROWNO; y++) {
+                for (let x = 1; x < COLNO; x++) {
+                    if (!coordSet.has(`${x},${y}`)) {
+                        coords.push({ x, y });
+                    }
                 }
             }
         }
 
-        // Select all tiles NOT in the set
-        const coords = [];
-        for (let y = 0; y < ROWNO; y++) {
-            for (let x = 1; x < COLNO; x++) {
-                if (!coordSet.has(`${x},${y}`)) {
-                    coords.push({ x, y });
+        // Return selection object with methods
+        const result = {
+            coords,
+            bounds: function() {
+                if (coords.length === 0) return { lx: 0, ly: 0, hx: 0, hy: 0 };
+                let lx = coords[0].x, hx = coords[0].x;
+                let ly = coords[0].y, hy = coords[0].y;
+                for (const c of coords) {
+                    if (c.x < lx) lx = c.x;
+                    if (c.x > hx) hx = c.x;
+                    if (c.y < ly) ly = c.y;
+                    if (c.y > hy) hy = c.y;
                 }
+                return { lx, ly, hx, hy };
+            },
+            negate: function() {
+                return selection.negate(this);
+            },
+            union: function(other) {
+                const coordSet = new Set();
+                this.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
+                if (other && other.coords) {
+                    other.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
+                }
+                const unionCoords = Array.from(coordSet).map(s => {
+                    const [x, y] = s.split(',').map(Number);
+                    return { x, y };
+                });
+                return {
+                    coords: unionCoords,
+                    bounds: result.bounds,
+                    negate: result.negate,
+                    union: result.union
+                };
             }
-        }
-        return { coords };
+        };
+        return result;
     },
 
     /**
@@ -1890,7 +1927,17 @@ export const selection = {
      * @returns {Object} Selection with coords array
      */
     match: (pattern) => {
-        if (!levelState.map) return { coords: [] };
+        if (!levelState.map) {
+            const emptyBounds = () => ({ lx: 0, ly: 0, hx: 0, hy: 0 });
+            const emptyNegate = function() { return selection.negate(this); };
+            const emptyUnion = function(other) { return other || this; };
+            return {
+                coords: [],
+                bounds: emptyBounds,
+                negate: emptyNegate,
+                union: emptyUnion
+            };
+        }
 
         const coords = [];
         for (let y = 0; y < ROWNO; y++) {
@@ -1901,7 +1948,87 @@ export const selection = {
                 }
             }
         }
-        return { coords };
+
+        const sel = {
+            coords,
+            bounds: function() {
+                if (coords.length === 0) return { lx: 0, ly: 0, hx: 0, hy: 0 };
+                let lx = coords[0].x, hx = coords[0].x;
+                let ly = coords[0].y, hy = coords[0].y;
+                for (const c of coords) {
+                    if (c.x < lx) lx = c.x;
+                    if (c.x > hx) hx = c.x;
+                    if (c.y < ly) ly = c.y;
+                    if (c.y > hy) hy = c.y;
+                }
+                return { lx, ly, hx, hy };
+            },
+            negate: function() {
+                return selection.negate(this);
+            },
+            union: function(other) {
+                const coordSet = new Set();
+                this.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
+                if (other && other.coords) {
+                    other.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
+                }
+                const unionCoords = Array.from(coordSet).map(s => {
+                    const [x, y] = s.split(',').map(Number);
+                    return { x, y };
+                });
+                return {
+                    coords: unionCoords,
+                    bounds: sel.bounds,
+                    negate: sel.negate,
+                    union: sel.union
+                };
+            }
+        };
+        return sel;
+    },
+
+    /**
+     * selection.fillrect(x1, y1, x2, y2)
+     * Create a filled rectangle selection.
+     *
+     * @param {number} x1 - Left x coordinate
+     * @param {number} y1 - Top y coordinate
+     * @param {number} x2 - Right x coordinate
+     * @param {number} y2 - Bottom y coordinate
+     * @returns {Object} Selection with coords array and bounds method
+     */
+    fillrect: (x1, y1, x2, y2) => {
+        const coords = [];
+        for (let y = y1; y <= y2; y++) {
+            for (let x = x1; x <= x2; x++) {
+                coords.push({ x, y });
+            }
+        }
+        const sel = {
+            coords,
+            bounds: () => ({ lx: x1, ly: y1, hx: x2, hy: y2 }),
+            negate: function() {
+                return selection.negate(this);
+            },
+            union: function(other) {
+                const coordSet = new Set();
+                this.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
+                if (other && other.coords) {
+                    other.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
+                }
+                const unionCoords = Array.from(coordSet).map(s => {
+                    const [x, y] = s.split(',').map(Number);
+                    return { x, y };
+                });
+                return {
+                    coords: unionCoords,
+                    bounds: sel.bounds,
+                    negate: sel.negate,
+                    union: sel.union
+                };
+            }
+        };
+        return sel;
     },
 
     /**

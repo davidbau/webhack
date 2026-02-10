@@ -5,6 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection, percent } from '../sp_lev.js';
+import { hell_tweaks } from './hellfill.js';
 
 export function generate() {
     // NetHack yendor wizard3.lua	$NHDT-Date: 1652196040 2022/5/10 15:20:40 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.4 $
@@ -97,7 +98,7 @@ export function generate() {
     }
     });
 
-    let protected_region = bounds2.negate() | wiz3;
+    let protected_region = bounds2.negate().union(wiz3);
     hell_tweaks(protected_region);
 
 

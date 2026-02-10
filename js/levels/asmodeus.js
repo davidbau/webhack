@@ -5,6 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
+import { hell_tweaks } from './hellfill.js';
 
 export function generate() {
     // NetHack gehennom asmodeus.lua	$NHDT-Date: 1652196020 2022/5/10 15:20:20 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.2 $
@@ -105,7 +106,7 @@ export function generate() {
        des.trap("magic");
     } });
 
-    let protected_region = bounds2.negate() | asmo1 | asmo2;
+    let protected_region = bounds2.negate().union(asmo1).union(asmo2);
     hell_tweaks(protected_region);
 
 
