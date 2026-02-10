@@ -99,6 +99,50 @@ def postprocess_level(content, filename=""):
         content
     )
 
+    # Fix 6b: Missing closing brace for loops before return
+    # Pattern: des.monster();
+    #
+    #          return des.finalize_level();
+    # Should be: des.monster();
+    #            }
+    #
+    #            return des.finalize_level();
+    content = re.sub(
+        r'(\n      des\.(monster|object|trap)\([^)]*\);)\n    \n(    return des\.finalize_level\(\);)',
+        r'\1\n    }\n\n\3',
+        content
+    )
+
+    # Fix 6c: Extra closing braces after "removed extra" comment
+    # Pattern: }
+    #          }
+    #          }
+    #              return des.finalize_level();
+    # Should be: }
+    #
+    #            return des.finalize_level();
+    content = re.sub(
+        r'\n    // removed extra \n    \}\n\}\n\}\n(    return des\.finalize_level\(\);)',
+        r'\n\n\1',
+        content
+    )
+
+    # Fix 6d: Extra closing brace before return (quest files)
+    # Pattern: });
+    #
+    #
+    #
+    #    }
+    #    return des.finalize_level();
+    # Should be: });
+    #
+    #    return des.finalize_level();
+    content = re.sub(
+        r'(\);)\n\n+\n    \}\n(    return des\.finalize_level\(\);)',
+        r'\1\n\n\2',
+        content
+    )
+
     # Fix 7: Multiple variable declarations with comma (Lua multiple assignment)
     # Pattern: ltype,rtype: "weapon shop","armor shop"
     content = re.sub(
