@@ -175,7 +175,8 @@ export function generate() {
     }
     for (let i = 1; i <= 7 + Math.random(1 - 1,1*3); i++) {
        des.monster({ id: "chameleon", coord: streets.rndcoord(1), peaceful: 0 });
-    
+    }
+
     return des.finalize_level();
 }
 
