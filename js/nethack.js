@@ -157,6 +157,7 @@ class NetHackGame {
 
         // Apply flags
         this.player.showExp = this.flags.showexp;
+        this.player.showTime = this.flags.time;
 
         // Initial display
         this.fov.compute(this.map, this.player.x, this.player.y);
@@ -225,6 +226,7 @@ class NetHackGame {
         // Load flags (C ref: flags struct)
         this.flags = restored.flags || loadFlags();
         this.player.showExp = this.flags.showexp;
+        this.player.showTime = this.flags.time;
 
         // Render
         this.fov.compute(this.map, this.player.x, this.player.y);

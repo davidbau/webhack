@@ -443,6 +443,7 @@ export class Player {
 
         // Display options
         this.showExp = true;
+        this.showTime = false;
     }
 
     // Initialize player for a new game with a given role

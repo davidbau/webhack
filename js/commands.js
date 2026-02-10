@@ -1620,6 +1620,9 @@ async function handleSet(game) {
         if (def.name === 'showexp') {
             player.showExp = flags.showexp;
         }
+        if (def.name === 'time') {
+            player.showTime = flags.time;
+        }
         // Update global flags for input handler
         window.gameFlags = flags;
 

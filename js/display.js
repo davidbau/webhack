@@ -509,7 +509,10 @@ export class Display {
             line2Parts.push(`Exp:${player.level}`);
         }
 
-        line2Parts.push(`T:${player.turns}`);
+        // Turn counter (time option)
+        if (player.showTime) {
+            line2Parts.push(`T:${player.turns}`);
+        }
 
         // Hunger status
         if (player.hunger <= 50) {
