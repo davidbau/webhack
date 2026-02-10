@@ -1,0 +1,103 @@
+{
+  "scenario": "throw_dagger_straight",
+  "seed": 12345,
+  "initial_state": {
+    "player_pos": {
+      "x": 40,
+      "y": 11
+    },
+    "direction": {
+      "dx": 1,
+      "dy": 0
+    },
+    "object": "dagger"
+  },
+  "animation_events": [
+    {
+      "call": "tmp_at",
+      "type": "init",
+      "mode": -4,
+      "glyph": 2456,
+      "elapsed_ms": 0,
+      "timestamp": 0,
+      "mode_name": "DISP_FLASH",
+      "glyph_type": "glyph_2456"
+    },
+    {
+      "call": "tmp_at",
+      "type": "display",
+      "x": 41,
+      "y": 11,
+      "elapsed_ms": 0,
+      "timestamp": 0
+    },
+    {
+      "call": "delay_output",
+      "elapsed_ms": 50,
+      "timestamp": 50
+    },
+    {
+      "call": "tmp_at",
+      "type": "display",
+      "x": 42,
+      "y": 11,
+      "elapsed_ms": 0,
+      "timestamp": 50
+    },
+    {
+      "call": "delay_output",
+      "elapsed_ms": 50,
+      "timestamp": 100
+    },
+    {
+      "call": "tmp_at",
+      "type": "display",
+      "x": 43,
+      "y": 11,
+      "elapsed_ms": 0,
+      "timestamp": 100
+    },
+    {
+      "call": "delay_output",
+      "elapsed_ms": 50,
+      "timestamp": 150
+    },
+    {
+      "call": "tmp_at",
+      "type": "display",
+      "x": 44,
+      "y": 11,
+      "elapsed_ms": 0,
+      "timestamp": 150
+    },
+    {
+      "call": "delay_output",
+      "elapsed_ms": 50,
+      "timestamp": 200
+    },
+    {
+      "call": "tmp_at",
+      "type": "init",
+      "mode": -7,
+      "glyph": 0,
+      "elapsed_ms": 0,
+      "timestamp": 200,
+      "mode_name": "DISP_END",
+      "glyph_type": "glyph_0"
+    }
+  ],
+  "final_state": {
+    "object_position": {
+      "x": 44,
+      "y": 11
+    },
+    "object_broke": false
+  },
+  "summary": {
+    "total_events": 10,
+    "total_time_ms": 200,
+    "delay_count": 4,
+    "display_count": 4,
+    "avg_delay_ms": 50.0
+  }
+}
