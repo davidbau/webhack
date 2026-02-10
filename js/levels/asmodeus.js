@@ -22,17 +22,17 @@ export function generate() {
 
     // First part
     const asmo1 = des.map({ halign: "half-left", valign: "center", map: `  --------------------- | +  +  +  +  +  + .| +  + .| | +  +  +  +  +  + .S +  + .| |---+------------ + .| | +  + .| +  +  +  + .|-+-- | + ---| +  +  +  + .| +  + | + | + S +  +  +  + .| +  + | + | + | +  +  +  + .| +  + | + | + | +  +  +  + .|-+-- | + | + ----------- + .| | + S +  +  +  +  + | +  + .| ---------------------  `, contents: function(rm) { // Doors;
-            des.door("closed",04,03);
-            des.door("locked",18,04);
-            des.door("closed",18,08);
+            des.door("closed",4,3);
+            des.door("locked",18,4);
+            des.door("closed",18,8);
             //
-            des.stair("down", 13,07);
+            des.stair("down", 13,7);
             // Non diggable walls
-            des.non_diggable(selection.area(00,00,20,11));
+            des.non_diggable(selection.area(0,0,20,11));
             // Entire main area
-            des.region(selection.area(01,01,20,10),"unlit");
+            des.region(selection.area(1,1,20,10),"unlit");
             // The fellow in residence
-            des.monster("Asmodeus",12,07);
+            des.monster("Asmodeus",12,7);
             // Some random weapons and armor.
             des.object("[");
             des.object("[");
@@ -45,32 +45,32 @@ export function generate() {
             des.object("?");
             des.object("?");
             // Some traps.
-            des.trap("spiked pit", 05,02);
-            des.trap("fire", 08,06);
+            des.trap("spiked pit", 5,2);
+            des.trap("fire", 8,6);
             des.trap("sleep gas");
             des.trap("anti magic");
             des.trap("fire");
             des.trap("magic");
             des.trap("magic");
             // Random monsters.
-            des.monster("ghost",11,07);
-            des.monster("horned devil",10,05);
+            des.monster("ghost",11,7);
+            des.monster("horned devil",10,5);
             des.monster("L");
             // Some Vampires for good measure
             des.monster("V");
             des.monster("V");
             des.monster("V"); } });
 
-    des.levregion({ region: {01,00,6,20}, region_islev: 1, exclude: {6,1,70,16}, exclude_islev: 1, type: "stair-up" });
+    des.levregion({ region: [1,0,6,20], region_islev: 1, exclude: [6,1,70,16], exclude_islev: 1, type: "stair-up" });
 
-    des.levregion({ region: {01,00,6,20}, region_islev: 1, exclude: {6,1,70,16}, exclude_islev: 1, type: "branch" });
-    des.teleport_region({ region: {01,00,6,20}, region_islev: 1, exclude: {6,1,70,16}, exclude_islev: 1 });
+    des.levregion({ region: [1,0,6,20], region_islev: 1, exclude: [6,1,70,16], exclude_islev: 1, type: "branch" });
+    des.teleport_region({ region: [1,0,6,20], region_islev: 1, exclude: [6,1,70,16], exclude_islev: 1 });
 
     // Second part
-    const asmo2 = des.map({ halign: "half-right", valign: "center", map: `  --------------------------------- +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + | +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + + +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + | ---------------------------------  `, contents: function(rm) { des.mazewalk(32,02,"east");
+    const asmo2 = des.map({ halign: "half-right", valign: "center", map: `  --------------------------------- +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + | +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + + +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + | ---------------------------------  `, contents: function(rm) { des.mazewalk(32,2,"east");
             // Non diggable walls
-            des.non_diggable(selection.area(00,00,32,04));
-            des.door("closed",32,02);
+            des.non_diggable(selection.area(0,0,32,4));
+            des.door("closed",32,2);
             des.monster("&");
             des.monster("&");
             des.monster("&");
@@ -78,8 +78,8 @@ export function generate() {
             des.trap("fire");
             des.trap("magic"); } });
 
-    const protected = bounds2.negate() | asmo1 | asmo2;
-    hell_tweaks(protected)
+    const protectedAreas = bounds2.negate() | asmo1 | asmo2;
+    hell_tweaks(protectedAreas)
 
 
     return des.finalize_level();
