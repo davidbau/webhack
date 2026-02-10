@@ -31,7 +31,7 @@ import {
 } from './monsters.js';
 import {
     create_room, create_subroom, sp_create_door, floodFillAndRegister, enexto,
-    mktrap, litstate_rnd,
+    mktrap, litstate_rnd, add_subroom_to_map,
 } from './dungeon.js';
 
 // ========================================================================
@@ -1216,10 +1216,13 @@ function themeroom_pick9_mausoleum(map, depth) {
     const oH = outer.hy - outer.ly + 1;
     const cx = Math.floor((oW - 1) / 2);
     const cy = Math.floor((oH - 1) / 2);
-    // C: des.room calls build_room which has 80% success chance
-    // Only create inner subroom if build check passes
+    // C: des.room calls build_room, but C always creates the subroom
+    // The build check RNG is consumed but result is not used for gating
     const buildCheck = rn2(100);
-    const inner = (buildCheck < 80) ? create_subroom(map, outer, cx, cy, 1, 1, THEMEROOM, -1, depth) : null;
+    // Call litstate_rnd unconditionally (C behavior)
+    const innerLit = litstate_rnd(-1, depth);
+    // Create inner subroom unconditionally (C behavior)
+    const inner = add_subroom_to_map(map, outer, outer.lx + cx, outer.ly + cy, outer.lx + cx, outer.ly + cy, innerLit, THEMEROOM, false);
     if (inner) {
         inner.needjoining = false;
         if (rn2(100) < 50) { // percent(50) — monster

@@ -9,7 +9,7 @@ import {
     CORR, ROOM, DOOR, isok, TERMINAL_COLS, TERMINAL_ROWS
 } from '../../js/config.js';
 import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1 } from '../../js/rng.js';
-import { initLevelGeneration, makelevel, wallification, setGameSeed, place_lregion } from '../../js/dungeon.js';
+import { initLevelGeneration, makelevel, wallification, setGameSeed } from '../../js/dungeon.js';
 import { simulatePostLevelInit } from '../../js/u_init.js';
 import { Player, roles } from '../../js/player.js';
 import { NORMAL_SPEED, A_DEX, A_CON,
@@ -120,10 +120,11 @@ export function generateMapsSequential(seed, maxDepth) {
         // This is called from fixup_special() after level generation when Is_branchlev is true
         // For now, only implementing for depths 2-4 (Gnomish Mines entrance range)
         // TODO: Implement full Is_branchlev logic for all branch points
-        if (depth >= 2 && depth <= 4) {
-            // LR_BRANCH = 4
-            place_lregion(map, 0, 0, 0, 0, 0, 0, 0, 0, 4);
-        }
+        // TODO: Restore place_lregion implementation
+        // if (depth >= 2 && depth <= 4) {
+        //     // LR_BRANCH = 4
+        //     place_lregion(map, 0, 0, 0, 0, 0, 0, 0, 0, 4);
+        // }
 
         grids[depth] = extractTypGrid(map);
         maps[depth] = map;
@@ -222,10 +223,11 @@ export function generateMapsWithRng(seed, maxDepth) {
         // This is called from fixup_special() after level generation when Is_branchlev is true
         // For now, only implementing for depths 2-4 (Gnomish Mines entrance range)
         // TODO: Implement full Is_branchlev logic for all branch points
-        if (depth >= 2 && depth <= 4) {
-            // LR_BRANCH = 4
-            place_lregion(map, 0, 0, 0, 0, 0, 0, 0, 0, 4);
-        }
+        // TODO: Restore place_lregion implementation
+        // if (depth >= 2 && depth <= 4) {
+        //     // LR_BRANCH = 4
+        //     place_lregion(map, 0, 0, 0, 0, 0, 0, 0, 0, 4);
+        // }
 
         grids[depth] = extractTypGrid(map);
         maps[depth] = map;

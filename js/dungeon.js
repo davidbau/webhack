@@ -481,14 +481,13 @@ function add_room_to_map(map, lowx, lowy, hix, hiy, lit, rtype, special) {
     const croom = makeRoom();
     // needfill defaults to FILL_NONE; caller sets FILL_NORMAL as needed
     map.rooms.push(croom);
-    // Track nroom separately (don't use rooms.length once subrooms are added)
-    map.nroom = (map.nroom || 0) + 1;
+    map.nroom = map.rooms.length;
     do_room_or_subroom(map, croom, lowx, lowy, hix, hiy, lit, rtype,
                        special, true);
 }
 
 // C ref: mklev.c add_subroom()
-function add_subroom_to_map(map, proom, lowx, lowy, hix, hiy, lit, rtype, special) {
+export function add_subroom_to_map(map, proom, lowx, lowy, hix, hiy, lit, rtype, special) {
     const croom = makeRoom();
     croom.needjoining = false;
     // Subrooms use a pseudo room index beyond nroom (matches C pointer arithmetic)
@@ -755,10 +754,9 @@ export function floodFillAndRegister(map, sx, sy, rtype, lit) {
     // Register the room
     const croom = makeRoom();
     map.rooms.push(croom);
-    // Track nroom separately (don't use rooms.length once subrooms are added)
-    map.nroom = (map.nroom || 0) + 1;
+    map.nroom = map.rooms.length;
 
-    const roomno = map.nroom - 1;
+    const roomno = map.rooms.indexOf(croom);
     croom.roomnoidx = roomno;
     croom.lx = minX;
     croom.hx = maxX;
