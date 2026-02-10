@@ -976,23 +976,45 @@ class NetHackGame {
         this.display.putstr_message(welcomeMsg);
 
         // Show --More-- after welcome
-        // C ref: if message + " --More--" exceeds terminal width, wrap to next line
-        // C uses: if (msg.length + 8 >= cols) where 8 = " --More--" (space + 7 chars)
+        // Need to determine where the message ended (may have wrapped to 2 lines)
         const moreStr = '--More--';
         let moreRow = 0;
         let moreCol;
-        if (welcomeMsg.length + 8 >= this.display.cols) {
-            // Doesn't fit on one line: put --More-- on row 1, col 0
-            moreRow = 1;
-            moreCol = 0;
+
+        if (welcomeMsg.length <= this.display.cols) {
+            // Message fits on one line
+            if (welcomeMsg.length + 8 >= this.display.cols) {
+                // --More-- won't fit on same line, wrap to next line
+                moreRow = 1;
+                moreCol = 0;
+            } else {
+                // --More-- fits on same line with space
+                moreRow = 0;
+                moreCol = welcomeMsg.length + 1;
+            }
         } else {
-            // Fits on same line: add space before --More--
-            moreCol = welcomeMsg.length + 1;
+            // Message wrapped to two lines
+            // Find where the first line broke (last space before cols)
+            let breakPoint = welcomeMsg.lastIndexOf(' ', this.display.cols);
+            if (breakPoint === -1) breakPoint = this.display.cols;
+
+            const wrapped = welcomeMsg.substring(breakPoint).trim();
+            if (wrapped.length + 8 >= this.display.cols) {
+                // --More-- won't fit after wrapped text, use row 2
+                moreRow = 2;
+                moreCol = 0;
+            } else {
+                // --More-- fits after wrapped text on row 1
+                moreRow = 1;
+                moreCol = wrapped.length + 1;
+            }
         }
+
         this.display.putstr(moreCol, moreRow, moreStr, 2); // CLR_GREEN
         await nhgetch();
         this.display.clearRow(0);
-        if (moreRow > 0) this.display.clearRow(moreRow);
+        if (moreRow > 0) this.display.clearRow(1);
+        if (moreRow > 1) this.display.clearRow(2);
     }
 
     // Generate or retrieve a level

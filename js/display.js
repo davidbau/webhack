@@ -213,8 +213,35 @@ export class Display {
     // C ref: winprocs.h win_putstr for NHW_MESSAGE
     putstr_message(msg) {
         this.clearRow(MESSAGE_ROW);
-        this.putstr(0, MESSAGE_ROW, msg.substring(0, this.cols), CLR_WHITE);
-        this.topMessage = msg;
+
+        // If message fits on one line, display it normally
+        if (msg.length <= this.cols) {
+            this.putstr(0, MESSAGE_ROW, msg, CLR_WHITE);
+            this.topMessage = msg;
+        } else {
+            // Message is too long - wrap at word boundary
+            // Find the last space before the column limit
+            let breakPoint = msg.lastIndexOf(' ', this.cols);
+            if (breakPoint === -1) {
+                // No space found, just truncate
+                breakPoint = this.cols;
+            }
+
+            // Display first line
+            const firstLine = msg.substring(0, breakPoint);
+            this.putstr(0, MESSAGE_ROW, firstLine, CLR_WHITE);
+
+            // Store full message for message history
+            this.topMessage = msg;
+
+            // Display wrapped portion on second line
+            const wrapped = msg.substring(breakPoint).trim();
+            if (wrapped.length > 0) {
+                this.clearRow(MESSAGE_ROW + 1);
+                this.putstr(0, MESSAGE_ROW + 1, wrapped.substring(0, this.cols), CLR_WHITE);
+            }
+        }
+
         if (msg.trim()) {
             this.messages.push(msg);
         }
