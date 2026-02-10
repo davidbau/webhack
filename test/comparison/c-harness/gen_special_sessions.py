@@ -146,6 +146,63 @@ LEVEL_GROUPS = {
             {'name': 'bigrm', 'branch': 'Dungeons of Doom', 'nlevels': 13},
         ],
     },
+    'quest': {
+        'description': 'Quest levels (13 roles × 3 levels: start/locate/goal)',
+        'levels': [
+            # Archeologist quest
+            {'name': 'Arc-strt', 'branch': 'The Quest'},
+            {'name': 'Arc-loca', 'branch': 'The Quest'},
+            {'name': 'Arc-goal', 'branch': 'The Quest'},
+            # Barbarian quest
+            {'name': 'Bar-strt', 'branch': 'The Quest'},
+            {'name': 'Bar-loca', 'branch': 'The Quest'},
+            {'name': 'Bar-goal', 'branch': 'The Quest'},
+            # Caveman quest
+            {'name': 'Cav-strt', 'branch': 'The Quest'},
+            {'name': 'Cav-loca', 'branch': 'The Quest'},
+            {'name': 'Cav-goal', 'branch': 'The Quest'},
+            # Healer quest
+            {'name': 'Hea-strt', 'branch': 'The Quest'},
+            {'name': 'Hea-loca', 'branch': 'The Quest'},
+            {'name': 'Hea-goal', 'branch': 'The Quest'},
+            # Knight quest
+            {'name': 'Kni-strt', 'branch': 'The Quest'},
+            {'name': 'Kni-loca', 'branch': 'The Quest'},
+            {'name': 'Kni-goal', 'branch': 'The Quest'},
+            # Monk quest
+            {'name': 'Mon-strt', 'branch': 'The Quest'},
+            {'name': 'Mon-loca', 'branch': 'The Quest'},
+            {'name': 'Mon-goal', 'branch': 'The Quest'},
+            # Priest quest
+            {'name': 'Pri-strt', 'branch': 'The Quest'},
+            {'name': 'Pri-loca', 'branch': 'The Quest'},
+            {'name': 'Pri-goal', 'branch': 'The Quest'},
+            # Ranger quest
+            {'name': 'Ran-strt', 'branch': 'The Quest'},
+            {'name': 'Ran-loca', 'branch': 'The Quest'},
+            {'name': 'Ran-goal', 'branch': 'The Quest'},
+            # Rogue quest
+            {'name': 'Rog-strt', 'branch': 'The Quest'},
+            {'name': 'Rog-loca', 'branch': 'The Quest'},
+            {'name': 'Rog-goal', 'branch': 'The Quest'},
+            # Samurai quest
+            {'name': 'Sam-strt', 'branch': 'The Quest'},
+            {'name': 'Sam-loca', 'branch': 'The Quest'},
+            {'name': 'Sam-goal', 'branch': 'The Quest'},
+            # Tourist quest
+            {'name': 'Tou-strt', 'branch': 'The Quest'},
+            {'name': 'Tou-loca', 'branch': 'The Quest'},
+            {'name': 'Tou-goal', 'branch': 'The Quest'},
+            # Valkyrie quest
+            {'name': 'Val-strt', 'branch': 'The Quest'},
+            {'name': 'Val-loca', 'branch': 'The Quest'},
+            {'name': 'Val-goal', 'branch': 'The Quest'},
+            # Wizard quest
+            {'name': 'Wiz-strt', 'branch': 'The Quest'},
+            {'name': 'Wiz-loca', 'branch': 'The Quest'},
+            {'name': 'Wiz-goal', 'branch': 'The Quest'},
+        ],
+    },
 }
 
 
