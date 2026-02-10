@@ -2270,6 +2270,30 @@ export const nh = {
  */
 export const selection = {
     /**
+     * selection.room()
+     * Create a selection containing all cells in the current room.
+     * Used in themed room contents callbacks.
+     * C ref: nhlua.c selection_room()
+     */
+    room: () => {
+        // Get the current room being generated from levelState
+        const currentRoom = levelState.currentRoom;
+        if (!currentRoom) {
+            // Fallback: return empty selection
+            return selection.new();
+        }
+
+        // Create a selection with all cells in the room (excluding walls)
+        const sel = selection.new();
+        for (let y = currentRoom.ly + 1; y < currentRoom.hy; y++) {
+            for (let x = currentRoom.lx + 1; x < currentRoom.hx; x++) {
+                sel.set(x, y);
+            }
+        }
+        return sel;
+    },
+
+    /**
      * selection.area(x1, y1, x2, y2)
      * Create a rectangular selection.
      */
@@ -2317,6 +2341,27 @@ export const selection = {
             coords,
             set: (x, y) => {
                 coords.push({ x, y });
+            },
+            /**
+             * numpoints()
+             * Get the number of points in this selection.
+             */
+            numpoints: () => {
+                return coords.length;
+            },
+            /**
+             * percentage(pct)
+             * Return a new selection with randomly selected percentage of coordinates.
+             * C ref: nhlua.c selection_filter_percent()
+             */
+            percentage: (pct) => {
+                const newSel = selection.new();
+                for (const coord of coords) {
+                    if (rn2(100) < pct) {
+                        newSel.set(coord.x, coord.y);
+                    }
+                }
+                return newSel;
             },
             // Add rndcoord as a method for Lua compatibility
             rndcoord: (filterValue) => {

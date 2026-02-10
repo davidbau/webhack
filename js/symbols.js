@@ -953,3 +953,39 @@ export function is_cmap_water(i)      { return i === S_pool || i === S_water; }
 export function is_cmap_lava(i)       { return i === S_lava || i === S_lavawall; }
 export function is_cmap_stairs(i)     { return i >= S_upstair && i <= S_brdnladder; }
 export function is_cmap_engraving(i)  { return i === S_engroom || i === S_engrcorr; }
+
+// ==========================================================================
+// DECgraphics Symbol Set
+// C ref: dat/symbols DECgraphics symset
+// Uses Unicode box-drawing characters for walls and corners
+// ==========================================================================
+
+export const decgraphics = [
+    // Walls and corners (matching defsyms indices 1-11)
+    '│',  // S_vwall (1)   - \xf8 meta-x, vertical rule
+    '─',  // S_hwall (2)   - \xf1 meta-q, horizontal rule
+    '┌',  // S_tlcorn (3)  - \xec meta-l, top left corner
+    '┐',  // S_trcorn (4)  - \xeb meta-k, top right corner
+    '└',  // S_blcorn (5)  - \xed meta-m, bottom left
+    '┘',  // S_brcorn (6)  - \xea meta-j, bottom right
+    '┼',  // S_crwall (7)  - \xee meta-n, cross
+    '┴',  // S_tuwall (8)  - \xf6 meta-v, T up
+    '┬',  // S_tdwall (9)  - \xf7 meta-w, T down
+    '┤',  // S_tlwall (10) - \xf5 meta-u, T left
+    '├',  // S_trwall (11) - \xf4 meta-t, T right
+];
+
+/**
+ * Get the display character for a symbol index
+ * @param {number} idx - Symbol index (S_* constant)
+ * @param {boolean} useDECgraphics - Whether to use DECgraphics box-drawing chars
+ * @returns {string} The character to display
+ */
+export function getSymbolChar(idx, useDECgraphics = false) {
+    // Use DECgraphics for wall symbols (indices 1-11) if enabled
+    if (useDECgraphics && idx >= S_vwall && idx <= S_trwall) {
+        return decgraphics[idx - 1];  // decgraphics[0] maps to S_vwall (1)
+    }
+    // Otherwise use default ASCII from defsyms
+    return defsyms[idx].ch;
+}

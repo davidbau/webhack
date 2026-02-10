@@ -160,7 +160,7 @@ class NetHackGame {
 
         // Initial display
         this.fov.compute(this.map, this.player.x, this.player.y);
-        this.display.renderMap(this.map, this.player, this.fov);
+        this.display.renderMap(this.map, this.player, this.fov, this.flags);
         this.display.renderStatus(this.player);
     }
 
@@ -228,7 +228,7 @@ class NetHackGame {
 
         // Render
         this.fov.compute(this.map, this.player.x, this.player.y);
-        this.display.renderMap(this.map, this.player, this.fov);
+        this.display.renderMap(this.map, this.player, this.fov, this.flags);
         this.display.renderStatus(this.player);
         this.display.putstr_message('Game restored.');
         return true;
@@ -1056,7 +1056,7 @@ class NetHackGame {
 
         // Update display
         this.fov.compute(this.map, this.player.x, this.player.y);
-        this.display.renderMap(this.map, this.player, this.fov);
+        this.display.renderMap(this.map, this.player, this.fov, this.flags);
         this.display.renderStatus(this.player);
     }
 
@@ -1145,7 +1145,7 @@ class NetHackGame {
                     savebones(this);
                 }
                 this.fov.compute(this.map, this.player.x, this.player.y);
-                this.display.renderMap(this.map, this.player, this.fov);
+                this.display.renderMap(this.map, this.player, this.fov, this.flags);
                 this.display.renderStatus(this.player);
                 continue;
             }
@@ -1255,7 +1255,7 @@ class NetHackGame {
             this.fov.compute(this.map, this.player.x, this.player.y);
 
             // Render
-            this.display.renderMap(this.map, this.player, this.fov);
+            this.display.renderMap(this.map, this.player, this.fov, this.flags);
             this.display.renderStatus(this.player);
         }
 

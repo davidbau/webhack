@@ -927,4 +927,27 @@ export class HeadlessDisplay {
         }
         return result;
     }
+
+    // Render message window (for testing msg_window option)
+    renderMessageWindow() {
+        const MSG_WINDOW_ROWS = 3;
+        // Clear message window area
+        for (let r = 0; r < MSG_WINDOW_ROWS; r++) {
+            this.clearRow(r);
+        }
+
+        // Show last 3 messages (most recent at bottom)
+        if (!this.messages) this.messages = [];
+        const recentMessages = this.messages.slice(-MSG_WINDOW_ROWS);
+        for (let i = 0; i < recentMessages.length; i++) {
+            const msg = recentMessages[i];
+            const row = MSG_WINDOW_ROWS - recentMessages.length + i;
+            if (msg.length <= this.cols) {
+                this.putstr(0, row, msg.substring(0, this.cols));
+            } else {
+                // Truncate long messages
+                this.putstr(0, row, msg.substring(0, this.cols - 3) + '...');
+            }
+        }
+    }
 }

@@ -67,7 +67,48 @@ const COLOR_CSS = [
 // Default symbol for each terrain type
 // C ref: defsym.h PCHAR definitions
 // Uses Unicode box-drawing characters (DECGraphics / Enhanced1 from dat/symbols)
-const TERRAIN_SYMBOLS = {
+// ASCII terrain symbols (default, DECgraphics=false)
+const TERRAIN_SYMBOLS_ASCII = {
+    [STONE]:   { ch: ' ', color: CLR_GRAY },
+    [VWALL]:   { ch: '|', color: CLR_GRAY },
+    [HWALL]:   { ch: '-', color: CLR_GRAY },
+    [TLCORNER]: { ch: '-', color: CLR_GRAY },
+    [TRCORNER]: { ch: '-', color: CLR_GRAY },
+    [BLCORNER]: { ch: '-', color: CLR_GRAY },
+    [BRCORNER]: { ch: '-', color: CLR_GRAY },
+    [CROSSWALL]: { ch: '-', color: CLR_GRAY },
+    [TUWALL]:  { ch: '-', color: CLR_GRAY },
+    [TDWALL]:  { ch: '-', color: CLR_GRAY },
+    [TLWALL]:  { ch: '|', color: CLR_GRAY },
+    [TRWALL]:  { ch: '|', color: CLR_GRAY },
+    [DOOR]:    { ch: '+', color: CLR_BROWN },
+    [CORR]:    { ch: '#', color: CLR_GRAY },
+    [ROOM]:    { ch: '.', color: CLR_GRAY },
+    [STAIRS]:  { ch: '<', color: CLR_GRAY },
+    [FOUNTAIN]: { ch: '{', color: CLR_BRIGHT_BLUE },
+    [THRONE]:  { ch: '\\', color: HI_GOLD },
+    [SINK]:    { ch: '#', color: CLR_GRAY },
+    [GRAVE]:   { ch: '|', color: CLR_WHITE },
+    [ALTAR]:   { ch: '_', color: CLR_GRAY },
+    [POOL]:    { ch: '}', color: CLR_BLUE },
+    [MOAT]:    { ch: '}', color: CLR_BLUE },
+    [WATER]:   { ch: '}', color: CLR_BRIGHT_BLUE },
+    [LAVAPOOL]: { ch: '}', color: CLR_RED },
+    [LAVAWALL]: { ch: '}', color: CLR_ORANGE },
+    [ICE]:     { ch: '.', color: CLR_CYAN },
+    [IRONBARS]: { ch: '#', color: HI_METAL },
+    [TREE]:    { ch: '#', color: CLR_GREEN },
+    [DRAWBRIDGE_UP]:   { ch: '#', color: CLR_BROWN },
+    [DRAWBRIDGE_DOWN]: { ch: '.', color: CLR_BROWN },
+    [AIR]:     { ch: ' ', color: CLR_CYAN },
+    [CLOUD]:   { ch: '#', color: CLR_GRAY },
+    [SDOOR]:   { ch: '|', color: CLR_GRAY },
+    [SCORR]:   { ch: ' ', color: CLR_GRAY },
+};
+
+// DECgraphics terrain symbols (DECgraphics=true, box-drawing characters)
+// C ref: dat/symbols DECgraphics symset
+const TERRAIN_SYMBOLS_DEC = {
     [STONE]:   { ch: ' ', color: CLR_GRAY },
     [VWALL]:   { ch: '\u2502', color: CLR_GRAY },   // BOX VERT
     [HWALL]:   { ch: '\u2500', color: CLR_GRAY },   // BOX HORIZ
@@ -75,34 +116,34 @@ const TERRAIN_SYMBOLS = {
     [TRCORNER]: { ch: '\u2510', color: CLR_GRAY },  // BOX TR
     [BLCORNER]: { ch: '\u2514', color: CLR_GRAY },  // BOX BL
     [BRCORNER]: { ch: '\u2518', color: CLR_GRAY },  // BOX BR
-    [CROSSWALL]: { ch: '\u253c', color: CLR_GRAY },  // BOX CROSS
+    [CROSSWALL]: { ch: '\u253c', color: CLR_GRAY }, // BOX CROSS
     [TUWALL]:  { ch: '\u2534', color: CLR_GRAY },   // BOX UP-T
     [TDWALL]:  { ch: '\u252c', color: CLR_GRAY },   // BOX DOWN-T
     [TLWALL]:  { ch: '\u2524', color: CLR_GRAY },   // BOX LEFT-T
     [TRWALL]:  { ch: '\u251c', color: CLR_GRAY },   // BOX RIGHT-T
-    [DOOR]:    { ch: '+', color: CLR_BROWN },        // closed door default
+    [DOOR]:    { ch: '+', color: CLR_BROWN },
     [CORR]:    { ch: '#', color: CLR_GRAY },
-    [ROOM]:    { ch: '\u00b7', color: CLR_GRAY },    // MIDDLE DOT
-    [STAIRS]:  { ch: '<', color: CLR_GRAY },         // default to up
+    [ROOM]:    { ch: '\u00b7', color: CLR_GRAY },   // MIDDLE DOT
+    [STAIRS]:  { ch: '<', color: CLR_GRAY },
     [FOUNTAIN]: { ch: '{', color: CLR_BRIGHT_BLUE },
     [THRONE]:  { ch: '\\', color: HI_GOLD },
     [SINK]:    { ch: '#', color: CLR_GRAY },
-    [GRAVE]:   { ch: '\u2020', color: CLR_WHITE },   // DAGGER
+    [GRAVE]:   { ch: '\u2020', color: CLR_WHITE },  // DAGGER
     [ALTAR]:   { ch: '_', color: CLR_GRAY },
-    [POOL]:    { ch: '\u2248', color: CLR_BLUE },    // APPROX EQUAL
-    [MOAT]:    { ch: '\u2248', color: CLR_BLUE },    // APPROX EQUAL
-    [WATER]:   { ch: '\u2248', color: CLR_BRIGHT_BLUE }, // APPROX EQUAL
-    [LAVAPOOL]: { ch: '\u2248', color: CLR_RED },    // APPROX EQUAL
-    [LAVAWALL]: { ch: '\u2248', color: CLR_ORANGE }, // APPROX EQUAL
-    [ICE]:     { ch: '\u00b7', color: CLR_CYAN },    // MIDDLE DOT
+    [POOL]:    { ch: '\u2248', color: CLR_BLUE },   // APPROX EQUAL
+    [MOAT]:    { ch: '\u2248', color: CLR_BLUE },
+    [WATER]:   { ch: '\u2248', color: CLR_BRIGHT_BLUE },
+    [LAVAPOOL]: { ch: '\u2248', color: CLR_RED },
+    [LAVAWALL]: { ch: '\u2248', color: CLR_ORANGE },
+    [ICE]:     { ch: '\u00b7', color: CLR_CYAN },   // MIDDLE DOT
     [IRONBARS]: { ch: '#', color: HI_METAL },
     [TREE]:    { ch: '#', color: CLR_GREEN },
     [DRAWBRIDGE_UP]:   { ch: '#', color: CLR_BROWN },
-    [DRAWBRIDGE_DOWN]: { ch: '\u00b7', color: CLR_BROWN }, // MIDDLE DOT
+    [DRAWBRIDGE_DOWN]: { ch: '\u00b7', color: CLR_BROWN },
     [AIR]:     { ch: ' ', color: CLR_CYAN },
     [CLOUD]:   { ch: '#', color: CLR_GRAY },
-    [SDOOR]:   { ch: '\u2502', color: CLR_GRAY },   // BOX VERT (looks like wall)
-    [SCORR]:   { ch: ' ', color: CLR_GRAY },         // looks like stone
+    [SDOOR]:   { ch: '\u2502', color: CLR_GRAY },   // BOX VERT
+    [SCORR]:   { ch: ' ', color: CLR_GRAY },
 };
 
 export class Display {
@@ -135,6 +176,9 @@ export class Display {
         // Message history
         this.messages = [];
         this.topMessage = '';
+
+        // Game flags (updated by game, used for display options)
+        this.flags = {};
 
         this._createDOM();
     }
@@ -212,6 +256,23 @@ export class Display {
     // Display a message on the top line
     // C ref: winprocs.h win_putstr for NHW_MESSAGE
     putstr_message(msg) {
+        // Add to message history
+        if (msg.trim()) {
+            this.messages.push(msg);
+            // Keep last 20 messages
+            if (this.messages.length > 20) {
+                this.messages.shift();
+            }
+        }
+
+        // If msg_window is enabled, render the message window
+        // C ref: win/tty/topl.c — message window modes
+        if (this.flags.msg_window) {
+            this.renderMessageWindow();
+            return;
+        }
+
+        // Otherwise, use traditional single-line message display
         this.clearRow(MESSAGE_ROW);
 
         // If message fits on one line, display it normally
@@ -220,30 +281,43 @@ export class Display {
             this.topMessage = msg;
         } else {
             // Message is too long - wrap at word boundary
-            // Find the last space before the column limit
             let breakPoint = msg.lastIndexOf(' ', this.cols);
             if (breakPoint === -1) {
-                // No space found, just truncate
                 breakPoint = this.cols;
             }
 
-            // Display first line
             const firstLine = msg.substring(0, breakPoint);
             this.putstr(0, MESSAGE_ROW, firstLine, CLR_WHITE);
-
-            // Store full message for message history
             this.topMessage = msg;
 
-            // Display wrapped portion on second line
             const wrapped = msg.substring(breakPoint).trim();
             if (wrapped.length > 0) {
                 this.clearRow(MESSAGE_ROW + 1);
                 this.putstr(0, MESSAGE_ROW + 1, wrapped.substring(0, this.cols), CLR_WHITE);
             }
         }
+    }
 
-        if (msg.trim()) {
-            this.messages.push(msg);
+    // Render message window (last 3 messages)
+    // C ref: win/tty/topl.c prevmsg_window == 'f' (full)
+    renderMessageWindow() {
+        const MSG_WINDOW_ROWS = 3;
+        // Clear message window area
+        for (let r = 0; r < MSG_WINDOW_ROWS; r++) {
+            this.clearRow(r);
+        }
+
+        // Show last 3 messages (most recent at bottom)
+        const recentMessages = this.messages.slice(-MSG_WINDOW_ROWS);
+        for (let i = 0; i < recentMessages.length; i++) {
+            const msg = recentMessages[i];
+            const row = MSG_WINDOW_ROWS - recentMessages.length + i;
+            if (msg.length <= this.cols) {
+                this.putstr(0, row, msg.substring(0, this.cols), CLR_WHITE);
+            } else {
+                // Truncate long messages
+                this.putstr(0, row, msg.substring(0, this.cols - 3) + '...', CLR_WHITE);
+            }
         }
     }
 
@@ -260,10 +334,17 @@ export class Display {
 
     // Render the map from game state
     // C ref: display.c newsym() and print_glyph()
-    renderMap(gameMap, player, fov) {
+    renderMap(gameMap, player, fov, flags = {}) {
+        // Store flags for use by other methods (e.g., putstr_message, terrainSymbol)
+        this.flags = flags;
+
+        // When msg_window is enabled, map starts at row 3 (after 3-line message window)
+        // Otherwise map starts at row 1 (after single message line)
+        const mapOffset = flags.msg_window ? 3 : MAP_ROW_START;
+
         for (let y = 0; y < ROWNO; y++) {
             for (let x = 0; x < COLNO; x++) {
-                const row = y + MAP_ROW_START;
+                const row = y + mapOffset;
                 const col = x;
 
                 if (!fov || !fov.canSee(x, y)) {
@@ -343,16 +424,26 @@ export class Display {
     // C ref: defsym.h PCHAR definitions, display.c back_to_glyph()
     terrainSymbol(loc) {
         const typ = loc.typ;
+        const useDEC = this.flags.DECgraphics || false;
+
+        // Choose symbol set based on DECgraphics option
+        // C ref: dat/symbols — DECgraphics vs default ASCII
+        const TERRAIN_SYMBOLS = useDEC ? TERRAIN_SYMBOLS_DEC : TERRAIN_SYMBOLS_ASCII;
 
         // Handle door states
-        // C ref: dat/symbols DECgraphics -- S_ndoor=dot, S_vodoor/S_hodoor=dot
         if (typ === DOOR) {
             if (loc.flags & D_ISOPEN) {
-                return { ch: '\u00b7', color: CLR_BROWN };  // MIDDLE DOT open door
+                // Open door: MIDDLE DOT for DEC, '-' for ASCII
+                return useDEC
+                    ? { ch: '\u00b7', color: CLR_BROWN }
+                    : { ch: '-', color: CLR_BROWN };
             } else if (loc.flags & D_CLOSED || loc.flags & D_LOCKED) {
                 return { ch: '+', color: CLR_BROWN };
             } else {
-                return { ch: '\u00b7', color: CLR_GRAY };   // MIDDLE DOT doorway
+                // Doorway: MIDDLE DOT for DEC, '.' for ASCII
+                return useDEC
+                    ? { ch: '\u00b7', color: CLR_GRAY }
+                    : { ch: '.', color: CLR_GRAY };
             }
         }
 
@@ -368,8 +459,8 @@ export class Display {
         // Handle secret door/corridor (appears as wall/stone when unseen)
         if (typ === SDOOR) {
             return loc.horizontal
-                ? { ch: '\u2500', color: CLR_GRAY }   // BOX HORIZ wall
-                : { ch: '\u2502', color: CLR_GRAY };   // BOX VERT wall
+                ? (useDEC ? { ch: '\u2500', color: CLR_GRAY } : { ch: '-', color: CLR_GRAY })
+                : (useDEC ? { ch: '\u2502', color: CLR_GRAY } : { ch: '|', color: CLR_GRAY });
         }
 
         return TERRAIN_SYMBOLS[typ] || { ch: '?', color: CLR_MAGENTA };

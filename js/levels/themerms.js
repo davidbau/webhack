@@ -1018,8 +1018,10 @@ export function post_themerooms_generate() {
 export function themeroom_fill(rm) {
    if (debug_fill_idx !== null) {
       if (is_eligible(themeroom_fills[debug_fill_idx], rm)) {
+         des.setCurrentRoom(rm);
          themeroom_fills[debug_fill_idx].contents(rm);
-      } else {
+         des.setCurrentRoom(null);
+      } else{
          // ideally this would be a debugpline, not a full pline, and offer
          // some more context on whether it failed because of difficulty or
          // because of eligible function returning false; the warning doesn't
@@ -1054,7 +1056,9 @@ export function themeroom_fill(rm) {
       nh.impossible('no eligible themed room fills?');
       return;
    }
+   des.setCurrentRoom(rm);
    themeroom_fills[pick].contents(rm);
+   des.setCurrentRoom(null);
 }
 
 // postprocess callback: create an engraving pointing at a location
