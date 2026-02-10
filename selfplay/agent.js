@@ -673,16 +673,13 @@ export class Agent {
                 if (fleeDir) {
                     return { type: 'flee', key: fleeDir, reason: 'HP critical, fleeing' };
                 }
-            }
         }
 
         // 1b. Smarter rest strategy with location awareness
         // NetHack HP regen: (XL + CON)% chance per turn to heal 1 HP
         // At XL1 with CON~10, only 11% chance per turn!
         if (this.status && this.status.hp < this.status.hpmax) {
-            const hpPercent = this.status.hp / this.status.hpmax;
-            const nearbyMonsters = findMonsters(this.screen);
-            const adjacentMonster = this._findAdjacentMonster(px, py);
+            // hpPercent, nearbyMonsters, adjacentMonster already declared above
             const monstersNearby = nearbyMonsters.length > 0 || adjacentMonster !== null;
 
             // Check if HP increased since last check (natural regen occurred)
@@ -814,7 +811,7 @@ export class Agent {
         // --- Tactical checks ---
 
         // 3. If there's a monster adjacent, decide whether to fight it
-        const adjacentMonster = this._findAdjacentMonster(px, py);
+        // adjacentMonster already declared above
         if (adjacentMonster) {
             this.inCombat = true;
 
@@ -979,12 +976,25 @@ export class Agent {
 
         // --- Strategic movement ---
 
-        // 5. If on downstairs, descend
+        // 5. If on downstairs, evaluate whether it's safe to descend
         //    Check both cell type and registered features (player '@' overrides '>' on screen)
         const onDownstairs = (currentCell && currentCell.type === 'stairs_down') ||
             level.stairsDown.some(s => s.x === px && s.y === py);
         if (onDownstairs) {
-            console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: 'descending stairs' };
+            // Evaluate if it's safe/wise to descend
+            const descendDecision = this._shouldDescendStairs();
+
+            if (descendDecision.shouldDescend) {
+                console.log(`[DEBUG] At downstairs, descending: ${descendDecision.reason}`);
+                return { type: 'descend', key: '>', reason: descendDecision.reason };
+            } else {
+                // Not safe to descend - move away from stairs and heal/prepare
+                console.log(`[DEBUG] At downstairs but not safe to descend: ${descendDecision.reason}`);
+                // Move in a random direction away from stairs to avoid descending accidentally
+                const directions = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
+                const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                return { type: 'avoid_descend', key: randomDir, reason: `not safe to descend: ${descendDecision.reason}` };
+            }
         }
 
         // 5b. Check for obvious dead-end situations needing secret door search
@@ -1711,6 +1721,88 @@ export class Agent {
         }
 
         return success;
+    }
+
+    /**
+     * Evaluate whether it's safe/wise to descend stairs.
+     * Returns {shouldDescend: boolean, reason: string}
+     */
+    _shouldDescendStairs() {
+        if (!this.status) {
+            return { shouldDescend: true, reason: 'no status available (default: descend)' };
+        }
+
+        const hpPercent = this.status.hp / this.status.hpmax;
+        const dungeonLevel = this.status.dungeonLevel || 1;
+        const playerLevel = this.status.experienceLevel || 1;
+
+        // Check for nearby threats
+        const nearbyMonsters = findMonsters(this.screen);
+        const hasNearbyMonsters = nearbyMonsters.length > 0;
+
+        // Assess danger of nearby monsters
+        let maxDanger = DangerLevel.LOW;
+        for (const monster of nearbyMonsters.slice(0, 3)) {
+            const danger = assessMonsterDanger(
+                monster.ch,
+                this.status.hp,
+                this.status.hpmax,
+                playerLevel,
+                dungeonLevel
+            );
+            maxDanger = Math.max(maxDanger, danger);
+        }
+
+        // Check resources
+        const healingPotions = this.inventory.findHealingPotions();
+        const potionCount = healingPotions.length;
+
+        // Decision criteria (ordered by priority)
+
+        // 1. NEVER descend when being actively chased and HP low
+        if (hasNearbyMonsters && hpPercent < 0.5) {
+            return { shouldDescend: false, reason: `HP too low (${Math.round(hpPercent*100)}%) with monsters nearby` };
+        }
+
+        // 2. Don't descend when surrounded by multiple monsters (risky regardless of HP)
+        if (nearbyMonsters.length >= 3) {
+            return { shouldDescend: false, reason: `surrounded by ${nearbyMonsters.length} monsters, too risky` };
+        }
+
+        // 3. Don't descend if HP is critically low (< 40%) unless we're on Dlvl 1
+        if (hpPercent < 0.4 && dungeonLevel > 1) {
+            return { shouldDescend: false, reason: `HP critical (${Math.round(hpPercent*100)}%), should heal first` };
+        }
+
+        // 4. Don't descend with moderate HP and no potions (even on mid-levels)
+        if (hpPercent < 0.5 && potionCount === 0 && dungeonLevel >= 2) {
+            return { shouldDescend: false, reason: `HP moderate (${Math.round(hpPercent*100)}%), no healing potions available` };
+        }
+
+        // 5. Don't descend on deep levels (Dlvl 4+) with moderate HP and no potions
+        if (dungeonLevel >= 4 && hpPercent < 0.7 && potionCount === 0) {
+            return { shouldDescend: false, reason: `HP moderate (${Math.round(hpPercent*100)}%), no healing potions, deep level` };
+        }
+
+        // 6. Don't descend if facing HIGH danger monsters nearby
+        if (maxDanger >= DangerLevel.HIGH) {
+            return { shouldDescend: false, reason: `HIGH danger monsters nearby, should clear them first` };
+        }
+
+        // 7. On deep levels (Dlvl 5+), require good HP (>60%) and resources
+        if (dungeonLevel >= 5) {
+            if (hpPercent < 0.6) {
+                return { shouldDescend: false, reason: `deep level (Dlvl ${dungeonLevel}), HP too low (${Math.round(hpPercent*100)}%)` };
+            }
+            if (potionCount === 0 && hpPercent < 0.8) {
+                return { shouldDescend: false, reason: `deep level, no potions, HP not full (${Math.round(hpPercent*100)}%)` };
+            }
+        }
+
+        // 8. Safe to descend
+        const hpStatus = hpPercent >= 0.8 ? 'excellent' : hpPercent >= 0.6 ? 'good' : 'moderate';
+        const resourceStatus = potionCount >= 2 ? ` (${potionCount} potions)` : potionCount === 1 ? ' (1 potion)' : ' (no potions)';
+        return { shouldDescend: true, reason: `descending (HP ${hpStatus}: ${Math.round(hpPercent*100)}%${resourceStatus})` };
     }
 
     /**
