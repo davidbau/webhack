@@ -142,9 +142,24 @@ Monster and object data are auto-generated from the NetHack C source
 headers via Python scripts:
 
 ```bash
-python3 gen_monsters.py > js/monsters.js   # 382 monsters
-python3 gen_objects.py > js/objects.js      # 478 objects
+python3 scripts/generators/gen_monsters.py > js/monsters.js   # 382 monsters
+python3 scripts/generators/gen_objects.py > js/objects.js      # 478 objects
 ```
+
+## Documentation
+
+*You read a scroll labeled "DOCS ORGANIZATION".*
+
+Project documentation is organized in `docs/`:
+
+- **docs/agent/** - Agent/selfplay tracking and analysis
+- **docs/port-status/** - Port progress, fixes, and known issues
+- **docs/special-levels/** - Special level implementation guide and roadmap
+- **docs/level-conversion/** - Lua-to-JS conversion reports
+- **docs/plans/** - Feature plans and workflows
+- **docs/reference/** - NetHack reference materials
+
+Debug and test scripts are in `scripts/debug/`.
 
 ## License
 

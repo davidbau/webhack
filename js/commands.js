@@ -1494,28 +1494,63 @@ async function handleSave(game) {
 async function handleSet(game) {
     const { display, player } = game;
     const flags = game.flags;
-    // Build menu from OPTION_DEFS
-    let menuText = 'Set options (press letter to toggle, ESC to exit):';
-    for (const def of OPTION_DEFS) {
-        if (def.type === 'boolean') {
-            menuText += `  ${def.menuChar}) ${def.label}: ${flags[def.name] ? 'ON' : 'OFF'}`;
+
+    // C ref: options.c doset_simple() — show current options
+    const lines = [];
+    lines.push('Current Options:');
+    lines.push('');
+    lines.push('Press a letter to toggle an option, ESC to exit');
+    lines.push('');
+
+    // Group options by category for better readability
+    const categories = {
+        'Gameplay': ['pickup', 'safe_pet', 'confirm'],
+        'Display': ['showexp', 'color', 'time', 'lit_corridor'],
+        'Interface': ['verbose', 'tombstone', 'rest_on_space', 'number_pad'],
+    };
+
+    for (const [category, optNames] of Object.entries(categories)) {
+        lines.push(`${category}:`);
+        for (const optName of optNames) {
+            const def = OPTION_DEFS.find(d => d.name === optName);
+            if (def && def.type === 'boolean') {
+                const value = flags[def.name] ? 'ON' : 'OFF';
+                lines.push(`  ${def.menuChar}) ${def.label}: ${value}`);
+            }
         }
+        lines.push('');
     }
-    display.putstr_message(menuText);
+
+    lines.push('Note: Some options (autopickup behavior, msg_window) not yet fully implemented.');
+    lines.push('      number_pad changes movement keys (1-9 for directions).');
+
+    await showPager(display, lines.join('\n'), 'Options');
+
+    // After showing pager, ask if user wants to toggle an option
+    display.putstr_message('Toggle option (letter) or ESC: ');
     const ch = await nhgetch();
     const c = String.fromCharCode(ch);
+
+    if (ch === 27) { // ESC
+        display.putstr_message('Never mind.');
+        return { moved: false, tookTime: false };
+    }
+
     // Find matching option by menuChar
     const def = OPTION_DEFS.find(d => d.menuChar === c);
     if (def && def.type === 'boolean') {
         flags[def.name] = !flags[def.name];
         display.putstr_message(`${def.label}: ${flags[def.name] ? 'ON' : 'OFF'}`);
+
         // Apply side-effects for specific flags
         if (def.name === 'showexp') {
             player.showExp = flags.showexp;
         }
+        // TODO: Apply other flag side-effects (number_pad, etc.)
+
         saveFlags(flags);
     } else {
-        display.putstr_message('Never mind.');
+        display.putstr_message(`No option '${c}'.`);
     }
     return { moved: false, tookTime: false };
 }

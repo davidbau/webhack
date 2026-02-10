@@ -190,17 +190,31 @@ export class LevelMap {
         const frontier = [];
         for (let y = 0; y < MAP_ROWS; y++) {
             for (let x = 0; x < MAP_COLS; x++) {
-                if (this.cells[y][x].explored) continue;
-                // Check if any neighbor is explored and walkable
-                if (this._hasWalkableNeighbor(x, y)) {
-                    // Score based on how much adjacent cells have been searched
-                    // High search count = probably stone (deprioritize)
-                    const searchScore = this._neighborSearchScore(x, y);
+                const cell = this.cells[y][x];
+                // Frontier = explored, walkable cells that border unexplored space
+                // (matches definition used by findExplorationTarget)
+                if (!cell.explored || !cell.walkable) continue;
+
+                // Check if any neighbor is unexplored
+                let hasUnexplored = false;
+                for (const [dx, dy] of [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]]) {
+                    const nx = x + dx, ny = y + dy;
+                    if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
+                    const neighbor = this.cells[ny][nx];
+                    if (!neighbor.explored) {
+                        hasUnexplored = true;
+                        break;
+                    }
+                }
+
+                if (hasUnexplored) {
+                    // Score based on how much this cell has been searched
+                    const searchScore = cell.searched || 0;
                     frontier.push({ x, y, searchScore });
                 }
             }
         }
-        // Sort: least-searched neighbors first (most likely to be real openings)
+        // Sort: least-searched first (more promising)
         frontier.sort((a, b) => a.searchScore - b.searchScore);
         return frontier;
     }
