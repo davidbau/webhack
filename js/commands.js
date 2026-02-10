@@ -1546,7 +1546,8 @@ async function handleSet(game) {
         if (def.name === 'showexp') {
             player.showExp = flags.showexp;
         }
-        // TODO: Apply other flag side-effects (number_pad, etc.)
+        // Update global flags for input handler
+        window.gameFlags = flags;
 
         saveFlags(flags);
     } else {

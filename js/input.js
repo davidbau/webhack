@@ -19,6 +19,30 @@ function handleKeyDown(e) {
 
     let ch = null;
 
+    // Handle numeric keypad in number_pad mode
+    // C ref: cmd.c number_pad handling - digits 1-9,0 map to directions + inventory
+    // Standard layout: 7=NW 8=N 9=NE 4=W 5=. 6=E 1=SW 2=S 3=SE 0=i
+    if (window.gameFlags?.number_pad && e.location === KeyboardEvent.DOM_KEY_LOCATION_NUMPAD) {
+        const numpadMap = {
+            '0': 'i'.charCodeAt(0),  // inventory
+            '1': 'b'.charCodeAt(0),  // southwest
+            '2': 'j'.charCodeAt(0),  // south
+            '3': 'n'.charCodeAt(0),  // southeast
+            '4': 'h'.charCodeAt(0),  // west
+            '5': '.'.charCodeAt(0),  // wait/rest
+            '6': 'l'.charCodeAt(0),  // east
+            '7': 'y'.charCodeAt(0),  // northwest
+            '8': 'k'.charCodeAt(0),  // north
+            '9': 'u'.charCodeAt(0),  // northeast
+        };
+        if (e.key in numpadMap) {
+            ch = numpadMap[e.key];
+            e.preventDefault();
+            pushInput(ch);
+            return;
+        }
+    }
+
     // Handle Ctrl+key combinations
     // C ref: cmd.c uses C('x') which is (x & 0x1f)
     if (e.ctrlKey && !e.altKey && !e.metaKey) {

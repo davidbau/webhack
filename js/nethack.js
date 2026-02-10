@@ -96,6 +96,9 @@ class NetHackGame {
         // Load user flags (C ref: flags struct from flag.h)
         this.flags = loadFlags();
 
+        // Expose flags globally for input handler (number_pad mode)
+        window.gameFlags = this.flags;
+
         // Check for saved game before RNG init
         const saveData = loadSave();
         if (saveData) {
