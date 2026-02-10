@@ -68,6 +68,7 @@ export class Agent {
         this.pendingQuaffLetter = null; // potion letter for "What do you want to quaff?" prompt
         this.pendingWieldLetter = null; // weapon letter for "Wield what?" prompt
         this.pendingWearLetter = null; // armor letter for "Wear what?" prompt
+        this.justOpenedDoor = null; // {x, y} of door that just opened (needs manual fix after map update)
         this.committedTarget = null; // {x, y} of committed exploration target
         this.committedPath = null; // PathResult we're currently following
         this.targetStuckCount = 0; // how many turns we've been stuck on committed path
@@ -144,6 +145,20 @@ export class Agent {
 
             // Update map knowledge
             this.dungeon.update(this.screen, this.status);
+
+            // Fix door that just opened (screen might show it as wall due to rendering lag)
+            if (this.justOpenedDoor) {
+                const { x, y } = this.justOpenedDoor;
+                const cell = this.dungeon.currentLevel.at(x, y);
+                if (cell) {
+                    console.log(`[DOOR-FIX] Manually fixing opened door at (${x},${y}): was type='${cell.type}', setting to door_open`);
+                    cell.type = 'door_open';
+                    cell.walkable = true;
+                    cell.explored = true;
+                    cell.ch = '.';
+                }
+                this.justOpenedDoor = null;
+            }
 
             // Update pet tracking
             this._updatePets();
@@ -1663,7 +1678,40 @@ export class Agent {
             const tx = this.committedTarget.x;
             const ty = this.committedTarget.y;
             if (px === tx && py === ty) {
-                // Reached it! Clear and find next.
+                // Reached it! Before clearing, check if we should continue through a door/corridor
+                const currentCell = level.at(px, py);
+                const atDoor = currentCell && (currentCell.type === 'door_open' || currentCell.type === 'door_closed');
+                const exploredPercent = level.exploredCount / (80 * 21);
+
+                if (atDoor || exploredPercent < 0.30) {
+                    // Check all cardinal directions for unexplored space or corridors
+                    const dirs = [
+                        { key: 'k', dx: 0, dy: -1, name: 'north' },
+                        { key: 'j', dx: 0, dy: 1, name: 'south' },
+                        { key: 'h', dx: -1, dy: 0, name: 'west' },
+                        { key: 'l', dx: 1, dy: 0, name: 'east' },
+                    ];
+
+                    for (const dir of dirs) {
+                        const nx = px + dir.dx;
+                        const ny = py + dir.dy;
+                        const ncell = level.at(nx, ny);
+
+                        // Walk through doors or into unexplored cells
+                        if (!ncell || !ncell.explored) {
+                            console.log(`[DOOR-EXPLORE] At target, continuing ${dir.name} into unexplored at (${nx},${ny})`);
+                            return { type: 'explore', key: dir.key, reason: `continuing ${dir.name} through ${atDoor ? 'door' : 'opening'}` };
+                        }
+
+                        // Walk into corridors that might lead somewhere
+                        if (ncell.explored && ncell.walkable && ncell.type === 'corridor') {
+                            console.log(`[DOOR-EXPLORE] At target, continuing ${dir.name} into corridor at (${nx},${ny})`);
+                            return { type: 'explore', key: dir.key, reason: `following corridor ${dir.name}` };
+                        }
+                    }
+                }
+
+                // Reached target and nothing to continue through - clear and find next
                 this.committedTarget = null;
                 this.committedPath = null;
                 this.targetStuckCount = 0;
@@ -1675,6 +1723,13 @@ export class Agent {
             const tx = this.committedTarget.x;
             const ty = this.committedTarget.y;
             const targetCell = level.at(tx, ty);
+
+            // If we're very close to the target (1-3 cells), keep it even if it's not a frontier anymore
+            // This handles the case where a door opens and reveals cells beyond, making the door
+            // no longer a "frontier" but we still want to walk through it
+            const distToTarget = Math.max(Math.abs(px - tx), Math.abs(py - ty));
+            const veryClose = distToTarget <= 3;
+
             // Invalid if: not explored, not walkable, or no longer borders unexplored
             let stillFrontier = false;
             if (targetCell && targetCell.explored && targetCell.walkable) {
@@ -1685,22 +1740,29 @@ export class Agent {
                     if (neighbor && !neighbor.explored) { stillFrontier = true; break; }
                 }
             }
-            if (!stillFrontier) {
+
+            // Keep target if: still a frontier OR we're very close to it
+            if (!stillFrontier && !veryClose) {
+                console.log(`[COMMIT] Abandoning target (${tx},${ty}): stillFrontier=${stillFrontier}, distToTarget=${distToTarget}, veryClose=${veryClose}`);
                 this.committedTarget = null;
                 this.committedPath = null;
                 this.targetStuckCount = 0;
+            } else if (!stillFrontier && veryClose) {
+                console.log(`[COMMIT] Keeping target (${tx},${ty}) despite not frontier: veryClose=${veryClose}, distToTarget=${distToTarget}`);
             }
         }
 
         // Re-path to committed target
         if (this.committedTarget) {
             const path = findPath(level, px, py, this.committedTarget.x, this.committedTarget.y);
+            console.log(`[COMMIT] Re-pathing from (${px},${py}) to target (${this.committedTarget.x},${this.committedTarget.y}): found=${path.found}, cost=${path.cost}`);
             if (path.found) {
                 this.committedPath = path;
                 this.consecutiveWaits = 0;
                 return this._followPath(path, 'explore', `following path to (${this.committedTarget.x},${this.committedTarget.y})`);
             }
             // Can't reach target anymore — abandon it
+            console.log(`[COMMIT] Abandoning target (${this.committedTarget.x},${this.committedTarget.y}) - path not found`);
             this.committedTarget = null;
             this.committedPath = null;
             this.targetStuckCount = 0;
@@ -1741,18 +1803,111 @@ export class Agent {
             }
         }
 
-        // No frontier found - need to expand vision by moving toward unexplored areas
-        // ULTRA-SIMPLE approach: Just walk in cardinal directions to reveal more map
-        if (exploredPercent < 0.30 && frontier.length === 0) {
-            // Cycle through directions every 30 turns: N, E, S, W
-            const dirCycle = Math.floor(this.turnNumber / 30) % 4;
-            const directions = ['k', 'l', 'j', 'h']; // north, east, south, west
-            const dirNames = ['north', 'east', 'south', 'west'];
-            const key = directions[dirCycle];
-            const name = dirNames[dirCycle];
+        // PRIORITY: If we're at or near a door/corridor, walk through it to reveal more map
+        // This ensures we explore beyond doors before resorting to wall-searching
+        if (frontier.length === 0 && exploredPercent < 0.30) {
+            const currentCell = level.at(px, py);
+            const isDoor = currentCell && (currentCell.type === 'door_open' || currentCell.type === 'door_closed');
 
-            console.log(`[EXPAND-VISION] Walking ${name} to reveal map (coverage ${Math.round(exploredPercent*100)}%, cycle=${dirCycle})`);
-            return { type: 'explore', key, reason: `walking ${name} to expand vision - ${Math.round(exploredPercent*100)}% coverage` };
+            // Check all adjacent cells for doors or corridors that lead to unexplored space
+            const directions = [
+                { key: 'k', dx: 0, dy: -1, name: 'north' },
+                { key: 'j', dx: 0, dy: 1, name: 'south' },
+                { key: 'h', dx: -1, dy: 0, name: 'west' },
+                { key: 'l', dx: 1, dy: 0, name: 'east' },
+            ];
+
+            for (const dir of directions) {
+                const nx = px + dir.dx;
+                const ny = py + dir.dy;
+                const ncell = level.at(nx, ny);
+
+                // Skip walls
+                if (!ncell || (ncell.explored && !ncell.walkable)) continue;
+
+                // Prioritize walking through doors or into unexplored cells
+                if (!ncell.explored ||
+                    ncell.type === 'door_open' ||
+                    ncell.type === 'door_closed' ||
+                    ncell.type === 'corridor') {
+
+                    // Check if there's unexplored space beyond this cell
+                    const bx = nx + dir.dx;
+                    const by = ny + dir.dy;
+                    const bcell = level.at(bx, by);
+
+                    if (!bcell || !bcell.explored) {
+                        console.log(`[EXPLORE-DOOR] Walking ${dir.name} through ${ncell.explored ? ncell.type : 'unexplored'} at (${nx},${ny})`);
+                        return { type: 'explore', key: dir.key, reason: `exploring ${dir.name} through ${ncell.explored ? ncell.type : 'door/corridor'}` };
+                    }
+                }
+            }
+        }
+
+        // No frontier found - need to expand vision by moving toward unexplored areas
+        // COMMIT to one direction for 20 turns to avoid oscillation
+        if (exploredPercent < 0.30 && frontier.length === 0) {
+            // Pick a new direction every 20 turns, or if we haven't set one yet
+            if (!this.expandDir || (this.turnNumber - this.expandDirTurn) >= 20) {
+                const directions = [
+                    { key: 'k', dx: 0, dy: -1, name: 'north' },
+                    { key: 'j', dx: 0, dy: 1, name: 'south' },
+                    { key: 'l', dx: 1, dy: 0, name: 'east' },
+                    { key: 'h', dx: -1, dy: 0, name: 'west' },
+                ];
+
+                // Score each direction by counting unexplored cells in that direction
+                let bestDir = null;
+                let bestScore = -1;
+
+                for (const dir of directions) {
+                    const nx = px + dir.dx;
+                    const ny = py + dir.dy;
+                    const ncell = level.at(nx, ny);
+
+                    // Skip if not walkable
+                    if (!ncell || (ncell.explored && !ncell.walkable)) continue;
+
+                    // Count unexplored cells in a 10-cell line in this direction
+                    // STOP if we hit an explored wall (can't go further)
+                    let score = 0;
+                    for (let i = 1; i <= 10; i++) {
+                        const tx = px + dir.dx * i;
+                        const ty = py + dir.dy * i;
+                        const tcell = level.at(tx, ty);
+
+                        // Hit an explored wall - can't go further!
+                        if (tcell && tcell.explored && !tcell.walkable) {
+                            break;
+                        }
+
+                        // Count unexplored or walkable cells
+                        if (!tcell || !tcell.explored || tcell.walkable) {
+                            score++;
+                        }
+                    }
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestDir = dir;
+                    }
+                }
+
+                if (bestDir) {
+                    this.expandDir = bestDir;
+                    this.expandDirTurn = this.turnNumber;
+                    console.log(`[EXPAND-VISION] Committed to ${bestDir.name} for 20 turns (score=${bestScore}, coverage ${Math.round(exploredPercent*100)}%)`);
+                } else {
+                    console.log(`[EXPAND-VISION] All directions blocked! (coverage ${Math.round(exploredPercent*100)}%)`);
+                }
+            }
+
+            if (this.expandDir) {
+                return { type: 'explore', key: this.expandDir.key, reason: `walking ${this.expandDir.name} to expand vision - ${Math.round(exploredPercent*100)}% coverage` };
+            }
+        } else if (this.expandDir) {
+            // Clear direction when we find a frontier
+            this.expandDir = null;
         }
 
         return null;
@@ -1820,10 +1975,23 @@ export class Agent {
                 const level = this.dungeon.currentLevel;
                 const cell = level.at(tx, ty);
 
-                // Check for locked door
+                // Check for door-related messages
                 const message = this.screen.message || '';
                 const isLockedDoorMessage = message.toLowerCase().includes('door is locked') ||
                                            message.toLowerCase().includes('this door resists');
+                const doorOpenedMessage = message.toLowerCase().includes('the door opens') ||
+                                         message.toLowerCase().includes('door opens');
+
+                // If the door just opened, save the position for manual fix after map update
+                // (The screen might still show it as a wall due to rendering lag)
+                if (doorOpenedMessage) {
+                    console.log(`[DOOR-OPEN] Door opened at (${tx},${ty}), will fix after map update`);
+                    this.justOpenedDoor = { x: tx, y: ty };
+                    this.consecutiveFailedMoves = 0; // Reset since door is now open
+                    this._lastMoveAction = null;
+                    this._lastMovePrePos = null;
+                    return; // Don't continue with other checks
+                }
 
                 // If we failed to move through a door, it might be locked
                 const isDoorCell = cell && (cell.type === 'door_open' || cell.type === 'door_closed');
