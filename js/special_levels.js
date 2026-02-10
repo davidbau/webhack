@@ -54,6 +54,8 @@ import { generate as generateTemple } from './levels/temple.js';
 import { generate as generatePrison } from './levels/prison.js';
 import { generate as generateLibrary } from './levels/library.js';
 import { generate as generateCavern } from './levels/cavern.js';
+import { generate as generateArena } from './levels/arena.js';
+import { generate as generateThrone } from './levels/throne.js';
 
 // Sokoban levels
 import { generate as generateSoko1a } from './levels/soko1-1.js';
@@ -220,6 +222,8 @@ registerSpecialLevel(DUNGEONS_OF_DOOM, 27, generateTemple, 'temple');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 28, generatePrison, 'prison');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 29, generateLibrary, 'library');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 30, generateCavern, 'cavern');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 31, generateArena, 'arena');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 32, generateThrone, 'throne');
 
 /**
  * Get list of all registered special levels
