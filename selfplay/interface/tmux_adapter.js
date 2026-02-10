@@ -24,6 +24,94 @@ const TERMINAL_COLS = 80;
 const DEFAULT_KEY_DELAY = 80;
 const STARTUP_DELAY = 500;
 
+// ANSI to NetHack color mapping
+// NetHack uses 16 colors: 0-7 are normal, 8-15 are bright variants
+const ANSI_TO_NETHACK_COLOR = {
+    30: 0,  // black
+    31: 1,  // red
+    32: 2,  // green
+    33: 3,  // brown/yellow
+    34: 4,  // blue
+    35: 5,  // magenta
+    36: 6,  // cyan
+    37: 7,  // gray/white
+    90: 8,  // bright black (dark gray)
+    91: 9,  // bright red
+    92: 10, // bright green
+    93: 11, // bright yellow
+    94: 12, // bright blue
+    95: 13, // bright magenta
+    96: 14, // bright cyan
+    97: 15, // bright white
+};
+
+/**
+ * Parse a line with ANSI escape sequences into an array of {ch, color} cells.
+ * ANSI SGR (Select Graphic Rendition) sequences look like: \x1b[31m (red), \x1b[0m (reset)
+ *
+ * @param {string} line - Line with ANSI escape sequences
+ * @param {number} maxCols - Maximum number of columns to output
+ * @returns {Array} Array of {ch, color} objects
+ */
+function parseAnsiLine(line, maxCols) {
+    const cells = [];
+    let currentColor = 7; // default gray
+    let currentBright = false;
+    let i = 0;
+
+    while (i < line.length && cells.length < maxCols) {
+        // Check for ANSI escape sequence: ESC [ ... m
+        if (line[i] === '\x1b' && line[i + 1] === '[') {
+            // Find the end of the escape sequence (ends with 'm')
+            let j = i + 2;
+            while (j < line.length && line[j] !== 'm') j++;
+
+            if (j < line.length) {
+                // Parse the SGR parameters
+                const params = line.slice(i + 2, j).split(';').map(p => parseInt(p) || 0);
+
+                for (const param of params) {
+                    if (param === 0) {
+                        // Reset to default
+                        currentColor = 7;
+                        currentBright = false;
+                    } else if (param === 1) {
+                        // Bright/bold - affects current and future colors
+                        currentBright = true;
+                        if (currentColor < 8) {
+                            currentColor += 8; // Make current color bright
+                        }
+                    } else if (param >= 30 && param <= 37) {
+                        // Foreground color
+                        currentColor = ANSI_TO_NETHACK_COLOR[param];
+                        if (currentBright) {
+                            currentColor += 8; // Apply bright if flag is set
+                        }
+                    } else if (param >= 90 && param <= 97) {
+                        // Bright foreground color (already bright)
+                        currentColor = ANSI_TO_NETHACK_COLOR[param];
+                    }
+                    // Ignore background colors (40-47, 100-107) and other SGR codes
+                }
+
+                i = j + 1; // Skip past the 'm'
+                continue;
+            }
+        }
+
+        // Regular character
+        cells.push({ ch: line[i], color: currentColor });
+        i++;
+    }
+
+    // Pad to maxCols if needed
+    while (cells.length < maxCols) {
+        cells.push({ ch: ' ', color: 7 });
+    }
+
+    return cells;
+}
+
 /**
  * Adapter for the C NetHack binary via tmux.
  */
@@ -32,6 +120,7 @@ export class TmuxAdapter extends GameAdapter {
         super();
         this.sessionName = options.sessionName || `nethack-agent-${Date.now()}`;
         this.keyDelay = options.keyDelay || DEFAULT_KEY_DELAY;
+        this.symset = options.symset || 'ASCII'; // 'ASCII' or 'DECgraphics'
         this._running = false;
         this._homeDir = null;
         this.isTmux = true;
@@ -55,7 +144,7 @@ export class TmuxAdapter extends GameAdapter {
         mkdirSync(this._homeDir, { recursive: true });
 
         const nethackrc = join(this._homeDir, '.nethackrc');
-        writeFileSync(nethackrc, [
+        const rcOptions = [
             `OPTIONS=name:${name}`,
             `OPTIONS=race:${race}`,
             `OPTIONS=role:${role}`,
@@ -64,9 +153,14 @@ export class TmuxAdapter extends GameAdapter {
             'OPTIONS=!autopickup',
             'OPTIONS=!tutorial',
             'OPTIONS=suppress_alert:3.4.3',
-            // No symset — use default ASCII (|, -, ., #).
-            // DECgraphics and IBMgraphics use special chars lost by tmux capture.
-        ].join('\n') + '\n');
+        ];
+
+        // Add symbol set if specified
+        if (this.symset === 'DECgraphics') {
+            rcOptions.push('OPTIONS=symset:DECgraphics');
+        }
+
+        writeFileSync(nethackrc, rcOptions.join('\n') + '\n');
 
         // Clean up stale game state
         this._cleanGameState();
@@ -123,8 +217,9 @@ export class TmuxAdapter extends GameAdapter {
      */
     async readScreen() {
         try {
+            // Use -e flag to capture with ANSI escape sequences (preserves colors and Unicode)
             const output = execSync(
-                `tmux capture-pane -t ${this.sessionName} -p -S 0 -E ${TERMINAL_ROWS - 1}`,
+                `tmux capture-pane -t ${this.sessionName} -p -e -S 0 -E ${TERMINAL_ROWS - 1}`,
                 { encoding: 'utf-8', timeout: 5000 }
             );
 
@@ -133,12 +228,11 @@ export class TmuxAdapter extends GameAdapter {
 
             for (let r = 0; r < TERMINAL_ROWS; r++) {
                 grid[r] = [];
-                const line = (lines[r] || '').padEnd(TERMINAL_COLS, ' ');
+                const line = lines[r] || '';
+                const cells = parseAnsiLine(line, TERMINAL_COLS);
+
                 for (let c = 0; c < TERMINAL_COLS; c++) {
-                    // tmux capture-pane in plain mode doesn't give us colors,
-                    // so we use default gray (7). For a color-aware version,
-                    // we'd need tmux capture-pane -e for escape sequences.
-                    grid[r][c] = { ch: line[c] || ' ', color: 7 };
+                    grid[r][c] = cells[c] || { ch: ' ', color: 7 };
                 }
             }
 
