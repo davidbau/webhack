@@ -54,8 +54,39 @@ The extra 2 main rooms (9 vs 7) may come from:
 3. Des.map() theme rooms (picks 11-29) creating multiple main rooms
 4. Bug in how create_subroom fails and falls back to create_room
 
+## Latest Findings (2026-02-09)
+
+### Subroom Array Structure Fix Applied
+Successfully fixed map.rooms array structure to match C:
+- Main rooms stored at indices [0..nroom-1]
+- Subrooms stored at indices [nroom..nroom+nsubroom-1]
+- Fixed 5 loops to iterate only over main rooms (0..nroom-1)
+- **RNG alignment improved**: 441 → 1172 matching calls (2.7x improvement!)
+
+### Theme Room Generation Analysis
+Created diagnostic scripts to trace theme room selection:
+- **Reservoir sampling works correctly**: All 30 RNG calls executed
+- **All picks select "0" (themeroom_default)**: 100% of attempts
+- **themeroom_default creates OROOM main rooms**, NOT subrooms
+- **create_room mostly succeeds**: Most attempts create rooms successfully
+- **No subrooms expected**: Subrooms only created by picks 2-4 (roomInRoom, hugeRoom, nestingRooms)
+
+### Root Cause of "Missing Subrooms"
+**THERE ARE NO MISSING SUBROOMS!** The investigation was based on a false premise:
+1. Theme room pick 0 (themeroom_default) creates OROOM main rooms, not subrooms
+2. Subroom-creating picks (2=roomInRoom, 3=hugeRoom, 4=nestingRooms) are NOT selected
+3. Reservoir sampling heavily favors pick 0 (frequency 1000 vs 1 for others)
+4. At depth 2 with seed 163, RNG consistently selects pick 0
+
+### Actual Problem: Room Count Divergence
+- **JS depth 2**: 10 main rooms, 0 subrooms (after fixes)
+- **C depth 2**: 7 main rooms (expected)
+- **Divergence cause**: Unknown, but NOT related to subrooms
+- RNG calls align for 1172 calls before diverging
+
 ## Next Steps
-1. Trace EXACTLY which theme room picks are selected at depth 2
-2. Check if create_subroom is failing (returning null)
-3. Compare C's room structure at depth 2 (if available in session data)
-4. Investigate why adding subrooms to map.rooms breaks RNG
+1. ~~Investigate why subrooms aren't being created~~ **RESOLVED**: No subrooms expected
+2. Investigate why JS creates 10 rooms vs C's 7 at depth 2
+3. Check makerooms loop termination conditions
+4. Compare C's rnd_rect() success count with JS
+5. Check if theme room failures affect loop continuation
