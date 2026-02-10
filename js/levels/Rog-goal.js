@@ -121,5 +121,6 @@ export function generate() {
     des.monster({ id: "shark", x: 58, y: 10, peaceful: 0 });
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

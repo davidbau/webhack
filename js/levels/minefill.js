@@ -60,5 +60,6 @@ export function generate() {
     des.trap();
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

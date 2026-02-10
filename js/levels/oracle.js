@@ -77,5 +77,6 @@ export function generate() {
     des.random_corridors();
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

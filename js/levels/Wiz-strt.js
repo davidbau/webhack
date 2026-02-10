@@ -118,5 +118,6 @@ export function generate() {
     des.monster({ class: "B", x: 10, y: 19, peaceful: 0 });
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

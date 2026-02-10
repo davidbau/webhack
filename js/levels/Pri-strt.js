@@ -110,8 +110,8 @@ export function generate() {
     // Monsters on siege duty.
     for (let i = 1; i <= 12; i++) {
        des.monster("human zombie", spacelocs.rndcoord(1));
+    
     }
-
-
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

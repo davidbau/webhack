@@ -248,6 +248,8 @@ export function litstate_rnd(litstate, depth) {
 // C ref: sp_lev.c create_room() -- create a random room using rect BSP
 // Returns true if room was created, false if failed.
 export function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth, inThemerooms) {
+    const DEBUG_THEME = process.env.DEBUG_THEMEROOMS === '1';
+    const nroom_before = map.nroom;
     let xabs = 0, yabs = 0;
     let wtmp, htmp, xtmp, ytmp;
     let r1 = null;
@@ -272,7 +274,10 @@ export function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth, inThe
         if ((xtmp < 0 && ytmp < 0 && wtmp < 0 && xal < 0 && yal < 0)
             || vault) {
             r1 = rnd_rect();
-            if (!r1) return false;
+            if (!r1) {
+                if (DEBUG_THEME) console.log(`  create_room: no rect, rtype=${rtype}, VAULT=${rtype===VAULT}`);
+                return false;
+            }
 
             const hx = r1.hx, hy = r1.hy, lx = r1.lx, ly = r1.ly;
             let dx, dy;
@@ -383,16 +388,19 @@ export function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth, inThe
         if (vault) {
             map.vault_x = xabs;
             map.vault_y = yabs;
+            if (DEBUG_THEME) console.log(`  create_room: vault special case SUCCESS, nroom=${nroom_before}->${map.nroom}`);
             return true;
         }
 
         // Actually create the room
         add_room_to_map(map, xabs, yabs, xabs + wtmp - 1, yabs + htmp - 1,
                         lit, rtype, false);
+        if (DEBUG_THEME) console.log(`  create_room: SUCCESS, rtype=${rtype}, VAULT=${rtype===VAULT}, nroom=${nroom_before}->${map.nroom}`);
         return true;
 
     } while (++trycnt <= 100); // C ref: sp_lev.c trycnt limit is 100
 
+    if (DEBUG_THEME) console.log(`  create_room: FAILED after 100 tries, rtype=${rtype}, VAULT=${rtype===VAULT}`);
     return false;
 }
 

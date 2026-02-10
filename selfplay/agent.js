@@ -1411,6 +1411,12 @@ export class Agent {
             exploredPercent < 0.20   // But low coverage
         );
 
+        // When stuck exploring (moving but not progressing), clear blacklist
+        // to allow reconsidering distant targets that may have been prematurely blacklisted
+        if (isStuckExploring && this.turnNumber % 50 === 0) {
+            this.failedTargets.clear();
+        }
+
         const options = { preferFar: isStuckExploring };
         const explorationPath = findExplorationTarget(level, px, py, this.recentPositions, options);
         if (explorationPath && explorationPath.found) {

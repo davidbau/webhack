@@ -137,5 +137,6 @@ export function generate() {
     des.trap("magic");
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

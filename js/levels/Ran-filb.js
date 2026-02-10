@@ -47,5 +47,6 @@ export function generate() {
     des.monster({ id: "scorpion", peaceful: 0 });
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

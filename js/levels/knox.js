@@ -178,5 +178,6 @@ export function generate() {
     des.object("amethyst",48,13);
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

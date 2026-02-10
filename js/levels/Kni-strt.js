@@ -118,8 +118,8 @@ export function generate() {
     // Some warhorses
     for (let i = 1; i <= 2 + nh.rn2(3); i++) {
         des.monster({ id: "warhorse", peaceful: 1, inventory: function() { if (percent(50)) { des.object("saddle"); } } });
+    
     }
-
-
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

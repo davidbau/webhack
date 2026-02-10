@@ -119,5 +119,6 @@ export function generate() {
     des.object({ id: "food ration", coord: [46, 4], quantity: 4});
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

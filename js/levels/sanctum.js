@@ -144,5 +144,6 @@ export function generate() {
     des.teleport_region({ region: [54,1,79,18], region_islev: 1, dir: "down" });
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

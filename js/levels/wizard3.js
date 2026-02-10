@@ -101,5 +101,6 @@ export function generate() {
     hell_tweaks(protected_region);
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

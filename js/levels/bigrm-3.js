@@ -94,5 +94,6 @@ export function generate() {
     des.monster({ x: 73, y: 16 });
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

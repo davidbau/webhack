@@ -18,13 +18,26 @@ from pathlib import Path
 class SimpleLuaConverter:
     def __init__(self):
         self.imports_needed = set(['des'])
+        # Files that are not level generators and should be skipped or handled differently
+        self.skip_files = {'nhcore', 'nhlib', 'quest'}  # Library/data files, not level generators
+        # Files where object shorthand conversion (Fix 2: = to :) causes problems
+        self.skip_shorthand_conversion = set()  # Currently none - using postprocessing fixes instead
 
     def _preprocess_problematic_files(self, lua_content, filename):
         """Apply file-specific preprocessing for known problematic files."""
         basename = Path(filename).stem
 
-        # bigrm-6, bigrm-13: Remove extra 'end' statements that create unbalanced braces
-        if basename in ['bigrm-6', 'bigrm-13']:
+        # bigrm-13: Add "local" before bare global assignments and handle floor division
+        if basename == 'bigrm-13':
+            # Fix: filters = { ... needs to be local filters = { ...
+            lua_content = re.sub(r'^(filters\s*=\s*{)', r'local \1', lua_content, flags=re.MULTILINE)
+            # Fix: idx = math.random needs to be local idx = math.random
+            lua_content = re.sub(r'^(idx\s*=\s*math\.random)', r'local \1', lua_content, flags=re.MULTILINE)
+            # Fix: Convert floor division (x+1)//3 to math.floor((x+1)/3)
+            lua_content = lua_content.replace('((x+1)//3', '(math.floor((x+1)/3)')
+
+        # bigrm-6: Remove extra 'end' statements that create unbalanced braces
+        if basename == 'bigrm-6':
             lines = lua_content.split('\n')
             # Remove standalone 'end' at end of file before last few lines
             for i in range(len(lines) - 5, len(lines)):
@@ -274,6 +287,10 @@ class SimpleLuaConverter:
 
     def _convert_operators(self, js):
         """Convert Lua operators to JavaScript."""
+        # Note: Floor division (//) is handled in file-specific preprocessing for bigrm-13
+        # General floor division conversion is tricky because by this point,
+        # Lua comments (--) are already JS comments (//)
+
         # String concatenation
         js = re.sub(r'\s*\.\.\s*', ' + ', js)
 
@@ -419,6 +436,7 @@ class SimpleLuaConverter:
 
     def _postprocess_fixes(self, js, filename):
         """Apply targeted fixes for known problematic patterns."""
+        basename = Path(filename).stem
 
         # Fix 0: Handle duplicate variable declarations (let place, let sel)
         # Track seen variables and convert subsequent ones to assignments
@@ -436,6 +454,17 @@ class SimpleLuaConverter:
                     seen_vars[varname] = True
         js = '\n'.join(lines)
 
+        # File-specific postprocessing (BEFORE Fix 2)
+        basename = Path(filename).stem
+
+        if basename == 'bigrm-13':
+            # Convert filters object to array (contains anonymous functions)
+            js = js.replace('let filters = {', 'let filters = [')
+            # Find the closing }; that corresponds to filters and change to ];
+            # Pattern: after the last function in filters (with Math.floor), before idx line
+            js = re.sub(r'(function\(x, y\) \{ return \(Math\.floor\(\(x\+1\)/3\) == y\); \},?\s*\n\s*)};(\s*\n\s*let idx)',
+                       r'\1];\2', js)
+
         # Fix 1: Remove extra ] after arrays containing string brackets
         # Pattern: [ "L", "T", "[", "."]]; → [ "L", "T", "[", "."];
         js = re.sub(r'(\[ [^\]]+\"\[\"+[^\]]*\])(\])', r'\1', js)
@@ -443,31 +472,34 @@ class SimpleLuaConverter:
 
         # Fix 2: Fix object shorthand initializers (= should be :)
         # In object literals, convert base = -1 to base: -1
-        lines = js.split('\n')
-        result_lines = []
-        in_object = 0
-        for line in lines:
-            # Track object depth
-            in_object += line.count('{') - line.count('}')
+        # Skip for files where this causes problems with variable declarations in function bodies
+        if basename not in self.skip_shorthand_conversion:
+            lines = js.split('\n')
+            result_lines = []
+            in_object = 0
+            for line in lines:
+                # Track object depth
+                in_object += line.count('{') - line.count('}')
 
-            # If inside an object and line has standalone = (not in strings/===/!=)
-            if in_object > 0 and '=' in line and ':' not in line:
-                # Check if it's an assignment not a comparison
-                stripped = line.strip()
-                if (re.match(r'^\w+\s*=\s*[^=]', stripped) and
-                    not stripped.startswith('let ') and
-                    not stripped.startswith('const ') and
-                    not '===' in stripped and
-                    not '!==' in stripped):
-                    # Convert first = to :
-                    line = re.sub(r'(\w+)\s*=\s*', r'\1: ', line, count=1)
+                # If inside an object and line has standalone = (not in strings/===/!=)
+                if in_object > 0 and '=' in line and ':' not in line:
+                    # Check if it's an assignment not a comparison
+                    stripped = line.strip()
+                    if (re.match(r'^\w+\s*=\s*[^=]', stripped) and
+                        not stripped.startswith('let ') and
+                        not stripped.startswith('const ') and
+                        not '===' in stripped and
+                        not '!==' in stripped):
+                        # Convert first = to :
+                        line = re.sub(r'(\w+)\s*=\s*', r'\1: ', line, count=1)
 
-            result_lines.append(line)
-        js = '\n'.join(result_lines)
+                result_lines.append(line)
+            js = '\n'.join(result_lines)
 
         # Fix 3: Remove illegal return statements at top level
         # Convert standalone return at module level to commented out
-        js = re.sub(r'^(\s*)return\s+', r'\1// return ', js, flags=re.MULTILINE)
+        # BUT: Don't comment out "return des.finalize_level();" - that's the function's actual return
+        js = re.sub(r'^(\s*)return\s+(?!des\.finalize_level)', r'\1// return ', js, flags=re.MULTILINE)
 
         # Fix 4: Fix method calls that still have : (aggressive)
         # Find any remaining : followed by ( that's not in strings
@@ -475,18 +507,39 @@ class SimpleLuaConverter:
 
         # Fix 5: Remove orphan return statements (return outside function)
         # Pattern: }\n    return des.finalize_level();\n}
-        # Should be: }\n} (return is added by wrap_module)
-        js = re.sub(r'}\s*\n\s*return des\.finalize_level\(\);\s*\n}', '}\n}', js)
+        # OR: }\n    // return des.finalize_level();\n} (when Fix 3 commented it out)
+        # These occur when there's an extra closing brace that ends the function early
+        # Match: } + newline + (optional //) + return line + newline + }
+        pattern_fix5 = r'}\s*\n\s+(//\s*)?return des\.finalize_level\(\);\s*\n}'
+        js = re.sub(pattern_fix5, '\n    return des.finalize_level();\n}', js)
 
         # Fix 6: Complete unclosed objects/functions by counting braces
-        open_braces = js.count('{')
-        close_braces = js.count('}')
-        if open_braces > close_braces:
-            # Add missing closing braces before final return
-            missing = open_braces - close_braces
-            if 'return des.finalize_level();' in js:
-                js = js.replace('return des.finalize_level();',
-                               '}\n' * missing + '    return des.finalize_level();')
+        # Skip for files where Fix 5 handles the brace issues differently
+        if basename not in ['minend-3', 'minetn-5', 'minetn-6', 'orcus']:
+            open_braces = js.count('{')
+            close_braces = js.count('}')
+            if open_braces > close_braces:
+                # Add missing closing braces before final return
+                missing = open_braces - close_braces
+                if 'return des.finalize_level();' in js:
+                    js = js.replace('return des.finalize_level();',
+                                   '}\n' * missing + '    return des.finalize_level();')
+
+        # File-specific postprocessing (AFTER all conversions)
+        if basename == 'themerms':
+            # Fix 1: Variable declarations "locs: ..." → "let locs = ..."
+            js = re.sub(r'^(\s+)(locs|func):\s+', r'\1let \2 = ', js, flags=re.MULTILINE)
+
+            # Fix 2: Object properties that weren't converted: "contents = function" → "contents: function"
+            js = re.sub(r'^(\s+)contents\s*=\s*function', r'\1contents: function', js, flags=re.MULTILINE)
+
+            # Fix 3: Multiple assignment → destructuring
+            # "ltype,rtype: val1,val2" → "let ltype = val1, rtype = val2;"
+            js = re.sub(r'(\s+)ltype,rtype:\s+"weapon shop","armor shop"',
+                       r'\1let ltype = "weapon shop", rtype = "armor shop";', js)
+            # "ltype,rtype: rtype,ltype" → "[ltype, rtype] = [rtype, ltype];"
+            js = re.sub(r'(\s+)ltype,rtype:\s+rtype,ltype',
+                       r'\1[ltype, rtype] = [rtype, ltype];', js)
 
         return js
 
@@ -545,10 +598,17 @@ class SimpleLuaConverter:
 
 def convert_lua_file(input_path, output_path=None):
     """Convert a single Lua file to JavaScript."""
+    basename = os.path.splitext(os.path.basename(input_path))[0]
+
+    # Skip library/data files that are not level generators
+    converter = SimpleLuaConverter()
+    if basename in converter.skip_files:
+        print(f"Skipping {basename}.lua (library/data file, not a level generator)")
+        return None
+
     with open(input_path, 'r', encoding='utf-8') as f:
         lua_content = f.read()
 
-    converter = SimpleLuaConverter()
     js_content = converter.convert_file(lua_content, os.path.basename(input_path))
 
     if output_path:

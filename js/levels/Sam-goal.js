@@ -122,5 +122,6 @@ export function generate() {
     des.monster("stalker");
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

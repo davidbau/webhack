@@ -118,6 +118,6 @@ export function generate() {
     des.monster("e");
 
 
-    // }
     return des.finalize_level();
 }
+

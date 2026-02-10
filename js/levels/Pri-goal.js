@@ -95,5 +95,6 @@ export function generate() {
     des.monster("W");
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

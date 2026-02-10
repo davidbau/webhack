@@ -123,5 +123,6 @@ export function generate() {
     des.object({ id: "scroll of scare monster", coord: pt, buc: "cursed" });
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

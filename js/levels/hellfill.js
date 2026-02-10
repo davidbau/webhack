@@ -476,5 +476,6 @@ export function generate() {
     populatemaze();
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

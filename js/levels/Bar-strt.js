@@ -107,8 +107,8 @@ export function generate() {
     let ogrelocs = selection.floodfill(37,7) & selection.area(40,3, 45,20)
     for (let i = 0; i <= 11; i++) {
        des.monster({ id: "ogre", coord: ogrelocs.rndcoord(1), peaceful: 0 });
+    
     }
-
-
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

@@ -268,5 +268,6 @@ export function generate() {
     des.region(selection.area(47,10,47,11),"unlit");
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

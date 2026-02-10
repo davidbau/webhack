@@ -177,6 +177,6 @@ export function generate() {
        des.monster({ id: "chameleon", coord: streets.rndcoord(1), peaceful: 0 });
     }
 
-
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

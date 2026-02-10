@@ -62,6 +62,6 @@ export function generate() {
       des.monster();
     }
 
-
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

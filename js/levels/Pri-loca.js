@@ -84,5 +84,6 @@ export function generate() {
     // No random monsters - the morgue generation will put them in.
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

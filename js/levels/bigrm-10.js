@@ -72,5 +72,6 @@ export function generate() {
     des.stair("down");
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

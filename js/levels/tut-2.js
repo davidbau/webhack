@@ -38,5 +38,6 @@ export function generate() {
     des.non_diggable();
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

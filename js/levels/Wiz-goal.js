@@ -143,5 +143,6 @@ export function generate() {
     des.monster({ id: "prisoner", x: 41, y: 11, peaceful: 1, asleep: 1 });
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

@@ -168,6 +168,6 @@ export function generate() {
 
     let protected_region = bounds2.negate() | orcus1;
     hell_tweaks(protected_region);
-
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

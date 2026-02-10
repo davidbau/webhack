@@ -47,7 +47,7 @@ export function generate() {
     ---
     `;
 
-    const filters = [
+    let filters = [
        // 1: all pillars
        function(x, y) { return true; },
        // 2: 3 vertical lines
@@ -66,7 +66,7 @@ export function generate() {
        function(x, y) { return (Math.floor((x+1)/3) == y); },
     ];
 
-    const idx = Math.random(1, filters.length);
+    let idx = Math.random(1, filters.length);
 
     for (let y = 0; y <= 2; y++) {
        for (let x = 0; x <= 6; x++) {
@@ -91,7 +91,8 @@ export function generate() {
     }
     for (let i = 1; i <= 28; i++) {
       des.monster();
-    }
 
+    }
     return des.finalize_level();
 }
+

@@ -41,5 +41,6 @@ export function generate() {
     des.monster({ id: "rock troll", peaceful: 0 });
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

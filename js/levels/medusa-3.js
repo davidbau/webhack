@@ -149,5 +149,6 @@ export function generate() {
     // medusa.length-3.lua
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

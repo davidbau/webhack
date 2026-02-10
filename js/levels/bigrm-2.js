@@ -79,8 +79,8 @@ export function generate() {
     // Random monsters.
     for (let i = 1; i <= 28; i++) {
        des.monster();
+    
     }
-
-
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

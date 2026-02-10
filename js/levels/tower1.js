@@ -85,5 +85,6 @@ export function generate() {
     des.non_diggable(selection.area(0,0,14,10));
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

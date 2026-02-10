@@ -170,5 +170,6 @@ export function generate() {
     des.wallify();
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

@@ -28,9 +28,9 @@ export function generate() {
        pools.set();
     }
     // some bigger ones
-    pools: pools | selection.grow(selection.set(selection.new()), "west")
-    pools: pools | selection.grow(selection.set(selection.new()), "north")
-    pools: pools | selection.grow(selection.set(selection.new()), "random")
+    pools = pools | selection.grow(selection.set(selection.new()), "west");
+    pools = pools | selection.grow(selection.set(selection.new()), "north");
+    pools = pools | selection.grow(selection.set(selection.new()), "random");
 
     // Lava pools surrounded by water
     des.terrain(pools.clone().grow("all"), "P");
@@ -109,8 +109,6 @@ export function generate() {
     des.monster({ id: "fire giant", x: 18, y: 1, peaceful: 0 });
     des.monster({ id: "fire giant", x: 10, y: 16, peaceful: 0 });
 
-
-
-    // }
     return des.finalize_level();
 }
+

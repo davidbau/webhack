@@ -152,5 +152,6 @@ export function generate() {
     des.monster({ id: "samurai", x: 34, y: 14, peaceful: 0 });
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

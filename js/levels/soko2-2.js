@@ -81,5 +81,6 @@ export function generate() {
     des.object({ class: "/" });
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+

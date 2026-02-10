@@ -86,5 +86,6 @@ export function generate() {
     des.monster("xorn");
 
 
-    // return des.finalize_level();
+    return des.finalize_level();
 }
+
