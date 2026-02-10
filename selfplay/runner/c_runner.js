@@ -20,6 +20,7 @@ const opts = {
     verbose: true,
     keyDelay: 60,
     moveDelay: 0,
+    symset: 'ASCII', // 'ASCII' or 'DECgraphics'
 };
 
 for (let i = 0; i < args.length; i++) {
@@ -35,6 +36,7 @@ for (let i = 0; i < args.length; i++) {
             else if (key === '--turns') opts.maxTurns = parseInt(value);
             else if (key === '--delay') opts.moveDelay = parseInt(value);
             else if (key === '--key-delay') opts.keyDelay = parseInt(value);
+            else if (key === '--graphics') opts.symset = value === 'dec' ? 'DECgraphics' : 'ASCII';
             continue;
         }
     }
@@ -44,16 +46,21 @@ for (let i = 0; i < args.length; i++) {
     else if (arg === '--turns' && args[i + 1]) opts.maxTurns = parseInt(args[++i]);
     else if (arg === '--delay' && args[i + 1]) opts.moveDelay = parseInt(args[++i]);
     else if (arg === '--key-delay' && args[i + 1]) opts.keyDelay = parseInt(args[++i]);
+    else if (arg === '--graphics' && args[i + 1]) {
+        const val = args[++i];
+        opts.symset = val === 'dec' ? 'DECgraphics' : 'ASCII';
+    }
     else if (arg === '--verbose' || arg === '-v') opts.verbose = true;
     else if (arg === '--quiet' || arg === '-q') opts.verbose = false;
     else if (arg === '--help' || arg === '-h') {
         console.log('Usage: node c_runner.js [--seed=N] [--turns=N] [--verbose] [--delay=MS]');
-        console.log('  --seed=N       PRNG seed for deterministic games (default: 42)');
-        console.log('  --turns=N      Maximum turns to play (default: 200)');
-        console.log('  --delay=MS     Delay between agent moves in ms (default: 0)');
-        console.log('  --key-delay=MS Delay after each tmux keystroke in ms (default: 60)');
-        console.log('  --verbose/-v   Verbose output (default: on)');
-        console.log('  --quiet/-q     Suppress verbose output');
+        console.log('  --seed=N         PRNG seed for deterministic games (default: 42)');
+        console.log('  --turns=N        Maximum turns to play (default: 200)');
+        console.log('  --delay=MS       Delay between agent moves in ms (default: 0)');
+        console.log('  --key-delay=MS   Delay after each tmux keystroke in ms (default: 60)');
+        console.log('  --graphics=MODE  Symbol set: ascii or dec (DECgraphics) (default: ascii)');
+        console.log('  --verbose/-v     Verbose output (default: on)');
+        console.log('  --quiet/-q       Suppress verbose output');
         process.exit(0);
     }
 }
@@ -62,10 +69,12 @@ console.log(`NetHack AI Agent vs C Binary`);
 console.log(`  Seed: ${opts.seed}`);
 console.log(`  Max turns: ${opts.maxTurns}`);
 console.log(`  Key delay: ${opts.keyDelay}ms`);
+console.log(`  Symbol set: ${opts.symset}`);
 console.log('');
 
 const adapter = new TmuxAdapter({
     keyDelay: opts.keyDelay,
+    symset: opts.symset,
 });
 
 try {
