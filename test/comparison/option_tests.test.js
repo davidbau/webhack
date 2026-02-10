@@ -18,6 +18,8 @@ describe('Option behavior tests', () => {
         'seed302_verbose_off.session.json',
         'seed303_decgraphics_off.session.json',
         'seed304_decgraphics_on.session.json',
+        'seed305_time_on.session.json',
+        'seed306_time_off.session.json',
     ];
 
     for (const sessionFile of optionSessions) {
@@ -109,5 +111,36 @@ describe('Option screen comparisons', () => {
 
         // Note: C NetHack uses IBM graphics (qxlkmj), JS uses Unicode box-drawing (│─┌┐└┘)
         // Both are valid representations of DECgraphics mode
+    });
+
+    test('time on/off comparison', async () => {
+        const timeOnPath = path.join(SESSIONS_DIR, 'seed305_time_on.session.json');
+        const timeOffPath = path.join(SESSIONS_DIR, 'seed306_time_off.session.json');
+
+        if (!fs.existsSync(timeOnPath) || !fs.existsSync(timeOffPath)) {
+            console.log('Skipping time comparison - sessions not found');
+            return;
+        }
+
+        const timeOn = JSON.parse(fs.readFileSync(timeOnPath, 'utf8'));
+        const timeOff = JSON.parse(fs.readFileSync(timeOffPath, 'utf8'));
+
+        // Get status lines (line 23)
+        const statusOn = timeOn.startup.screen[23];
+        const statusOff = timeOff.startup.screen[23];
+
+        // time=on should have "T:N" in status line
+        const hasTurnCounterOn = /T:\d+/.test(statusOn);
+
+        // time=off should NOT have "T:N" in status line
+        const hasTurnCounterOff = /T:\d+/.test(statusOff);
+
+        console.log(`  time=on status: ${statusOn}`);
+        console.log(`  time=off status: ${statusOff}`);
+        console.log(`  Turn counter present (time=on): ${hasTurnCounterOn}`);
+        console.log(`  Turn counter present (time=off): ${hasTurnCounterOff}`);
+
+        assert.ok(hasTurnCounterOn, 'time=on should show turn counter T:N');
+        assert.ok(!hasTurnCounterOff, 'time=off should NOT show turn counter');
     });
 });

@@ -201,7 +201,7 @@ export const themeroom_fills = [
          for (let i = 1; i <= d(5,5); i++) {
             des.object({ id: "statue" });
          }
-         for (let i = 1; i <= d(3); i++) {
+         for (let i = 1; i <= rnd(3); i++) {
             des.trap("statue");
          }
       },
@@ -846,7 +846,7 @@ xx|.....|xx
                      return "open";
                   }
                }
-               const p = placements[d(placements.length) - 1];
+               const p = placements[rnd(placements.length) - 1];
                des.room({ type: ltype, x: p["lx"], y: p["ly"], w: 3, h: 3, filled: 1, joined: false,
                            contents: function() {
                      des.door({ state: shopdoorstate(), wall: p["lwall"] })

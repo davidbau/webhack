@@ -442,6 +442,164 @@ def generate_decgraphics_sessions():
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
+def generate_time_sessions():
+    """Generate sessions testing time option (on/off)."""
+    print("\n=== Generating time option sessions ===")
+
+    # Test time=on: status line should show T:N
+    seed = 305
+    option_flags = {'verbose': False, 'autopickup': False, 'DECgraphics': False}
+    session_name = f'webhack-option-{seed}-{os.getpid()}'
+    tmpdir = tempfile.mkdtemp(prefix='webhack-option-')
+    rng_log_file = os.path.join(tmpdir, 'rnglog.txt')
+
+    try:
+        # For time option, we need to set it in .nethackrc
+        os.makedirs(RESULTS_DIR, exist_ok=True)
+        nethackrc = os.path.join(RESULTS_DIR, '.nethackrc')
+        with open(nethackrc, 'w') as f:
+            f.write('OPTIONS=name:Wizard\n')
+            f.write('OPTIONS=race:elf\n')
+            f.write('OPTIONS=role:Wizard\n')
+            f.write('OPTIONS=gender:male\n')
+            f.write('OPTIONS=align:chaotic\n')
+            f.write('OPTIONS=suppress_alert:3.4.3\n')
+            f.write('OPTIONS=time\n')  # Enable time option
+
+        cmd = (
+            f'NETHACKDIR={INSTALL_DIR} '
+            f'NETHACK_SEED={seed} '
+            f'NETHACK_RNGLOG={rng_log_file} '
+            f'HOME={RESULTS_DIR} '
+            f'TERM=xterm-256color '
+            f'{NETHACK_BINARY} -u Wizard -D; '
+            f'sleep 999'
+        )
+
+        subprocess.run(
+            ['tmux', 'new-session', '-d', '-s', session_name, '-x', '80', '-y', '24', cmd],
+            check=True
+        )
+        time.sleep(1.0)
+
+        wait_for_game_ready(session_name, rng_log_file)
+        clear_more_prompts(session_name)
+        time.sleep(0.1)
+
+        # Capture startup (should show T:N in status line)
+        startup_screen = capture_screen_lines(session_name)
+        startup_rng_count, startup_rng_lines = read_rng_log(rng_log_file)
+        startup_rng_entries = parse_rng_lines(startup_rng_lines)
+
+        session_data = {
+            'version': 1,
+            'seed': seed,
+            'type': 'option_test',
+            'option': 'time',
+            'option_value': True,
+            'description': 'Test time=on - should show turn counter T:N in status line',
+            'character': {
+                'name': 'Wizard',
+                'role': 'Wizard',
+                'race': 'elf',
+                'gender': 'male',
+                'align': 'chaotic'
+            },
+            'startup': {
+                'rngCalls': len([e for e in startup_rng_entries if e[0] not in ('>', '<')]),
+                'screen': startup_screen,
+            },
+            'steps': []
+        }
+
+        quit_game(session_name)
+
+        output_path = os.path.join(SESSIONS_DIR, 'seed305_time_on.session.json')
+        with open(output_path, 'w') as f:
+            f.write(compact_session_json(session_data))
+
+        print(f"✓ Created {output_path}")
+
+    finally:
+        subprocess.run(['tmux', 'kill-session', '-t', session_name], capture_output=True)
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    # Test time=off: status line should NOT show T:N
+    seed = 306
+    session_name = f'webhack-option-{seed}-{os.getpid()}'
+    tmpdir = tempfile.mkdtemp(prefix='webhack-option-')
+    rng_log_file = os.path.join(tmpdir, 'rnglog.txt')
+
+    try:
+        os.makedirs(RESULTS_DIR, exist_ok=True)
+        nethackrc = os.path.join(RESULTS_DIR, '.nethackrc')
+        with open(nethackrc, 'w') as f:
+            f.write('OPTIONS=name:Wizard\n')
+            f.write('OPTIONS=race:elf\n')
+            f.write('OPTIONS=role:Wizard\n')
+            f.write('OPTIONS=gender:male\n')
+            f.write('OPTIONS=align:chaotic\n')
+            f.write('OPTIONS=suppress_alert:3.4.3\n')
+            f.write('OPTIONS=!time\n')  # Disable time option
+
+        cmd = (
+            f'NETHACKDIR={INSTALL_DIR} '
+            f'NETHACK_SEED={seed} '
+            f'NETHACK_RNGLOG={rng_log_file} '
+            f'HOME={RESULTS_DIR} '
+            f'TERM=xterm-256color '
+            f'{NETHACK_BINARY} -u Wizard -D; '
+            f'sleep 999'
+        )
+
+        subprocess.run(
+            ['tmux', 'new-session', '-d', '-s', session_name, '-x', '80', '-y', '24', cmd],
+            check=True
+        )
+        time.sleep(1.0)
+
+        wait_for_game_ready(session_name, rng_log_file)
+        clear_more_prompts(session_name)
+        time.sleep(0.1)
+
+        startup_screen = capture_screen_lines(session_name)
+        startup_rng_count, startup_rng_lines = read_rng_log(rng_log_file)
+        startup_rng_entries = parse_rng_lines(startup_rng_lines)
+
+        session_data = {
+            'version': 1,
+            'seed': seed,
+            'type': 'option_test',
+            'option': 'time',
+            'option_value': False,
+            'description': 'Test time=off - should NOT show turn counter in status line',
+            'character': {
+                'name': 'Wizard',
+                'role': 'Wizard',
+                'race': 'elf',
+                'gender': 'male',
+                'align': 'chaotic'
+            },
+            'startup': {
+                'rngCalls': len([e for e in startup_rng_entries if e[0] not in ('>', '<')]),
+                'screen': startup_screen,
+            },
+            'steps': []
+        }
+
+        quit_game(session_name)
+
+        output_path = os.path.join(SESSIONS_DIR, 'seed306_time_off.session.json')
+        with open(output_path, 'w') as f:
+            f.write(compact_session_json(session_data))
+
+        print(f"✓ Created {output_path}")
+
+    finally:
+        subprocess.run(['tmux', 'kill-session', '-t', session_name], capture_output=True)
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 def main():
     if not os.path.isfile(NETHACK_BINARY):
         print(f"Error: nethack binary not found at {NETHACK_BINARY}")
@@ -451,6 +609,7 @@ def main():
     if '--all' in sys.argv or '--option' not in sys.argv:
         generate_verbose_sessions()
         generate_decgraphics_sessions()
+        generate_time_sessions()
         print("\n✓ All option sessions generated successfully")
     elif '--option' in sys.argv:
         idx = sys.argv.index('--option')
@@ -460,9 +619,11 @@ def main():
             generate_verbose_sessions()
         elif option == 'DECgraphics':
             generate_decgraphics_sessions()
+        elif option == 'time':
+            generate_time_sessions()
         else:
             print(f"Unknown option: {option}")
-            print("Available options: verbose, DECgraphics")
+            print("Available options: verbose, DECgraphics, time")
             sys.exit(1)
 
 

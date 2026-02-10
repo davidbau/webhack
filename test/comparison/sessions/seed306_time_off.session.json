@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "seed": 306,
+  "type": "option_test",
+  "option": "time",
+  "option_value": false,
+  "description": "Test time=off - should NOT show turn counter in status line",
+  "character": {
+    "name": "Wizard",
+    "role": "Wizard",
+    "race": "elf",
+    "gender": "male",
+    "align": "chaotic"
+  },
+  "startup": {
+    "rngCalls": 2677,
+    "screen": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "              -.---",
+      "              |@.d|",
+      "              |f.?.",
+      "              -----",
+      "",
+      "Wizard the Evoker              St:13 Dx:15 Co:15 In:16 Wi:11 Ch:7 Chaotic",
+      "Dlvl:1 $:0 HP:11(11) Pw:9(9) AC:9 Xp:1"
+    ]
+  },
+  "steps": []
+}

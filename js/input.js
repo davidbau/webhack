@@ -75,6 +75,12 @@ function handleKeyDown(e) {
         ch = 8;
         e.preventDefault();
     }
+    // Handle space bar with rest_on_space option
+    // C ref: flag.h flags.rest_on_space - space triggers rest/wait command
+    else if (e.key === ' ' && window.gameFlags?.rest_on_space) {
+        ch = '.'.charCodeAt(0); // Convert space to period (rest)
+        e.preventDefault();
+    }
     // Handle regular character keys
     else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
         ch = e.key.charCodeAt(0);
