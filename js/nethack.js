@@ -976,16 +976,18 @@ class NetHackGame {
         this.display.putstr_message(welcomeMsg);
 
         // Show --More-- after welcome
-        // C ref: if message + --More-- exceeds terminal width, wrap to next line
+        // C ref: if message + " --More--" exceeds terminal width, wrap to next line
+        // C uses: if (msg.length + 8 >= cols) where 8 = " --More--" (space + 7 chars)
         const moreStr = '--More--';
         let moreRow = 0;
         let moreCol;
-        if (welcomeMsg.length + moreStr.length > this.display.cols) {
+        if (welcomeMsg.length + 8 >= this.display.cols) {
             // Doesn't fit on one line: put --More-- on row 1, col 0
             moreRow = 1;
             moreCol = 0;
         } else {
-            moreCol = welcomeMsg.length;
+            // Fits on same line: add space before --More--
+            moreCol = welcomeMsg.length + 1;
         }
         this.display.putstr(moreCol, moreRow, moreStr, 2); // CLR_GREEN
         await nhgetch();
