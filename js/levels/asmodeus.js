@@ -21,10 +21,32 @@ export function generate() {
     const bounds2 = selection.fillrect(bnds.lx, bnds.ly + 1, bnds.hx - 2, bnds.hy - 1);
 
     // First part
+<<<<<<< HEAD
     const asmo1 = des.map({ halign: "half-left", valign: "center", map: `  --------------------- | +  +  +  +  +  + .| +  + .| | +  +  +  +  +  + .S +  + .| |---+------------ + .| | +  + .| +  +  +  + .|-+-- | + ---| +  +  +  + .| +  + | + | + S +  +  +  + .| +  + | + | + | +  +  +  + .| +  + | + | + | +  +  +  + .|-+-- | + | + ----------- + .| | + S +  +  +  +  + | +  + .| ---------------------  `, contents: function(rm) { // Doors;
             des.door("closed",4,3);
             des.door("locked",18,4);
             des.door("closed",18,8);
+=======
+    const asmo1 = des.map({ halign: "half-left", valign: "center", map: `
+
+    ---------------------
+    |.............|.....|
+    |.............S.....|
+    |---+------------...|
+    |.....|.........|-+--
+    |..---|.........|....
+    |..|..S.........|....
+    |..|..|.........|....
+    |..|..|.........|-+--
+    |..|..-----------...|
+    |..S..........|.....|
+    ---------------------
+
+    `, contents: function(rm) { // Doors;
+            des.door("closed",04,03);
+            des.door("locked",18,04);
+            des.door("closed",18,08);
+>>>>>>> 3634da106f5a877669164801a01cbcdbb479e85d
             //
             des.stair("down", 13,7);
             // Non diggable walls
@@ -67,7 +89,19 @@ export function generate() {
     des.teleport_region({ region: [1,0,6,20], region_islev: 1, exclude: [6,1,70,16], exclude_islev: 1 });
 
     // Second part
+<<<<<<< HEAD
     const asmo2 = des.map({ halign: "half-right", valign: "center", map: `  --------------------------------- +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + | +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + + +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + | ---------------------------------  `, contents: function(rm) { des.mazewalk(32,2,"east");
+=======
+    const asmo2 = des.map({ halign: "half-right", valign: "center", map: `
+
+    ---------------------------------
+    ................................|
+    ................................+
+    ................................|
+    ---------------------------------
+
+    `, contents: function(rm) { des.mazewalk(32,02,"east");
+>>>>>>> 3634da106f5a877669164801a01cbcdbb479e85d
             // Non diggable walls
             des.non_diggable(selection.area(0,0,32,4));
             des.door("closed",32,2);
