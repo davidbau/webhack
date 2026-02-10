@@ -349,6 +349,28 @@ export function getLevelState() {
 }
 
 /**
+ * Get the terrain grid (typGrid) from the current map
+ * Returns a 21×80 array of terrain type codes (0-based indexing)
+ * Compatible with C dumpmap format for comparison testing
+ */
+export function getTypGrid() {
+    if (!levelState.map || !levelState.map.locations) {
+        return null;
+    }
+
+    const grid = [];
+    for (let y = 0; y < ROWNO; y++) {
+        const row = [];
+        for (let x = 0; x < COLNO; x++) {
+            const cell = levelState.map.locations[x]?.[y];
+            row.push(cell?.typ ?? 0);
+        }
+        grid.push(row);
+    }
+    return grid;
+}
+
+/**
  * des.level_init({ style = "solidfill", fg = " " })
  *
  * Initialize level generation style and fill characters.
