@@ -1273,7 +1273,7 @@ function join(map, a, b, nxcor, depth) {
 }
 
 // C ref: mklev.c makecorridors()
-function makecorridors(map, depth) {
+export function makecorridors(map, depth) {
     // Initialize smeq (each room in its own component)
     map.smeq = new Array(MAXNROFROOMS + 1);
     for (let i = 0; i < map.nroom; i++) map.smeq[i] = i;

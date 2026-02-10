@@ -16,7 +16,7 @@
 import { GameMap } from './map.js';
 import { rn2, rnd } from './rng.js';
 import { mksobj, mkobj } from './mkobj.js';
-import { create_room } from './dungeon.js';
+import { create_room, makecorridors } from './dungeon.js';
 import {
     STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,
     CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, ROOM, CORR,
@@ -1765,20 +1765,32 @@ export function teleport_region(opts) {
  * des.random_corridors()
  *
  * Generate random corridors connecting rooms.
- * C ref: sp_lev.c (called as part of level finalization)
+ * C ref: sp_lev.c lspo_random_corridors() -> mklev.c makecorridors()
  *
- * This is a stub implementation - in the full version, this would:
- * - Connect all rooms using corridors
- * - Use RNG to determine corridor paths
- * - Add doors at corridor/room junctions
- *
- * For now, we skip corridor generation for special levels that explicitly
- * place their own layout. Most special levels use des.map() anyway.
+ * Connects all rooms in the current level with corridors and doors.
+ * Uses the full makecorridors() algorithm from dungeon.js:
+ * - Phase 1: Join consecutive rooms
+ * - Phase 2: Join rooms 2 apart
+ * - Phase 3: Connect all disconnected components
+ * - Phase 4: Add random extra corridors
  */
 export function random_corridors() {
-    // Stub - special levels typically use pre-mapped layouts
-    // Random corridor generation is complex and not needed for basic level testing
-    // TODO: Implement full corridor generation algorithm from C mklev.c join_rooms()
+    if (!levelState.map) {
+        return; // No map to add corridors to
+    }
+
+    // Mark all rooms as needing joining
+    // (Special levels create rooms but don't set needjoining)
+    for (const room of levelState.map.rooms) {
+        if (room.needjoining === undefined) {
+            room.needjoining = true;
+        }
+    }
+
+    // Call the full corridor generation algorithm
+    // Depth is used for trap generation - use 1 as default for special levels
+    const depth = 1;
+    makecorridors(levelState.map, depth);
 }
 
 /**
