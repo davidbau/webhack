@@ -1,147 +1,142 @@
 /**
- * Juiblex's Swamp (Gehennom)
- * Ported from nethack-c/dat/juiblex.lua
+ * juiblex - NetHack special level
+ * Converted from: juiblex.lua
  */
 
-import { des, selection, finalize_level } from '../sp_lev.js';
+import * as des from '../sp_lev.js';
+import { selection } from '../sp_lev.js';
+import { shuffle } from '../util.js';
 
 export function generate() {
-    des.level_flags('mazelevel', 'shortsighted', 'noflip', 'temperate');
+    // NetHack gehennom juiblex.lua	$NHDT-Date: 1652196026 2022/05/10 15:20:26 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.5 $
+    // Copyright (c) 1989 by Jean-Christophe Collet
+    // Copyright (c) 1992 by M. Stephenson and Izchak Miller
+    // NetHack may be freely redistributed.  See license for details.
+    // 
 
-    // Swamp style creates procedural swampy terrain
-    des.level_init({ style: 'swamp', lit: 0 });
+    des.level_flags("mazelevel", "shortsighted", "noflip", "temperate");
+    // des.level_init(mines,'.','}',true,true,unlit,false)
+    des.level_init({ style: "swamp", lit: 0 });
+    // guarantee at least one open spot to ensure successful stair placement
+    des.map({ halign: "left", valign: "bottom", map: `
 
-    // Guarantee at least one open spot (bottom left) for stair placement
-    des.map({
-        halign: 'left',
-        valign: 'bottom',
-        map: `
- xxxxxxxx
-xx...xxx
-xxx...xx
-xxxx.xxx
- xxxxxxxx
-`
-    });
-    des.object({ id: 'boulder' });
+    xxxxxxxx
+    xx...xxx
+    xxx...xx
+    xxxx.xxx
+    xxxxxxxx
 
-    // Guarantee another open spot (top right)
-    des.map({
-        halign: 'right',
-        valign: 'top',
-        map: `
- xxxxxxxx
-xxxx.xxx
-xxx...xx
-xx...xxx
- xxxxxxxx
-`
-    });
-    des.object({ id: 'boulder' });
+    ` });
+    des.object("boulder");
+    des.map({ halign: "right", valign: "top", map: `
 
-    // Main lair with pools
-    des.map({
-        map: `
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
-xxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxx
-xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
-xxxxxxxxxxxxxxxxxxxxxxxx}}}xxxxxxxxxxxxxxx}}}}}xxxx
-xxxxxxxxxxxxxxxxxxxxxxx}}}}}xxxxxxxxxxxxx}.....}xxx
-xxxxxxxxxxxxxxxxxxxxxx}}...}}xxxxxxxxxxx}..P.P..}xx
-xxxxxxxxxxxxxxxxxxxxx}}..P..}}xxxxxxxxxxx}.....}xxx
-xxxxxxxxxxxxxxxxxxxxx}}.P.P.}}xxxxxxxxxxxx}...}xxxx
-xxxxxxxxxxxxxxxxxxxxx}}..P..}}xxxxxxxxxxxx}...}xxxx
-xxxxxxxxxxxxxxxxxxxxxx}}...}}xxxxxxxxxxxxxx}}}xxxxx
-xxxxxxxxxxxxxxxxxxxxxxx}}}}}xxxxxxxxxxxxxxxxxxxxxxx
-xxxxxxxxxxxxxxxxxxxxxxxx}}}xxxxxxxxxxxxxxxxxxxxxxxx
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
-xxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxx
-xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-`
-    });
+    xxxxxxxx
+    xxxx.xxx
+    xxx...xx
+    xx...xxx
+    xxxxxxxx
 
-    // Dungeon description - swamp region
-    des.region(selection.area(0, 0, 50, 17), 'unlit', 'swamp', 2);
+    ` });
+    des.object("boulder");
+    // lair
+    des.map(`
 
-    // Stair and branch placement
-    des.levregion({ type: 'stair-down', region: { x1: 1, y1: 0, x2: 11, y2: 20 }, exclude: { x1: 0, y1: 0, x2: 50, y2: 17 } });
-    des.levregion({ type: 'stair-up', region: { x1: 69, y1: 0, x2: 79, y2: 20 }, exclude: { x1: 0, y1: 0, x2: 50, y2: 17 } });
-    des.levregion({ type: 'branch', region: { x1: 1, y1: 0, x2: 11, y2: 20 }, exclude: { x1: 0, y1: 0, x2: 50, y2: 17 } });
-    des.teleport_region({ region: { x1: 1, y1: 0, x2: 11, y2: 20 }, exclude: { x1: 0, y1: 0, x2: 50, y2: 17 } });
-    des.teleport_region({ region: { x1: 69, y1: 0, x2: 79, y2: 20 }, exclude: { x1: 0, y1: 0, x2: 50, y2: 17 } });
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
+    xxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxx
+    xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
+    xxxxxxxxxxxxxxxxxxxxxxxx}}}xxxxxxxxxxxxxxx}}}}}xxxx
+    xxxxxxxxxxxxxxxxxxxxxxx}}}}}xxxxxxxxxxxxx}.....}xxx
+    xxxxxxxxxxxxxxxxxxxxxx}}...}}xxxxxxxxxxx}..P.P..}xx
+    xxxxxxxxxxxxxxxxxxxxx}}..P..}}xxxxxxxxxxx}.....}xxx
+    xxxxxxxxxxxxxxxxxxxxx}}.P.P.}}xxxxxxxxxxxx}...}xxxx
+    xxxxxxxxxxxxxxxxxxxxx}}..P..}}xxxxxxxxxxxx}...}xxxx
+    xxxxxxxxxxxxxxxxxxxxxx}}...}}xxxxxxxxxxxxxx}}}xxxxx
+    xxxxxxxxxxxxxxxxxxxxxxx}}}}}xxxxxxxxxxxxxxxxxxxxxxx
+    xxxxxxxxxxxxxxxxxxxxxxxx}}}xxxxxxxxxxxxxxxxxxxxxxxx
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
+    xxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxx
+    xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-    // Fountains at corners - one real, three mimics
-    // In Lua they use selection for random placement, we'll approximate
-    des.feature({ type: 'fountain', x: 4, y: 2 });
-    des.monster({ id: 'giant mimic', x: 46, y: 2 }); // TODO: appear_as fountain
-    des.monster({ id: 'giant mimic', x: 4, y: 15 }); // TODO: appear_as fountain
-    des.monster({ id: 'giant mimic', x: 46, y: 15 }); // TODO: appear_as fountain
+    `);
+    // Random registers
+    const monster = ["j","b","P","F"]
+    shuffle(monster)
 
+    const place = selection.new();
+    place.set(4,2)
+    place.set(46,2)
+    place.set(4,15)
+    place.set(46,15)
+
+    // Dungeon description
+    des.region({ region: [0,0,50,17], lit: 0, type: "swamp", filled: 2 });
+    des.levregion({ region: [1,0,11,20], region_islev: 1, exclude: [0,0,50,17], type: "stair-down" });
+    des.levregion({ region: [69,0,79,20], region_islev: 1, exclude: [0,0,50,17], type: "stair-up" });
+    des.levregion({ region: [1,0,11,20], region_islev: 1, exclude: [0,0,50,17], type: "branch" });
+    des.teleport_region({ region: [1,0,11,20], region_islev: 1, exclude: [0,0,50,17], dir: "up" });
+    des.teleport_region({ region: [69,0,79,20], region_islev: 1, exclude: [0,0,50,17], dir: "down" });
+    des.feature("fountain", place.rndcoord(1));
+    des.monster({ id: "giant mimic", coord: place.rndcoord(1), appear_as: "ter:fountain" });
+    des.monster({ id: "giant mimic", coord: place.rndcoord(1), appear_as: "ter:fountain" });
+    des.monster({ id: "giant mimic", coord: place.rndcoord(1), appear_as: "ter:fountain" });
     // The demon of the swamp
-    des.monster({ id: 'Juiblex', x: 25, y: 8 });
+    des.monster("Juiblex",25,8);
+    // And a couple demons
+    des.monster("lemure",43,8);
+    des.monster("lemure",44,8);
+    des.monster("lemure",45,8);
+    // Some liquids and gems
+    des.object("*",43,6);
+    des.object("*",45,6);
+    des.object("!",43,9);
+    des.object("!",44,9);
+    des.object("!",45,9);
+    // And lots of blobby monsters
+    des.monster(monster[4],25,6);
+    des.monster(monster[1],24,7);
+    des.monster(monster[2],26,7);
+    des.monster(monster[3],23,8);
+    des.monster(monster[3],27,8);
+    des.monster(monster[2],24,9);
+    des.monster(monster[1],26,9);
+    des.monster(monster[4],25,10);
+    des.monster("j");
+    des.monster("j");
+    des.monster("j");
+    des.monster("j");
+    des.monster("P");
+    des.monster("P");
+    des.monster("P");
+    des.monster("P");
+    des.monster("b");
+    des.monster("b");
+    des.monster("b");
+    des.monster("F");
+    des.monster("F");
+    des.monster("F");
+    des.monster("m");
+    des.monster("m");
+    des.monster("jellyfish");
+    des.monster("jellyfish");
+    // Some random objects
+    des.object("!");
+    des.object("!");
+    des.object("!");
+    des.object("%");
+    des.object("%");
+    des.object("%");
+    des.object("boulder");
+    // Some traps
+    des.trap("sleep gas");
+    des.trap("sleep gas");
+    des.trap("anti magic");
+    des.trap("anti magic");
+    des.trap("magic");
+    des.trap("magic");
 
-    // Lemures guarding treasure
-    des.monster({ id: 'lemure', x: 43, y: 8 });
-    des.monster({ id: 'lemure', x: 44, y: 8 });
-    des.monster({ id: 'lemure', x: 45, y: 8 });
 
-    // Treasure
-    des.object({ class: '*', x: 43, y: 6 });
-    des.object({ class: '*', x: 45, y: 6 });
-    des.object({ class: '!', x: 43, y: 9 });
-    des.object({ class: '!', x: 44, y: 9 });
-    des.object({ class: '!', x: 45, y: 9 });
-
-    // Blobby monsters surrounding Juiblex
-    // In Lua these use shuffled monster types, we'll use specific ones
-    des.monster({ id: 'F', x: 25, y: 6 });  // Fungus
-    des.monster({ id: 'j', x: 24, y: 7 });  // Jelly
-    des.monster({ id: 'b', x: 26, y: 7 });  // Blob
-    des.monster({ id: 'P', x: 23, y: 8 });  // Pudding
-    des.monster({ id: 'P', x: 27, y: 8 });  // Pudding
-    des.monster({ id: 'b', x: 24, y: 9 });  // Blob
-    des.monster({ id: 'j', x: 26, y: 9 });  // Jelly
-    des.monster({ id: 'F', x: 25, y: 10 }); // Fungus
-
-    // More random blobby monsters
-    des.monster({ id: 'j' });
-    des.monster({ id: 'j' });
-    des.monster({ id: 'j' });
-    des.monster({ id: 'j' });
-    des.monster({ id: 'P' });
-    des.monster({ id: 'P' });
-    des.monster({ id: 'P' });
-    des.monster({ id: 'P' });
-    des.monster({ id: 'b' });
-    des.monster({ id: 'b' });
-    des.monster({ id: 'b' });
-    des.monster({ id: 'F' });
-    des.monster({ id: 'F' });
-    des.monster({ id: 'F' });
-    des.monster({ id: 'm' }); // Small mimic
-    des.monster({ id: 'm' });
-    des.monster({ id: 'jellyfish' });
-    des.monster({ id: 'jellyfish' });
-
-    // Random objects
-    des.object({ class: '!' });
-    des.object({ class: '!' });
-    des.object({ class: '!' });
-    des.object({ class: '%' });
-    des.object({ class: '%' });
-    des.object({ class: '%' });
-    des.object({ id: 'boulder' });
-
-    // Traps
-    des.trap({ type: 'sleep gas' });
-    des.trap({ type: 'sleep gas' });
-    des.trap({ type: 'anti magic' });
-    des.trap({ type: 'anti magic' });
-    des.trap({ type: 'magic' });
-    des.trap({ type: 'magic' });
-
-    return finalize_level();
+    return des.finalize_level();
 }

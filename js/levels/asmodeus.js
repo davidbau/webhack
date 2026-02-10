@@ -37,9 +37,9 @@ export function generate() {
     ---------------------
 
     `, contents: function(rm) { // Doors;
-            des.door("closed",04,03);
-            des.door("locked",18,04);
-            des.door("closed",18,08);
+            des.door("closed",4,3);
+            des.door("locked",18,4);
+            des.door("closed",18,8);
             //
             des.stair("down", 13,7);
             // Non diggable walls
@@ -90,7 +90,7 @@ export function generate() {
     ................................|
     ---------------------------------
 
-    `, contents: function(rm) { des.mazewalk(32,02,"east");
+    `, contents: function(rm) { des.mazewalk(32,2,"east");
             // Non diggable walls
             des.non_diggable(selection.area(0,0,32,4));
             des.door("closed",32,2);
@@ -101,8 +101,8 @@ export function generate() {
             des.trap("fire");
             des.trap("magic"); } });
 
-    const protectedAreas = bounds2.negate() | asmo1 | asmo2;
-    hell_tweaks(protectedAreas)
+    const protected_region = bounds2.negate() | asmo1 | asmo2;
+    hell_tweaks(protected_region)
 
 
     return des.finalize_level();

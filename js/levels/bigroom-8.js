@@ -1,67 +1,68 @@
 /**
- * Big Room variant 8 (eye shape with lava pupil)
- * Simplified port from nethack-c/dat/bigrm-9.lua
+ * bigrm-8 - NetHack special level
+ * Converted from: bigrm-8.lua
  */
 
-import { des, selection, finalize_level } from '../sp_lev.js';
+import * as des from '../sp_lev.js';
+import { selection } from '../sp_lev.js';
 
 export function generate() {
-    des.level_init({ style: 'solidfill', fg: ' ' });
+    // NetHack bigroom bigrm-8.lua	$NHDT-Date: 1652196023 2022/05/10 15:20:23 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.1 $
+    // Copyright (c) 1989 by Jean-Christophe Collet
+    // Copyright (c) 1990 by M. Stephenson
+    // NetHack may be freely redistributed.  See license for details.
+    // 
+    des.level_init({ style: "solidfill", fg: " " });
+    des.level_flags("mazelevel");
 
-    des.level_flags('mazelevel', 'noflip');
+    des.map(`
 
-    // Eye-shaped room with water surround and lava "pupil" in center
-    des.map({
-        map: `
-}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
-}}}}}}}}}}}}}}}}}}}}}}}}}}}}}................}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
-}}}}}}}}}}}}}}}}}}}}}................................}}}}}}}}}}}}}}}}}}}}}
-}}}}}}}}}}}}}}}............................................}}}}}}}}}}}}}}}
-}}}}}}}}}}......................................................}}}}}}}}}}
-}}}}}}}............................................................}}}}}}}
-}}}}}.......................LLLLLLLLLLLLLLLLLL.......................}}}}}
-}}}....................LLLLLLLLLLLLLLLLLLLLLLLLLLL.....................}}}
-}....................LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL....................}
-}....................LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL....................}
-}....................LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL....................}
-}}}....................LLLLLLLLLLLLLLLLLLLLLLLLLLL.....................}}}
-}}}}}.......................LLLLLLLLLLLLLLLLLL.......................}}}}}
-}}}}}}}............................................................}}}}}}}
-}}}}}}}}}}......................................................}}}}}}}}}}
-}}}}}}}}}}}}}}}............................................}}}}}}}}}}}}}}}
-}}}}}}}}}}}}}}}}}}}}}................................}}}}}}}}}}}}}}}}}}}}}
-}}}}}}}}}}}}}}}}}}}}}}}}}}}}}................}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
-}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
-`
-    });
+    ----------------------------------------------                             
+    |............................................---                           
+    --.............................................---                         
+     ---......................................FF.....---                       
+       ---...................................FF........---                     
+         ---................................FF...........---                   
+           ---.............................FF..............---                 
+             ---..........................FF.................---               
+               ---.......................FF....................---             
+                 ---....................FF.......................---           
+                   ---.................FF..........................---         
+                     ---..............FF.............................---       
+                       ---...........FF................................----    
+                         ---........FF...................................---   
+                           ---.....FF......................................--- 
+                             ---.............................................--
+                               ---............................................|
+                                 ----------------------------------------------
 
-    // Unlit outer area, with lit "pupil" region in center
-    des.region(selection.area(0, 0, 73, 18), 'unlit');
-    des.region(selection.area(26, 4, 47, 14), 'lit');
-    des.region(selection.area(21, 5, 51, 13), 'lit');
-    des.region(selection.area(19, 6, 54, 12), 'lit');
+    `);
 
-    // Stairs
-    des.stair('up');
-    des.stair('down');
+    if (percent(40)) {
+       const terrain = ["L", "}", "T", ".", "-", "C"];
+       const tidx = Math.random(1, terrain.length);
+       des.replace_terrain({ region: [0,0, 74,17], fromterrain: "F", toterrain: terrain[tidx] });
+    };
 
-    // Non-diggable walls
+    des.region(selection.area(1,1,73,16), "lit");
+
+    des.stair("up");
+    des.stair("down");
+
     des.non_diggable();
 
-    // Objects
-    for (let i = 0; i < 15; i++) {
-        des.object();
+    for (let i = 1; i <= 15; i++) {
+       des.object();
     }
 
-    // Traps
-    for (let i = 0; i < 6; i++) {
-        des.trap();
+    for (let i = 1; i <= 6; i++) {
+       des.trap();
     }
 
-    // Monsters
-    for (let i = 0; i < 28; i++) {
-        des.monster();
+    for (let i = 1; i <= 28; i++) {
+      des.monster();
     }
 
-    return finalize_level();
+
+    return des.finalize_level();
 }

@@ -1,64 +1,67 @@
 /**
- * Big Room variant 9 (two hexagons with pools)
- * Simplified port from nethack-c/dat/bigrm-12.lua
+ * bigrm-9 - NetHack special level
+ * Converted from: bigrm-9.lua
  */
 
-import { des, selection, finalize_level } from '../sp_lev.js';
+import * as des from '../sp_lev.js';
+import { selection } from '../sp_lev.js';
 
 export function generate() {
-    des.level_init({ style: 'solidfill', fg: ' ' });
+    // NetHack bigroom bigrm-9.lua	$NHDT-Date: 1652196023 2022/05/10 15:20:23 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.1 $
+    // Copyright (c) 1989 by Jean-Christophe Collet
+    // Copyright (c) 1990 by M. Stephenson
+    // NetHack may be freely redistributed.  See license for details.
+    // 
+    des.level_init({ style: "solidfill", fg: " " });
+    des.level_flags("mazelevel", "noflip");
 
-    des.level_flags('mazelevel', 'noflipy');
+    des.map(`
 
-    // Two hexagons side by side - left has water, right has lava
-    des.map({
-        map: `
+    }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+    }}}}}}}}}}}}}}}}}}}}}}}}}}}}}................}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+    }}}}}}}}}}}}}}}}}}}}}................................}}}}}}}}}}}}}}}}}}}}}
+    }}}}}}}}}}}}}}}............................................}}}}}}}}}}}}}}}
+    }}}}}}}}}}......................................................}}}}}}}}}}
+    }}}}}}}............................................................}}}}}}}
+    }}}}}.......................LLLLLLLLLLLLLLLLLL.......................}}}}}
+    }}}....................LLLLLLLLLLLLLLLLLLLLLLLLLLL.....................}}}
+    }....................LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL....................}
+    }....................LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL....................}
+    }....................LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL....................}
+    }}}....................LLLLLLLLLLLLLLLLLLLLLLLLLLL.....................}}}
+    }}}}}.......................LLLLLLLLLLLLLLLLLL.......................}}}}}
+    }}}}}}}............................................................}}}}}}}
+    }}}}}}}}}}......................................................}}}}}}}}}}
+    }}}}}}}}}}}}}}}............................................}}}}}}}}}}}}}}}
+    }}}}}}}}}}}}}}}}}}}}}................................}}}}}}}}}}}}}}}}}}}}}
+    }}}}}}}}}}}}}}}}}}}}}}}}}}}}}................}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+    }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
 
-         .......................           .......................
-        .........................         .........................
-       ...........................       ...........................
-      .............................     .............................
-     ........PPPPPPPPPPPPPPP........   ........LLLLLLLLLLLLLLL........
-    ........PPPPPPPPPPPPPPPPP........ ........LLLLLLLLLLLLLLLLL........
-   ........PPPWWWWWWWWWWWWWPPP...............LLLZZZZZZZZZZZZZLLL........
-  ........PPPWWWWWWWWWWWWWWWPPP.............LLLZZZZZZZZZZZZZZZLLL........
- ........PPPWWWWWWWWWWWWWWWWWPPP...........LLLZZZZZZZZZZZZZZZZZLLL........
-  ........PPPWWWWWWWWWWWWWWWPPP.............LLLZZZZZZZZZZZZZZZLLL........
-   ........PPPWWWWWWWWWWWWWPPP...............LLLZZZZZZZZZZZZZLLL........
-    ........PPPPPPPPPPPPPPPPP........ ........LLLLLLLLLLLLLLLLL........
-     ........PPPPPPPPPPPPPPP........   ........LLLLLLLLLLLLLLL........
-      .............................     .............................
-       ...........................       ...........................
-        .........................         .........................
-         .......................           .......................
+    `);
 
-`
-    });
+    // Unlit, except 3 mapgrids around the "pupil"
+    des.region(selection.area(0,0,73,18),"unlit");
+    des.region(selection.area(26,4,47,14),"lit");
+    des.region(selection.area(21,5,51,13),"lit");
+    des.region(selection.area(19,6,54,12),"lit");
 
-    // Light the room
-    des.region(selection.area(0, 0, 75, 19), 'lit');
+    des.stair("up");
+    des.stair("down");
 
-    // Non-diggable walls
     des.non_diggable();
 
-    // Stairs
-    des.stair('up');
-    des.stair('down');
-
-    // Objects
-    for (let i = 0; i < 15; i++) {
-        des.object();
+    for (let i = 1; i <= 15; i++) {
+       des.object();
     }
 
-    // Traps
-    for (let i = 0; i < 6; i++) {
-        des.trap();
+    for (let i = 1; i <= 6; i++) {
+       des.trap();
     }
 
-    // Monsters
-    for (let i = 0; i < 28; i++) {
-        des.monster();
+    for (let i = 1; i <= 28; i++) {
+      des.monster();
     }
 
-    return finalize_level();
+
+    return des.finalize_level();
 }

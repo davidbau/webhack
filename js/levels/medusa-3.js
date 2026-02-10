@@ -1,110 +1,142 @@
 /**
- * Medusa's Lair (variant 3)
- * Simplified port from nethack-c/dat/medusa-1.lua
+ * medusa-3 - NetHack special level
+ * Converted from: medusa-3.lua
  */
 
-import { des, selection, finalize_level } from '../sp_lev.js';
+import * as des from '../sp_lev.js';
+import { selection } from '../sp_lev.js';
+import { percent } from '../util.js';
 
 export function generate() {
-    des.level_init({ style: 'solidfill', fg: ' ' });
+    // NetHack medusa medusa-3.lua	$NHDT-Date: 1716152250 2024/05/19 20:57:30 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.8 $
+    // Copyright (c) 1989 by Jean-Christophe Collet
+    // Copyright (c) 1990, 1991 by M. Stephenson
+    // NetHack may be freely redistributed.  See license for details.
+    // 
+    des.level_init({ style: "solidfill", fg: " " });
+    des.level_flags("noteleport", "mazelevel", "shortsighted");
+    // 
+    // Here you disturb ravens nesting in the trees.
+    // 
+    des.map(`
 
-    des.level_flags('mazelevel', 'noteleport');
+    }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+    }}}}}}}}}}.}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}.}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+    }}}}}}}}T..T.}}}}}}}}}}}}}}}}}}}}..}}}}}}}}.}}}...}}}}}}}.}}}}}......}}}}}}}
+    }}}}}}.......T.}}}}}}}}}}}..}}}}..T.}}}}}}...T...T..}}...T..}}..-----..}}}}}
+    }}}...-----....}}}}}}}}}}.T..}}}}}...}}}}}.....T..}}}}}......T..|...|.T..}}}
+    }}}.T.|...|...T.}}}}}}}.T......}}}}..T..}}.}}}.}}...}}}}}.T.....+...|...}}}}
+    }}}}..|...|.}}.}}}}}.....}}}T.}}}}.....}}}}}}.T}}}}}}}}}}}}}..T.|...|.}}}}}}
+    }}}}}.|...|.}}}}}}..T..}}}}}}}}}}}}}T.}}}}}}}}..}}}}}}}}}}}.....-----.}}}}}}
+    }}}}}.--+--..}}}}}}...}}}}}}}}}}}}}}}}}}}T.}}}}}}}}}}}}}}}}.T.}........}}}}}
+    }}}}}.......}}}}}}..}}}}}}}}}.}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}.}}}.}}.T.}}}}}}
+    }}.T...T...}}}}T}}}}}}}}}}}....}}}}}}}}}}T}}}}}.T}}...}}}}}}}}}}}}}}...}}}}}
+    }}}...T}}}}}}}..}}}}}}}}}}}.T...}}}}}}}}.T.}.T.....T....}}}}}}}}}}}}}.}}}}}}
+    }}}}}}}}}}}}}}}....}}}}}}}...}}.}}}}}}}}}}............T..}}}}}.T.}}}}}}}}}}}
+    }}}}}}}}}}}}}}}}..T..}}}}}}}}}}}}}}..}}}}}..------+--...T.}}}....}}}}}}}}}}}
+    }}}}.}..}}}}}}}.T.....}}}}}}}}}}}..T.}}}}.T.|...|...|....}}}}}.}}}}}...}}}}}
+    }}}.T.}...}..}}}}T.T.}}}}}}.}}}}}}}....}}...|...+...|.}}}}}}}}}}}}}..T...}}}
+    }}}}..}}}.....}}...}}}}}}}...}}}}}}}}}}}}}T.|...|...|}}}}}}}}}}}....T..}}}}}
+    }}}}}..}}}.T..}}}.}}}}}}}}.T..}}}}}}}}}}}}}}---S-----}}}}}}}}}}}}}....}}}}}}
+    }}}}}}}}}}}..}}}}}}}}}}}}}}}.}}}}}}}}}}}}}}}}}T..T}}}}}}}}}}}}}}}}}}}}}}}}}}
+    }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
 
-    des.map({
-        map: `
-}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
-}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
-}}.}}}}}..}}}}}......}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}....}}}...}}}}}
-}...}}.....}}}}}....}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}...............}
-}....}}}}}}}}}}....}}}..}}}}}}}}}}}.......}}}}}}}}}}}}}}}}..}}.....}}}...}}
-}....}}}}}}}}.....}}}}..}}}}}}.................}}}}}}}}}}}.}}}}.....}}...}}
-}....}}}}}}}}}}}}.}}}}.}}}}}}.-----------------.}}}}}}}}}}}}}}}}}.........}
-}....}}}}}}}}}}}}}}}}}}.}}}...|...............S...}}}}}}}}}}}}}}}}}}}....}}
-}.....}.}}....}}}}}}}}}.}}....--------+--------....}}}}}}..}}}}}}}}}}}...}}
-}......}}}}..}}}}}}}}}}}}}........|.......|........}}}}}....}}}}}}}}}}}}}}}
-}.....}}}}}}}}}}}}}}}}}}}}........|.......|........}}}}}...}}}}}}}}}.}}}}}}
-}.....}}}}}}}}}}}}}}}}}}}}....--------+--------....}}}}}}.}.}}}}}}}}}}}}}}}
-}......}}}}}}}}}}}}}}}}}}}}...S...............|...}}}}}}}}}}}}}}}}}.}}}}}}}
-}.......}}}}}}}..}}}}}}}}}}}}.-----------------.}}}}}}}}}}}}}}}}}....}}}}}}
-}........}}.}}....}}}}}}}}}}}}.................}}}}}..}}}}}}}}}.......}}}}}
-}.......}}}}}}}......}}}}}}}}}}}}}}.......}}}}}}}}}.....}}}}}}...}}..}}}}}}
-}.....}}}}}}}}}}}.....}}}}}}}}}}}}}}}}}}}}}}.}}}}}}}..}}}}}}}}}}....}}}}}}}
-}}..}}}}}}}}}}}}}....}}}}}}}}}}}}}}}}}}}}}}...}}..}}}}}}}.}}.}}}}..}}}}}}}}
-}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
-}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
-`
-    });
+    `);
 
-    // Regions
-    des.region(selection.area(0, 0, 74, 19), 'lit');
-    des.region(selection.area(31, 7, 45, 7), 'unlit');
-    des.region(selection.area(35, 9, 41, 10), 'unlit');
-    des.region(selection.area(31, 12, 45, 12), 'unlit');
+    const place = selection.new();
+    // each of these spots are inside a distinct room
+    place.set(8,6)
+    place.set(66,5)
+    place.set(46,15)
 
-    // Teleport regions
-    des.teleport_region({ region: { x1: 1, y1: 1, x2: 5, y2: 17 } });
-    des.teleport_region({ region: { x1: 26, y1: 4, x2: 50, y2: 15 } });
+    // location of Medusa and downstairs and Perseus's statue
+    const medloc = place.rndcoord(1,1);
+    // specific location for some other statue in a different downstairs-eligible
+    // room, to prevent object detection from becoming a trivial way to pinpoint
+    // Medusa's location
+    // [usefulness depends on future STATUE->dknown changes in nethack's core]
+    const altloc = place.rndcoord(1,1);
+    // location of a fountain, in the remaining of three downstairs-eligible rooms
+    const othloc = place.rndcoord(1,1);
+    // once here, all three points set in 'place' have been used up
 
-    // Stairs
-    des.stair('up', 5, 14);
-    des.stair('down', 36, 10);
+    des.region(selection.area(0,0,74,19),"lit");
+    // fixup_special hack: the first room defined on a Medusa level gets some
+    // leaderboard statues, use arrival_room to force it to be a room even though
+    // monsters won't arrive within it
+    des.region({ region: [49,14, 51,16], lit: -1, type: "ordinary", arrival_room: true });
+    des.region(selection.area(7,5,9,7),"unlit");
+    des.region(selection.area(65,4,67,6),"unlit");
+    des.region(selection.area(45,14,47,16),"unlit");
+    // Non diggable walls
+    // 4th room has diggable walls as Medusa is never placed there
+    des.non_diggable(selection.area(6,4,10,8));
+    des.non_diggable(selection.area(64,3,68,7));
+    des.non_diggable(selection.area(44,13,48,17));
+    // All places are accessible also with jumping, so don't bother
+    // restricting the placement when teleporting from levels below this.
+    des.teleport_region({ region: [33,2,38,7], dir: "down" });
+    des.levregion({ region: [32,1,39,7], type: "stair-up" });
 
-    // Doors
-    des.door('closed', 46, 7);
-    des.door('locked', 38, 8);
-    des.door('locked', 38, 11);
-    des.door('closed', 30, 12);
+    // place the downstairs at the same spot where Medusa will be placed
+    des.stair("down", medloc);
+    // 
+    des.door("locked",8,8);
+    des.door("locked",64,5);
+    des.door("random",50,13);
+    des.door("locked",48,15);
+    // 
+    // in one of the three designated rooms, but not the one with Medusa plus
+    // downstairs and also not 'altloc' where a random statue will be placed
+    des.feature("fountain", othloc);
+    // 
+    // same spot as Medusa plus downstairs
+    des.object({ id: "statue", coord: medloc, buc: "uncursed", montype: "knight", historic: 1, male: 1, name: "Perseus", contents: function() { if (percent(75)) {
+            des.object({ id: "shield of reflection", buc: "cursed", spe: 0 }) end if (percent(25)) {
+            des.object({ id: "levitation boots", spe: 0 }) end if (percent(50)) {
+            des.object({ id: "scimitar", buc: "blessed", spe: 2 }) end if (percent(50)) {
+            des.object("sack") end; } });
+    // 
+    // first random statue is in one of the three designated rooms but not the
+    // one with Medusa plus downstairs or the one with the fountain
+    des.object({ id: "statue", coord: altloc, contents: 0 });
+    des.object({ id: "statue", contents: 0 });
+    des.object({ id: "statue", contents: 0 });
+    des.object({ id: "statue", contents: 0 });
+    des.object({ id: "statue", contents: 0 });
+    des.object({ id: "statue", contents: 0 });
+    des.object({ id: "statue", contents: 0 });
 
-    // Branch placement
-    des.levregion({ type: 'branch', region: { x1: 1, y1: 0, x2: 79, y2: 20 }, exclude: { x1: 30, y1: 6, x2: 46, y2: 13 } });
+    for (let i = 1; i <= 8; i++) {
+       des.object();
+    }
+    des.object("scroll of blank paper",48,18);
+    des.object("scroll of blank paper",48,18);
+    // 
+    des.trap("rust");
+    des.trap("rust");
+    des.trap("board");
+    des.trap("board");
+    des.trap();
+    // 
+    // place Medusa before placing other monsters so that they won't be able to
+    // unintentionally steal her spot on the downstairs
+    des.monster({ id: "Medusa", coord: medloc, asleep: 1 });
+    des.monster("giant eel");
+    des.monster("giant eel");
+    des.monster("jellyfish");
+    des.monster("jellyfish");
+    des.monster("wood nymph");
+    des.monster("wood nymph");
+    des.monster("water nymph");
+    des.monster("water nymph");
 
-    // Non-diggable walls
-    des.non_diggable(selection.area(30, 6, 46, 13));
-
-    // Perseus statue with loot (simplified)
-    des.object({ id: 'statue', x: 36, y: 10 });
-    des.object({ id: 'shield of reflection', x: 36, y: 10, buc: 'cursed' });
-    des.object({ id: 'levitation boots', x: 36, y: 10 });
-    des.object({ id: 'scimitar', x: 36, y: 10, buc: 'blessed', spe: 2 });
-
-    // Empty statues
-    for (let i = 0; i < 7; i++) {
-        des.object({ id: 'statue' });
+    for (let i = 1; i <= 30; i++) {
+       des.monster({ id: "raven", peaceful: 0 });
     }
 
-    // Random objects
-    for (let i = 0; i < 8; i++) {
-        des.object();
-    }
+    // #medusa-3.lua
 
-    // Traps
-    for (let i = 0; i < 5; i++) {
-        des.trap();
-    }
-    des.trap({ type: 'board', x: 38, y: 7 });
-    des.trap({ type: 'board', x: 38, y: 12 });
 
-    // Monsters - Medusa
-    des.monster({ id: 'Medusa', x: 36, y: 10, asleep: 1 });
-
-    // Water creatures
-    des.monster({ id: 'giant eel', x: 11, y: 6 });
-    des.monster({ id: 'giant eel', x: 23, y: 13 });
-    des.monster({ id: 'giant eel', x: 29, y: 2 });
-    des.monster({ id: 'jellyfish', x: 2, y: 2 });
-    des.monster({ id: 'jellyfish', x: 0, y: 8 });
-    des.monster({ id: 'jellyfish', x: 4, y: 18 });
-    des.monster({ id: 'water troll', x: 51, y: 3 });
-    des.monster({ id: 'water troll', x: 64, y: 11 });
-
-    // Snakes guarding entrances
-    des.monster({ class: 'S', x: 38, y: 7 });
-    des.monster({ class: 'S', x: 38, y: 12 });
-
-    // Random monsters
-    for (let i = 0; i < 10; i++) {
-        des.monster();
-    }
-
-    return finalize_level();
+    return des.finalize_level();
 }

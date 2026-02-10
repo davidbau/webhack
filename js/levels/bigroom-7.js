@@ -1,63 +1,67 @@
 /**
- * Big Room variant 7 (triangular wedge shape)
- * Simplified port from nethack-c/dat/bigrm-8.lua
+ * bigrm-7 - NetHack special level
+ * Converted from: bigrm-7.lua
  */
 
-import { des, selection, finalize_level } from '../sp_lev.js';
+import * as des from '../sp_lev.js';
+import { selection } from '../sp_lev.js';
 
 export function generate() {
-    des.level_init({ style: 'solidfill', fg: ' ' });
+    // NetHack bigroom bigrm-7.lua	$NHDT-Date: 1652196023 2022/05/10 15:20:23 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.0 $
+    // Copyright (c) 1989 by Jean-Christophe Collet
+    // Copyright (c) 1990 by M. Stephenson
+    // NetHack may be freely redistributed.  See license for details.
+    // 
+    des.level_init({ style: "solidfill", fg: " " });
+    des.level_flags("mazelevel");
 
-    des.level_flags('mazelevel');
+    des.map(`
 
-    // Triangular wedge-shaped room with diagonal feature line
-    des.map({
-        map: `
-----------------------------------------------
-|............................................---
---.............................................---
- ---......................................FF.....---
-   ---...................................FF........---
-     ---................................FF...........---
-       ---.............................FF..............---
-         ---..........................FF.................---
-           ---.......................FF....................---
-             ---....................FF.......................---
-               ---.................FF..........................---
-                 ---..............FF.............................---
-                   ---...........FF................................----
-                     ---........FF...................................---
-                       ---.....FF......................................---
-                         ---.............................................--
-                           ---............................................|
-                             ----------------------------------------------
-`
-    });
+                                                            -----              
+                                                    ---------...---            
+                                            ---------.........L...---          
+                                    ---------.......................---        
+                            ---------.................................---      
+                    ---------...........................................---    
+            ---------.....................................................---  
+    ---------...............................................................---
+    |.........................................................................|
+    |.L.....................................................................L.|
+    |.........................................................................|
+    ---...............................................................---------
+      ---.....................................................---------        
+        ---...........................................---------                
+          ---.................................---------                        
+            ---.......................---------                                
+              ---...L.........---------                                        
+                ---...---------                                                
+                  -----                                                        
 
-    // Light the room
-    des.region(selection.area(1, 1, 73, 16), 'lit');
+    `);
 
-    // Stairs
-    des.stair('up');
-    des.stair('down');
+    const terrain = ["L", "T", "{", "."];
+    const tidx = Math.random(1, terrain.length);
+    des.replace_terrain({ region: [0,0, 74,18], fromterrain: "L", toterrain: terrain[tidx] });
 
-    // Non-diggable walls
+    des.region(selection.area(1,1,73,17), "lit");
+
+    des.stair("up");
+    des.stair("down");
+
     des.non_diggable();
 
-    // Objects
-    for (let i = 0; i < 15; i++) {
-        des.object();
+    for (let i = 1; i <= 15; i++) {
+       des.object();
     }
 
-    // Traps
-    for (let i = 0; i < 6; i++) {
-        des.trap();
+    for (let i = 1; i <= 6; i++) {
+       des.trap();
     }
 
-    // Monsters
-    for (let i = 0; i < 28; i++) {
-        des.monster();
+    for (let i = 1; i <= 28; i++) {
+      des.monster();
     }
 
-    return finalize_level();
+
+    return des.finalize_level();
 }

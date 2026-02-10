@@ -1,169 +1,182 @@
 /**
- * Fort Ludios (Knox) - The legendary fort
- * Ported from nethack-c/dat/knox.lua
+ * knox - NetHack special level
+ * Converted from: knox.lua
  */
 
-import { des, selection, percent, finalize_level } from '../sp_lev.js';
-import { rn2 } from '../rng.js';
+import * as des from '../sp_lev.js';
+import { selection } from '../sp_lev.js';
 
 export function generate() {
-    des.level_init({ style: 'solidfill', fg: ' ' });
+    // NetHack knox knox.lua	$NHDT-Date: 1652196027 2022/05/10 15:20:27 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.5 $
+    // Copyright (c) 1989 by Jean-Christophe Collet
+    // Copyright (c) 1992 by Izchak Miller
+    // NetHack may be freely redistributed.  See license for details.
+    // 
+    // 
+    des.level_init({ style: "solidfill", fg: " " });
 
-    des.level_flags('mazelevel', 'noteleport');
-
-    // Fort's entry is via a secret door rather than a drawbridge
+    des.level_flags("mazelevel", "noteleport");
+    // Fort's entry is via a secret door rather than a drawbridge;
+    // the moat must be manually circumvented.
     des.map(`
-----------------------------------------------------------------------------
-| |........|...............................................................|
-| |........|.................................................------------..|
-| --S----S--.................................................|..........|..|
-|   #   |........}}}}}}}....................}}}}}}}..........|..........|..|
-|   #   |........}-----}....................}-----}..........--+--+--...|..|
-|   # ---........}|...|}}}}}}}}}}}}}}}}}}}}}}|...|}.................|...|..|
-|   # |..........}---S------------------------S---}.................|...|..|
-|   # |..........}}}|...............|..........|}}}.................+...|..|
-| --S----..........}|...............S..........|}...................|...|..|
-| |.....|..........}|...............|......\\...S}...................|...|..|
-| |.....+........}}}|...............|..........|}}}.................+...|..|
-| |.....|........}---S------------------------S---}.................|...|..|
-| |.....|........}|...|}}}}}}}}}}}}}}}}}}}}}}|...|}.................|...|..|
-| |..-S----......}-----}....................}-----}..........--+--+--...|..|
-| |..|....|......}}}}}}}....................}}}}}}}..........|..........|..|
-| |..|....|..................................................|..........|..|
-| -----------................................................------------..|
-|           |..............................................................|
-----------------------------------------------------------------------------
-`);
 
+    ----------------------------------------------------------------------------
+    | |........|...............................................................|
+    | |........|.................................................------------..|
+    | --S----S--.................................................|..........|..|
+    |   #   |........}}}}}}}....................}}}}}}}..........|..........|..|
+    |   #   |........}-----}....................}-----}..........--+--+--...|..|
+    |   # ---........}|...|}}}}}}}}}}}}}}}}}}}}}}|...|}.................|...|..|
+    |   # |..........}---S------------------------S---}.................|...|..|
+    |   # |..........}}}|...............|..........|}}}.................+...|..|
+    | --S----..........}|...............S..........|}...................|...|..|
+    | |.....|..........}|...............|......\...S}...................|...|..|
+    | |.....+........}}}|...............|..........|}}}.................+...|..|
+    | |.....|........}---S------------------------S---}.................|...|..|
+    | |.....|........}|...|}}}}}}}}}}}}}}}}}}}}}}|...|}.................|...|..|
+    | |..-S----......}-----}....................}-----}..........--+--+--...|..|
+    | |..|....|......}}}}}}}....................}}}}}}}..........|..........|..|
+    | |..|....|..................................................|..........|..|
+    | -----------................................................------------..|
+    |           |..............................................................|
+    ----------------------------------------------------------------------------
+
+    `);
     // Non diggable walls
-    des.non_diggable(selection.area(0, 0, 75, 19));
-
+    des.non_diggable(selection.area(0,0,75,19));
     // Portal arrival point
-    des.levregion({ region: { x1: 8, y1: 16, x2: 8, y2: 16 }, type: 'branch' });
-
-    // Accessible via ^V in wizard mode
-    des.teleport_region({ region: { x1: 6, y1: 15, x2: 9, y2: 16 }, dir: 'up' });
-    des.teleport_region({ region: { x1: 6, y1: 15, x2: 9, y2: 16 }, dir: 'down' });
-
+    des.levregion({ region: [8,16,8,16], type: "branch" });
+    // accessible via ^V in wizard mode; arrive near the portal
+    des.teleport_region({ region: [6,15,9,16], dir: "up" });
+    des.teleport_region({ region: [6,15,9,16], dir: "down" });
     // Throne room, with Croesus on the throne
-    des.region({ region: { x1: 37, y1: 8, x2: 46, y2: 11 }, lit: 1, type: 'throne', filled: 1 });
-
+    des.region({ x1: 37, y1: 8, x2: 46, y2: 11, lit: 1, type: "throne", filled: 1 });
     // 50% chance each to move throne and/or fort's entry secret door up one row
     if (percent(50)) {
-        des.monster({ id: 'Croesus', x: 43, y: 10, peaceful: 0 });
+       des.monster({ id: "Croesus", x: 43, y: 10, peaceful: 0 });
     } else {
-        des.monster({ id: 'Croesus', x: 43, y: 9, peaceful: 0 });
-        des.terrain(43, 9, '\\');
-        des.terrain(43, 10, '.');
+       des.monster({ id: "Croesus", x: 43, y: 9, peaceful: 0 });
+       des.terrain(43,9, "\\");
+       des.terrain(43,10, ".");
     }
     if (percent(50)) {
-        des.terrain(47, 9, 'S');
-        des.terrain(47, 10, '|');
+       des.terrain(47,9, "S");
+       des.terrain(47,10, "|");
     }
 
     // The Vault
-    des.region({ region: { x1: 21, y1: 8, x2: 35, y2: 11 }, lit: 1, type: 'ordinary' });
-
-    // Treasury - place gold and traps
-    // Note: Simplified from Lua's iterate() for now - just place some representative gold/traps
-    for (let x = 21; x <= 35; x += 2) {
-        for (let y = 8; y <= 11; y++) {
-            des.gold({ x, y, amount: 600 + rn2(300) });
-            if (rn2(100) < 33) {
-                if (rn2(2) === 0) {
-                    des.trap('spiked pit', x, y);
-                } else {
-                    des.trap('land mine', x, y);
-                }
-            }
-        }
+    function treasure_spot(x,y) {
+       des.gold({ x: x, y: y, amount: 600 + Math.random(0, 300) });
+       if ((math.random(0,2) === 0)) {
+          if ((math.random(0,2) === 0)) {
+             des.trap("spiked pit", x,y);
+          } else {
+             des.trap("land mine", x,y);
+          }
+       }
     }
+
+    des.region({ region: [21,8,35,11], lit: 1, type: "ordinary" });
+    const treasury = selection.area(21,8,35,11);
+    treasury.iterate(treasure_spot)
 
     // Vault entrance also varies
     if (percent(50)) {
-        des.terrain(36, 9, '|');
-        des.terrain(36, 10, 'S');
+       des.terrain(36,9, "|");
+       des.terrain(36,10, "S");
     }
-
     // Corner towers
-    des.region(selection.area(19, 6, 21, 6), 'lit');
-    des.region(selection.area(46, 6, 48, 6), 'lit');
-    des.region(selection.area(19, 13, 21, 13), 'lit');
-    des.region(selection.area(46, 13, 48, 13), 'lit');
-
+    des.region(selection.area(19,6,21,6),"lit");
+    des.region(selection.area(46,6,48,6),"lit");
+    des.region(selection.area(19,13,21,13),"lit");
+    des.region(selection.area(46,13,48,13),"lit");
     // A welcoming committee
-    des.region({ region: { x1: 3, y1: 10, x2: 7, y2: 13 }, lit: 1, type: 'zoo', filled: 1, irregular: 1 });
+    des.region({ region: [3,10,7,13], lit: 1, type: "zoo", filled: 1, irregular: 1 });
+    // arrival chamber; needs to be a real room to control migrating monsters,
+    // and `unfilled' is a kludge to force an ordinary room to remain a room
+    des.region({ region: [6,15,9,16], lit: 0, type: "ordinary", arrival_room: true });
 
-    // Arrival chamber
-    des.region({ region: { x1: 6, y1: 15, x2: 9, y2: 16 }, lit: 0, type: 'ordinary', arrival_room: true });
-
-    // Force walls to be unlit to hide lighting quirks
-    des.region(selection.area(5, 14, 5, 17), 'unlit');
-    des.region(selection.area(5, 14, 9, 14), 'unlit');
+    // 3.6.2:  Entering level carrying a lit candle would show the whole entry
+    // chamber except for its top right corner even though some of the revealed
+    // spots are farther away than that is.  This is because the lit treasure zoo
+    // is forcing the walls around it to be lit too (see light_region(sp_lev.c)),
+    // and lit walls show up when light reaches the spot next to them.  The unlit
+    // corner is beyond candle range and isn't flagged as lit so it doesn't show
+    // up until light reaches it rather than when light gets next to it.
+    // 
+    // Force left and top walls of the arrival chamber to be unlit in order to
+    // hide this lighting quirk.
+    des.region(selection.area(5,14,5,17),"unlit");
+    des.region(selection.area(5,14,9,14),"unlit");
+    // (Entering the treasure zoo while blind and then regaining sight might
+    // expose the new oddity of these walls not appearing when on the lit side
+    // but that's even less likely to occur than the rare instance of entering
+    // the level with a candle.  They'll almost always be mapped from the arrival
+    // side before entering the treasure zoo.
+    // 
+    // A prior workaround lit the top right corner wall and then jumped through
+    // hoops to suppress the extra light in the 3x3 lit area that produced.
+    // This is simpler and makes the short range candle light behave more like
+    // it is expected to work.)
 
     // Barracks
-    des.region({ region: { x1: 62, y1: 3, x2: 71, y2: 4 }, lit: 1, type: 'barracks', filled: 1, irregular: 1 });
-
+    des.region({ region: [62,3,71,4], lit: 1, type: "barracks", filled: 1, irregular: 1 });
     // Doors
-    des.door('closed', 6, 14);
-    des.door('closed', 9, 3);
-    des.door('open', 63, 5);
-    des.door('open', 66, 5);
-    des.door('open', 68, 8);
-    des.door('locked', 8, 11);
-    des.door('open', 68, 11);
-    des.door('closed', 63, 14);
-    des.door('closed', 66, 14);
-    des.door('closed', 4, 3);
-    des.door('closed', 4, 9);
-
+    des.door("closed",6,14);
+    des.door("closed",9,3);
+    des.door("open",63,5);
+    des.door("open",66,5);
+    des.door("open",68,8);
+    des.door("locked",8,11);
+    des.door("open",68,11);
+    des.door("closed",63,14);
+    des.door("closed",66,14);
+    des.door("closed",4,3);
+    des.door("closed",4,9);
     // Soldiers guarding the fort
-    des.monster({ id: 'soldier', x: 12, y: 14 });
-    des.monster({ id: 'soldier', x: 12, y: 13 });
-    des.monster({ id: 'soldier', x: 11, y: 10 });
-    des.monster({ id: 'soldier', x: 13, y: 2 });
-    des.monster({ id: 'soldier', x: 14, y: 3 });
-    des.monster({ id: 'soldier', x: 20, y: 2 });
-    des.monster({ id: 'soldier', x: 30, y: 2 });
-    des.monster({ id: 'soldier', x: 40, y: 2 });
-    des.monster({ id: 'soldier', x: 30, y: 16 });
-    des.monster({ id: 'soldier', x: 32, y: 16 });
-    des.monster({ id: 'soldier', x: 40, y: 16 });
-    des.monster({ id: 'soldier', x: 54, y: 16 });
-    des.monster({ id: 'soldier', x: 54, y: 14 });
-    des.monster({ id: 'soldier', x: 54, y: 13 });
-    des.monster({ id: 'soldier', x: 57, y: 10 });
-    des.monster({ id: 'soldier', x: 57, y: 9 });
-    des.monster({ id: 'lieutenant', x: 15, y: 8 });
-
+    des.monster("soldier",12,14);
+    des.monster("soldier",12,13);
+    des.monster("soldier",11,10);
+    des.monster("soldier",13,2);
+    des.monster("soldier",14,3);
+    des.monster("soldier",20,2);
+    des.monster("soldier",30,2);
+    des.monster("soldier",40,2);
+    des.monster("soldier",30,16);
+    des.monster("soldier",32,16);
+    des.monster("soldier",40,16);
+    des.monster("soldier",54,16);
+    des.monster("soldier",54,14);
+    des.monster("soldier",54,13);
+    des.monster("soldier",57,10);
+    des.monster("soldier",57,9);
+    des.monster("lieutenant",15,8);
     // Possible source of a boulder
-    des.monster({ id: 'stone giant', x: 3, y: 1 });
-
+    des.monster("stone giant",3,1);
     // Four dragons guarding each side
-    des.monster({ id: 'D', x: 18, y: 9 });
-    des.monster({ id: 'D', x: 49, y: 10 });
-    des.monster({ id: 'D', x: 33, y: 5 });
-    des.monster({ id: 'D', x: 33, y: 14 });
-
+    des.monster("D",18,9);
+    des.monster("D",49,10);
+    des.monster("D",33,5);
+    des.monster("D",33,14);
     // Eels in the moat
-    des.monster({ id: 'giant eel', x: 17, y: 8 });
-    des.monster({ id: 'giant eel', x: 17, y: 11 });
-    des.monster({ id: 'giant eel', x: 48, y: 8 });
-    des.monster({ id: 'giant eel', x: 48, y: 11 });
-
+    des.monster("giant eel",17,8);
+    des.monster("giant eel",17,11);
+    des.monster("giant eel",48,8);
+    des.monster("giant eel",48,11);
     // The corner rooms treasures
-    des.object({ id: 'diamond', x: 19, y: 6 });
-    des.object({ id: 'diamond', x: 20, y: 6 });
-    des.object({ id: 'diamond', x: 21, y: 6 });
-    des.object({ id: 'emerald', x: 19, y: 13 });
-    des.object({ id: 'emerald', x: 20, y: 13 });
-    des.object({ id: 'emerald', x: 21, y: 13 });
-    des.object({ id: 'ruby', x: 46, y: 6 });
-    des.object({ id: 'ruby', x: 47, y: 6 });
-    des.object({ id: 'ruby', x: 48, y: 6 });
-    des.object({ id: 'amethyst', x: 46, y: 13 });
-    des.object({ id: 'amethyst', x: 47, y: 13 });
-    des.object({ id: 'amethyst', x: 48, y: 13 });
+    des.object("diamond",19,6);
+    des.object("diamond",20,6);
+    des.object("diamond",21,6);
+    des.object("emerald",19,13);
+    des.object("emerald",20,13);
+    des.object("emerald",21,13);
+    des.object("ruby",46,6);
+    des.object("ruby",47,6);
+    des.object("ruby",48,6);
+    des.object("amethyst",46,13);
+    des.object("amethyst",47,13);
+    des.object("amethyst",48,13);
 
-    return finalize_level();
+
+    return des.finalize_level();
 }
