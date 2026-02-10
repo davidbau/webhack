@@ -210,11 +210,34 @@ class LuaToJsConverter:
             comment_text = stripped[2:].strip()
             return f"{indent}// {comment_text}"
 
-        # Handle inline comments
+        # Handle inline comments (but not -- inside strings or template literals)
         if '--' in stripped and not stripped.startswith('--'):
-            code_part = stripped[:stripped.index('--')]
-            comment_part = stripped[stripped.index('--') + 2:]
-            return indent + self.convert_expression(code_part) + ' // ' + comment_part
+            # Find -- that's not inside a string or template literal
+            comment_idx = -1
+            in_string = False
+            in_template = False
+            string_char = None
+            i = 0
+            while i < len(stripped):
+                char = stripped[i]
+                if char == '`':
+                    in_template = not in_template
+                elif char in ['"', "'"] and (i == 0 or stripped[i-1] != '\\'):
+                    if not in_string:
+                        in_string = True
+                        string_char = char
+                    elif char == string_char:
+                        in_string = False
+                elif not in_string and not in_template:
+                    if i < len(stripped) - 1 and stripped[i:i+2] == '--':
+                        comment_idx = i
+                        break
+                i += 1
+
+            if comment_idx >= 0:
+                code_part = stripped[:comment_idx]
+                comment_part = stripped[comment_idx + 2:]
+                return indent + self.convert_expression(code_part) + ' // ' + comment_part
 
         # Function definitions
         if stripped.startswith('function '):
@@ -231,6 +254,10 @@ class LuaToJsConverter:
         # Local variable declarations
         if stripped.startswith('local '):
             var_decl = stripped[6:]  # Remove 'local '
+            # Check if it's a des.* call assignment
+            if 'des.' in var_decl and '({' in var_decl and ' = des.' in var_decl:
+                # Use convert_statement to handle the object literal conversion
+                return indent + self.convert_statement(var_decl)
             return indent + 'const ' + self.convert_expression(var_decl)
 
         # If statements
@@ -351,6 +378,9 @@ class LuaToJsConverter:
                 rhs = stmt[idx + 3:].strip()  # Skip past " = "
                 # Convert the RHS (which should start with "des.")
                 converted_rhs = self.convert_des_call_with_object(rhs)
+                # Remove 'local' from LHS if present
+                if lhs.startswith('local '):
+                    lhs = lhs[6:]
                 # Add const if needed
                 if not lhs.startswith(('const ', 'let ', 'var ')):
                     lhs = 'const ' + lhs
