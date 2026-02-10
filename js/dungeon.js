@@ -108,8 +108,8 @@ function init_rect() {
     rects[0] = { lx: 0, ly: 0, hx: COLNO - 1, hy: ROWNO - 1 };
 }
 
-// C ref: rect.c rnd_rect()
-function rnd_rect() {
+// C ref: rect.c rnd_rect() - exported for sp_lev.js themed room generation
+export function rnd_rect() {
     const DEBUG = process.env.DEBUG_THEMEROOMS === '1';
     const result = rect_cnt > 0 ? rects[rn2(rect_cnt)] : null;
     if (DEBUG) {

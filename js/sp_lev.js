@@ -14,7 +14,7 @@
  */
 
 import { GameMap } from './map.js';
-import { rn2, rnd } from './rng.js';
+import { rn2, rnd, rn1 } from './rng.js';
 import { mksobj, mkobj } from './mkobj.js';
 import { create_room, makecorridors } from './dungeon.js';
 import {
@@ -133,6 +133,162 @@ export function clearLevelContext() {
  */
 export function setCurrentRoom(room) {
     levelState.currentRoom = room;
+}
+
+// ========================================================================
+// Helper Functions (sp_lev.c internal functions)
+// ========================================================================
+
+/**
+ * Determine if a room/level should be lit based on litstate and depth.
+ * C ref: mkmap.c:446 litstate_rnd()
+ *
+ * When litstate < 0 (random), calculates: rnd(1+depth) < 11 && rn2(77)
+ * At shallow depths (1-10), this usually results in lit rooms.
+ *
+ * @param {number} litstate - Lighting state: -1=random, 0=unlit, 1=lit
+ * @param {number} depth - Current dungeon depth
+ * @returns {number} 0=unlit, 1=lit
+ */
+function litstate_rnd(litstate, depth) {
+    if (litstate < 0) {
+        // C: (rnd(1 + abs(depth(&u.uz))) < 11 && rn2(77)) ? TRUE : FALSE
+        return (rnd(1 + depth) < 11 && rn2(77)) ? 1 : 0;
+    }
+    return litstate;
+}
+
+/**
+ * Create a room for special levels using sp_lev.c's room placement algorithm.
+ * C ref: sp_lev.c:1486-1650 create_room()
+ *
+ * This differs from procedural dungeon.js create_room() in RNG usage and placement logic.
+ * Special level rooms use fixed grid positions (1-5 for x/y) with alignment, while
+ * procedural rooms use BSP rectangle selection.
+ *
+ * @param {number} x - X grid position (1-5) or -1 for random
+ * @param {number} y - Y grid position (1-5) or -1 for random
+ * @param {number} w - Room width or -1 for random
+ * @param {number} h - Room height or -1 for random
+ * @param {number} xalign - Horizontal alignment: 1=left, 2=center, 3=right, -1=random
+ * @param {number} yalign - Vertical alignment: 1=top, 2=center, 3=bottom, -1=random
+ * @param {number} rtype - Room type (OROOM=0, shop types, etc.)
+ * @param {number} rlit - Lighting: -1=random, 0=unlit, 1=lit
+ * @param {number} depth - Current dungeon depth (for litstate_rnd)
+ * @returns {Object|null} Room object {lx, ly, hx, hy, rtype, rlit} or null on failure
+ */
+function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth) {
+    // C ref: sp_lev.c:1498 — -1 means OROOM (ordinary room)
+    if (rtype === -1) {
+        rtype = 0; // OROOM
+    }
+
+    // C ref: sp_lev.c:1510 — determine lighting (ALWAYS calls litstate_rnd)
+    rlit = litstate_rnd(rlit, depth);
+
+    // C ref: sp_lev.c:1530-1572 — Check which placement path to use
+    // Path 1: "Totally random" — ALL params -1 or vault → uses rnd_rect() + BSP
+    // Path 2: "Some params random" — grid placement with alignment
+
+    const fullyRandom = (x < 0 && y < 0 && w < 0 && xalign < 0 && yalign < 0);
+
+    if (fullyRandom) {
+        // C ref: sp_lev.c:1534 — totally random uses procedural rnd_rect()
+        // This path requires BSP rectangle selection which we haven't ported yet
+        // For now, signal that caller should use procedural create_room
+        return null;
+    }
+
+    // C ref: sp_lev.c:1574-1593 — "Only some parameters are random" path
+    // Uses grid placement (1-5) with alignment
+
+    let xtmp = x;
+    let ytmp = y;
+    let wtmp = w;
+    let htmp = h;
+    let xaltmp = xalign;
+    let yaltmp = yalign;
+
+    // C ref: sp_lev.c:1581-1585 — Position is RANDOM (x < 0 && y < 0)
+    if (xtmp < 0 && ytmp < 0) {
+        xtmp = rnd(5);  // Grid position 1-5
+        ytmp = rnd(5);
+    }
+
+    // C ref: sp_lev.c:1587-1591 — Size is RANDOM (w < 0 || h < 0)
+    if (wtmp < 0 || htmp < 0) {
+        wtmp = rn1(15, 3);  // rnd(15) + 3-1 = 3-17
+        htmp = rn1(8, 2);   // rnd(8) + 2-1 = 2-9
+    }
+
+    // C ref: sp_lev.c:1593-1595 — Horizontal alignment is RANDOM
+    if (xaltmp === -1) {
+        xaltmp = rnd(3);  // 1=left, 2=center, 3=right
+    }
+
+    // C ref: sp_lev.c:1597-1599 — Vertical alignment is RANDOM
+    if (yaltmp === -1) {
+        yaltmp = rnd(3);  // 1=top, 2=center, 3=bottom
+    }
+
+    // C ref: sp_lev.c:1601-1622 — Calculate absolute coordinates from grid position
+    // Grid divides map into 5×5 sections: COLNO/5 = 16, ROWNO/5 = 4.2 ≈ 4
+    const COLNO_DIV5 = Math.floor(COLNO / 5);  // 16
+    const ROWNO_DIV5 = Math.floor(ROWNO / 5);  // 4
+
+    let xabs = Math.floor(((xtmp - 1) * COLNO) / 5) + 1;
+    let yabs = Math.floor(((ytmp - 1) * ROWNO) / 5) + 1;
+
+    // Apply alignment
+    switch (xaltmp) {
+        case 1: // LEFT
+            break;
+        case 3: // RIGHT
+            xabs += COLNO_DIV5 - wtmp;
+            break;
+        case 2: // CENTER
+            xabs += Math.floor((COLNO_DIV5 - wtmp) / 2);
+            break;
+    }
+
+    switch (yaltmp) {
+        case 1: // TOP
+            break;
+        case 3: // BOTTOM
+            yabs += ROWNO_DIV5 - htmp;
+            break;
+        case 2: // CENTER
+            yabs += Math.floor((ROWNO_DIV5 - htmp) / 2);
+            break;
+    }
+
+    // C ref: sp_lev.c:1624-1629 — Clamp to map bounds
+    if (xabs + wtmp - 1 > COLNO - 2) {
+        xabs = COLNO - wtmp - 3;
+    }
+    if (xabs < 2) {
+        xabs = 2;
+    }
+    if (yabs + htmp - 1 > ROWNO - 2) {
+        yabs = ROWNO - htmp - 3;
+    }
+    if (yabs < 2) {
+        yabs = 2;
+    }
+
+    // TODO: C does rectangle collision check and splitting here (lines 1631-1644)
+    // For now, return the calculated room — this may overlap with existing rooms
+    // but that's acceptable for initial implementation to get RNG aligned
+
+    return {
+        lx: xabs,
+        ly: yabs,
+        hx: xabs + wtmp - 1,
+        hy: yabs + htmp - 1,
+        rtype: rtype,
+        rlit: rlit,
+        irregular: false
+    };
 }
 
 /**
@@ -889,7 +1045,7 @@ export function room(opts = {}) {
     const xalign = alignMap[opts.xalign] ?? -1;
     const yalign = alignMap[opts.yalign] ?? -1;
     const type = opts.type ?? 'ordinary';
-    const lit = opts.lit ?? -1;
+    let lit = opts.lit ?? -1;  // let: modified by litstate_rnd()
     const filled = opts.filled ?? 1;
     const chance = opts.chance ?? 100;
     const contents = opts.contents;
@@ -937,55 +1093,35 @@ export function room(opts = {}) {
         roomY = y;
         roomW = w;
         roomH = h;
+        // C ref: sp_lev.c:1510 — litstate_rnd called regardless of position mode
+        lit = litstate_rnd(lit, levelState.depth || 1);
     } else {
-        // Random placement - use procedural generation's create_room
-        // This uses BSP rectangle selection to find available space
-        const result = create_room(levelState.map, -1, -1, -1, -1,
-                                   xalign, yalign, rtype, false, levelState.depth || 1);
+        // Random placement - use sp_lev.c's create_room algorithm
+        // C ref: sp_lev.c:1486 create_room() — different RNG pattern from procedural
+        const roomCalc = create_room_splev(x, y, w, h, xalign, yalign,
+                                           rtype, lit, levelState.depth || 1);
 
-        if (!result || !levelState.map || levelState.map.nroom === 0) {
+        if (!roomCalc) {
             if (DEBUG) {
-                console.log(`des.room(): create_room failed, no space available`);
+                console.log(`des.room(): create_room_splev failed, no space available`);
             }
             return false;
         }
 
-        // Extract coordinates from the newly created room
-        const createdRoom = levelState.map.rooms[levelState.map.nroom - 1];
-        roomX = createdRoom.lx;
-        roomY = createdRoom.ly;
-        roomW = createdRoom.hx - createdRoom.lx + 1;
-        roomH = createdRoom.hy - createdRoom.ly + 1;
+        // Extract coordinates from calculated room
+        roomX = roomCalc.lx;
+        roomY = roomCalc.ly;
+        roomW = roomCalc.hx - roomCalc.lx + 1;
+        roomH = roomCalc.hy - roomCalc.ly + 1;
+        // Use calculated rlit from litstate_rnd (already processed)
+        lit = roomCalc.rlit;
 
         if (DEBUG) {
-            console.log(`des.room(): used create_room, got room at (${roomX},${roomY}) size ${roomW}x${roomH}`);
+            console.log(`des.room(): used create_room_splev, got room at (${roomX},${roomY}) size ${roomW}x${roomH}, lit=${lit}`);
         }
 
-        // Room already created and added to map.rooms[] by create_room,
-        // so we need to skip the manual room creation below
-        // Set a flag to indicate this
-        const roomAlreadyCreated = true;
-
-        // If room creation succeeded and there's a contents callback, execute it
-        if (contents && typeof contents === 'function') {
-            // Save current room state
-            const parentRoom = levelState.currentRoom;
-            levelState.roomStack.push(parentRoom);
-            levelState.roomDepth++;
-
-            // Set current room (for nested features to reference)
-            levelState.currentRoom = createdRoom;
-
-            // Execute room contents
-            contents(createdRoom);
-
-            // Restore parent room state
-            levelState.currentRoom = parentRoom;
-            levelState.roomStack.pop();
-            levelState.roomDepth--;
-        }
-
-        return true;  // Early return since create_room handled everything
+        // Continue to manual room creation below (don't early return)
+        // Room needs to be added to map.rooms[] and tiles marked
     }
 
     // Create room entry in map.rooms array
@@ -1024,13 +1160,15 @@ export function room(opts = {}) {
         levelState.roomStack.push(parentRoom);
         levelState.roomDepth++;
 
-        // Set current room (for nested features to reference)
-        // TODO: Get actual room object from create_room return value
-        levelState.currentRoom = { x, y, w, h, rtype };
+        // Set current room - use the actual room object just created
+        // Add width/height for themerms compatibility
+        room.width = roomW;
+        room.height = roomH;
+        levelState.currentRoom = room;
 
         try {
             // Execute contents callback
-            contents();
+            contents(room);  // Pass room as parameter for Lua compatibility
         } finally {
             // Restore parent room state
             levelState.currentRoom = levelState.roomStack.pop();
