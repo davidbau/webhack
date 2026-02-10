@@ -26,6 +26,7 @@ const MOVE_COST = {
     corridor: 1,
     door_open: 1,
     door_closed: 3,     // need to open it
+    door_locked: Infinity,  // can't pass without unlocking/kicking
     stairs_up: 1,
     stairs_down: 1,
     fountain: 1,

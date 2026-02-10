@@ -1216,8 +1216,10 @@ function themeroom_pick9_mausoleum(map, depth) {
     const oH = outer.hy - outer.ly + 1;
     const cx = Math.floor((oW - 1) / 2);
     const cy = Math.floor((oH - 1) / 2);
-    rn2(100); // build_room chance check (inner des.room)
-    const inner = create_subroom(map, outer, cx, cy, 1, 1, THEMEROOM, -1, depth);
+    // C: des.room calls build_room which has 80% success chance
+    // Only create inner subroom if build check passes
+    const buildCheck = rn2(100);
+    const inner = (buildCheck < 80) ? create_subroom(map, outer, cx, cy, 1, 1, THEMEROOM, -1, depth) : null;
     if (inner) {
         inner.needjoining = false;
         if (rn2(100) < 50) { // percent(50) — monster

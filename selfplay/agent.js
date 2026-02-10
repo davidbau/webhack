@@ -1366,6 +1366,7 @@ export class Agent {
         return null;
     }
 
+
     /**
      * Detect movement failure: if we tried to move but position didn't change,
      * the target cell is blocked. Mark it as not walkable so pathfinding avoids it.
@@ -1405,7 +1406,29 @@ export class Agent {
                 const ty = prePos.y + delta.dy;
                 const level = this.dungeon.currentLevel;
                 const cell = level.at(tx, ty);
-                if (cell && !cell.explored) {
+
+                // Check for locked door
+                const message = this.screen.message || '';
+                const isLockedDoorMessage = message.toLowerCase().includes('door is locked') ||
+                                           message.toLowerCase().includes('this door resists');
+
+                // If we failed to move through a door, it might be locked
+                const isDoorCell = cell && (cell.type === 'door_open' || cell.type === 'door_closed');
+
+                if ((isLockedDoorMessage || (isDoorCell && this.consecutiveFailedMoves >= 2)) && cell) {
+                    // Mark door as locked and non-walkable
+                    console.log(`[LOCKED DOOR] Detected at (${tx},${ty}), cellType=${cell.type}, failedMoves=${this.consecutiveFailedMoves}, msg="${message}"`);
+                    cell.type = 'door_locked';
+                    cell.walkable = false;
+                    cell.explored = true;
+                    // Clear committed target since we can't reach it
+                    if (this.committedTarget) {
+                        const tKey = this.committedTarget.y * 80 + this.committedTarget.x;
+                        this.failedTargets.add(tKey);
+                        this.committedTarget = null;
+                        this.committedPath = null;
+                    }
+                } else if (cell && !cell.explored) {
                     // Mark unexplored cell we couldn't walk into as explored wall
                     cell.explored = true;
                     cell.type = 'wall';
