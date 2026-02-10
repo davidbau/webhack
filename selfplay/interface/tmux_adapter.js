@@ -20,6 +20,9 @@ const RESULTS_DIR = join(PROJECT_ROOT, 'nethack-c', 'install', 'games', 'lib', '
 const TERMINAL_ROWS = 24;
 const TERMINAL_COLS = 80;
 
+// Tmux socket name for isolated sessions (prevents interference with human tmux usage)
+const TMUX_SOCKET = 'selfplay';
+
 // Default delay after sending keys (ms)
 const DEFAULT_KEY_DELAY = 80;
 const STARTUP_DELAY = 500;
@@ -166,7 +169,7 @@ export class TmuxAdapter extends GameAdapter {
         this._cleanGameState();
 
         // Kill any existing tmux session with the same name
-        try { execSync(`tmux kill-session -t ${this.sessionName} 2>/dev/null`); } catch {}
+        try { execSync(`tmux -L ${TMUX_SOCKET} kill-session -t ${this.sessionName} 2>/dev/null`); } catch {}
 
         // Create tmux session with nethack
         const env = {
@@ -180,7 +183,7 @@ export class TmuxAdapter extends GameAdapter {
         }
 
         const envStr = Object.entries(env).map(([k, v]) => `${k}=${v}`).join(' ');
-        execSync(`tmux new-session -d -s ${this.sessionName} -x ${TERMINAL_COLS} -y ${TERMINAL_ROWS} "env ${envStr} ${NETHACK_BINARY} -u ${name} -D"`);
+        execSync(`tmux -L ${TMUX_SOCKET} new-session -d -s ${this.sessionName} -x ${TERMINAL_COLS} -y ${TERMINAL_ROWS} "env ${envStr} ${NETHACK_BINARY} -u ${name} -D"`);
 
         // Wait for game to start
         await sleep(STARTUP_DELAY);
@@ -200,12 +203,12 @@ export class TmuxAdapter extends GameAdapter {
 
         // Handle special keys
         if (ch === '\x1b') {
-            execSync(`tmux send-keys -t ${this.sessionName} Escape`);
+            execSync(`tmux -L ${TMUX_SOCKET} send-keys -t ${this.sessionName} Escape`);
         } else if (ch === '\r' || ch === '\n') {
-            execSync(`tmux send-keys -t ${this.sessionName} Enter`);
+            execSync(`tmux -L ${TMUX_SOCKET} send-keys -t ${this.sessionName} Enter`);
         } else {
             // Use -l for literal key sending
-            execSync(`tmux send-keys -t ${this.sessionName} -l "${ch.replace(/"/g, '\\"')}"`);
+            execSync(`tmux -L ${TMUX_SOCKET} send-keys -t ${this.sessionName} -l "${ch.replace(/"/g, '\\"')}"`);
         }
 
         await sleep(this.keyDelay);
@@ -219,7 +222,7 @@ export class TmuxAdapter extends GameAdapter {
         try {
             // Use -e flag to capture with ANSI escape sequences (preserves colors and Unicode)
             const output = execSync(
-                `tmux capture-pane -t ${this.sessionName} -p -e -S 0 -E ${TERMINAL_ROWS - 1}`,
+                `tmux -L ${TMUX_SOCKET} capture-pane -t ${this.sessionName} -p -e -S 0 -E ${TERMINAL_ROWS - 1}`,
                 { encoding: 'utf-8', timeout: 5000 }
             );
 
@@ -248,7 +251,7 @@ export class TmuxAdapter extends GameAdapter {
     async isRunning() {
         if (!this._running) return false;
         try {
-            execSync(`tmux has-session -t ${this.sessionName} 2>/dev/null`);
+            execSync(`tmux -L ${TMUX_SOCKET} has-session -t ${this.sessionName} 2>/dev/null`);
             // Also check the screen for game-over indicators
             const grid = await this.readScreen();
             if (grid) {
@@ -273,7 +276,7 @@ export class TmuxAdapter extends GameAdapter {
     async stop() {
         this._running = false;
         try {
-            execSync(`tmux kill-session -t ${this.sessionName} 2>/dev/null`);
+            execSync(`tmux -L ${TMUX_SOCKET} kill-session -t ${this.sessionName} 2>/dev/null`);
         } catch {}
     }
 

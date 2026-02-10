@@ -49,7 +49,7 @@ import {
 import { RUMORS_FILE_TEXT } from './rumor_data.js';
 import { getSpecialLevel } from './special_levels.js';
 import { setLevelContext, clearLevelContext } from './sp_lev.js';
-import { themerooms_generate as themermsGenerate, reset_state as resetThemermsState } from './levels/themerms.js';
+import { themerooms_generate as themermsGenerate, reset_state as resetThemermsState, pre_themerooms_generate as preThemermsGenerate } from './levels/themerms.js';
 
 /**
  * Bridge function: Call themed room generation with des.* API bridge
@@ -390,11 +390,11 @@ export function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth, inThe
             const y_rng = rn2(hy - (ly > 0 ? ly : 2) - dy - yborder + 1);
             yabs = ly + (ly > 0 ? ylim : 2) + y_rng;
             if (DEBUG_THEME) console.log(`  Room pos: xabs=${lx}+3+${x_rng}=${xabs}, yabs=${ly}+2+${y_rng}=${yabs}`);
-            // C ref: sp_lev.c:1566-1571 — special case for full-height rectangles in bottom half
-            // CRITICAL: Check (yabs + dy > ROWNO / 2) BEFORE calling rn2(map.nroom) to match C evaluation
+            // C ref: sp_lev.c:1563-1569 — special case for full-height rectangles in bottom half
+            // CRITICAL: C checks rn2(nroom) BEFORE yabs check (line 1564 before 1565), must match order!
             if (ly === 0 && hy >= ROWNO - 1
-                && (yabs + dy > Math.floor(ROWNO / 2))
-                && (!map.nroom || !rn2(map.nroom))) {
+                && (!map.nroom || !rn2(map.nroom))
+                && (yabs + dy > Math.floor(ROWNO / 2))) {
                 yabs = rn1(3, 2);
                 if (map.nroom < 4 && dy > 1)
                     dy--;
@@ -924,6 +924,10 @@ function makerooms(map, depth) {
         rn2(3); rn2(2);
     }
 
+    // C ref: mklev.c:383-389 — call pre_themerooms_generate before room loop
+    // Initializes debug theme room tracking (C Lua uses nhl_rn2 callback, no separate MT RNG)
+    preThemermsGenerate();
+
     // Make rooms until satisfied (no more rects available)
     // C ref: mklev.c:393-417
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_THEMEROOMS === '1';
@@ -960,6 +964,22 @@ function makerooms(map, depth) {
     if (DEBUG) {
         console.log(`Exited loop: nroom=${map.nroom}, tries=${themeroom_tries}`);
     }
+    // Always log room count for debugging "big mine" issue
+    console.log(`makerooms() finished: ${map.nroom} rooms created, themeroom_tries=${themeroom_tries}`);
+
+    // Log room sizes and positions
+    let totalArea = 0;
+    for (let i = 0; i < map.nroom; i++) {
+        const r = map.rooms[i];
+        const w = r.hx - r.lx + 1;
+        const h = r.hy - r.ly + 1;
+        const area = w * h;
+        totalArea += area;
+        if (i < 5) { // Log first 5 rooms
+            console.log(`  Room ${i}: (${r.lx},${r.ly})-(${r.hx},${r.hy}) size=${w}x${h} area=${area}`);
+        }
+    }
+    console.log(`  Total room area: ${totalArea} squares (screen is ~1920 squares)`);
 }
 
 // ========================================================================
@@ -3274,7 +3294,10 @@ export function makelevel(depth, dnum, dlevel) {
 
     if (map.nroom === 0) {
         // Fallback: should never happen, but safety
+        console.warn(`⚠️ makerooms() created 0 rooms! Using fallback single room. This is a bug!`);
         add_room_to_map(map, 10, 5, 20, 10, true, OROOM, false);
+    } else {
+        console.log(`✓ makerooms() created ${map.nroom} rooms`);
     }
 
     // Sort rooms left-to-right

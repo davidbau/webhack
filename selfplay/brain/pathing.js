@@ -93,6 +93,12 @@ export class PathResult {
 export function findPath(levelMap, sx, sy, gx, gy, opts = {}) {
     const { allowUnexplored = false, avoidPositions = null } = opts;
 
+    // Edge case: if start equals goal, return empty path (not found)
+    // This prevents returning a 1-element path with firstKey=null
+    if (sx === gx && sy === gy) {
+        return new PathResult([], Infinity);
+    }
+
     // A* with Manhattan distance heuristic
     const openSet = new MinHeap();
     const gScore = new Float64Array(MAP_COLS * MAP_ROWS).fill(Infinity);
@@ -392,6 +398,81 @@ export function directionDelta(key) {
         if (dir.key === key) return { dx: dir.dx, dy: dir.dy };
     }
     return null;
+}
+
+/**
+ * Analyze if player is in a corridor and determine the best direction to continue.
+ * A corridor is a narrow passage (typically '#' cells) connecting rooms.
+ *
+ * Returns {
+ *   inCorridor: boolean,
+ *   direction: string|null,  // direction key (h/j/k/l/etc) to continue corridor
+ *   endReached: boolean      // true if corridor ends here (opens to room or dead-end)
+ * }
+ */
+export function analyzeCorridorPosition(levelMap, px, py) {
+    const cell = levelMap.at(px, py);
+    if (!cell || !cell.explored) {
+        return { inCorridor: false, direction: null, endReached: false };
+    }
+
+    // Must be on a corridor or floor cell
+    const isCorridor = cell.type === 'corridor';
+    const isFloor = cell.type === 'floor';
+
+    if (!isCorridor && !isFloor) {
+        return { inCorridor: false, direction: null, endReached: false };
+    }
+
+    // Count walkable neighbors (corridors, floors, open doors)
+    let walkableNeighbors = [];
+    let wallNeighbors = 0;
+
+    for (const dir of DIRS) {
+        const nx = px + dir.dx;
+        const ny = py + dir.dy;
+        if (nx < 0 || nx >= MAP_COLS || ny < 0 || ny >= MAP_ROWS) continue;
+
+        const ncell = levelMap.at(nx, ny);
+        if (!ncell || !ncell.explored) continue;
+
+        if (ncell.walkable && (ncell.type === 'corridor' || ncell.type === 'floor' || ncell.type === 'door_open')) {
+            walkableNeighbors.push({ dir, cell: ncell, x: nx, y: ny });
+        } else if (ncell.type === 'wall' || ncell.type === 'stone') {
+            wallNeighbors++;
+        }
+    }
+
+    // Corridor characteristics:
+    // - Exactly 2 walkable neighbors (linear path), OR
+    // - 1 walkable neighbor (dead-end)
+    // - Surrounded by walls (at least 4 wall neighbors)
+
+    const isLinearPath = walkableNeighbors.length === 2;
+    const isDeadEnd = walkableNeighbors.length === 1;
+    const isJunction = walkableNeighbors.length >= 3;
+
+    // If we're on a corridor cell or in a narrow passage
+    if (isCorridor || (isFloor && wallNeighbors >= 4)) {
+        if (isDeadEnd) {
+            // Dead-end reached
+            return { inCorridor: true, direction: null, endReached: true };
+        } else if (isLinearPath) {
+            // Find the direction that continues forward (not backwards)
+            // Prefer corridor cells over floor cells
+            const corridorDirs = walkableNeighbors.filter(n => n.cell.type === 'corridor');
+            const candidates = corridorDirs.length > 0 ? corridorDirs : walkableNeighbors;
+
+            // If we have 2 options, pick the first one (we'll alternate as we move)
+            const nextDir = candidates[0].dir;
+            return { inCorridor: true, direction: nextDir.key, endReached: false };
+        } else if (isJunction) {
+            // Reached a junction or room entrance
+            return { inCorridor: true, direction: null, endReached: true };
+        }
+    }
+
+    return { inCorridor: false, direction: null, endReached: false };
 }
 
 /**

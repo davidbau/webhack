@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { LevelMap } from '../perception/map_tracker.js';
-import { findPath, findExplorationTarget, findNearest, directionKey, distanceMap } from '../brain/pathing.js';
+import { findPath, findExplorationTarget, findNearest, directionKey, distanceMap, analyzeCorridorPosition } from '../brain/pathing.js';
 
 // Helper: create a level map from ASCII art
 // Characters: . = floor, # = corridor, | - = wall, < > = stairs, + = door, ' ' = stone
@@ -157,5 +157,87 @@ describe('Pathfinding', () => {
         assert.equal(dist[0][4], 4);
         // (1,1) is a wall, should be unreachable
         assert.equal(dist[1][1], -1);
+    });
+});
+
+describe('Corridor Following', () => {
+    it('detects player in corridor', () => {
+        const level = makeLevelMap([
+            '|-----|',
+            '|#####|',
+            '|-----|',
+        ]);
+        // At position (2,1), in the middle of a corridor with neighbors on both sides
+        const analysis = analyzeCorridorPosition(level, 2, 1);
+        assert.equal(analysis.inCorridor, true);
+        assert.equal(analysis.endReached, false);
+        assert.ok(analysis.direction); // should have a direction to continue
+    });
+
+    it('detects corridor end at junction', () => {
+        const level = makeLevelMap([
+            '|####|',
+            '|#..#|',
+            '|####|',
+        ]);
+        // At position (1,1), corridor opens into room - junction
+        const analysis = analyzeCorridorPosition(level, 1, 1);
+        assert.equal(analysis.inCorridor, true);
+        assert.equal(analysis.endReached, true);
+        assert.equal(analysis.direction, null); // no single direction to continue
+    });
+
+    it('detects corridor end at dead-end', () => {
+        const level = makeLevelMap([
+            '|-----|',
+            '|###|--|',
+            '|-----|',
+        ]);
+        // At position (3,1), corridor hits dead-end
+        const analysis = analyzeCorridorPosition(level, 3, 1);
+        assert.equal(analysis.inCorridor, true);
+        assert.equal(analysis.endReached, true);
+        assert.equal(analysis.direction, null);
+    });
+
+    it('detects not in corridor when in open room', () => {
+        const level = makeLevelMap([
+            '|-------|',
+            '|.......|',
+            '|.......|',
+            '|-------|',
+        ]);
+        const analysis = analyzeCorridorPosition(level, 3, 2);
+        assert.equal(analysis.inCorridor, false);
+        assert.equal(analysis.endReached, false);
+        assert.equal(analysis.direction, null);
+    });
+
+    it('suggests direction in linear corridor', () => {
+        const level = makeLevelMap([
+            '|-----|',
+            '|#####|',
+            '|-----|',
+        ]);
+        // At position (2,1), should suggest continuing east or west
+        const analysis = analyzeCorridorPosition(level, 2, 1);
+        assert.equal(analysis.inCorridor, true);
+        assert.equal(analysis.endReached, false);
+        // Should have a direction (either 'h' for west or 'l' for east)
+        assert.ok(analysis.direction === 'h' || analysis.direction === 'l');
+    });
+
+    it('handles L-shaped corridor', () => {
+        const level = makeLevelMap([
+            '|-----|',
+            '|###|-|',
+            '|-#|-|',
+            '|-#|-|',
+            '|-------|',
+        ]);
+        // At corner position (2,2), should detect as corridor junction
+        const analysis = analyzeCorridorPosition(level, 2, 2);
+        assert.equal(analysis.inCorridor, true);
+        // At a corner (2 walkable neighbors), should still be in corridor
     });
 });

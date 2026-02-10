@@ -38,10 +38,25 @@ const obj = {
     new: (id) => { return { class: () => ({ material: "unknown" }) }; } // Stub
 };
 
+// Global flag for theme room failure (matches C's gt.themeroom_failed)
+// C ref: sp_lev.c:4094,4103,6219,6261 — set when room creation fails
+let themeroom_failed = false;
+
 // Reset state between level generations
 export function reset_state() {
     postprocess = [];
     _initialized = false;
+    themeroom_failed = false;
+}
+
+// Exported for sp_lev.js to set when room creation fails
+export function set_themeroom_failed() {
+    themeroom_failed = true;
+}
+
+// Exported for dungeon.js to check after themerooms_generate
+export function get_themeroom_failed() {
+    return themeroom_failed;
 }
 
 // themeroom_fills: Contents that can fill any room shape
@@ -923,12 +938,6 @@ function lookup_by_name(name, checkfills) {
 export function themerooms_generate(map, depth) {
    _levelDepth = depth; // Update module-level depth for nh.level_difficulty()
 
-   // First-time initialization for this level: shuffle align and init Lua MT RNG
-   if (!_initialized) {
-      pre_themerooms_generate();
-      _initialized = true;
-   }
-
    if (debug_rm_idx !== null) {
       // room may not be suitable for stairs/portals, so create the "default"
       // room half of the time
@@ -955,6 +964,10 @@ export function themerooms_generate(map, depth) {
       themerooms[actualrm].contents();
       return true;
    }
+
+   // C ref: mklev.c:404 — reset failure flag before calling Lua themerooms_generate
+   themeroom_failed = false;
+
    let pick = null;
    let total_frequency = 0;
    for (let i = 0; i < themerooms.length; i++) {
@@ -980,19 +993,20 @@ export function themerooms_generate(map, depth) {
       nh.impossible('no eligible themed rooms?');
       return false;
    }
+
+   // Call theme room contents function
    themerooms[pick].contents();
-   return true;
+
+   // C ref: mklev.c:408 — return failure if theme room creation failed
+   // The contents() function calls des.room() which sets themeroom_failed flag on failure
+   return !themeroom_failed;
 }
 
 // called before any rooms are generated
 export function pre_themerooms_generate() {
-   // Initialize Lua MT19937 RNG on first themed room use
-   // C ref: This happens when Lua math.random() is first called
-   // Pattern from C trace: rn2(1000-1004), rn2(1010), rn2(1012), rn2(1014-1036)
-   for (let i = 1000; i <= 1004; i++) rn2(i);
-   rn2(1010);
-   rn2(1012);
-   for (let i = 1014; i <= 1036; i++) rn2(i);
+   // C ref: mklev.c:383-389 — initialize debug theme room tracking
+   // C NetHack's Lua uses nhl_rn2() callback to global RNG (no separate MT init)
+   // Note: The theme shuffle happens in makerooms() theme loading, not here
 
    const debug_themerm = nh.debug_themerm(false);
    const debug_fill = nh.debug_themerm(true);

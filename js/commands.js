@@ -7,7 +7,7 @@ import { COLNO, ROWNO, DOOR, STAIRS, FOUNTAIN, ROOM, IS_DOOR, D_CLOSED, D_LOCKED
          isok, A_STR, A_DEX, A_CON } from './config.js';
 import { SQKY_BOARD } from './symbols.js';
 import { rn2, rnd, rnl, d } from './rng.js';
-import { objectData } from './objects.js';
+import { objectData, COIN_CLASS } from './objects.js';
 import { nhgetch, ynFunction, getlin } from './input.js';
 import { playerAttackMonster } from './combat.js';
 import { makemon } from './makemon.js';
@@ -524,9 +524,27 @@ async function handleMovement(dir, player, map, display, game) {
     // C ref: pickup.c pickup() checks flags.pickup && !context.nopick
     const objs = map.objectsAt(nx, ny);
     let pickedUp = false;
+
+    // ALWAYS pick up gold first (regardless of autopickup setting)
+    // C ref: pickup.c:1054 - gold is always auto-collected
+    if (!nopick && objs.length > 0) {
+        const gold = objs.find(o => o.oclass === COIN_CLASS);
+        if (gold) {
+            player.addToInventory(gold);
+            map.removeObject(gold);
+            // C uses "n gold piece(s)" format
+            const count = gold.quan || 1;
+            const plural = count === 1 ? '' : 's';
+            display.putstr_message(`${count} gold piece${plural}.`);
+            pickedUp = true;
+        }
+    }
+
+    // Then pick up other items if autopickup is enabled
     if (game.flags.pickup && !nopick && objs.length > 0) {
-        // Pick up first non-gold item
-        const obj = objs.find(o => o.oclass !== 11); // not gold
+        // TODO: implement pickup_types filtering (like C NetHack's pickup_types option)
+        // For now, pick up first non-gold item
+        const obj = objs.find(o => o.oclass !== COIN_CLASS);
         if (obj) {
             player.addToInventory(obj);
             map.removeObject(obj);
@@ -535,7 +553,7 @@ async function handleMovement(dir, player, map, display, game) {
         }
     }
 
-    // Show what's here if autopickup didn't happen
+    // Show what's here if nothing was picked up
     // C ref: hack.c prints "You see here" only if nothing was picked up
     if (!pickedUp && objs.length > 0) {
         if (objs.length === 1) {
@@ -631,8 +649,20 @@ function handlePickup(player, map, display) {
         return { moved: false, tookTime: false };
     }
 
-    // Pick up first non-gold item
-    const obj = objs.find(o => o.oclass !== 11); // not gold
+    // Pick up gold first if present
+    const gold = objs.find(o => o.oclass === COIN_CLASS);
+    if (gold) {
+        player.addToInventory(gold);
+        map.removeObject(gold);
+        const count = gold.quan || 1;
+        const plural = count === 1 ? '' : 's';
+        display.putstr_message(`${count} gold piece${plural}.`);
+        return { moved: false, tookTime: true };
+    }
+
+    // Pick up first other item
+    // TODO: show menu if multiple items (like C NetHack)
+    const obj = objs[0];
     if (!obj) {
         display.putstr_message('There is nothing here to pick up.');
         return { moved: false, tookTime: false };

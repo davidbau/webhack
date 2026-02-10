@@ -16,7 +16,8 @@
 import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1 } from './rng.js';
 import { mksobj, mkobj } from './mkobj.js';
-import { create_room, makecorridors, init_rect, update_rect_pool_for_room, bound_digging, mineralize, fill_ordinary_room } from './dungeon.js';
+import { create_room, create_subroom, makecorridors, init_rect, update_rect_pool_for_room, bound_digging, mineralize, fill_ordinary_room } from './dungeon.js';
+import { set_themeroom_failed } from './levels/themerms.js';
 import {
     STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,
     CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, ROOM, CORR,
@@ -314,6 +315,7 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth) {
     // For now, return the calculated room — this may overlap with existing rooms
     // but that's acceptable for initial implementation to get RNG aligned
 
+    // C ref: Must initialize sbrooms array for potential nested rooms
     return {
         lx: xabs,
         ly: yabs,
@@ -321,7 +323,9 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth) {
         hy: yabs + htmp - 1,
         rtype: rtype,
         rlit: rlit,
-        irregular: false
+        irregular: false,
+        nsubrooms: 0,      // C ref: mkroom.h — number of subrooms
+        sbrooms: []        // C ref: mkroom.h — subroom array
     };
 }
 
@@ -1111,16 +1115,19 @@ export function room(opts = {}) {
     const xalign = alignMap[opts.xalign] ?? -1;
     const yalign = alignMap[opts.yalign] ?? -1;
     const type = opts.type ?? 'ordinary';
-    let lit = opts.lit ?? -1;  // let: modified by litstate_rnd()
+    // C ref: Nested rooms inherit parent's resolved lighting when lit not specified
+    // When currentRoom is set (inside a room's contents function) and lit not specified,
+    // use the parent room's rlit value instead of defaulting to -1
+    let lit = opts.lit ?? (levelState.currentRoom ? levelState.currentRoom.rlit : -1);
     const filled = opts.filled ?? 1;
     const chance = opts.chance ?? 100;
     const contents = opts.contents;
 
-    // C ref: sp_lev.c:2803 build_room() — calls rn2(100) ONLY for fixed-position rooms
+    // C ref: sp_lev.c:2803 build_room() — calls rn2(100) for ALL rooms when chance > 0
+    // C code: xint16 rtype = (!r->chance || rn2(100) < r->chance) ? r->rtype : OROOM;
+    // Default chance=100 means rn2(100) IS called (even though result is always < 100)
     // If roll >= chance, room becomes OROOM (ordinary) instead of requested type.
-    // For chance=100, the roll doesn't matter (room always gets requested type),
-    // but C still makes the rn2(100) call for RNG alignment.
-    // Random-placement rooms (no x/y/w/h) do NOT call rn2(100) for chance check.
+    // For chance=100, room always gets requested type, but RNG call still happens for alignment.
     const requestedRtype = roomTypeMap[type] ?? 0;
 
     // Validate x,y pair (both must be -1 or both must be specified)
@@ -1150,17 +1157,18 @@ export function room(opts = {}) {
     // If -1, would need random placement (not implemented yet)
     let roomX, roomY, roomW, roomH, rtype;
 
+    // C ref: sp_lev.c:2803 — build_room() calls rn2(100) for ALL rooms (no nesting check)
+    // C ref: sp_lev.c:4063 — chance defaults to 100 in Lua des.room() handler
+    // The chance check happens REGARDLESS of nesting level (n_subroom doesn't affect it)
+    if (chance > 0) {
+        const roll = rn2(100);
+        rtype = (roll >= chance) ? 0 : requestedRtype; // 0 = OROOM
+    } else {
+        rtype = requestedRtype;
+    }
+
     if (x >= 0 && y >= 0 && w > 0 && h > 0) {
         // Fixed position special level room
-        // C ref: sp_lev.c:2803 — rn2(100) called for TOP-LEVEL fixed-position rooms only
-        // Nested rooms (roomDepth > 0) do NOT call rn2(100) for chance check
-        if (levelState.roomDepth === 0) {
-            const roll = rn2(100);
-            rtype = (roll >= chance) ? 0 : requestedRtype; // 0 = OROOM
-        } else {
-            // Nested rooms use requested type directly, no chance roll
-            rtype = requestedRtype;
-        }
 
         if (DEBUG) {
             console.log(`des.room(): FIXED position x=${x}, y=${y}, w=${w}, h=${h}, xalign=${xalign}, yalign=${yalign}, rtype=${rtype}, lit=${lit}, depth=${levelState.roomDepth}`);
@@ -1225,21 +1233,47 @@ export function room(opts = {}) {
         lit = litstate_rnd(lit, levelState.depth || 1);
     } else {
         // Random placement - use sp_lev.c's create_room algorithm
-        // C ref: sp_lev.c:1486 create_room() — NO rn2(100) call for random-placement rooms
-        // The room type is used directly without a chance roll
-        rtype = requestedRtype;
+        // C ref: sp_lev.c:1486 — calls create_room() with already-calculated rtype
+        // Note: rtype was already calculated above with rn2(100) chance check
 
         if (DEBUG) {
             console.log(`des.room(): RANDOM placement x=${x}, y=${y}, w=${w}, h=${h}, xalign=${xalign}, yalign=${yalign}, rtype=${rtype}, lit=${lit}`);
         }
 
-        const roomCalc = create_room_splev(x, y, w, h, xalign, yalign,
-                                           rtype, lit, levelState.depth || 1);
+        let roomCalc;
+
+        // C ref: sp_lev.c:2803-2813 build_room() — check if this is a subroom
+        // If mkr (parent room) is non-NULL, call create_subroom
+        // If mkr is NULL, call create_room
+        const parentRoom = levelState.currentRoom;
+        if (parentRoom) {
+            // Nested room (subroom) — C ref: create_subroom() has no retry loop
+            // x,y are relative to parent room
+            if (DEBUG) {
+                console.log(`des.room(): Creating SUBROOM within parent room`);
+            }
+            roomCalc = create_subroom(levelState.map, parentRoom, x, y, w, h,
+                                     rtype, lit, levelState.depth || 1);
+            if (roomCalc) {
+                // Mark as already added since create_subroom adds it to the map
+                roomCalc._alreadyAdded = true;
+            }
+        } else {
+            // Top-level room — use create_room_splev (which may have retry loop)
+            if (DEBUG) {
+                console.log(`des.room(): Creating TOP-LEVEL room`);
+            }
+            roomCalc = create_room_splev(x, y, w, h, xalign, yalign,
+                                        rtype, lit, levelState.depth || 1);
+        }
 
         if (!roomCalc) {
             if (DEBUG) {
-                console.log(`des.room(): create_room_splev failed, no space available`);
+                console.log(`des.room(): room creation failed, no space available`);
             }
+            // C ref: sp_lev.c:4094,4103 — set themeroom_failed flag when room creation fails
+            // This allows makerooms() to detect failure and break after max attempts
+            set_themeroom_failed();
             return false;
         }
 
@@ -1299,7 +1333,10 @@ export function room(opts = {}) {
         rlit: lit >= 0 ? lit : (rn2(2) === 1 ? 1 : 0),
         irregular: false,
         // C ref: mklev.c - OROOM and THEMEROOM get needfill=FILL_NORMAL by default
-        needfill: (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL) ? FILL_NORMAL : undefined
+        needfill: (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL) ? FILL_NORMAL : undefined,
+        // C ref: mkroom.h — must initialize for potential nested rooms
+        nsubrooms: 0,
+        sbrooms: []
     };
 
     // Mark floor tiles for the room
@@ -2461,6 +2498,16 @@ export const selection = {
                 if (coords.length === 0) return undefined;
                 const idx = rn2(coords.length);
                 return coords[idx];
+            },
+            /**
+             * iterate(func)
+             * Call a function for each coordinate in the selection.
+             * The function receives (x, y) as parameters.
+             */
+            iterate: (func) => {
+                for (const coord of coords) {
+                    func(coord.x, coord.y);
+                }
             },
         };
         return sel;
