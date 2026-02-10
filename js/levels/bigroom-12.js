@@ -4,8 +4,7 @@
  */
 
 import * as des from '../sp_lev.js';
-import { selection } from '../sp_lev.js';
-import { percent } from '../util.js';
+import { selection, percent } from '../sp_lev.js';
 
 export function generate() {
     des.level_flags('mazelevel', 'noflipy');

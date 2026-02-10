@@ -4,8 +4,7 @@
  */
 
 import * as des from '../sp_lev.js';
-import { selection } from '../sp_lev.js';
-import { percent } from '../util.js';
+import { selection, percent } from '../sp_lev.js';
 import { rn2 } from '../rng.js';
 
 export function generate() {
