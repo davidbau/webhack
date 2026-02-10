@@ -6,6 +6,7 @@
 import * as des from '../sp_lev.js';
 import { percent } from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
+import { hell_tweaks } from './hellfill.js';
 
 export function generate() {
 
@@ -98,7 +99,7 @@ let asmo2 = des.map({ halign: "half-right", valign: "center", map: `
    des.trap("magic")
 } });
 
-let protectedArea = bounds2.negate() | asmo1 | asmo2;
+let protectedArea = bounds2.negate().union(asmo1).union(asmo2);
 hell_tweaks(protectedArea);
 
 
