@@ -3455,6 +3455,15 @@ export function makelevel(depth, dnum, dlevel) {
     bound_digging(map);
     mineralize(map, depth);
 
+    // C ref: mkmaze.c:644-645 — place branch stairs for branch levels
+    // Called from fixup_special() after level generation when Is_branchlev is true
+    // For depths 2-4: Gnomish Mines entrance range
+    // Parameters: all zeros = search anywhere on map, place anywhere
+    // rtype = LR_BRANCH (4) = branch staircase
+    if (depth >= 2 && depth <= 4) {
+        place_lregion(map, 0, 0, 0, 0, 0, 0, 0, 0, LR_BRANCH);
+    }
+
     return map;
 }
 

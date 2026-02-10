@@ -9,7 +9,7 @@ import {
     CORR, ROOM, DOOR, isok, TERMINAL_COLS, TERMINAL_ROWS
 } from '../../js/config.js';
 import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1 } from '../../js/rng.js';
-import { initLevelGeneration, makelevel, wallification, setGameSeed, place_lregion } from '../../js/dungeon.js';
+import { initLevelGeneration, makelevel, setGameSeed } from '../../js/dungeon.js';
 import { simulatePostLevelInit } from '../../js/u_init.js';
 import { Player, roles } from '../../js/player.js';
 import { NORMAL_SPEED, A_DEX, A_CON,
@@ -114,16 +114,7 @@ export function generateMapsSequential(seed, maxDepth) {
     const maps = {};
     for (let depth = 1; depth <= maxDepth; depth++) {
         const map = makelevel(depth);
-        wallification(map);
-
-        // C ref: mkmaze.c:644-645 — place branch stairs for branch levels
-        // This is called from fixup_special() after level generation when Is_branchlev is true
-        // For now, only implementing for depths 2-4 (Gnomish Mines entrance range)
-        // TODO: Implement full Is_branchlev logic for all branch points
-        if (depth >= 2 && depth <= 4) {
-            // LR_BRANCH = 4
-            place_lregion(map, 0, 0, 0, 0, 0, 0, 0, 0, 4);
-        }
+        // Note: wallification and place_lregion are now called inside makelevel
 
         grids[depth] = extractTypGrid(map);
         maps[depth] = map;
@@ -216,16 +207,7 @@ export function generateMapsWithRng(seed, maxDepth) {
     let prevCount = 0;
     for (let depth = 1; depth <= maxDepth; depth++) {
         const map = makelevel(depth);
-        wallification(map);
-
-        // C ref: mkmaze.c:644-645 — place branch stairs for branch levels
-        // This is called from fixup_special() after level generation when Is_branchlev is true
-        // For now, only implementing for depths 2-4 (Gnomish Mines entrance range)
-        // TODO: Implement full Is_branchlev logic for all branch points
-        if (depth >= 2 && depth <= 4) {
-            // LR_BRANCH = 4
-            place_lregion(map, 0, 0, 0, 0, 0, 0, 0, 0, 4);
-        }
+        // Note: wallification and place_lregion are now called inside makelevel
 
         grids[depth] = extractTypGrid(map);
         maps[depth] = map;

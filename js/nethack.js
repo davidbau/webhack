@@ -14,7 +14,7 @@ import { Player, roles, races, validRacesForRole, validAlignsForRoleRace,
          needsGenderMenu, rankOf, godForRoleAlign, isGoddess, greetingForRole,
          roleNameForGender, alignName, formatLoreText } from './player.js';
 import { GameMap } from './map.js';
-import { initLevelGeneration, makelevel, wallification, setGameSeed } from './dungeon.js';
+import { initLevelGeneration, makelevel, setGameSeed } from './dungeon.js';
 import { rhack } from './commands.js';
 import { movemon, settrack } from './monmove.js';
 import { simulatePostLevelInit } from './u_init.js';
@@ -1042,9 +1042,8 @@ class NetHackGame {
         if (this.levels[depth]) {
             this.map = this.levels[depth];
         } else {
-            // Generate new level
+            // Generate new level (wallification called inside makelevel)
             this.map = makelevel(depth);
-            wallification(this.map);
             this.levels[depth] = this.map;
         }
 
