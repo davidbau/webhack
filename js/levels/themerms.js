@@ -115,10 +115,10 @@ export function generate() {
                             "land mine", "sleep gas", "rust",
                             "anti magic" ];
              shuffle(traps);
-             locs: selection.room().percentage(30);
-             func: function(x,y) {
+             const locs = selection.room().percentage(30);
+             const func = function(x,y) {
                 des.trap(traps[1], x, y);
-             }
+             };
              locs.iterate(func);
           },
        },
@@ -259,8 +259,8 @@ export function generate() {
        {
           name: "Storeroom",
           contents: function(rm) {
-             locs: selection.room().percentage(30);
-             func: function(x,y) {
+             const locs = selection.room().percentage(30);
+             const func = function(x,y) {
                 if ((percent(25))) {
                    des.object("chest");
                 } else {
@@ -274,7 +274,7 @@ export function generate() {
        {
           name: "Teleportation hub",
           contents: function(rm) {
-             locs: selection.room().filter_mapchar(".");
+             const locs = selection.room().filter_mapchar(".");
              for (let i = 1; i <= 2 + nh.rn2(3); i++) {
                 let pos = locs.rndcoord(1);
                 if ((pos.x > 0)) {
