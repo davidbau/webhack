@@ -59,8 +59,7 @@ import { generate as generateMinetn6 } from './levels/minetn-6.js';
 // import { generate as generateMinetn7 } from './levels/minetn-7.js';
 import { generate as generateMinend1 } from './levels/minend-1.js';
 import { generate as generateMinend2 } from './levels/minend-2.js';
-// TODO: Fix converter issues in minend-3.js
-// import { generate as generateMinend3 } from './levels/minend-3.js';
+import { generate as generateMinend3 } from './levels/minend-3.js';
 
 // Sokoban levels
 import { generate as generateSoko1a } from './levels/soko1-1.js';
@@ -216,8 +215,7 @@ registerSpecialLevel(SOKOBAN, 4, [generateSoko4a, generateSoko4b], ['soko4-1', '
 // For now, registering Minetown at depth 3 and Mines' End at depth 5 for testing
 // TODO: Add minetn-2, minetn-3, minetn-4, and minetn-7 once converter issues are fixed
 registerSpecialLevel(GNOMISH_MINES, 3, [generateMinetn1, generateMinetn5, generateMinetn6], ['minetn-1', 'minetn-5', 'minetn-6']);
-// TODO: Add minend-3 once converter issues are fixed
-registerSpecialLevel(GNOMISH_MINES, 5, [generateMinend1, generateMinend2], ['minend-1', 'minend-2']);
+registerSpecialLevel(GNOMISH_MINES, 5, [generateMinend1, generateMinend2, generateMinend3], ['minend-1', 'minend-2', 'minend-3']);
 
 // Register Elemental Planes (endgame)
 // Planes are accessed after getting the Amulet of Yendor
