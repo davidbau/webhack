@@ -204,6 +204,66 @@ node --test test/comparison/session_runner.test.js
 python3 test/comparison/c-harness/gen_map_sessions.py --from-config
 ```
 
+#### Diagnostic Tools for RNG Divergence
+
+Two specialized tools help isolate RNG divergence at specific game turns:
+
+**`selfplay/runner/pet_rng_probe.js`** — Per-turn RNG delta comparison
+
+Compares RNG call counts between C and JS implementations on a per-turn basis,
+with filtering for specific subsystems (e.g., dog movement). Runs both C (via
+tmux) and JS (headless) simultaneously and shows where RNG consumption diverges.
+
+```bash
+# Compare first 9 turns for seed 13296
+node selfplay/runner/pet_rng_probe.js --seed 13296 --turns 9
+
+# Show detailed RNG logs for specific turns
+node selfplay/runner/pet_rng_probe.js --seed 13296 --turns 20 --show-turn 7 --show-turn 8
+
+# Output shows per-turn RNG call counts and dog_move specific calls:
+# Turn | C rng calls | JS rng calls
+#    1 |   37         |   37
+#    7 |   12         |   16    <- divergence detected
+```
+
+**Use when**: RNG traces show divergence but you need to pinpoint exactly which
+turn and which subsystem (monster movement, item generation, etc.) is responsible.
+
+**`selfplay/runner/trace_compare.js`** — C trace vs JS behavior comparison
+
+Replays a captured C selfplay trace in JS headless mode and compares turn-by-turn
+behavior (actions, position, HP, dungeon level). Supports position offsets for
+cases where maps differ slightly but gameplay is similar.
+
+```bash
+# Compare C trace against JS headless replay
+node selfplay/runner/trace_compare.js --trace traces/captured/trace_13296_valkyrie_score43.json
+
+# Compare with position offset adjustment
+node selfplay/runner/trace_compare.js --trace traces/captured/trace_79.json --dx 1 --dy 0
+
+# Ignore position mismatches (focus on actions/HP)
+node selfplay/runner/trace_compare.js --trace traces/captured/trace_79.json --ignore-position
+
+# Save JS trace for later inspection
+node selfplay/runner/trace_compare.js --trace traces/captured/trace_79.json --output /tmp/js_trace.json
+
+# Output shows first 20 mismatches:
+# turn 7: diffs=action,position C={"action":"explore","position":{"x":40,"y":11},"hp":14,"hpmax":14,"dlvl":1} JS={"action":"rest","position":{"x":40,"y":12},"hp":14,"hpmax":14,"dlvl":1}
+```
+
+**Use when**: You have a C selfplay trace showing interesting behavior (combat,
+prayer, item usage) and want to verify JS reproduces the same decision-making
+and outcomes.
+
+**Typical workflow**:
+1. Capture C selfplay trace showing the divergence or interesting behavior
+2. Run `trace_compare.js` to see when JS behavior diverges from C
+3. Use `pet_rng_probe.js` to identify which turn RNG consumption differs
+4. Add targeted RNG logging around the suspicious code path
+5. Compare RNG logs to find the extra/missing call
+
 ### Adding a new test seed
 
 1. Add the seed to `test/comparison/seeds.json`:
