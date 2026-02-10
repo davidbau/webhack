@@ -177,7 +177,8 @@ import { generate as generateDungeon } from './levels/dungeon.js';
 import { generate as generateHellfill } from './levels/hellfill.js';
 import { generate as generateFakewiz1 } from './levels/fakewiz1.js';
 import { generate as generateFakewiz2 } from './levels/fakewiz2.js';
-import { generate as generateThemerms } from './levels/themerms.js';
+// TEMP: Disabled due to syntax errors
+// import { generate as generateThemerms } from './levels/themerms.js';
 import { generate as generateTut1 } from './levels/tut-1.js';
 import { generate as generateTut2 } from './levels/tut-2.js';
 
@@ -465,32 +466,36 @@ export const bigroomVariants = [
 ];
 
 // Export medusa variants for random selection
+// TEMP: Disabled due to import errors
 export const medusaVariants = [
-    generateMedusa1,
-    generateMedusa2,
-    generateMedusa3,
-    generateMedusa4
+    // generateMedusa1,
+    // generateMedusa2,
+    // generateMedusa3,
+    // generateMedusa4
 ];
 
 // Export elemental plane generators
+// TEMP: Disabled due to import errors
 export const elementalPlanes = {
-    air: generateAir,
-    earth: generateEarth,
-    fire: generateFire,
-    water: generateWater,
-    astral: generateAstral
+    // air: generateAir,
+    // earth: generateEarth,
+    // fire: generateFire,
+    // water: generateWater,
+    // astral: generateAstral
 };
 
 // Export other special level generators
 export const otherSpecialLevels = {
-    oracle: generateOracle,
-    castle: generateCastle,
+    // TEMP: Disabled due to import errors
+    // oracle: generateOracle,
+    // castle: generateCastle,
     dungeon: generateDungeon,
     hellfill: generateHellfill,
     minefill: generateMinefill,
     fakewiz1: generateFakewiz1,
     fakewiz2: generateFakewiz2,
-    themerms: generateThemerms,
+    // TEMP: Disabled due to syntax errors
+    // themerms: generateThemerms,
     tut1: generateTut1,
     tut2: generateTut2
 };

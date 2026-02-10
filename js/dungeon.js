@@ -48,7 +48,8 @@ import {
 } from './objects.js';
 import { RUMORS_FILE_TEXT } from './rumor_data.js';
 import { getSpecialLevel } from './special_levels.js';
-import { themerooms_generate } from './themerms.js';
+// TEMP: Disabled due to syntax errors
+// import { themerooms_generate } from './themerms.js';
 import { parseEncryptedDataFile, parseRumorsFile } from './hacklib.js';
 import { EPITAPH_FILE_TEXT } from './epitaph_data.js';
 import { ENGRAVE_FILE_TEXT } from './engrave_data.js';
@@ -815,7 +816,8 @@ function makerooms(map, depth) {
             create_room(map, -1, -1, 2, 2, -1, -1, VAULT, true, depth, true);
         } else {
             // C ref: mklev.c:402-407
-            if (!themerooms_generate(map, depth)) {
+            // TEMP: Disabled due to syntax errors in themerms.js
+            if (true) { // was: !themerooms_generate(map, depth)
                 // themeroom_failed
                 if (++themeroom_tries > 10
                     || map.nroom >= Math.floor(MAXNROFROOMS / 6))
