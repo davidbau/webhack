@@ -27,7 +27,8 @@ import {
     SLP_GAS_TRAP, RUST_TRAP, FIRE_TRAP, TELEP_TRAP, LEVEL_TELEP,
     MAGIC_PORTAL, ANTI_MAGIC, POLY_TRAP, STATUE_TRAP, MAGIC_TRAP,
     VIBRATING_SQUARE,
-    D_NODOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN
+    D_NODOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN,
+    COLNO, ROWNO
 } from './config.js';
 import {
     BOULDER, SCROLL_CLASS, FOOD_CLASS, WEAPON_CLASS, ARMOR_CLASS,
@@ -1620,6 +1621,269 @@ export const selection = {
         }
         const idx = rn2(sel.coords.length);
         return sel.coords[idx];
+    },
+
+    /**
+     * selection.rect(x1, y1, x2, y2)
+     * Create a rectangular perimeter selection (border only, not filled).
+     *
+     * @returns {Object} Selection with coords array
+     */
+    rect: (x1, y1, x2, y2) => {
+        const coords = [];
+        // Top and bottom edges
+        for (let x = x1; x <= x2; x++) {
+            coords.push({ x, y: y1 });
+            if (y2 !== y1) {
+                coords.push({ x, y: y2 });
+            }
+        }
+        // Left and right edges (excluding corners already added)
+        for (let y = y1 + 1; y < y2; y++) {
+            coords.push({ x: x1, y });
+            if (x2 !== x1) {
+                coords.push({ x: x2, y });
+            }
+        }
+        return { coords };
+    },
+
+    /**
+     * selection.grow(sel, iterations = 1)
+     * Expand selection by N cells in all 8 directions.
+     *
+     * @param {Object} sel - Selection (coords array or rectangle)
+     * @param {number} iterations - Number of times to grow (default 1)
+     * @returns {Object} Expanded selection with coords array
+     */
+    grow: (sel, iterations = 1) => {
+        if (!sel) return { coords: [] };
+
+        // Convert to coord set
+        let coordSet = new Set();
+        if (sel.coords) {
+            sel.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
+        } else if (sel.x1 !== undefined) {
+            // Rectangle format
+            for (let y = sel.y1; y <= sel.y2; y++) {
+                for (let x = sel.x1; x <= sel.x2; x++) {
+                    coordSet.add(`${x},${y}`);
+                }
+            }
+        }
+
+        // Grow by adding neighbors
+        for (let i = 0; i < iterations; i++) {
+            const newCoords = new Set(coordSet);
+            for (const key of coordSet) {
+                const [x, y] = key.split(',').map(Number);
+                // Add all 8 neighbors
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        if (nx >= 0 && nx < COLNO && ny >= 0 && ny < ROWNO) {
+                            newCoords.add(`${nx},${ny}`);
+                        }
+                    }
+                }
+            }
+            coordSet = newCoords;
+        }
+
+        // Convert back to coords array
+        const coords = Array.from(coordSet).map(key => {
+            const [x, y] = key.split(',').map(Number);
+            return { x, y };
+        });
+        return { coords };
+    },
+
+    /**
+     * selection.negate(sel)
+     * Return the complement of the selection (all map tiles NOT in selection).
+     *
+     * @param {Object} sel - Selection to negate
+     * @returns {Object} Negated selection with coords array
+     */
+    negate: (sel) => {
+        if (!sel) {
+            // No selection means select everything
+            const coords = [];
+            for (let y = 0; y < ROWNO; y++) {
+                for (let x = 1; x < COLNO; x++) {
+                    coords.push({ x, y });
+                }
+            }
+            return { coords };
+        }
+
+        // Convert to coord set for fast lookup
+        const coordSet = new Set();
+        if (sel.coords) {
+            sel.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
+        } else if (sel.x1 !== undefined) {
+            // Rectangle format
+            for (let y = sel.y1; y <= sel.y2; y++) {
+                for (let x = sel.x1; x <= sel.x2; x++) {
+                    coordSet.add(`${x},${y}`);
+                }
+            }
+        }
+
+        // Select all tiles NOT in the set
+        const coords = [];
+        for (let y = 0; y < ROWNO; y++) {
+            for (let x = 1; x < COLNO; x++) {
+                if (!coordSet.has(`${x},${y}`)) {
+                    coords.push({ x, y });
+                }
+            }
+        }
+        return { coords };
+    },
+
+    /**
+     * selection.percentage(sel, pct)
+     * Randomly select a percentage of coordinates from the selection.
+     *
+     * @param {Object} sel - Selection to filter
+     * @param {number} pct - Percentage to keep (0-100)
+     * @returns {Object} Filtered selection with coords array
+     */
+    percentage: (sel, pct) => {
+        if (!sel || pct <= 0) return { coords: [] };
+        if (pct >= 100) return sel;
+
+        // Get all coords
+        let allCoords = [];
+        if (sel.coords) {
+            allCoords = sel.coords;
+        } else if (sel.x1 !== undefined) {
+            // Rectangle format
+            for (let y = sel.y1; y <= sel.y2; y++) {
+                for (let x = sel.x1; x <= sel.x2; x++) {
+                    allCoords.push({ x, y });
+                }
+            }
+        }
+
+        // Randomly keep pct% of coords
+        const coords = allCoords.filter(() => rn2(100) < pct);
+        return { coords };
+    },
+
+    /**
+     * selection.floodfill(x, y, matchFn)
+     * Flood fill from a starting point, selecting all connected cells matching a condition.
+     *
+     * @param {number} x - Starting X coordinate
+     * @param {number} y - Starting Y coordinate
+     * @param {Function} matchFn - Function(loc) that returns true if cell should be included
+     * @returns {Object} Selection with coords array
+     */
+    floodfill: (x, y, matchFn) => {
+        if (!levelState.map) return { coords: [] };
+
+        const coords = [];
+        const visited = new Set();
+        const queue = [{ x, y }];
+
+        while (queue.length > 0) {
+            const pos = queue.shift();
+            const key = `${pos.x},${pos.y}`;
+
+            if (visited.has(key)) continue;
+            if (pos.x < 0 || pos.x >= COLNO || pos.y < 0 || pos.y >= ROWNO) continue;
+
+            visited.add(key);
+
+            const loc = levelState.map.locations[pos.x][pos.y];
+            if (!matchFn || matchFn(loc)) {
+                coords.push({ x: pos.x, y: pos.y });
+
+                // Add 4-connected neighbors
+                queue.push({ x: pos.x - 1, y: pos.y });
+                queue.push({ x: pos.x + 1, y: pos.y });
+                queue.push({ x: pos.x, y: pos.y - 1 });
+                queue.push({ x: pos.x, y: pos.y + 1 });
+            }
+        }
+
+        return { coords };
+    },
+
+    /**
+     * selection.match(pattern)
+     * Create selection of all map tiles matching a terrain type pattern.
+     *
+     * @param {string|number} pattern - Terrain type to match (ROOM, CORR, etc.)
+     * @returns {Object} Selection with coords array
+     */
+    match: (pattern) => {
+        if (!levelState.map) return { coords: [] };
+
+        const coords = [];
+        for (let y = 0; y < ROWNO; y++) {
+            for (let x = 1; x < COLNO; x++) {
+                const loc = levelState.map.locations[x][y];
+                if (loc && loc.typ === pattern) {
+                    coords.push({ x, y });
+                }
+            }
+        }
+        return { coords };
+    },
+
+    /**
+     * selection.filter_mapchar(sel, ch)
+     * Filter selection to only include tiles matching a map character.
+     *
+     * @param {Object} sel - Selection to filter (or null for all tiles)
+     * @param {string} ch - Map character to match (".", "#", "-", etc.)
+     * @returns {Object} Filtered selection with coords array
+     */
+    filter_mapchar: (sel, ch) => {
+        if (!levelState.map) return { coords: [] };
+
+        // Map character to terrain type
+        const charToType = {
+            '.': ROOM,
+            '#': CORR,
+            '-': HWALL,
+            '|': VWALL,
+            '+': DOOR,
+        };
+        const targetType = charToType[ch];
+
+        // Get coords to check
+        let checkCoords = [];
+        if (!sel) {
+            // No selection = check all tiles
+            for (let y = 0; y < ROWNO; y++) {
+                for (let x = 1; x < COLNO; x++) {
+                    checkCoords.push({ x, y });
+                }
+            }
+        } else if (sel.coords) {
+            checkCoords = sel.coords;
+        } else if (sel.x1 !== undefined) {
+            // Rectangle format
+            for (let y = sel.y1; y <= sel.y2; y++) {
+                for (let x = sel.x1; x <= sel.x2; x++) {
+                    checkCoords.push({ x, y });
+                }
+            }
+        }
+
+        // Filter to matching tiles
+        const coords = checkCoords.filter(c => {
+            const loc = levelState.map.locations[c.x]?.[c.y];
+            return loc && loc.typ === targetType;
+        });
+
+        return { coords };
     },
 };
 
