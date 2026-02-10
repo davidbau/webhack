@@ -107,12 +107,22 @@ class LuaToJsConverter:
                 paren_count = 0
                 brace_count = 0
                 has_complete_call = False
+                in_string = False
+                string_char = None
 
-                for char in line:
-                    if char == '(': paren_count += 1
-                    elif char == ')': paren_count -= 1
-                    elif char == '{': brace_count += 1
-                    elif char == '}': brace_count -= 1
+                # Track strings to avoid counting braces/parens inside them
+                for j, char in enumerate(line):
+                    if char in ['"', "'"] and (j == 0 or line[j-1] != '\\'):
+                        if not in_string:
+                            in_string = True
+                            string_char = char
+                        elif char == string_char:
+                            in_string = False
+                    elif not in_string:
+                        if char == '(': paren_count += 1
+                        elif char == ')': paren_count -= 1
+                        elif char == '{': brace_count += 1
+                        elif char == '}': brace_count -= 1
 
                 # If braces/parens are balanced, it's a single-line call
                 if paren_count == 0 and brace_count == 0:
@@ -124,11 +134,21 @@ class LuaToJsConverter:
                     i += 1
                     while i < len(lines):
                         multiline_call.append(lines[i])
-                        for char in lines[i]:
-                            if char == '(': paren_count += 1
-                            elif char == ')': paren_count -= 1
-                            elif char == '{': brace_count += 1
-                            elif char == '}': brace_count -= 1
+                        # Reset string tracking for each line
+                        line_in_string = False
+                        line_string_char = None
+                        for j, char in enumerate(lines[i]):
+                            if char in ['"', "'"] and (j == 0 or lines[i][j-1] != '\\'):
+                                if not line_in_string:
+                                    line_in_string = True
+                                    line_string_char = char
+                                elif char == line_string_char:
+                                    line_in_string = False
+                            elif not line_in_string:
+                                if char == '(': paren_count += 1
+                                elif char == ')': paren_count -= 1
+                                elif char == '{': brace_count += 1
+                                elif char == '}': brace_count -= 1
 
                         if paren_count == 0 and brace_count == 0:
                             break
@@ -604,6 +624,30 @@ class LuaToJsConverter:
         if body.endswith('end'):
             body = body[:-3].strip()
 
+        # Convert Lua comments to JS comments in the body
+        # Replace all standalone -- comments (not inside strings)
+        # Simple approach: replace all -- with //
+        parts = []
+        in_string = False
+        string_char = None
+        i = 0
+        while i < len(body):
+            if body[i] in ['"', "'"] and (i == 0 or body[i-1] != '\\'):
+                if not in_string:
+                    in_string = True
+                    string_char = body[i]
+                elif body[i] == string_char:
+                    in_string = False
+                parts.append(body[i])
+                i += 1
+            elif not in_string and i < len(body) - 1 and body[i:i+2] == '--':
+                parts.append('//')
+                i += 2
+            else:
+                parts.append(body[i])
+                i += 1
+        body = ''.join(parts)
+
         # Convert the body - it may contain multiple statements separated by ;
         # Split by ; and convert each statement
         if ';' in body or 'des.' in body:
@@ -633,7 +677,12 @@ class LuaToJsConverter:
                     elif char == ';' and paren_depth == 0 and brace_depth == 0:
                         stmt = ''.join(current_stmt).strip()
                         if stmt:
-                            statements.append(self.convert_statement(stmt))
+                            # Check if it's a comment
+                            if stmt.startswith('--'):
+                                comment_text = stmt[2:].strip()
+                                statements.append(f"// {comment_text}")
+                            else:
+                                statements.append(self.convert_statement(stmt))
                         current_stmt = []
                         i += 1
                         continue
@@ -644,7 +693,12 @@ class LuaToJsConverter:
             # Add the last statement
             stmt = ''.join(current_stmt).strip()
             if stmt:
-                statements.append(self.convert_statement(stmt))
+                # Check if it's a comment
+                if stmt.startswith('--'):
+                    comment_text = stmt[2:].strip()
+                    statements.append(f"// {comment_text}")
+                else:
+                    statements.append(self.convert_statement(stmt))
 
             # Join statements with spaces (formatting will be added later)
             converted_body = ' ' + ' '.join(statements) + ' ' if statements else ''
