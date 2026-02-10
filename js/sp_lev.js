@@ -20,7 +20,7 @@ import {
     STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,
     CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, ROOM, CORR,
     DOOR, SDOOR, IRONBARS, TREE, FOUNTAIN, POOL, MOAT, WATER,
-    DRAWBRIDGE_UP, DRAWBRIDGE_DOWN, LAVAPOOL, ICE, CLOUD, AIR,
+    DRAWBRIDGE_UP, DRAWBRIDGE_DOWN, LAVAPOOL, LAVAWALL, ICE, CLOUD, AIR,
     STAIRS, LADDER, ALTAR, GRAVE, THRONE, SINK,
     PIT, SPIKED_PIT, HOLE, TRAPDOOR, ARROW_TRAP, DART_TRAP,
     SQKY_BOARD, BEAR_TRAP, LANDMINE, ROLLING_BOULDER_TRAP,
@@ -411,7 +411,7 @@ export function map(data) {
         levelState.map = new GameMap();
     }
 
-    let mapStr, halign = 'center', valign = 'center', x, y, lit = false;
+    let mapStr, halign = 'center', valign = 'center', x, y, lit = false, contents;
 
     if (typeof data === 'string') {
         mapStr = data;
@@ -419,9 +419,16 @@ export function map(data) {
         mapStr = data.map || data;
         halign = data.halign || 'center';
         valign = data.valign || 'center';
-        x = data.x;
-        y = data.y;
+        // Support both x/y and coord formats
+        if (data.coord) {
+            x = data.coord[0];
+            y = data.coord[1];
+        } else {
+            x = data.x;
+            y = data.y;
+        }
         lit = data.lit || false;
+        contents = data.contents;
     }
 
     // Parse map string into 2D array
@@ -536,6 +543,66 @@ export function terrain(x_or_opts, y_or_type, type) {
 }
 
 /**
+ * des.replace_terrain(opts)
+ * Replace all occurrences of one terrain type with another.
+ * C ref: sp_lev.c spo_replace_terrain()
+ *
+ * @param {Object} opts - Options
+ *   - fromterrain: Source terrain character/type
+ *   - toterrain: Destination terrain character/type
+ *   - region: Optional selection/region to limit replacement (default: whole map)
+ *   - chance: Optional percentage chance for each replacement (0-100, default: 100)
+ */
+export function replace_terrain(opts) {
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+
+    const fromType = mapchrToTerrain(opts.fromterrain);
+    const toType = mapchrToTerrain(opts.toterrain);
+
+    if (fromType === -1 || toType === -1) return;
+
+    const chance = opts.chance !== undefined ? opts.chance : 100;
+
+    // Determine region to replace in
+    let x1 = 0, y1 = 0, x2 = COLNO - 1, y2 = ROWNO - 1;
+
+    if (opts.region) {
+        if (opts.region.x1 !== undefined) {
+            // Rectangle format
+            x1 = opts.region.x1;
+            y1 = opts.region.y1;
+            x2 = opts.region.x2;
+            y2 = opts.region.y2;
+        } else if (opts.region.coords) {
+            // Selection format - replace only those coords
+            for (const coord of opts.region.coords) {
+                if (coord.x >= 0 && coord.x < COLNO && coord.y >= 0 && coord.y < ROWNO) {
+                    const loc = levelState.map.locations[coord.x][coord.y];
+                    if (loc.typ === fromType && (chance >= 100 || rn2(100) < chance)) {
+                        loc.typ = toType;
+                    }
+                }
+            }
+            return;
+        }
+    }
+
+    // Replace in rectangular region
+    for (let y = y1; y <= y2; y++) {
+        for (let x = x1; x <= x2; x++) {
+            if (x >= 0 && x < COLNO && y >= 0 && y < ROWNO) {
+                const loc = levelState.map.locations[x][y];
+                if (loc.typ === fromType && (chance >= 100 || rn2(100) < chance)) {
+                    loc.typ = toType;
+                }
+            }
+        }
+    }
+}
+
+/**
  * Convert ASCII map character to terrain type constant.
  * C ref: sp_lev.c get_table_mapchr_opt()
  *
@@ -565,6 +632,7 @@ function mapchrToTerrain(ch) {
         case '}': return MOAT;
         case 'P': return POOL;
         case 'L': return LAVAPOOL;
+        case 'Z': return LAVAWALL;
         case 'I': return ICE;
         case 'W': return WATER;
         case 'T': return TREE;

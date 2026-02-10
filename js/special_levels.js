@@ -40,6 +40,9 @@ import { generate as generateBigroom6 } from './levels/bigroom-6.js';
 import { generate as generateBigroom7 } from './levels/bigroom-7.js';
 import { generate as generateBigroom8 } from './levels/bigroom-8.js';
 import { generate as generateBigroom9 } from './levels/bigroom-9.js';
+import { generate as generateBigroom10 } from './levels/bigroom-10.js';
+import { generate as generateBigroom12 } from './levels/bigroom-12.js';
+import { generate as generateBigroom13 } from './levels/bigroom-13.js';
 
 // Themed special levels
 import { generate as generateWater } from './levels/water.js';
@@ -247,13 +250,17 @@ registerSpecialLevel(DUNGEONS_OF_DOOM, 14, generateBigroom4, 'bigroom-4');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 15, generateBigroom, 'bigroom');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 16, generateBigroom2, 'bigroom-2');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 17, generateCastle, 'castle');
-registerSpecialLevel(DUNGEONS_OF_DOOM, 20, generateMedusa, 'medusa');
-registerSpecialLevel(DUNGEONS_OF_DOOM, 21, generateMedusa2, 'medusa-2');
-registerSpecialLevel(DUNGEONS_OF_DOOM, 22, generateMedusa3, 'medusa-3');
-registerSpecialLevel(DUNGEONS_OF_DOOM, 23, generateIce, 'ice');
-registerSpecialLevel(DUNGEONS_OF_DOOM, 24, generateForest, 'forest');
-registerSpecialLevel(DUNGEONS_OF_DOOM, 25, generateClouds, 'clouds');
-registerSpecialLevel(DUNGEONS_OF_DOOM, 26, generateGarden, 'garden');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 18, generateBigroom10, 'bigroom-10');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 19, generateBigroom12, 'bigroom-12');
+// Note: bigroom-11 not yet implemented (requires selection.match with patterns, iterate())
+registerSpecialLevel(DUNGEONS_OF_DOOM, 20, generateBigroom13, 'bigroom-13');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 21, generateMedusa, 'medusa');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 22, generateMedusa2, 'medusa-2');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 23, generateMedusa3, 'medusa-3');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 24, generateIce, 'ice');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 25, generateForest, 'forest');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 26, generateClouds, 'clouds');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 27, generateGarden, 'garden');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 27, generateTemple, 'temple');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 28, generatePrison, 'prison');
 registerSpecialLevel(DUNGEONS_OF_DOOM, 29, generateLibrary, 'library');
