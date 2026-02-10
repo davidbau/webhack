@@ -8,7 +8,7 @@ import { COLNO, ROWNO, ROOM, STAIRS, NORMAL_SPEED, ACCESSIBLE, isok, A_DEX, A_CO
          FEMALE, MALE, TERMINAL_COLS } from './config.js';
 import { initRng, rn2, rnd, rn1, getRngState, setRngState, getRngCallCount, setRngCallCount } from './rng.js';
 import { Display } from './display.js';
-import { initInput, nhgetch } from './input.js';
+import { initInput, nhgetch, getCount } from './input.js';
 import { FOV } from './vision.js';
 import { Player, roles, races, validRacesForRole, validAlignsForRoleRace,
          needsGenderMenu, rankOf, godForRoleAlign, isGoddess, greetingForRole,
@@ -53,6 +53,9 @@ class NetHackGame {
         this.seerTurn = 0;    // C ref: context.seer_turn — clairvoyance timer
         this.occupation = null; // C ref: cmd.c go.occupation — multi-turn action
         this.seed = 0;        // original game seed (for save/restore)
+        this.multi = 0;       // C ref: allmain.c gm.multi — remaining command repeats
+        this.commandCount = 0; // C ref: cmd.c gc.command_count — user-entered count
+        this.cmdKey = 0;      // C ref: cmd.c gc.cmd_key — command to repeat
         // RNG accessors for storage.js (avoids circular imports)
         this._rngAccessors = {
             getRngState, setRngState, getRngCallCount, setRngCallCount,
@@ -1139,10 +1142,52 @@ class NetHackGame {
                 continue;
             }
 
-            // Get player input
-            // C ref: allmain.c moveloop_core() -- rhack(0) gets and processes command
-            const ch = await nhgetch();
-            this.display.clearRow(0); // clear message line
+            let ch;
+
+            // C ref: allmain.c:519-535 — multi-command repeat handling
+            if (this.multi > 0) {
+                // Repeating a command
+                this.multi--;
+                ch = this.cmdKey;
+                // Don't clear message line on repeats (user might want to see "Count: N")
+            } else {
+                // Get player input with optional count prefix
+                // C ref: cmd.c:4942-4960 parse() -> get_count()
+                this.display.clearRow(0); // clear message line
+
+                // Read first character
+                const firstCh = await nhgetch();
+
+                // Check if it's a digit - if so, collect count
+                if (firstCh >= 48 && firstCh <= 57) { // '0'-'9'
+                    const { count, key } = await getCount(firstCh, 999999, this.display);
+                    this.commandCount = count;
+                    ch = key;
+
+                    // C ref: cmd.c:4963-4966 — ESC cancels count
+                    if (ch === 27) { // ESC
+                        this.display.clearRow(0);
+                        this.commandCount = 0;
+                        ch = 0; // No command
+                    }
+                } else {
+                    // Not a digit, just a regular command
+                    this.commandCount = 0;
+                    ch = firstCh;
+                }
+
+                // C ref: cmd.c:4981-4983 — set multi from command_count
+                this.multi = this.commandCount;
+                if (this.multi > 0) {
+                    this.multi--; // First execution is now, multi counts remaining
+                }
+                this.cmdKey = ch;
+            }
+
+            // Skip if no command (e.g., ESC was pressed)
+            if (ch === 0) {
+                continue;
+            }
 
             // Process command
             const result = await rhack(ch, this);
