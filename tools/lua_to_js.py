@@ -165,8 +165,27 @@ class LuaToJsConverter:
                         after = combined_text[end_idx + 2:]
                         combined_text = before + '`\n' + template_content + '\n`' + after
 
-                    # Combine into one line for conversion (preserves structure)
-                    combined = ' '.join(l.strip() for l in combined_text.split('\n'))
+                    # Combine into one line but preserve newlines inside template literals
+                    parts = []
+                    in_template = False
+                    for line in combined_text.split('\n'):
+                        # Check if this line contains template literal markers
+                        if '`' in line:
+                            # Count backticks to track template state
+                            for char in line:
+                                if char == '`':
+                                    in_template = not in_template
+
+                        if in_template:
+                            # Inside template - preserve the original line with newline
+                            parts.append(line + '\n')
+                        else:
+                            # Outside template - strip and join with spaces
+                            stripped = line.strip()
+                            if stripped:
+                                parts.append(stripped + ' ')
+
+                    combined = ''.join(parts).rstrip()
                     converted = self.convert_line(combined)
                     if converted:
                         # Post-process to add line breaks and fix comments
@@ -565,6 +584,9 @@ class LuaToJsConverter:
                     value = self.convert_object_literal(value)
                 elif value.startswith('function'):
                     value = self.convert_function_expression(value)
+                elif value.startswith('`'):
+                    # Template literal - preserve as-is
+                    value = value
                 else:
                     value = self.convert_expression(value)
 

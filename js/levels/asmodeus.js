@@ -21,7 +21,22 @@ export function generate() {
     const bounds2 = selection.fillrect(bnds.lx, bnds.ly + 1, bnds.hx - 2, bnds.hy - 1);
 
     // First part
-    const asmo1 = des.map({ halign: "half-left", valign: "center", map: `  --------------------- | +  +  +  +  +  + .| +  + .| | +  +  +  +  +  + .S +  + .| |---+------------ + .| | +  + .| +  +  +  + .|-+-- | + ---| +  +  +  + .| +  + | + | + S +  +  +  + .| +  + | + | + | +  +  +  + .| +  + | + | + | +  +  +  + .|-+-- | + | + ----------- + .| | + S +  +  +  +  + | +  + .| ---------------------  `, contents: function(rm) { // Doors;
+    const asmo1 = des.map({ halign: "half-left", valign: "center", map: `
+
+    ---------------------
+    |.............|.....|
+    |.............S.....|
+    |---+------------...|
+    |.....|.........|-+--
+    |..---|.........|....
+    |..|..S.........|....
+    |..|..|.........|....
+    |..|..|.........|-+--
+    |..|..-----------...|
+    |..S..........|.....|
+    ---------------------
+
+    `, contents: function(rm) { // Doors;
             des.door("closed",04,03);
             des.door("locked",18,04);
             des.door("closed",18,08);
@@ -67,7 +82,15 @@ export function generate() {
     des.teleport_region({ region: {01,00,6,20}, region_islev: 1, exclude: {6,1,70,16}, exclude_islev: 1 });
 
     // Second part
-    const asmo2 = des.map({ halign: "half-right", valign: "center", map: `  --------------------------------- +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + | +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + + +  +  +  +  +  +  +  +  +  +  +  +  +  +  +  + | ---------------------------------  `, contents: function(rm) { des.mazewalk(32,02,"east");
+    const asmo2 = des.map({ halign: "half-right", valign: "center", map: `
+
+    ---------------------------------
+    ................................|
+    ................................+
+    ................................|
+    ---------------------------------
+
+    `, contents: function(rm) { des.mazewalk(32,02,"east");
             // Non diggable walls
             des.non_diggable(selection.area(00,00,32,04));
             des.door("closed",32,02);
