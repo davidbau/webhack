@@ -5,8 +5,8 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
-import * as nh from '../util.js';
-import { shuffle } from '../util.js';
+import * as nh from '../sp_lev.js';
+import { shuffle } from '../sp_lev.js';
 
 export function generate() {
     // NetHack tower tower1.lua	$NHDT-Date: 1717178759 2024/05/31 18:05:59 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.3 $

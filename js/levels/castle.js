@@ -5,7 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
-import { shuffle } from '../util.js';
+import { shuffle } from '../sp_lev.js';
 
 export function generate() {
     // NetHack castle castle.lua	$NHDT-Date: 1652196024 2022/05/10 15:20:24 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.7 $

@@ -5,7 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
-import { percent } from '../util.js';
+import { percent } from '../sp_lev.js';
 
 export function generate() {
     // NetHack medusa medusa-2.lua	$NHDT-Date: 1652196027 2022/05/10 15:20:27 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.4 $
@@ -65,10 +65,10 @@ export function generate() {
     des.non_diggable(selection.area(60,2,73,17));
     // Objects
     des.object({ id: "statue", x: 68, y: 10, buc: "uncursed", montype: "knight", historic: 1, male: 1, name: "Perseus", contents: function() { if (percent(25)) {
-            des.object({ id: "shield of reflection", buc: "cursed", spe: 0 }) end if (percent(75)) {
-            des.object({ id: "levitation boots", spe: 0 }) end if (percent(50)) {
-            des.object({ id: "scimitar", buc: "blessed", spe: 2 }) end if (percent(50)) {
-            des.object("sack") end; } });
+            des.object({ id: "shield of reflection", buc: "cursed", spe: 0 }) } if (percent(75)) {
+            des.object({ id: "levitation boots", spe: 0 }) } if (percent(50)) {
+            des.object({ id: "scimitar", buc: "blessed", spe: 2 }) } if (percent(50)) {
+            des.object("sack") } } });
     des.object({ id: "statue", x: 64, y: 8, contents: 0 });
     des.object({ id: "statue", x: 65, y: 8, contents: 0 });
     des.object({ id: "statue", x: 64, y: 9, contents: 0 });

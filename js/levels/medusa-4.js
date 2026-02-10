@@ -5,7 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
-import { percent } from '../util.js';
+import { percent } from '../sp_lev.js';
 
 export function generate() {
     // NetHack medusa medusa-4.lua	$NHDT-Date: 1716152274 2024/05/19 20:57:54 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.8 $
@@ -94,10 +94,10 @@ export function generate() {
     // 
     // same spot as Medusa plus downstairs
     des.object({ id: "statue", coord: medloc, buc: "uncursed", montype: "knight", historic: 1, male: 1, name: "Perseus", contents: function() { if (percent(75)) {
-            des.object({ id: "shield of reflection", buc: "cursed", spe: 0 }) end if (percent(25)) {
-            des.object({ id: "levitation boots", spe: 0 }) end if (percent(50)) {
-            des.object({ id: "scimitar", buc: "blessed", spe: 2 }) end if (percent(50)) {
-            des.object("sack") end; } });
+            des.object({ id: "shield of reflection", buc: "cursed", spe: 0 }) } if (percent(25)) {
+            des.object({ id: "levitation boots", spe: 0 }) } if (percent(50)) {
+            des.object({ id: "scimitar", buc: "blessed", spe: 2 }) } if (percent(50)) {
+            des.object("sack") } } });
     // 
     // first random statue is in one of the designated stair rooms but not the
     // one with Medusa plus downstairs

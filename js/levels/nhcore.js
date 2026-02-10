@@ -4,7 +4,7 @@
  */
 
 import * as des from '../sp_lev.js';
-import * as nh from '../util.js';
+import * as nh from '../sp_lev.js';
 
 export function generate() {
     // NetHack core nhcore.lua	$NHDT-Date: 1652196284 2022/05/10 15:24:44 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.0 $

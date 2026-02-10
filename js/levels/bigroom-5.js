@@ -5,7 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
-import { percent } from '../util.js';
+import { percent } from '../sp_lev.js';
 
 export function generate() {
     // NetHack bigroom bigrm-5.lua	$NHDT-Date: 1652196022 2022/05/10 15:20:22 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.1 $

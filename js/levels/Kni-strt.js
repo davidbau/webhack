@@ -5,7 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
-import { percent } from '../util.js';
+import { percent } from '../sp_lev.js';
 
 export function generate() {
     // NetHack Knight Kni-strt.lua	$NHDT-Date: 1652196006 2022/05/10 15:20:06 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.4 $
@@ -115,7 +115,7 @@ export function generate() {
 
     // Some warhorses
     for (let i = 1; i <= 2 + nh.rn2(3); i++) {
-        des.monster({ id: "warhorse", peaceful: 1, inventory: function() { if (percent(50)) { des.object("saddle"); end; } });
+        des.monster({ id: "warhorse", peaceful: 1, inventory: function() { if (percent(50)) { des.object("saddle"); } } });
     }
 
 

@@ -6,8 +6,8 @@
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
 import { rn2 } from '../rng.js';
-import * as nh from '../util.js';
-import { shuffle } from '../util.js';
+import * as nh from '../sp_lev.js';
+import { shuffle } from '../sp_lev.js';
 
 export function generate() {
     // NetHack nhlib.lua	$NHDT-Date: 1652196140 2022/05/10 15:22:20 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.4 $

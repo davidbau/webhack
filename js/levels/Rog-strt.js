@@ -6,7 +6,7 @@
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
 import { d } from '../rng.js';
-import { shuffle } from '../util.js';
+import { shuffle } from '../sp_lev.js';
 
 export function generate() {
     // NetHack Rogue Rog-strt.lua	$NHDT-Date: 1652196012 2022/05/10 15:20:12 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.4 $

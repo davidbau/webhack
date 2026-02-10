@@ -5,8 +5,8 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
-import { percent } from '../util.js';
-import { shuffle } from '../util.js';
+import { percent } from '../sp_lev.js';
+import { shuffle } from '../sp_lev.js';
 
 export function generate() {
     // NetHack 3.7	hellfill.des	$NHDT-Date: 1432512783 2015/05/25 0:13:03 $  $NHDT-Branch: master $:$NHDT-Revision: 1.25 $
@@ -178,12 +178,12 @@ export function generate() {
             des.exclusion({ type: "teleport", region: [2,2, 10,8] });
             if ((coldhell)) {
             des.replace_terrain({ region: [1,1, 11,9], fromterrain: "L", toterrain: "P" });
-            end dblocs = { { x = 1, y = 5, dir="east", state="closed" }, { x = 11, y = 5, dir="west", state="closed" }, { x = 6, y = 1, dir="south", state="closed" }, { x = 6, y = 9, dir="north", state="closed" } } shuffle(dblocs);
+            } dblocs = { { x = 1, y = 5, dir="east", state="closed" }, { x = 11, y = 5, dir="west", state="closed" }, { x = 6, y = 1, dir="south", state="closed" }, { x = 6, y = 9, dir="north", state="closed" } } shuffle(dblocs);
             for i = 1; }, math.random(1, #dblocs) do des.drawbridge(dblocs[i]);
-            end local mons: { ["H", "T", "@"];
+            } local mons: { ["H", "T", "@"];
             shuffle(mons);
             for i: 1 }, 3 + Math.random(1, 5) do des.monster(mons[1], 6, 5);
-            end end });
+            } } });
        },
        {
           repeatable = true,
@@ -258,7 +258,7 @@ export function generate() {
     .........
 
     `, contents = function(rm) des.exclusion({ type = "teleport", region = { 3,3, 5,5 } });
-            des.monster("L",4,4) end }) end, function ()       mapstr = percent(30) && `
+            des.monster("L",4,4) } }) end, function ()       mapstr = percent(30) && `
 
     .....
     .LLL.
@@ -273,7 +273,7 @@ export function generate() {
     .PPP.
     .....
     `;
-            for dx = 1, 5 do des.map({ x = dx*14 - 4, y = Math.random(3, 15), map = mapstr, contents = function() end }) end end, { repeatable = true, contents = function ()       mapstr = `
+            for dx = 1, 5 do des.map({ x = dx*14 - 4, y = Math.random(3, 15), map = mapstr, contents = function() } }) } end, { repeatable = true, contents = function ()       mapstr = `
 
     ...
     ...
@@ -293,7 +293,7 @@ export function generate() {
     ...
     ...
     `;
-            for dx = 1, 3 do des.map({ x = Math.random(3, 75), y = 3, map = mapstr, contents = function() end }) end end }, };
+            for dx = 1, 3 do des.map({ x = Math.random(3, 75), y = 3, map = mapstr, contents = function() } }) } } }, };
             function rnd_hell_prefab(coldhell) dorepeat = true;
             nloops = 0;
             repeat nloops = nloops + 1;
@@ -304,8 +304,8 @@ export function generate() {
             dorepeat = false;
             } else if ((fabtype === "table")) { fab.contents(coldhell);
             dorepeat = ! (fab.repeatable && Math.random(0, nloops * 2) === 0);
-            end until ((! dorepeat) || (nloops > 5));
-            end hells = { //  1: "mines" style with lava function () des.level_init({ style = "solidfill", fg = " ", lit = 0 });
+            } until ((! dorepeat) || (nloops > 5));
+            } hells = { //  1: "mines" style with lava function () des.level_init({ style = "solidfill", fg = " ", lit = 0 });
             des.level_flags("mazelevel", "noflip");
             des.level_init({ style="mines", fg=".", smoothed=true ,joined=true, lit=0, walled=true });
             des.replace_terrain({ fromterrain = " ", toterrain = "L" });
@@ -325,7 +325,7 @@ export function generate() {
             local protected_area = selection.fillrect(bnds.lx, bnds.ly + 1, bnds.hx - 2, bnds.hy - 1);
             hell_tweaks(protected_area:negate());
             if ((percent(25))) { rnd_hell_prefab(false);
-            end end, -- 3: mazes, style 1: wall thick = 1, random wid corr function () des.level_init({ style = "solidfill", fg = " ", lit = 0 });
+            } end, -- 3: mazes, style 1: wall thick = 1, random wid corr function () des.level_init({ style = "solidfill", fg = " ", lit = 0 });
             des.level_flags("mazelevel", "noflip");
             des.level_init({ style = "maze", wallthick = 1 });
             end, -- 4: mazes, style 2: replace wall with iron bars or lava function () local cwid = math.random(4);
@@ -338,7 +338,7 @@ export function generate() {
             des.replace_terrain({ mapfragment = "w", toterrain = wallterrain[1] });
             if ((cwid == 1)) { if ((wallterrain[1] == "F" and percent(80))) { -- replace some horizontal iron bars walls with floor des.replace_terrain({ mapfragment = ".\nF\n.", toterrain = ".", chance = 25 * math.random(4) });
             } else if ((percent(25))) { rnd_hell_prefab(false);
-            end end des.terrain(outside_walls, " ");
+            } } des.terrain(outside_walls, " ");
             -- return the outside back to solid wall end, -- 5: mazes, thick walls, occasionally lava instead of walls function () local wwid = 1 + math.random(2);
             des.level_init({ style = "solidfill", fg = " ", lit = 0 });
             des.level_flags("mazelevel", "noflip");
@@ -348,7 +348,7 @@ export function generate() {
             des.terrain(outside_walls, " ");
             -- return the outside back to solid wall if ((wwid == 3 and percent(40))) { local sel = selection.match("LLL\nLLL\nLLL");
             des.terrain(sel:percentage(30 * math.random(4)), "Z");
-            end end end, -- 6: cold maze, with ice and water function () local cwid = math.random(4);
+            } } end, -- 6: cold maze, with ice and water function () local cwid = math.random(4);
             des.level_init({ style = "solidfill", fg = " ", lit = 0 });
             des.level_flags("mazelevel", "noflip", "cold");
             des.level_init({ style = "maze", wallthick = 1, corrwid = cwid });
@@ -356,10 +356,10 @@ export function generate() {
             local icey = selection.negate():percentage(10):grow():filter_mapchar(".");
             des.terrain(icey, "I");
             if ((cwid > 1)) { -- turn some ice into wall of water des.terrain(icey:percentage(1), "W");
-            end des.terrain(icey:percentage(5), "P");
+            } des.terrain(icey:percentage(5), "P");
             if ((percent(25))) { des.terrain(selection.match("w"), "W");
-            -- walls of water end if ((cwid == 1 and percent(25))) { rnd_hell_prefab(true);
-            end des.terrain(outside_walls, " ");
+            -- walls of water } if ((cwid == 1 and percent(25))) { rnd_hell_prefab(true);
+            } des.terrain(outside_walls, " ");
             -- return the outside back to solid wall end, -- 7: open cavern, "mines" with more space function () des.level_init({ style = "solidfill", fg = " ", lit = 0 });
             des.level_flags("mazelevel", "noflip");
             des.level_init({ style="mines", fg=".", smoothed=true ,joined=true, lit=0 });
@@ -372,7 +372,7 @@ export function generate() {
             local hellno = math.random(1, #hells);
             hells[hellno]();
             -- des.stair("up") if ((u.invocation_level)) { des.trap("vibrating square");
-            else des.stair("down") end populatemaze();
+            else des.stair("down") } populatemaze();
 
     return des.finalize_level();
 }

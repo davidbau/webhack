@@ -5,9 +5,9 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
-import { percent } from '../util.js';
-import * as nh from '../util.js';
-import { shuffle } from '../util.js';
+import { percent } from '../sp_lev.js';
+import * as nh from '../sp_lev.js';
+import { shuffle } from '../sp_lev.js';
 
 export function generate() {
 
