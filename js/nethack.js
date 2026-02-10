@@ -56,6 +56,7 @@ class NetHackGame {
         this.multi = 0;       // C ref: allmain.c gm.multi — remaining command repeats
         this.commandCount = 0; // C ref: cmd.c gc.command_count — user-entered count
         this.cmdKey = 0;      // C ref: cmd.c gc.cmd_key — command to repeat
+        this.lastCommand = null; // C ref: cmd.c CQ_REPEAT — last command for Ctrl+A repeat
         // RNG accessors for storage.js (avoids circular imports)
         this._rngAccessors = {
             getRngState, setRngState, getRngCallCount, setRngCallCount,
@@ -1158,9 +1159,19 @@ class NetHackGame {
                 // Read first character
                 const firstCh = await nhgetch();
 
-                // Check if it's a digit - if so, collect count
-                // C ref: cmd.c:4958 — uses LARGEST_INT (32767) as max count
-                if (firstCh >= 48 && firstCh <= 57) { // '0'-'9'
+                // C ref: cmd.c:1687 do_repeat() — Ctrl+A repeats last command
+                if (firstCh === 1) { // Ctrl+A
+                    if (this.lastCommand) {
+                        // Replay the last command
+                        this.commandCount = this.lastCommand.count;
+                        ch = this.lastCommand.key;
+                    } else {
+                        this.display.putstr_message('There is no command available to repeat.');
+                        ch = 0; // No command
+                    }
+                } else if (firstCh >= 48 && firstCh <= 57) { // '0'-'9'
+                    // Check if it's a digit - if so, collect count
+                    // C ref: cmd.c:4958 — uses LARGEST_INT (32767) as max count
                     const { count, key } = await getCount(firstCh, 32767, this.display);
                     this.commandCount = count;
                     ch = key;
@@ -1188,6 +1199,12 @@ class NetHackGame {
             // Skip if no command (e.g., ESC was pressed)
             if (ch === 0) {
                 continue;
+            }
+
+            // Save command for repeat (but don't save Ctrl+A itself)
+            // C ref: cmd.c:3575 — stores command in CQ_REPEAT queue
+            if (ch !== 1 && this.multi === 0) { // Don't save during multi-repeat
+                this.lastCommand = { key: ch, count: this.commandCount };
             }
 
             // Process command
