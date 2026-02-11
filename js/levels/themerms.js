@@ -164,7 +164,8 @@ export const themeroom_fills = [
                postprocess.push({ handler: make_dig_engraving,
                                  data: { x: xobj.ox, y: xobj.oy }});
             }
-            for (let i = 1; i <= d(3,4); i++) {
+            const numObjects = d(3,4);  // Evaluate once, not on every iteration
+            for (let i = 1; i <= numObjects; i++) {
                des.object();
             }
          } });
@@ -207,7 +208,8 @@ export const themeroom_fills = [
                      "cavewoman", "caveman", "barbarian",
                      "archeologist" ];
          let idx = rn2(mon.length);
-         for (let i = 1; i <= d(5,5); i++) {
+         const numCorpses = d(5,5);  // Evaluate once, not on every iteration
+         for (let i = 1; i <= numCorpses; i++) {
             if (percent(10)) { idx = rn2(mon.length); }
             des.object({ id: "corpse", montype: mon[idx] });
          }
@@ -217,10 +219,12 @@ export const themeroom_fills = [
    {
       name: "Statuary",
       contents: function(rm) {
-         for (let i = 1; i <= d(5,5); i++) {
+         const numStatues = d(5,5);  // Evaluate once, not on every iteration
+         for (let i = 1; i <= numStatues; i++) {
             des.object({ id: "statue" });
          }
-         for (let i = 1; i <= rnd(3); i++) {
+         const numTraps = rnd(3);  // Evaluate once, not on every iteration
+         for (let i = 1; i <= numTraps; i++) {
             des.trap("statue");
          }
       },
