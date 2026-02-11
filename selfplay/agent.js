@@ -1182,7 +1182,7 @@ export class Agent {
                                     console.log(`[SECRET DOOR] All occupancy targets exhausted, no secret door found`);
                                     this.secretDoorSearch = null;
                                 }
-                                return this.decide(state); // Try next target
+                                // Fall through to try other exploration strategies
                             }
                         }
 
