@@ -17,9 +17,13 @@
     <main>
         <!-- Time Series Chart with integrated scrubber -->
         <section class="chart-section">
-            <h2>⚔️ Test History — *Click timeline to browse commits*</h2>
+            <h2>⚔️ Test History — *Click or drag to browse commits*</h2>
             <div class="chart-container">
                 <canvas id="timeline-chart"></canvas>
+            </div>
+            <div class="scrubber-container">
+                <input type="range" id="commit-scrubber" min="0" max="0" value="0" step="1">
+                <div id="scrubber-info">Drag to navigate through commit history</div>
             </div>
         </section>
 
@@ -50,9 +54,35 @@
             
             <div class="category-chart-container">
                 <h2>🎲 Test Categories</h2>
-                <p class="warning">⚠️ Category data incomplete - backfill script only categorizes ~21% of tests</p>
                 <div class="chart-container-small">
                     <canvas id="category-chart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Detailed Commit Information -->
+        <section class="commit-details-section">
+            <h2>📋 Commit Details</h2>
+            <div class="commit-details">
+                <div class="detail-row">
+                    <span class="detail-label">Hash:</span>
+                    <span id="detail-hash" class="detail-value commit-hash">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Date:</span>
+                    <span id="detail-date" class="detail-value">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Author:</span>
+                    <span id="detail-author" class="detail-value">-</span>
+                </div>
+                <div class="detail-row full-width">
+                    <span class="detail-label">Message:</span>
+                    <pre id="detail-message" class="detail-value message-text">-</pre>
+                </div>
+                <div class="detail-row full-width">
+                    <span class="detail-label">Test Changes:</span>
+                    <div id="detail-changes" class="detail-value test-changes">-</div>
                 </div>
             </div>
         </section>

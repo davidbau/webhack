@@ -316,3 +316,74 @@ code {
     margin: 0.25rem 0;
     font-style: italic;
 }
+
+/* Commit details section */
+.commit-details-section {
+    padding: 0.75rem;
+}
+
+.commit-details {
+    background: #1a1a1a;
+    padding: 0.75rem;
+    border: 1px solid #444;
+}
+
+.detail-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #333;
+}
+
+.detail-row.full-width {
+    grid-template-columns: 120px 1fr;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    color: #888;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.detail-value {
+    color: #d0d0d0;
+    font-size: 0.75rem;
+}
+
+.message-text {
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0;
+    padding: 0.5rem;
+    background: #0d0d0d;
+    border: 1px solid #333;
+    border-radius: 2px;
+}
+
+.test-changes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.change-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem;
+}
+
+.change-category {
+    font-weight: bold;
+    min-width: 80px;
+}
+
+.change-delta {
+    font-family: 'Courier New', monospace;
+}

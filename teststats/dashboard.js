@@ -32,6 +32,14 @@ function renderDashboard() {
 
     currentIndex = testData.length - 1;
 
+    // Setup scrubber
+    const scrubber = document.getElementById('commit-scrubber');
+    scrubber.max = testData.length - 1;
+    scrubber.value = currentIndex;
+    scrubber.addEventListener('input', (e) => {
+        updateForCommit(parseInt(e.target.value));
+    });
+
     // Render charts
     renderTimelineChart();
     renderCommitsTable();
@@ -49,6 +57,17 @@ function updateForCommit(index) {
     if (!commit) return;
 
     currentIndex = index;
+
+    // Update scrubber
+    const scrubber = document.getElementById('commit-scrubber');
+    if (scrubber) scrubber.value = index;
+
+    // Update scrubber info
+    const scrubberInfo = document.getElementById('scrubber-info');
+    if (scrubberInfo) {
+        const date = new Date(commit.date).toLocaleDateString();
+        scrubberInfo.textContent = `Commit ${index + 1} of ${testData.length} • ${date}`;
+    }
 
     // Update summary cards (instant, no animation)
     document.getElementById('latest-commit').textContent = commit.commit;
@@ -70,6 +89,9 @@ function updateForCommit(index) {
         document.getElementById('new-tests').textContent = '';
     }
 
+    // Update detailed commit info
+    updateCommitDetails(commit, index);
+
     // Update category chart (instant)
     renderCategoryChart(commit);
 
@@ -78,6 +100,64 @@ function updateForCommit(index) {
         timelineChart.options.plugins.annotation.annotations.selectedCommit.xMin = index;
         timelineChart.options.plugins.annotation.annotations.selectedCommit.xMax = index;
         timelineChart.update('none'); // No animation
+    }
+}
+
+// Update detailed commit information
+function updateCommitDetails(commit, index) {
+    document.getElementById('detail-hash').textContent = commit.commit;
+    document.getElementById('detail-date').textContent = new Date(commit.date).toLocaleString();
+    document.getElementById('detail-author').textContent = commit.author || 'Unknown';
+    document.getElementById('detail-message').textContent = commit.message;
+
+    // Calculate test changes from previous commit
+    const prev = index > 0 ? testData[index - 1] : null;
+    const changesDiv = document.getElementById('detail-changes');
+
+    if (!prev) {
+        changesDiv.innerHTML = '<span style="color: #888">First commit in history</span>';
+        return;
+    }
+
+    const changes = [];
+    const totalDelta = commit.stats.total - prev.stats.total;
+    const passDelta = commit.stats.pass - prev.stats.pass;
+    const failDelta = commit.stats.fail - prev.stats.fail;
+
+    if (totalDelta !== 0) {
+        const sign = totalDelta > 0 ? '+' : '';
+        changes.push(`<div class="change-item"><span class="change-category">Total:</span><span class="change-delta ${totalDelta > 0 ? 'delta-positive' : 'delta-negative'}">${sign}${totalDelta}</span></div>`);
+    }
+    if (passDelta !== 0) {
+        const sign = passDelta > 0 ? '+' : '';
+        changes.push(`<div class="change-item"><span class="change-category">Passing:</span><span class="change-delta ${passDelta > 0 ? 'delta-positive' : 'delta-negative'}">${sign}${passDelta}</span></div>`);
+    }
+    if (failDelta !== 0) {
+        const sign = failDelta > 0 ? '+' : '';
+        changes.push(`<div class="change-item"><span class="change-category">Failing:</span><span class="change-delta ${failDelta > 0 ? 'delta-negative' : 'delta-positive'}">${sign}${failDelta}</span></div>`);
+    }
+
+    // Category changes
+    if (commit.categories && prev.categories) {
+        const allCategories = new Set([...Object.keys(commit.categories), ...Object.keys(prev.categories)]);
+        allCategories.forEach(cat => {
+            const curr = commit.categories[cat] || { pass: 0, fail: 0, total: 0 };
+            const prevCat = prev.categories[cat] || { pass: 0, fail: 0, total: 0 };
+            const catPassDelta = curr.pass - prevCat.pass;
+            const catFailDelta = curr.fail - prevCat.fail;
+
+            if (catPassDelta !== 0 || catFailDelta !== 0) {
+                const passSign = catPassDelta > 0 ? '+' : '';
+                const failSign = catFailDelta > 0 ? '+' : '';
+                changes.push(`<div class="change-item"><span class="change-category">${cat}:</span><span class="change-delta">${passSign}${catPassDelta}p ${failSign}${catFailDelta}f</span></div>`);
+            }
+        });
+    }
+
+    if (changes.length === 0) {
+        changesDiv.innerHTML = '<span style="color: #888">No test count changes</span>';
+    } else {
+        changesDiv.innerHTML = changes.join('');
     }
 }
 
