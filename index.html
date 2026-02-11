@@ -286,6 +286,18 @@
             letter-spacing: 0.02em;
         }
 
+        /* Loading animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            #loading {
+                animation: pulse 2s ease-in-out infinite;
+            }
+        }
+
         /* Focus indicator */
         #game:focus-within {
             border-color: var(--color-accent);
@@ -450,11 +462,34 @@
                 right: 8px;
             }
         }
+
+        /* ============================================================
+           Skip Link (Accessibility)
+           ============================================================ */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--color-accent);
+            color: #fff;
+            padding: 8px 16px;
+            text-decoration: none;
+            font-weight: 600;
+            z-index: 100;
+            border-radius: 0 0 4px 0;
+        }
+
+        .skip-link:focus {
+            top: 0;
+        }
     </style>
 </head>
 <body>
+    <!-- Skip to main content for keyboard users -->
+    <a href="#game" class="skip-link">Skip to game</a>
+
     <div id="page">
-        <nav id="nav">
+        <nav id="nav" role="navigation" aria-label="Main navigation">
             <a href="https://en.wikipedia.org/wiki/NetHack" target="_blank">About NetHack</a>
             <a href="guidebook/" target="nh-guidebook">How to Play</a>
             <a href="spoilers/" target="nh-spoilers">Spoilers</a>
@@ -466,9 +501,9 @@
             <button id="font-larger" title="Increase font size" aria-label="Increase font size" tabindex="-1">A+</button>
             <button id="theme-toggle" title="Toggle dark/light mode" aria-label="Toggle dark/light mode" tabindex="-1">◐</button>
         </div>
-        <div id="main">
+        <main id="main" role="main">
             <!-- Left: keyboard controls -->
-            <div id="keyref" class="side-panel">
+            <aside id="keyref" class="side-panel" role="complementary" aria-label="Keyboard reference">
                 <table>
                     <tr class="keyref-section"><td colspan="2">Move</td></tr>
                     <tr><td>h j k l</td><td>left/down/up/right</td></tr>
@@ -502,20 +537,20 @@
             </div>
 
             <!-- Center: game terminal -->
-            <div id="game">
-                <div id="loading">Loading NetHack JS...</div>
+            <div id="game" role="application" aria-label="NetHack game terminal">
+                <div id="loading" role="status" aria-live="polite">Loading NetHack JS...</div>
             </div>
 
             <!-- Right: hover symbol info -->
-            <div id="hover-panel" class="side-panel">
+            <aside id="hover-panel" class="side-panel" role="complementary" aria-label="Symbol information">
                 <div id="hover-info">
                     <span id="hover-symbol"></span>
                     <span id="hover-name"></span>
                     <span id="hover-desc"></span>
                     <span id="hover-stats"></span>
                 </div>
-            </div>
-        </div>
+            </aside>
+        </main>
     </div>
 
     <script>
@@ -706,6 +741,73 @@
             if (terminal && !terminal.dataset.fontApplied) {
                 terminal.style.fontSize = savedFontSize + 'px';
                 terminal.dataset.fontApplied = 'true';
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(gameDiv, {
+            childList: true,
+            subtree: true
+        });
+    })();
+
+    /* ============================================================
+       Keyboard Shortcuts
+       Global shortcuts for power users (only active outside game)
+       - Ctrl+B: Toggle side panels
+       - Ctrl+Plus: Increase font size
+       - Ctrl+Minus: Decrease font size
+       ============================================================ */
+    (function() {
+        const gameDiv = document.getElementById('game');
+        const panelToggle = document.getElementById('panel-toggle');
+        const fontSmaller = document.getElementById('font-smaller');
+        const fontLarger = document.getElementById('font-larger');
+
+        document.addEventListener('keydown', function(e) {
+            // Only handle shortcuts when game is not focused
+            if (document.activeElement &&
+                (document.activeElement === gameDiv ||
+                 gameDiv.contains(document.activeElement))) {
+                return;
+            }
+
+            // Ctrl+B: Toggle panels
+            if (e.ctrlKey && e.key === 'b') {
+                e.preventDefault();
+                if (panelToggle) panelToggle.click();
+            }
+
+            // Ctrl+Plus/Equal: Increase font
+            if (e.ctrlKey && (e.key === '+' || e.key === '=')) {
+                e.preventDefault();
+                if (fontLarger) fontLarger.click();
+            }
+
+            // Ctrl+Minus: Decrease font
+            if (e.ctrlKey && e.key === '-') {
+                e.preventDefault();
+                if (fontSmaller) fontSmaller.click();
+            }
+        });
+    })();
+
+    /* ============================================================
+       Game Focus Management
+       Automatically focus game when terminal loads for immediate play
+       ============================================================ */
+    (function() {
+        const gameDiv = document.getElementById('game');
+        if (!gameDiv) return;
+
+        // Watch for terminal creation and focus it
+        const observer = new MutationObserver(function(mutations) {
+            const terminal = document.getElementById('terminal');
+            if (terminal) {
+                // Small delay to ensure game is ready
+                setTimeout(function() {
+                    terminal.focus();
+                }, 100);
                 observer.disconnect();
             }
         });
