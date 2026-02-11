@@ -13,7 +13,7 @@
 //   3. com_pager("legacy")     — NHCORE_START_NEW_GAME lua shuffle
 //   4. welcome(TRUE)           — rndencode + seer_turn
 
-import { rn2, rnd, rn1, rne, d } from './rng.js';
+import { rn2, rnd, rn1, rne, d, getRngLog } from './rng.js';
 import { mksobj, mkobj } from './mkobj.js';
 import { isok, NUM_ATTRS,
          PM_ARCHEOLOGIST, PM_BARBARIAN, PM_CAVEMAN, PM_HEALER,
@@ -861,7 +861,9 @@ export function simulatePostLevelInit(player, map, depth) {
     const role = roles[player.roleIndex];
 
     // 1. makedog() — pet creation (actually places pet on map)
+    let rngBefore = getRngLog().length;
     const pet = makedog(map, player, depth || 1);
+    console.log(`makedog: ${getRngLog().length - rngBefore} RNG calls`);
 
     // C ref: dog.c initedog() — apport = ACURR(A_CHA)
     // Called inside makedog() BEFORE init_attr(), and u.acurr is still zeroed.
@@ -872,11 +874,17 @@ export function simulatePostLevelInit(player, map, depth) {
 
     // 2. u_init_inventory_attrs()
     //    a. u_init_role() → role-specific inventory
+    rngBefore = getRngLog().length;
     u_init_role(player);
+    console.log(`u_init_role: ${getRngLog().length - rngBefore} RNG calls`);
     //    b. u_init_race() → race-specific inventory (instruments, food)
+    rngBefore = getRngLog().length;
     u_init_race(player);
+    console.log(`u_init_race: ${getRngLog().length - rngBefore} RNG calls`);
     //    c+d. init_attr(75) + vary_init_attr()
+    rngBefore = getRngLog().length;
     initAttributes(player);
+    console.log(`initAttributes: ${getRngLog().length - rngBefore} RNG calls`);
     //    e. u_init_carry_attr_boost() — no RNG
 
     // Set HP/PW from role + race

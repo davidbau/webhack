@@ -16,7 +16,8 @@
 import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1 } from './rng.js';
 import { mksobj, mkobj } from './mkobj.js';
-import { create_room, makecorridors, init_rect, rnd_rect, get_rect, check_room, update_rect_pool_for_room, bound_digging, mineralize, fill_ordinary_room, _mtInitialized, setMtInitialized } from './dungeon.js';
+import { create_room, create_subroom, makecorridors, init_rect, rnd_rect, get_rect, check_room, update_rect_pool_for_room, bound_digging, mineralize, fill_ordinary_room, _mtInitialized, setMtInitialized } from './dungeon.js';
+import { set_themeroom_failed } from './levels/themerms.js';
 import {
     STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,
     CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, ROOM, CORR,
@@ -390,6 +391,7 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth) {
         return null;
     }
 
+    // C ref: Must initialize sbrooms array for potential nested rooms
     return {
         lx: xabs,
         ly: yabs,
@@ -397,7 +399,9 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth) {
         hy: yabs + dy,
         rtype: rtype,
         rlit: rlit,
-        irregular: false
+        irregular: false,
+        nsubrooms: 0,      // C ref: mkroom.h — number of subrooms
+        sbrooms: []        // C ref: mkroom.h — subroom array
     };
 }
 

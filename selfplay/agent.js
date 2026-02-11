@@ -7,7 +7,7 @@
 import { parseScreen, findMonsters, findStairs } from './perception/screen_parser.js';
 import { parseStatus } from './perception/status_parser.js';
 import { DungeonTracker } from './perception/map_tracker.js';
-import { findPath, findExplorationTarget, findNearest, directionKey, directionDelta, analyzeCorridorPosition } from './brain/pathing.js';
+import { findPath, findExplorationTarget, findNearest, directionKey, directionDelta } from './brain/pathing.js';
 import { shouldEngageMonster, getMonsterName, countNearbyMonsters, assessMonsterDanger, DangerLevel } from './brain/danger.js';
 import { InventoryTracker } from './brain/inventory.js';
 import { PrayerTracker } from './brain/prayer.js';
@@ -68,6 +68,7 @@ export class Agent {
         this.pendingQuaffLetter = null; // potion letter for "What do you want to quaff?" prompt
         this.pendingWieldLetter = null; // weapon letter for "Wield what?" prompt
         this.pendingWearLetter = null; // armor letter for "Wear what?" prompt
+        this.pendingEatLetter = null; // food letter for "What do you want to eat?" prompt
         this.justOpenedDoor = null; // {x, y} of door that just opened (needs manual fix after map update)
         this.committedTarget = null; // {x, y} of committed exploration target
         this.committedPath = null; // PathResult we're currently following
@@ -80,10 +81,6 @@ export class Agent {
         this.secretDoorSearch = null; // {position: {x,y}, searchesNeeded: 20, searchesDone: 0, wallCandidates: []}
 
         // Corridor following state
-        this.corridorFollowing = false; // true when actively following a corridor
-        this.corridorDirection = null; // direction key for corridor following
-        this.corridorStartPos = null; // {x, y} where we entered the corridor
-
         // Combat oscillation detection
         this.combatPositions = []; // last 8 positions during combat: [{x, y, turn}, ...]
         this.oscillationHoldTurns = 0; // remaining turns to hold position when oscillation detected
@@ -217,9 +214,6 @@ export class Agent {
                     this.committedPath = null;
                     this.failedTargets.clear();
                     this.consecutiveFailedMoves = 0;
-                    this.corridorFollowing = false;
-                    this.corridorDirection = null;
-                    this.corridorStartPos = null;
                 }
             }
 
@@ -386,7 +380,15 @@ export class Agent {
         if (lower.includes('pick it up')) return 'y';
 
         // "What do you want to eat?" -- select first item (a)
-        if (lower.includes('want to eat')) return 'a';
+        // "What do you want to eat?" -- use saved food letter
+        if (lower.includes('want to eat')) {
+            if (this.pendingEatLetter) {
+                const letter = this.pendingEatLetter;
+                this.pendingEatLetter = null;
+                return letter;
+            }
+            return '\x1b'; // ESC to cancel if no food selected
+        }
 
         // "What do you want to quaff?" -- use saved potion letter
         if (lower.includes('want to quaff') || lower.includes('want to drink')) {
@@ -580,6 +582,28 @@ export class Agent {
             }
         }
 
+        // 0c. Food consumption: eat when hungry to avoid starvation
+        if (this.status && this.status.needsFood) {
+            // Refresh inventory if needed
+            if (this.turnNumber - this.inventory.lastUpdate > 100 || this.inventory.lastUpdate === 0) {
+                await this._refreshInventory();
+            }
+
+            const food = this.inventory.findFood();
+            if (food.length > 0) {
+                // Prioritize food rations over corpses
+                const foodRation = food.find(item => item.name.includes('food ration'));
+                const selectedFood = foodRation || food[0];
+
+                const hungerStatus = this.status.fainting ? 'fainting' :
+                                   this.status.weak ? 'weak' :
+                                   this.status.hungry ? 'hungry' : 'low nutrition';
+
+                this.pendingEatLetter = selectedFood.letter;
+                return { type: 'eat', key: 'e', reason: `eating ${selectedFood.name} (${hungerStatus})` };
+            }
+        }
+
         // 0b. If HP is critically low, consider prayer as last resort
         if (this.status && this.status.hp < this.status.hpmax * 0.2) {
             const nearbyMonsters = findMonsters(this.screen);
@@ -673,16 +697,13 @@ export class Agent {
                 if (fleeDir) {
                     return { type: 'flee', key: fleeDir, reason: 'HP critical, fleeing' };
                 }
-            }
         }
 
         // 1b. Smarter rest strategy with location awareness
         // NetHack HP regen: (XL + CON)% chance per turn to heal 1 HP
         // At XL1 with CON~10, only 11% chance per turn!
         if (this.status && this.status.hp < this.status.hpmax) {
-            const hpPercent = this.status.hp / this.status.hpmax;
-            const nearbyMonsters = findMonsters(this.screen);
-            const adjacentMonster = this._findAdjacentMonster(px, py);
+            // hpPercent, nearbyMonsters, adjacentMonster already declared above
             const monstersNearby = nearbyMonsters.length > 0 || adjacentMonster !== null;
 
             // Check if HP increased since last check (natural regen occurred)
@@ -694,8 +715,7 @@ export class Agent {
             // Assess location safety for resting
             const onStairs = level.stairsUp.some(s => s.x === px && s.y === py) ||
                            level.stairsDown.some(s => s.x === px && s.y === py);
-            const corridorAnalysis = analyzeCorridorPosition(level, px, py);
-            const inCorridor = corridorAnalysis.inCorridor;
+            const inCorridor = false; // Corridor following removed due to exploration regression
 
             // Safe locations get extended rest time:
             // - On stairs: safest (can escape quickly)
@@ -814,7 +834,7 @@ export class Agent {
         // --- Tactical checks ---
 
         // 3. If there's a monster adjacent, decide whether to fight it
-        const adjacentMonster = this._findAdjacentMonster(px, py);
+        // adjacentMonster already declared above
         if (adjacentMonster) {
             this.inCombat = true;
 
@@ -885,8 +905,7 @@ export class Agent {
             const nearbyCount = countNearbyMonsters(nearbyMonsters, px, py, 3) - 1; // -1 to exclude adjacent monster
 
             // Check if we're in a corridor (tactical advantage)
-            const corridorAnalysis = analyzeCorridorPosition(level, px, py);
-            const inCorridor = corridorAnalysis.inCorridor;
+            const inCorridor = false; // Corridor following removed due to exploration regression
 
             const engagement = shouldEngageMonster(
                 adjacentMonster.ch,
@@ -944,47 +963,27 @@ export class Agent {
         }
 
         // 4b. Corridor following - commit to following corridors to completion
-        // Corridors connect rooms and often lead to important features
-        const corridorAnalysis = analyzeCorridorPosition(level, px, py);
-
-        // If we're in a corridor and not currently following one, start following
-        if (corridorAnalysis.inCorridor && !corridorAnalysis.endReached && !this.corridorFollowing) {
-            this.corridorFollowing = true;
-            this.corridorDirection = corridorAnalysis.direction;
-            this.corridorStartPos = { x: px, y: py };
-            console.log(`[CORRIDOR] Starting to follow corridor from (${px},${py}) direction=${corridorAnalysis.direction}`);
-        }
-
-        // If we're following a corridor, continue in that direction
-        if (this.corridorFollowing) {
-            if (corridorAnalysis.endReached) {
-                // Corridor ended - reached room or dead-end
-                console.log(`[CORRIDOR] Reached end of corridor at (${px},${py})`);
-                this.corridorFollowing = false;
-                this.corridorDirection = null;
-                this.corridorStartPos = null;
-            } else if (corridorAnalysis.inCorridor && corridorAnalysis.direction) {
-                // Continue following the corridor
-                const dir = corridorAnalysis.direction;
-                console.log(`[CORRIDOR] Continuing corridor from (${px},${py}) in direction ${dir}`);
-                return { type: 'corridor', key: dir, reason: 'following corridor' };
-            } else if (!corridorAnalysis.inCorridor) {
-                // Left the corridor (reached a room)
-                console.log(`[CORRIDOR] Exited corridor at (${px},${py}) into room`);
-                this.corridorFollowing = false;
-                this.corridorDirection = null;
-                this.corridorStartPos = null;
-            }
-        }
-
         // --- Strategic movement ---
 
-        // 5. If on downstairs, descend
+        // 5. If on downstairs, evaluate whether it's safe to descend
         //    Check both cell type and registered features (player '@' overrides '>' on screen)
         const onDownstairs = (currentCell && currentCell.type === 'stairs_down') ||
             level.stairsDown.some(s => s.x === px && s.y === py);
         if (onDownstairs) {
-            console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: 'descending stairs' };
+            // Evaluate if it's safe/wise to descend
+            const descendDecision = this._shouldDescendStairs();
+
+            if (descendDecision.shouldDescend) {
+                console.log(`[DEBUG] At downstairs, descending: ${descendDecision.reason}`);
+                return { type: 'descend', key: '>', reason: descendDecision.reason };
+            } else {
+                // Not safe to descend - move away from stairs and heal/prepare
+                console.log(`[DEBUG] At downstairs but not safe to descend: ${descendDecision.reason}`);
+                // Move in a random direction away from stairs to avoid descending accidentally
+                const directions = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
+                const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                return { type: 'avoid_descend', key: randomDir, reason: `not safe to descend: ${descendDecision.reason}` };
+            }
         }
 
         // 5b. Check for obvious dead-end situations needing secret door search
@@ -1672,8 +1671,10 @@ export class Agent {
                 const letter = this.pendingQuaffLetter;
                 this.pendingQuaffLetter = null;
                 this.adapter.queueInput(letter);
-            } else if (action.type === 'eat') {
-                this.adapter.queueInput('a');
+            } else if (action.type === 'eat' && this.pendingEatLetter) {
+                const letter = this.pendingEatLetter;
+                this.pendingEatLetter = null;
+                this.adapter.queueInput(letter);
             }
         }
         await this.adapter.sendKey(action.key);
@@ -1711,6 +1712,88 @@ export class Agent {
         }
 
         return success;
+    }
+
+    /**
+     * Evaluate whether it's safe/wise to descend stairs.
+     * Returns {shouldDescend: boolean, reason: string}
+     */
+    _shouldDescendStairs() {
+        if (!this.status) {
+            return { shouldDescend: true, reason: 'no status available (default: descend)' };
+        }
+
+        const hpPercent = this.status.hp / this.status.hpmax;
+        const dungeonLevel = this.status.dungeonLevel || 1;
+        const playerLevel = this.status.experienceLevel || 1;
+
+        // Check for nearby threats
+        const nearbyMonsters = findMonsters(this.screen);
+        const hasNearbyMonsters = nearbyMonsters.length > 0;
+
+        // Assess danger of nearby monsters
+        let maxDanger = DangerLevel.LOW;
+        for (const monster of nearbyMonsters.slice(0, 3)) {
+            const danger = assessMonsterDanger(
+                monster.ch,
+                this.status.hp,
+                this.status.hpmax,
+                playerLevel,
+                dungeonLevel
+            );
+            maxDanger = Math.max(maxDanger, danger);
+        }
+
+        // Check resources
+        const healingPotions = this.inventory.findHealingPotions();
+        const potionCount = healingPotions.length;
+
+        // Decision criteria (ordered by priority)
+
+        // 1. NEVER descend when being actively chased and HP low
+        if (hasNearbyMonsters && hpPercent < 0.5) {
+            return { shouldDescend: false, reason: `HP too low (${Math.round(hpPercent*100)}%) with monsters nearby` };
+        }
+
+        // 2. Don't descend when surrounded by multiple monsters (risky regardless of HP)
+        if (nearbyMonsters.length >= 3) {
+            return { shouldDescend: false, reason: `surrounded by ${nearbyMonsters.length} monsters, too risky` };
+        }
+
+        // 3. Don't descend if HP is critically low (< 40%) unless we're on Dlvl 1
+        if (hpPercent < 0.4 && dungeonLevel > 1) {
+            return { shouldDescend: false, reason: `HP critical (${Math.round(hpPercent*100)}%), should heal first` };
+        }
+
+        // 4. Don't descend with moderate HP and no potions (even on mid-levels)
+        if (hpPercent < 0.5 && potionCount === 0 && dungeonLevel >= 2) {
+            return { shouldDescend: false, reason: `HP moderate (${Math.round(hpPercent*100)}%), no healing potions available` };
+        }
+
+        // 5. Don't descend on deep levels (Dlvl 4+) with moderate HP and no potions
+        if (dungeonLevel >= 4 && hpPercent < 0.7 && potionCount === 0) {
+            return { shouldDescend: false, reason: `HP moderate (${Math.round(hpPercent*100)}%), no healing potions, deep level` };
+        }
+
+        // 6. Don't descend if facing HIGH danger monsters nearby
+        if (maxDanger >= DangerLevel.HIGH) {
+            return { shouldDescend: false, reason: `HIGH danger monsters nearby, should clear them first` };
+        }
+
+        // 7. On deep levels (Dlvl 5+), require good HP (>60%) and resources
+        if (dungeonLevel >= 5) {
+            if (hpPercent < 0.6) {
+                return { shouldDescend: false, reason: `deep level (Dlvl ${dungeonLevel}), HP too low (${Math.round(hpPercent*100)}%)` };
+            }
+            if (potionCount === 0 && hpPercent < 0.8) {
+                return { shouldDescend: false, reason: `deep level, no potions, HP not full (${Math.round(hpPercent*100)}%)` };
+            }
+        }
+
+        // 8. Safe to descend
+        const hpStatus = hpPercent >= 0.8 ? 'excellent' : hpPercent >= 0.6 ? 'good' : 'moderate';
+        const resourceStatus = potionCount >= 2 ? ` (${potionCount} potions)` : potionCount === 1 ? ' (1 potion)' : ' (no potions)';
+        return { shouldDescend: true, reason: `descending (HP ${hpStatus}: ${Math.round(hpPercent*100)}%${resourceStatus})` };
     }
 
     /**
