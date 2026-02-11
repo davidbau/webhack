@@ -933,7 +933,24 @@ function makerooms(map, depth) {
     // Make rooms until satisfied (no more rects available)
     // C ref: mklev.c:393-417
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_THEMEROOMS === '1';
+    const DEBUG_POOL = typeof process !== 'undefined' && process.env.DEBUG_RECT_POOL === '1';
+
+    let loop_count = 0;
     while (map.nroom < (MAXNROFROOMS - 1) && rnd_rect()) {
+        loop_count++;
+
+        if (DEBUG_POOL && loop_count % 10 === 0) {
+            console.log(`[POOL CHECK] Loop ${loop_count}: nroom=${map.nroom}, rect_cnt=${rect_cnt}, tries=${themeroom_tries}`);
+        }
+
+        if (loop_count > 100) {
+            console.error(`⚠️  INFINITE LOOP DETECTED: ${loop_count} iterations, nroom=${map.nroom}, rect_cnt=${rect_cnt}`);
+            console.error(`  Last rect pool state: ${rect_cnt} rects`);
+            if (rect_cnt > 0) {
+                console.error(`  Rect 0: (${rects[0].lx},${rects[0].ly})-(${rects[0].hx},${rects[0].hy})`);
+            }
+            break;
+        }
 
         if (DEBUG) {
             console.log(`Loop iteration: nroom=${map.nroom}, tries=${themeroom_tries}`);
@@ -946,7 +963,14 @@ function makerooms(map, depth) {
             create_room(map, -1, -1, 2, 2, -1, -1, VAULT, true, depth, true);
         } else {
             // C ref: mklev.c:402-407
+            const nroom_before = map.nroom;
             const result = themerooms_generate(map, depth);
+            const nroom_after = map.nroom;
+
+            if (DEBUG_POOL && nroom_before === nroom_after && result) {
+                console.log(`⚠️  SUSPICIOUS: themeroom returned success but nroom unchanged (${nroom_before})`);
+            }
+
             if (!result) {
                 // themeroom_failed
                 if (DEBUG) {

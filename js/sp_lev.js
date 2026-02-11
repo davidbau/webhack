@@ -1332,6 +1332,10 @@ export function room(opts = {}) {
             if (DEBUG) {
                 console.log(`des.room(): create_room_splev failed, no space available`);
             }
+            // Signal failure to themed room generator
+            if (levelState.roomFailureCallback) {
+                levelState.roomFailureCallback();
+            }
             return false;
         }
 
