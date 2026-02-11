@@ -1822,9 +1822,20 @@ export function object(name_or_opts, x, y) {
         console.log(`[des.object] Skipping Lua RNG (counter is undefined)`);
     }
 
+    // Convert relative coordinates to absolute if inside a nested room
+    // C ref: Lua automatically handles coordinate conversion based on room context
+    let absX = x;
+    let absY = y;
+    if (levelState.currentRoom && x !== undefined && y !== undefined) {
+        // Coordinates are relative to room interior (excluding walls)
+        absX = levelState.currentRoom.lx + 1 + x;
+        absY = levelState.currentRoom.ly + 1 + y;
+    }
+
     // DEFERRED EXECUTION: Queue object placement for later (after corridors)
+    // Store absolute coordinates since currentRoom context will be lost
     // Actual placement happens in executeDeferredObjects()
-    levelState.deferredObjects.push({ name_or_opts, x, y });
+    levelState.deferredObjects.push({ name_or_opts, x: absX, y: absY });
 }
 
 /**
@@ -1898,9 +1909,20 @@ export function trap(type_or_opts, x, y) {
         levelState.map = new GameMap();
     }
 
+    // Convert relative coordinates to absolute if inside a nested room
+    // C ref: Lua automatically handles coordinate conversion based on room context
+    let absX = x;
+    let absY = y;
+    if (levelState.currentRoom && x !== undefined && y !== undefined) {
+        // Coordinates are relative to room interior (excluding walls)
+        absX = levelState.currentRoom.lx + 1 + x;
+        absY = levelState.currentRoom.ly + 1 + y;
+    }
+
     // DEFERRED EXECUTION: Queue trap placement instead of executing immediately
+    // Store absolute coordinates since currentRoom context will be lost
     // This matches C's behavior which defers trap creation until after corridor generation
-    levelState.deferredTraps.push({ type_or_opts, x, y });
+    levelState.deferredTraps.push({ type_or_opts, x: absX, y: absY });
 }
 
 /**
@@ -2108,8 +2130,19 @@ export function monster(opts_or_class, x, y) {
         levelState.luaRngCounter = baseOffset + numRngCalls;
     }
 
+    // Convert relative coordinates to absolute if inside a nested room
+    // C ref: Lua automatically handles coordinate conversion based on room context
+    let absX = x;
+    let absY = y;
+    if (levelState.currentRoom && x !== undefined && y !== undefined) {
+        // Coordinates are relative to room interior (excluding walls)
+        absX = levelState.currentRoom.lx + 1 + x;
+        absY = levelState.currentRoom.ly + 1 + y;
+    }
+
     // DEFERRED EXECUTION: Queue monster placement for later (after corridors)
-    levelState.deferredMonsters.push({ opts_or_class, x, y });
+    // Store absolute coordinates since currentRoom context will be lost
+    levelState.deferredMonsters.push({ opts_or_class, x: absX, y: absY });
 }
 
 /**
