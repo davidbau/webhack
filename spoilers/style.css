@@ -606,7 +606,7 @@ section.level1 > p:nth-last-of-type(2) {
 @media screen and (min-width: 1200px) {
   /* Adjust body margins to account for both sidebars while staying centered */
   body {
-    margin-left: max(250px, calc((100vw - 38em) / 2));
+    margin-left: max(280px, calc((100vw - 38em) / 2));
     margin-right: max(280px, calc((100vw - 38em) / 2));
   }
 

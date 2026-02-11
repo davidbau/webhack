@@ -516,7 +516,7 @@ Planes. Simple enough on paper. Surviving it is another matter.
 #### The Map Symbols
 
 Everything in the dungeon is represented by a symbol on the screen.
-Learning to read these symbols quickly is essential:
+Learning to read these symbols quickly is important:
 
 | Symbol   | Meaning                       |
 | -------- | ----------------------------- |
@@ -1462,7 +1462,7 @@ scroll of remove curse, holy water, or prayer).
 
 #### The Essential Kit
 
-The short version: you need **magic resistance**, **reflection**,
+The short version: the big three are **magic resistance**, **reflection**,
 **poison resistance**, and a **lizard corpse** to survive the
 dungeon's worst surprises. Get these as early as you can. Everything
 else is luxury. These are survival.
@@ -2233,7 +2233,7 @@ two). You will never have enough of these.
 
 **Enchant weapon / enchant armor.** The path to endgame power.
 Each scroll raises enchantment by +1 (uncursed) or potentially
-more (blessed). The critical rule: enchanting beyond +5 risks
+more (blessed). Important: enchanting beyond +5 risks
 destroying the item entirely, but blessed scrolls can safely push
 to +7. Save these for your ascension kit, bless them, then savor
 every +1.
@@ -2807,7 +2807,7 @@ monsters automatically, which can cause alignment problems.
 astral vision. A quest artifact for Monks.
 
 **Quest artifacts** vary wildly by role but most provide magic
-resistance, which makes them essential to carry even if you don't
+resistance, which makes them important to carry even if you don't
 wield them. Check your specific role's artifact.
 
 ---
@@ -2925,7 +2925,7 @@ use.
 You can convert an altar by sacrificing on a cross-aligned altar
 repeatedly. This is risky (the altar's god will be angry) but
 useful if the only altar you've found doesn't match your alignment.
-Having a co-aligned altar is essential for sacrifice, holy water
+Having a co-aligned altar is important for sacrifice, holy water
 production, and BUC testing.
 
 #### Crowning

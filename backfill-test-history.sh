@@ -217,30 +217,48 @@ while read commit; do
 
   echo "Results: $PASS_COUNT pass, $FAIL_COUNT fail (${DURATION}s)"
 
-  # Parse category-specific results (best effort)
-  MAP_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "map" 2>/dev/null || echo 0)
-  MAP_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "map" 2>/dev/null || echo 0)
-  MAP_PASS=$(echo "$MAP_PASS" | tr -d '[:space:]')
-  MAP_FAIL=$(echo "$MAP_FAIL" | tr -d '[:space:]')
-  MAP_TOTAL=$((MAP_PASS + MAP_FAIL))
-
-  GAMEPLAY_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "gameplay" 2>/dev/null || echo 0)
-  GAMEPLAY_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "gameplay" 2>/dev/null || echo 0)
-  GAMEPLAY_PASS=$(echo "$GAMEPLAY_PASS" | tr -d '[:space:]')
-  GAMEPLAY_FAIL=$(echo "$GAMEPLAY_FAIL" | tr -d '[:space:]')
-  GAMEPLAY_TOTAL=$((GAMEPLAY_PASS + GAMEPLAY_FAIL))
-
-  CHARGEN_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "chargen" 2>/dev/null || echo 0)
-  CHARGEN_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "chargen" 2>/dev/null || echo 0)
+  # Parse category-specific results by analyzing test NAMES
+  # Categories: chargen, gameplay, map, special, inventory, option, c_vs_js, other
+  CHARGEN_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "_chargen_" 2>/dev/null || echo 0)
+  CHARGEN_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "_chargen_" 2>/dev/null || echo 0)
   CHARGEN_PASS=$(echo "$CHARGEN_PASS" | tr -d '[:space:]')
   CHARGEN_FAIL=$(echo "$CHARGEN_FAIL" | tr -d '[:space:]')
   CHARGEN_TOTAL=$((CHARGEN_PASS + CHARGEN_FAIL))
 
-  SPECIAL_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "special\|oracle\|bigroom" 2>/dev/null || echo 0)
-  SPECIAL_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "special\|oracle\|bigroom" 2>/dev/null || echo 0)
+  GAMEPLAY_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "_gameplay\\.session" 2>/dev/null || echo 0)
+  GAMEPLAY_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "_gameplay\\.session" 2>/dev/null || echo 0)
+  GAMEPLAY_PASS=$(echo "$GAMEPLAY_PASS" | tr -d '[:space:]')
+  GAMEPLAY_FAIL=$(echo "$GAMEPLAY_FAIL" | tr -d '[:space:]')
+  GAMEPLAY_TOTAL=$((GAMEPLAY_PASS + GAMEPLAY_FAIL))
+
+  MAP_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "_map\\.session" 2>/dev/null || echo 0)
+  MAP_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "_map\\.session" 2>/dev/null || echo 0)
+  MAP_PASS=$(echo "$MAP_PASS" | tr -d '[:space:]')
+  MAP_FAIL=$(echo "$MAP_FAIL" | tr -d '[:space:]')
+  MAP_TOTAL=$((MAP_PASS + MAP_FAIL))
+
+  SPECIAL_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "_special_" 2>/dev/null || echo 0)
+  SPECIAL_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "_special_" 2>/dev/null || echo 0)
   SPECIAL_PASS=$(echo "$SPECIAL_PASS" | tr -d '[:space:]')
   SPECIAL_FAIL=$(echo "$SPECIAL_FAIL" | tr -d '[:space:]')
   SPECIAL_TOTAL=$((SPECIAL_PASS + SPECIAL_FAIL))
+
+  INVENTORY_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "_inventory_" 2>/dev/null || echo 0)
+  INVENTORY_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "_inventory_" 2>/dev/null || echo 0)
+  INVENTORY_PASS=$(echo "$INVENTORY_PASS" | tr -d '[:space:]')
+  INVENTORY_FAIL=$(echo "$INVENTORY_FAIL" | tr -d '[:space:]')
+  INVENTORY_TOTAL=$((INVENTORY_PASS + INVENTORY_FAIL))
+
+  OPTION_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "_option_\|_selfplay_\|_pickup_types_" 2>/dev/null || echo 0)
+  OPTION_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "_option_\|_selfplay_\|_pickup_types_" 2>/dev/null || echo 0)
+  OPTION_PASS=$(echo "$OPTION_PASS" | tr -d '[:space:]')
+  OPTION_FAIL=$(echo "$OPTION_FAIL" | tr -d '[:space:]')
+  OPTION_TOTAL=$((OPTION_PASS + OPTION_FAIL))
+
+  # C-vs-JS golden tests (not tied to specific sessions)
+  CVJ_PASS=$(grep "^✔.*golden comparison" "$TEST_OUTPUT" 2>/dev/null | wc -l | tr -d '[:space:]')
+  CVJ_FAIL=$(grep "^✖.*golden comparison" "$TEST_OUTPUT" 2>/dev/null | wc -l | tr -d '[:space:]')
+  CVJ_TOTAL=$((CVJ_PASS + CVJ_FAIL))
 
   # Create test note
   TEST_NOTE=$(cat <<EOF
@@ -258,25 +276,40 @@ while read commit; do
     "duration": $DURATION
   },
   "categories": {
-    "map": {
-      "total": $MAP_TOTAL,
-      "pass": $MAP_PASS,
-      "fail": $MAP_FAIL
+    "chargen": {
+      "total": $CHARGEN_TOTAL,
+      "pass": $CHARGEN_PASS,
+      "fail": $CHARGEN_FAIL
     },
     "gameplay": {
       "total": $GAMEPLAY_TOTAL,
       "pass": $GAMEPLAY_PASS,
       "fail": $GAMEPLAY_FAIL
     },
-    "chargen": {
-      "total": $CHARGEN_TOTAL,
-      "pass": $CHARGEN_PASS,
-      "fail": $CHARGEN_FAIL
+    "map": {
+      "total": $MAP_TOTAL,
+      "pass": $MAP_PASS,
+      "fail": $MAP_FAIL
     },
     "special": {
       "total": $SPECIAL_TOTAL,
       "pass": $SPECIAL_PASS,
       "fail": $SPECIAL_FAIL
+    },
+    "inventory": {
+      "total": $INVENTORY_TOTAL,
+      "pass": $INVENTORY_PASS,
+      "fail": $INVENTORY_FAIL
+    },
+    "option": {
+      "total": $OPTION_TOTAL,
+      "pass": $OPTION_PASS,
+      "fail": $OPTION_FAIL
+    },
+    "c_vs_js": {
+      "total": $CVJ_TOTAL,
+      "pass": $CVJ_PASS,
+      "fail": $CVJ_FAIL
     }
   },
   "regression": false,
