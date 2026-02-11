@@ -108,8 +108,17 @@ def parse_dumpmap(dumpmap_file):
     return grid
 
 
-def generate_one(seed, max_depth, with_rng, output_filename=None):
-    """Generate a single C map session for the given seed."""
+def generate_one(seed, max_depth, with_rng, output_filename=None, debug_themerm=True):
+    """Generate a single C map session for the given seed.
+
+    Args:
+        seed: Random seed for level generation
+        max_depth: Maximum depth to generate (1-5)
+        with_rng: Whether to capture RNG traces
+        output_filename: Optional custom output filename
+        debug_themerm: If True, allow THEMERM debug mode (backward compat, default)
+                      If False, explicitly unset THEMERM/THEMERMFILL (normal reservoir sampling)
+    """
 
     if not os.path.isfile(NETHACK_BINARY):
         print(f"Error: nethack binary not found at {NETHACK_BINARY}")
@@ -129,8 +138,21 @@ def generate_one(seed, max_depth, with_rng, output_filename=None):
 
     try:
         # Build the shell command
+        # CRITICAL: Control THEMERM debug mode for themed room generation
+        # Debug mode (default): allows env vars to be inherited, may skip reservoir sampling
+        # Normal mode: explicitly unset env vars, ensures full reservoir sampling
+        if debug_themerm:
+            themerm_cmd = ''  # Allow debug mode (env vars may be inherited)
+            env_check = ''
+        else:
+            themerm_cmd = 'unset THEMERM THEMERMFILL; '  # Force normal mode
+            # Debug: verify THEMERM is unset
+            env_check = 'echo "THEMERM=${THEMERM:-UNSET}" >> /tmp/nethack_env.log; '
+
         rnglog_env = f'NETHACK_RNGLOG={rng_log_file} ' if with_rng else ''
         cmd = (
+            f'{themerm_cmd}'
+            f'{env_check}'
             f'NETHACKDIR={INSTALL_DIR} '
             f'NETHACK_SEED={seed} '
             f'NETHACK_DUMPMAP={dumpmap_file} '
@@ -218,6 +240,8 @@ def generate_one(seed, max_depth, with_rng, output_filename=None):
         'seed': int(seed),
         'type': 'map',
         'source': 'c',
+        'wizard': True,  # Always true (uses -D flag for level teleport)
+        'debugThemerm': debug_themerm,  # Whether THEMERM debug mode was enabled
         'levels': levels,
     }
 
@@ -290,17 +314,24 @@ def main():
         return
 
     with_rng = '--with-rng' in args
+    normal_mode = '--normal-mode' in args  # Disable THEMERM debug mode
     args = [a for a in args if not a.startswith('--')]
 
     if len(args) < 1:
-        print(f"Usage: {sys.argv[0]} <seed> [max_depth] [--with-rng]")
+        print(f"Usage: {sys.argv[0]} <seed> [max_depth] [--with-rng] [--normal-mode]")
         print(f"       {sys.argv[0]} --from-config")
         print(f"       {sys.argv[0]} --c-golden")
+        print(f"")
+        print(f"Options:")
+        print(f"  --with-rng      Include RNG traces in output")
+        print(f"  --normal-mode   Disable THEMERM debug mode (use normal reservoir sampling)")
+        print(f"                  Default is debug mode for backward compatibility")
         sys.exit(1)
 
     seed = args[0]
     max_depth = int(args[1]) if len(args) >= 2 else 5
-    generate_one(seed, max_depth, with_rng)
+    debug_themerm = not normal_mode  # Invert: normal_mode=True means debug_themerm=False
+    generate_one(seed, max_depth, with_rng, debug_themerm=debug_themerm)
 
 
 if __name__ == '__main__':

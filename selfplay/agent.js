@@ -2228,6 +2228,24 @@ export class Agent {
             }
         }
 
+        // Log spatial awareness when stuck (for debugging)
+        if (isStuckExploring && this.turnNumber % 50 === 0) {
+            try {
+                const quadrants = level.getQuadrantCoverage();
+                const centroid = level.getUnexploredCentroid();
+                const bias = level.getExplorationBias();
+                console.log(`[SPATIAL] Quadrants: NW=${(quadrants.NW*100).toFixed(0)}% NE=${(quadrants.NE*100).toFixed(0)}% SW=${(quadrants.SW*100).toFixed(0)}% SE=${(quadrants.SE*100).toFixed(0)}%`);
+                if (centroid) {
+                    console.log(`[SPATIAL] Unexplored centroid at (${centroid.x},${centroid.y}), mass=${centroid.mass}`);
+                }
+                if (bias.direction) {
+                    console.log(`[SPATIAL] Bias: explore ${bias.direction} (priority ${(bias.priority*100).toFixed(0)}%)`);
+                }
+            } catch (err) {
+                // Ignore errors in spatial logging
+            }
+        }
+
         const options = { preferFar: isStuckExploring };
         const explorationPath = findExplorationTarget(level, px, py, this.recentPositions, options);
         if (explorationPath && explorationPath.found) {

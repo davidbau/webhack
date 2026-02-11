@@ -9,10 +9,9 @@ import {
     CORR, ROOM, DOOR, isok, TERMINAL_COLS, TERMINAL_ROWS
 } from '../../js/config.js';
 import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1 } from '../../js/rng.js';
-import { initLevelGeneration, makelevel, setGameSeed, wallification } from '../../js/dungeon.js';
+import { initLevelGeneration, makelevel, setGameSeed, wallification, simulateDungeonInit } from '../../js/dungeon.js';
 import { simulatePostLevelInit } from '../../js/u_init.js';
 import { init_objects } from '../../js/o_init.js';
-import { init_dungeon_and_hero } from '../../js/dungeon_init.js';
 import { Player, roles } from '../../js/player.js';
 import { NORMAL_SPEED, A_DEX, A_CON,
          RACE_HUMAN, RACE_ELF, RACE_DWARF, RACE_GNOME, RACE_ORC } from '../../js/config.js';
@@ -208,8 +207,11 @@ export function generateMapsWithRng(seed, maxDepth) {
     init_objects();
 
     // Dungeon and hero initialization (matches C's dungeon.c, bones.c, u_init.c)
-    // C ref: 59 RNG calls (2 nhl + 48 dungeon + 5 castle + 1 misc + 2 nhl + 1 bones)
-    init_dungeon_and_hero();
+    // For Valkyrie (roleIndex=11) — consumes variable RNG calls based on dungeon layout
+    simulateDungeonInit(11);
+
+    // C ref: bones.c:643 getbones() - check for bones file
+    rn2(3);
 
     initLevelGeneration();
     const grids = {};

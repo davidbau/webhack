@@ -105,21 +105,23 @@ def generate_pickup_types_session(session_name, seed, pickup_types_value, pickup
 
     # Start tmux session
     session_id = f'nhtest_{int(time.time())}'
-    env = {
-        'HOME': home_dir,
-        'NETHACKOPTIONS': f'!legacy',
-        'TERM': 'xterm-256color',
-    }
-
-    env_args = [f'{k}={v}' for k, v in env.items()]
 
     # Kill any existing session
     subprocess.run(['tmux', 'kill-session', '-t', session_id],
                    stderr=subprocess.DEVNULL)
 
-    # Start new session
-    cmd = env_args + [NETHACK_BINARY, '-D', '-u', 'Wizard']
-    subprocess.run(['tmux', 'new-session', '-d', '-s', session_id, '-x', '80', '-y', '24'] + cmd)
+    # Build command with proper environment variables (same pattern as gen_option_sessions.py)
+    cmd = (
+        f'NETHACKDIR={INSTALL_DIR} '
+        f'HOME={home_dir} '
+        f'NETHACKOPTIONS=!legacy '
+        f'TERM=xterm-256color '
+        f'{NETHACK_BINARY} -u Wizard -D; '
+        f'sleep 999'
+    )
+
+    # Start new session with shell command
+    subprocess.run(['tmux', 'new-session', '-d', '-s', session_id, '-x', '80', '-y', '24', 'sh', '-c', cmd])
     time.sleep(0.5)
 
     steps = []

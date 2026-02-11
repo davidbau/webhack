@@ -344,13 +344,54 @@ export function findExplorationTarget(levelMap, sx, sy, recentTargets = null, op
 
     if (candidates.length === 0) return null;
 
+    // Get spatial awareness: which direction should we prioritize?
+    let explorationBias = { direction: null, priority: 0 };
+    try {
+        if (levelMap.getExplorationBias) {
+            explorationBias = levelMap.getExplorationBias();
+        }
+    } catch (err) {
+        // Gracefully handle errors
+    }
+
+    // Calculate unexplored centroid for directional bias
+    let unexploredCentroid = null;
+    try {
+        if (levelMap.getUnexploredCentroid) {
+            unexploredCentroid = levelMap.getUnexploredCentroid();
+        }
+    } catch (err) {
+        // Gracefully handle errors
+    }
+
+    // Score each candidate based on alignment with underexplored direction
+    if (explorationBias.direction || unexploredCentroid) {
+        for (const cand of candidates) {
+            // Calculate if this target is in the underexplored direction
+            cand.towardUnexplored = 0;
+
+            if (unexploredCentroid) {
+                // Higher score if moving toward unexplored centroid
+                const currentDist = Math.sqrt(
+                    (sx - unexploredCentroid.x) ** 2 + (sy - unexploredCentroid.y) ** 2
+                );
+                const targetDist = Math.sqrt(
+                    (cand.x - unexploredCentroid.x) ** 2 + (cand.y - unexploredCentroid.y) ** 2
+                );
+                // Positive if target is closer to centroid than current position
+                cand.towardUnexplored = (currentDist - targetDist) * explorationBias.priority;
+            }
+        }
+    }
+
     // Sort by priority:
     // 1. Strongly prefer non-recently-visited
     // 2. Strongly prefer corridor continuation when in corridor (keeps exploring corridors to completion)
-    // 3. Prefer targets in predicted room directions (map shape assessment)
-    // 4. Prefer corridor cells over room cells (corridors lead to new areas)
-    // 5. Prefer less-searched cells (more likely to lead somewhere)
-    // 6. Among remaining, prefer nearest by BFS distance (or farthest if preferFar)
+    // 3. Prefer targets toward unexplored regions (map-wide spatial awareness)
+    // 4. Prefer targets in predicted room directions (local corridor structure)
+    // 5. Prefer corridor cells over room cells (corridors lead to new areas)
+    // 6. Prefer less-searched cells (more likely to lead somewhere)
+    // 7. Among remaining, prefer nearest by BFS distance (or farthest if preferFar)
     //
     // Note: we do NOT penalize adjacent cells. In corridors, the next
     // frontier cell IS adjacent and we want to keep moving forward.
@@ -361,7 +402,16 @@ export function findExplorationTarget(levelMap, sx, sy, recentTargets = null, op
         // Corridor continuation gets highest priority (when player is in corridor)
         if (a.continuesCorridor !== b.continuesCorridor) return a.continuesCorridor ? -1 : 1;
 
-        // Predicted room direction (based on corridor structure analysis)
+        // Spatial awareness: prefer targets toward unexplored regions
+        // Only apply if there's significant bias (>0.5 score difference)
+        if (a.towardUnexplored !== undefined && b.towardUnexplored !== undefined) {
+            const diff = a.towardUnexplored - b.towardUnexplored;
+            if (Math.abs(diff) > 0.5) {
+                return b.towardUnexplored - a.towardUnexplored;  // Higher score = toward unexplored
+            }
+        }
+
+        // Predicted room direction (based on local corridor structure)
         if (a.inPredictedDirection !== b.inPredictedDirection) return a.inPredictedDirection ? -1 : 1;
 
         // Corridor cells generally preferred over room cells

@@ -2953,7 +2953,7 @@ function do_fill_vault(map, vaultCheck, depth) {
 //   4. u_init.c: rn2(10)
 //   5. nhlua pre_themerooms shuffle: rn2(3), rn2(2)
 //   6. bones.c: rn2(3)
-function simulateDungeonInit(roleIndex) {
+export function simulateDungeonInit(roleIndex) {
     // 0. role_init: quest nemesis gender — rn2(100) for roles whose
     // nemesis lacks M2_MALE/M2_FEMALE/M2_NEUTER flags.
     // C ref: role.c:2060 — only Archeologist (Minion of Huhetotl) and

@@ -575,6 +575,106 @@ export class LevelMap {
 
         return prioritized;
     }
+
+    /**
+     * Analyze map coverage by quadrant to identify underexplored regions.
+     * Returns exploration percentage for each quadrant (NW, NE, SW, SE).
+     */
+    getQuadrantCoverage() {
+        const midX = Math.floor(MAP_COLS / 2); // 40
+        const midY = Math.floor(MAP_ROWS / 2); // 10
+
+        const quadrants = {
+            NW: { explored: 0, total: 0 },
+            NE: { explored: 0, total: 0 },
+            SW: { explored: 0, total: 0 },
+            SE: { explored: 0, total: 0 }
+        };
+
+        for (let y = 0; y < MAP_ROWS; y++) {
+            for (let x = 0; x < MAP_COLS; x++) {
+                const cell = this.cells[y][x];
+                const quadrant = (y < midY ? 'N' : 'S') + (x < midX ? 'W' : 'E');
+
+                quadrants[quadrant].total++;
+                if (cell.explored) {
+                    quadrants[quadrant].explored++;
+                }
+            }
+        }
+
+        return {
+            NW: quadrants.NW.explored / quadrants.NW.total,
+            NE: quadrants.NE.explored / quadrants.NE.total,
+            SW: quadrants.SW.explored / quadrants.SW.total,
+            SE: quadrants.SE.explored / quadrants.SE.total
+        };
+    }
+
+    /**
+     * Calculate the centroid (center of mass) of unexplored space.
+     * Returns {x, y} pointing toward where unexplored areas are concentrated.
+     * Returns null if everything is explored.
+     */
+    getUnexploredCentroid() {
+        let sumX = 0, sumY = 0, count = 0;
+
+        for (let y = 0; y < MAP_ROWS; y++) {
+            for (let x = 0; x < MAP_COLS; x++) {
+                const cell = this.cells[y][x];
+                if (!cell.explored) {
+                    sumX += x;
+                    sumY += y;
+                    count++;
+                }
+            }
+        }
+
+        if (count === 0) return null;
+
+        return {
+            x: Math.round(sumX / count),
+            y: Math.round(sumY / count),
+            mass: count  // how many unexplored cells
+        };
+    }
+
+    /**
+     * Determine which direction the agent should prioritize for exploration
+     * based on quadrant coverage imbalance.
+     * Returns {direction: 'N'|'S'|'E'|'W'|null, priority: number}
+     */
+    getExplorationBias() {
+        const coverage = this.getQuadrantCoverage();
+
+        // Calculate N vs S and E vs W coverage
+        const northCoverage = (coverage.NW + coverage.NE) / 2;
+        const southCoverage = (coverage.SW + coverage.SE) / 2;
+        const westCoverage = (coverage.NW + coverage.SW) / 2;
+        const eastCoverage = (coverage.NE + coverage.SE) / 2;
+
+        // Find the most underexplored direction
+        const biases = [
+            { direction: 'N', coverage: northCoverage, bias: southCoverage - northCoverage },
+            { direction: 'S', coverage: southCoverage, bias: northCoverage - southCoverage },
+            { direction: 'W', coverage: westCoverage, bias: eastCoverage - westCoverage },
+            { direction: 'E', coverage: eastCoverage, bias: westCoverage - eastCoverage }
+        ];
+
+        // Sort by bias (most underexplored first)
+        biases.sort((a, b) => b.bias - a.bias);
+
+        // Only return a bias if there's significant imbalance (>10% difference)
+        if (biases[0].bias > 0.10) {
+            return {
+                direction: biases[0].direction,
+                priority: biases[0].bias,
+                coverage: biases[0].coverage
+            };
+        }
+
+        return { direction: null, priority: 0 };
+    }
 }
 
 /**
