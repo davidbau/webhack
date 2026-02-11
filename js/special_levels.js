@@ -71,14 +71,14 @@ import { generate as generateBigroom12 } from './levels/bigrm-12.js';
 import { generate as generateBigroom13 } from './levels/bigrm-13.js';
 
 // Sokoban levels
-// import { generate as generateSoko1a } from './levels/soko1-1.js';
-// import { generate as generateSoko1b } from './levels/soko1-2.js';
-// import { generate as generateSoko2a } from './levels/soko2-1.js';
-// import { generate as generateSoko2b } from './levels/soko2-2.js';
-// import { generate as generateSoko3a } from './levels/soko3-1.js';
-// import { generate as generateSoko3b } from './levels/soko3-2.js';
-// import { generate as generateSoko4a } from './levels/soko4-1.js';
-// import { generate as generateSoko4b } from './levels/soko4-2.js';
+import { generate as generateSoko1a } from './levels/soko1-1.js';
+import { generate as generateSoko1b } from './levels/soko1-2.js';
+import { generate as generateSoko2a } from './levels/soko2-1.js';
+import { generate as generateSoko2b } from './levels/soko2-2.js';
+import { generate as generateSoko3a } from './levels/soko3-1.js';
+import { generate as generateSoko3b } from './levels/soko3-2.js';
+import { generate as generateSoko4a } from './levels/soko4-1.js';
+import { generate as generateSoko4b } from './levels/soko4-2.js';
 
 // Quest levels - Archeologist
 import { generate as generateArcStrt } from './levels/Arc-strt.js';
@@ -305,10 +305,10 @@ export function hasSpecialLevel(dnum, dlevel) {
 // Sokoban is accessed from Dungeons of Doom around depth 6-9
 // Player gets one of two variants per level (a or b)
 // Variant selection happens at first access using RNG, then cached
-// registerSpecialLevel(SOKOBAN, 1, [generateSoko1a, generateSoko1b], ['soko1-1', 'soko1-2']);
-// registerSpecialLevel(SOKOBAN, 2, [generateSoko2a, generateSoko2b], ['soko2-1', 'soko2-2']);
-// registerSpecialLevel(SOKOBAN, 3, [generateSoko3a, generateSoko3b], ['soko3-1', 'soko3-2']);
-// registerSpecialLevel(SOKOBAN, 4, [generateSoko4a, generateSoko4b], ['soko4-1', 'soko4-2']);
+registerSpecialLevel(SOKOBAN, 1, [generateSoko1a, generateSoko1b], ['soko1-1', 'soko1-2']);
+registerSpecialLevel(SOKOBAN, 2, [generateSoko2a, generateSoko2b], ['soko2-1', 'soko2-2']);
+registerSpecialLevel(SOKOBAN, 3, [generateSoko3a, generateSoko3b], ['soko3-1', 'soko3-2']);
+registerSpecialLevel(SOKOBAN, 4, [generateSoko4a, generateSoko4b], ['soko4-1', 'soko4-2']);
 
 // Register special levels in main dungeon
 // In Dungeons of Doom, at depths that vary by dungeon generation
