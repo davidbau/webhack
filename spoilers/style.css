@@ -448,8 +448,8 @@ section.level1 > p:nth-last-of-type(2) {
   }
 
   pre {
-    font-size: 0.68em;
-    padding: 0.6em;
+    font-size: 0.65em;
+    padding: 0.5em 0.4em;
     border-radius: 0;
     margin-left: -1em;
     margin-right: -1em;

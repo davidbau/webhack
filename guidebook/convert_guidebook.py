@@ -155,8 +155,9 @@ def convert_guidebook(input_file, output_file):
         line = re.sub(r"``'", r'`` ` ``', line)
 
         # Convert ASCII quotes around single chars to proper backticks
-        # e.g., `m' -> `m` or `x' -> `x` or `,' -> `,` or `\' -> `\`
-        line = re.sub(r"`([a-zA-Z0-9#@+\-\.,\\'])'", r'`\1`', line)
+        # e.g., `m' -> `m` or `?' -> `?` or any `X' -> `X`
+        # Match any single character between backtick and apostrophe
+        line = re.sub(r"`(.)'", r'`\1`', line)
 
         # Wrap movement key patterns (vi keys)
         # [yuhjklbn], [YUHJKLBN], m[yuhjklbn], etc.
@@ -172,6 +173,16 @@ def convert_guidebook(input_file, output_file):
 
         # Wrap standalone <key> references (avoiding those already in backticks)
         line = re.sub(r'(?<!`)<(Control|Shift|Ctrl|key|direction)>(?![+`])', r'`<\1>`', line)
+
+        # Wrap NetHack option names
+        # Pattern: option_name (with underscores) or optionname:value
+        # Common options: number_pad, menustyle, statuslines, etc.
+        # Handle option:value pairs first (before splitting them)
+        line = re.sub(r'\b([a-z]+style):([a-z]+)', r'`\1:\2`', line)  # menustyle:traditional
+        line = re.sub(r'\b(statuslines):([0-9]+)', r'`\1:\2`', line)  # statuslines:3
+        # Then handle standalone options
+        line = re.sub(r'\b([a-z]+_[a-z_]+)(\s|[,.\)]|$)', r'`\1`\2', line)
+        line = re.sub(r'\b([a-z]+style)(\s|[,.\)]|$)', r'`\1`\2', line)  # *style options
 
         # Wrap single symbols in common phrases
         # Pattern: "as X" or "shown as X" where X is a single non-alphanumeric char
