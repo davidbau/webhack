@@ -84,6 +84,10 @@ export let levelState = {
     ystart: 0,              // Map placement offset Y
     xsize: 0,               // Map fragment width
     ysize: 0,               // Map fragment height
+    // Map-relative coordinate system (C ref: Lua coordinates are relative to map origin)
+    mapCoordMode: false,    // True after des.map() - coordinates are map-relative
+    mapOriginX: 0,          // Map origin X for coordinate conversion
+    mapOriginY: 0,          // Map origin Y for coordinate conversion
     // Room tracking (for nested rooms in special levels)
     currentRoom: null,      // Current room being populated
     roomStack: [],          // Stack of nested rooms
@@ -551,6 +555,9 @@ export function resetLevelState() {
         ystart: 0,
         xsize: 0,
         ysize: 0,
+        mapCoordMode: false,
+        mapOriginX: 0,
+        mapOriginY: 0,
         currentRoom: null,
         roomStack: [],
         roomDepth: 0,
@@ -937,7 +944,8 @@ export function map(data) {
         } else if (halign === 'right') {
             x = 80 - width - 1;
         } else if (halign === 'half-left') {
-            x = Math.floor((80 - width) / 4);
+            // C ref: sp_lev.c uses rounding that gives +1 compared to floor
+            x = Math.floor((80 - width) / 4) + 1;
         } else if (halign === 'half-right') {
             x = Math.floor(3 * (80 - width) / 4);
         }
@@ -979,6 +987,12 @@ export function map(data) {
         wallification(levelState.map);
     }
 
+    // Enable map-relative coordinate mode
+    // C ref: After des.map(), all Lua coordinates are relative to map origin
+    levelState.mapCoordMode = true;
+    levelState.mapOriginX = x;
+    levelState.mapOriginY = y;
+
     // Execute contents callback if provided
     // C ref: Lua des.map() calls the contents function after placing the map
     if (contents && typeof contents === 'function') {
@@ -993,6 +1007,24 @@ export function map(data) {
         };
         contents(mapRegion);
     }
+}
+
+/**
+ * Convert map-relative coordinates to absolute coordinates
+ * C ref: Lua coordinates after des.map() are relative to map origin
+ *
+ * @param {number} x - X coordinate (map-relative if mapCoordMode is true)
+ * @param {number} y - Y coordinate (map-relative if mapCoordMode is true)
+ * @returns {Object} { x: absoluteX, y: absoluteY }
+ */
+function toAbsoluteCoords(x, y) {
+    if (levelState.mapCoordMode && x !== undefined && y !== undefined) {
+        return {
+            x: levelState.mapOriginX + x,
+            y: levelState.mapOriginY + y
+        };
+    }
+    return { x, y };
 }
 
 /**
@@ -2037,14 +2069,22 @@ export function object(name_or_opts, x, y) {
         console.log(`[des.object] Skipping Lua RNG (counter is undefined)`);
     }
 
-    // Convert relative coordinates to absolute if inside a nested room
-    // C ref: Lua automatically handles coordinate conversion based on room context
+    // Convert map-relative coordinates to absolute
+    // C ref: Lua coordinates after des.map() are relative to map origin
     let absX = x;
     let absY = y;
-    if (levelState.currentRoom && x !== undefined && y !== undefined) {
+    if (levelState.mapCoordMode && x !== undefined && y !== undefined) {
+        const mapCoords = toAbsoluteCoords(x, y);
+        absX = mapCoords.x;
+        absY = mapCoords.y;
+    }
+
+    // Then convert room-relative coordinates to absolute if inside a nested room
+    // C ref: Lua automatically handles coordinate conversion based on room context
+    if (levelState.currentRoom && absX !== undefined && absY !== undefined) {
         // Coordinates are relative to room interior (excluding walls)
-        absX = levelState.currentRoom.lx + 1 + x;
-        absY = levelState.currentRoom.ly + 1 + y;
+        absX = levelState.currentRoom.lx + 1 + absX;
+        absY = levelState.currentRoom.ly + 1 + absY;
     }
 
     // DEFERRED EXECUTION: Queue object placement for later (after corridors)
@@ -2124,14 +2164,22 @@ export function trap(type_or_opts, x, y) {
         levelState.map = new GameMap();
     }
 
-    // Convert relative coordinates to absolute if inside a nested room
-    // C ref: Lua automatically handles coordinate conversion based on room context
+    // Convert map-relative coordinates to absolute
+    // C ref: Lua coordinates after des.map() are relative to map origin
     let absX = x;
     let absY = y;
-    if (levelState.currentRoom && x !== undefined && y !== undefined) {
+    if (levelState.mapCoordMode && x !== undefined && y !== undefined) {
+        const mapCoords = toAbsoluteCoords(x, y);
+        absX = mapCoords.x;
+        absY = mapCoords.y;
+    }
+
+    // Then convert room-relative coordinates to absolute if inside a nested room
+    // C ref: Lua automatically handles coordinate conversion based on room context
+    if (levelState.currentRoom && absX !== undefined && absY !== undefined) {
         // Coordinates are relative to room interior (excluding walls)
-        absX = levelState.currentRoom.lx + 1 + x;
-        absY = levelState.currentRoom.ly + 1 + y;
+        absX = levelState.currentRoom.lx + 1 + absX;
+        absY = levelState.currentRoom.ly + 1 + absY;
     }
 
     // DEFERRED EXECUTION: Queue trap placement instead of executing immediately
@@ -2363,14 +2411,22 @@ export function monster(opts_or_class, x, y) {
         levelState.luaRngCounter = baseOffset + numRngCalls;
     }
 
-    // Convert relative coordinates to absolute if inside a nested room
-    // C ref: Lua automatically handles coordinate conversion based on room context
+    // Convert map-relative coordinates to absolute
+    // C ref: Lua coordinates after des.map() are relative to map origin
     let absX = x;
     let absY = y;
-    if (levelState.currentRoom && x !== undefined && y !== undefined) {
+    if (levelState.mapCoordMode && x !== undefined && y !== undefined) {
+        const mapCoords = toAbsoluteCoords(x, y);
+        absX = mapCoords.x;
+        absY = mapCoords.y;
+    }
+
+    // Then convert room-relative coordinates to absolute if inside a nested room
+    // C ref: Lua automatically handles coordinate conversion based on room context
+    if (levelState.currentRoom && absX !== undefined && absY !== undefined) {
         // Coordinates are relative to room interior (excluding walls)
-        absX = levelState.currentRoom.lx + 1 + x;
-        absY = levelState.currentRoom.ly + 1 + y;
+        absX = levelState.currentRoom.lx + 1 + absX;
+        absY = levelState.currentRoom.ly + 1 + absY;
     }
 
     // DEFERRED EXECUTION: Queue monster placement for later (after corridors)
@@ -2426,6 +2482,12 @@ export function door(state_or_opts, x, y) {
         doorX = x;
         doorY = y;
     }
+
+    // Convert map-relative coordinates to absolute
+    // C ref: Lua coordinates after des.map() are relative to map origin
+    const absCoords = toAbsoluteCoords(doorX, doorY);
+    doorX = absCoords.x;
+    doorY = absCoords.y;
 
     // Validate coordinates
     if (doorX < 0 || doorX >= COLNO || doorY < 0 || doorY >= ROWNO) {
@@ -2516,6 +2578,12 @@ export function ladder(direction, x, y) {
     if (!levelState.map) {
         levelState.map = new GameMap();
     }
+
+    // Convert map-relative coordinates to absolute
+    // C ref: Lua coordinates after des.map() are relative to map origin
+    const absCoords = toAbsoluteCoords(x, y);
+    x = absCoords.x;
+    y = absCoords.y;
 
     if (x >= 0 && x < 80 && y >= 0 && y < 21) {
         // Place LADDER terrain
