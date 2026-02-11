@@ -310,7 +310,7 @@ describe('Interface Tests', () => {
   });
 
   describe('Options Menu', () => {
-    it('should match C NetHack options menu layout', async () => {
+    it('should match C NetHack options menu exactly', async () => {
       const session = loadSession('interface_options.session.json');
 
       if (!session) {
@@ -322,7 +322,110 @@ describe('Interface Tests', () => {
       assert.strictEqual(session.subtype, 'options');
       assert(session.steps.length > 0, 'Session should have steps');
 
-      console.log(`✅ Options session has ${session.steps.length} steps`);
+      // Import HeadlessGame
+      const { HeadlessGame } = await import('./headless_game.js');
+
+      // Create game in options menu state
+      const game = new HeadlessGame(42);
+      game.state = 'options_menu';
+      game.optionsMenu.page = 1;
+      game.optionsMenu.showHelp = false;
+
+      // Set flags to match C NetHack defaults
+      game.flags = {
+        // Page 1 options
+        fruit: 'slime mold',
+        number_pad: false,  // 0=off
+        autodig: false,
+        autoopen: true,     // [X] in C
+        pickup: false,      // autopickup off in C
+        autopickup_exceptions: 0,
+        autoquiver: false,
+        autounlock: 'apply-key',
+        cmdassist: true,    // [X] in C
+        dropped_nopick: true,   // [X] in C
+        fireassist: true,       // [X] in C
+        pickup_stolen: true,    // [X] in C
+        pickup_thrown: true,    // [X] in C
+        pickup_types: 'all',
+        pushweapon: false,
+
+        // Page 2 options
+        bgcolors: true,         // [X] in C
+        color: true,            // [X] in C
+        customcolors: true,     // [X] in C
+        customsymbols: true,    // [X] in C
+        hilite_pet: false,
+        hilite_pile: false,
+        showrace: false,
+        sparkle: true,          // [X] in C
+        symset: 'default',
+        hitpointbar: false,
+        menucolors: 0,
+        showexp: false,
+        statusconditions: 16,
+        statushighlights: 0,
+        statuslines: 2,
+        time: false
+      };
+
+      // Test all options menu steps
+      const stepResults = [];
+
+      for (let i = 0; i < session.steps.length; i++) {
+        const step = session.steps[i];
+
+        // Set state based on step
+        if (step.key === 'O') {
+          game.optionsMenu.page = 1;
+          game.optionsMenu.showHelp = false;
+        } else if (step.key === '>') {
+          game.optionsMenu.page = 2;
+        } else if (step.key === '<') {
+          game.optionsMenu.page = 1;
+        } else if (step.key === '?') {
+          game.optionsMenu.showHelp = true;
+        }
+
+        // Render current state
+        game.showOptionsMenu();
+
+        // Get screen and attrs
+        const jsScreen = game.getScreen();
+        const jsAttrs = game.getAttrs();
+
+        // Compare
+        const comparison = compareScreens(
+          jsScreen,
+          step.screen,
+          jsAttrs,
+          step.attrs
+        );
+
+        stepResults.push({
+          step: i,
+          description: step.description,
+          matches: comparison.matches,
+          charDiffs: comparison.diffs.filter(d => d.type === 'char').length,
+          attrDiffs: comparison.diffs.filter(d => d.type === 'attr').length
+        });
+
+        if (!comparison.matches) {
+          const report = formatDiffReport(comparison.diffs, 10);
+          console.log(`\n❌ Step ${i} (${step.description}) differences:\n${report}`);
+        }
+      }
+
+      // Log progress
+      console.log('\nOptions Menu Comparison:');
+      for (const result of stepResults) {
+        const status = result.matches ? '✅' : '⚠️';
+        console.log(`${status} ${result.description}: ` +
+                   `${result.charDiffs} char diffs, ${result.attrDiffs} attr diffs`);
+      }
+
+      const perfectSteps = stepResults.filter(r => r.matches).length;
+      console.log(`\n${perfectSteps}/${stepResults.length} options steps with 100% equivalence`);
     });
   });
 

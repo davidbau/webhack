@@ -10,6 +10,7 @@ import { initRng } from '../../js/rng.js';
 import { loadFlags } from '../../js/storage.js';
 import { roles, races, validRacesForRole, validAlignsForRoleRace, needsGenderMenu } from '../../js/player.js';
 import { MALE, FEMALE, A_LAWFUL, A_NEUTRAL, A_CHAOTIC } from '../../js/config.js';
+import { renderOptionsMenu, toggleOption } from '../../js/options_menu.js';
 
 /**
  * Headless game state for interface testing
@@ -26,6 +27,10 @@ export class HeadlessGame {
             gender: null,
             align: null,
             name: ''
+        };
+        this.optionsMenu = {
+            page: 1,
+            showHelp: false
         };
 
         // Initialize RNG
@@ -438,6 +443,40 @@ export class HeadlessGame {
     }
 
     /**
+     * Show options menu (matching C NetHack exactly)
+     */
+    showOptionsMenu() {
+        const { display } = this;
+
+        // Clear screen
+        for (let r = 0; r < 24; r++) {
+            for (let c = 0; c < 80; c++) {
+                display.grid[r][c] = ' ';
+                display.attrs[r][c] = 0;
+            }
+        }
+
+        // Render options menu using the options_menu module
+        const { screen, attrs } = renderOptionsMenu(
+            this.optionsMenu.page,
+            this.optionsMenu.showHelp,
+            this.flags
+        );
+
+        // Copy to display grid
+        for (let r = 0; r < 24; r++) {
+            for (let c = 0; c < 80; c++) {
+                if (screen[r] && c < screen[r].length) {
+                    display.grid[r][c] = screen[r][c];
+                }
+                if (attrs[r] && c < attrs[r].length) {
+                    display.attrs[r][c] = parseInt(attrs[r][c]) || 0;
+                }
+            }
+        }
+    }
+
+    /**
      * Handle keyboard input
      */
     async handleInput(key) {
@@ -526,6 +565,36 @@ export class HeadlessGame {
                 this.showRoleMenu();
             } else if (key === 'q' || key === 'Q') {
                 this.state = 'quit';
+            }
+        } else if (this.state === 'intro_story') {
+            // After intro, any key could open options menu
+            if (key === 'O') {
+                this.state = 'options_menu';
+                this.optionsMenu.page = 1;
+                this.optionsMenu.showHelp = false;
+                this.showOptionsMenu();
+            }
+        } else if (this.state === 'options_menu') {
+            // Options menu navigation
+            if (key === '>') {
+                // Next page
+                this.optionsMenu.page = 2;
+                this.showOptionsMenu();
+            } else if (key === '<') {
+                // Previous page
+                this.optionsMenu.page = 1;
+                this.showOptionsMenu();
+            } else if (key === '?') {
+                // Toggle help
+                this.optionsMenu.showHelp = !this.optionsMenu.showHelp;
+                this.showOptionsMenu();
+            } else if (key >= 'a' && key <= 'z') {
+                // Try to toggle an option
+                toggleOption(this.optionsMenu.page, key, this.flags);
+                this.showOptionsMenu();
+            } else if (key === '\x1b' || key === 'q' || key === 'Q') {
+                // ESC or q to exit options menu
+                this.state = 'in_game';
             }
         }
     }

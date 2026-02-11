@@ -264,15 +264,36 @@ def capture_options_menu():
         lines, attrs = capture_screen_with_attrs(session)
 
         # Decline random character
-        subprocess.run(['tmux', 'send-keys', '-t', session, 'n', 'Enter'], check=True)
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'n'], check=True)
         time.sleep(0.5)
 
-        # Auto-select wizard by pressing Enter through role selection
-        subprocess.run(['tmux', 'send-keys', '-t', session, 'Enter'], check=True)
+        # Select wizard role (w)
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'w'], check=True)
         time.sleep(0.5)
 
-        # Should be in game now - wait for it to load
-        time.sleep(1.0)
+        # Select human race (h) - wizard default
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'h'], check=True)
+        time.sleep(0.5)
+
+        # Select male gender (m)
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'm'], check=True)
+        time.sleep(0.5)
+
+        # Select chaotic alignment (c) - wizard default
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'c'], check=True)
+        time.sleep(0.5)
+
+        # Confirm character (y)
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'y'], check=True)
+        time.sleep(0.5)
+
+        # Press Space to get past intro story
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'Space'], check=True)
+        time.sleep(0.5)
+
+        # Press Space again to clear welcome message
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'Space'], check=True)
+        time.sleep(0.5)
 
         # Open options menu with 'O'
         subprocess.run(['tmux', 'send-keys', '-t', session, 'O'], check=True)
