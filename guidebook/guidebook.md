@@ -488,7 +488,7 @@ indicating that you may choose an object  not  on  the  list,  if  you
 wanted  to  use  something unexpected.  Typing a `*` lists your entire
 inventory, so you can see the inventory letters of every object you're
 carrying.   Finally, if you change your mind and decide you don't want
-to do this command after all, you can press the ESC key to  abort  the
+to do this command after all, you can press the `ESC` key to  abort  the
 command.
 
 You  can  put  a  number before some commands to repeat them that
@@ -497,7 +497,7 @@ many times; for example, "10s" will search ten times.  If you have the
 example above would be  typed  "n10s"  instead.   Commands  for  which
 counts  make no sense ignore them.  In addition, movement commands can
 be prefixed for greater control (see below).  To cancel a count  or  a
-prefix, press the ESC key.
+prefix, press the `ESC` key.
 
 The  list  of  commands is rather long, but it can be read at any
 time during the game through the `?` command, which accesses a menu of
@@ -517,7 +517,7 @@ tional  information, then let you pick another location; `;` will
 skip additional info and also not bother  asking  you  to  choose
 another  location  to  examine; `:` will show additional info, if
 any, without asking for confirmation.  When picking  a  location,
-pressing the ESC key will terminate this command, or pressing `?`
+pressing the `ESC` key will terminate this command, or pressing `?`
 will give a brief reminder about how it works.
 
 If the autodescribe option is on, a short description of what you
@@ -922,7 +922,7 @@ Z. - to cast at yourself, use `.` for the direction.
 
 `:`    Look at what is here.
 
-__________
+**`__________`**
 (R)UNIX is a registered trademark of The Open Group.
 
 `;`    Show what type of thing a visible symbol corresponds to.
@@ -3136,7 +3136,7 @@ settings particular to that directive.
 
 Here is a list of allowed directives:
 
-OPTIONS
+**`OPTIONS`**
 There are two types of options, boolean and compound options.  Bool-
 ean options toggle a setting on or off, while compound options  take
 more  diverse  values.   Prefix a boolean option with "no" or `!` to
@@ -3148,35 +3148,35 @@ tiple  options  separated  by  commas in a single OPTIONS directive.
 
 Example:
 
-OPTIONS=dogname:Fido
-OPTIONS=!legacy,autopickup,pickup_types:$"=/!?+
+    OPTIONS=dogname:Fido
+    OPTIONS=!legacy,autopickup,pickup_types:$"=/!?+
 
-HACKDIR
+**`HACKDIR`**
 Default location of files NetHack needs. On Windows HACKDIR defaults
 to  the  location of the NetHack.exe or NetHackw.exe file so setting
 HACKDIR to override that is not usually necessary or recommended.
 
-LEVELDIR
+**`LEVELDIR`**
 The location that in-progress level files are  stored.  Defaults  to
 HACKDIR, must be writable.
 
-SAVEDIR
+**`SAVEDIR`**
 The  location  where saved games are kept. Defaults to HACKDIR, must
 be writable.
 
-BONESDIR
+**`BONESDIR`**
 The location that bones files are kept. Defaults to HACKDIR, must be
 writable.
 
-LOCKDIR
+**`LOCKDIR`**
 The location that file synchronization locks are stored. Defaults to
 HACKDIR, must be writable.
 
-TROUBLEDIR
+**`TROUBLEDIR`**
 The location that a record of game aborts  and  self-diagnosed  game
 problems is kept. Defaults to HACKDIR, must be writable.
 
-AUTOCOMPLETE
+**`AUTOCOMPLETE`**
 Enable  or  disable an extended command autocompletion.  Autocomple-
 tion has no effect for the X11 windowport.  You can specify multiple
 autocompletions.   To  enable autocompletion, list the extended com-
@@ -3187,11 +3187,11 @@ Example:
 
 AUTOCOMPLETE=zap,!annotate
 
-AUTOPICKUP_EXCEPTION
+**`AUTOPICKUP_EXCEPTION`**
 Set  exceptions  to  the  `pickup_types` option.  See the "Configuring
 Autopickup Exceptions" section.
 
-BINDINGS
+**`BINDINGS`**
 Change the key bindings of some  special  keys,  menu  accelerators,
 extended commands, or mouse buttons.  You can specify multiple bind-
 ings.  Format is key followed by the command, separated by a  colon.
@@ -3201,45 +3201,45 @@ Example:
 
 BIND=`^X`:getpos.autodescribe
 
-CHOOSE
+**`CHOOSE`**
 Chooses at random one of the comma-separated parameters as an active
 section name.  Lines in other sections are ignored.
 
 Example:
 
-OPTIONS=color
+    OPTIONS=color
 CHOOSE=char A,char B
 [char A]
-OPTIONS=role:arc,race:dwa,align:law,gender:fem
+    OPTIONS=role:arc,race:dwa,align:law,gender:fem
 [char B]
-OPTIONS=role:wiz,race:elf,align:cha,gender:mal
+    OPTIONS=role:wiz,race:elf,align:cha,gender:mal
 [] `#end` of CHOOSE
-OPTIONS=!`rest_on_space`
+    OPTIONS=!`rest_on_space`
 
 If [] is present, the preceding section is closed and no new section
 begins;  whatever follows will be common to all sections.  Otherwise
 
 the last section extends to the end of the options file.
 
-MENUCOLOR
+**`MENUCOLOR`**
 Highlight menu lines with different colors.   See  the  "Configuring
 Menu Colors" section.
 
-MSGTYPE
+**`MSGTYPE`**
 Change  the  way messages are shown in the top status line.  See the
 "Configuring Message Types" section.
 
-ROGUESYMBOLS
+**`ROGUESYMBOLS`**
 Custom symbols for the rogue level's symbol set.  See SYMBOLS below.
 
-SOUND
+**`SOUND`**
 Define a sound mapping.  See the "Configuring User Sounds" section.
 
-SOUNDDIR
+**`SOUNDDIR`**
 Define the directory that contains the sound files.  See  the  "Con-
 figuring User Sounds" section.
 
-SYMBOLS
+**`SYMBOLS`**
 Override  one or more symbols in the symbol set used for all dungeon
 levels except for the  special  rogue  level.   See  the  "Modifying
 NetHack Symbols" section.
@@ -3249,7 +3249,7 @@ Example:
 # replace small punctuation (tick marks) with digits
 SYMBOLS=S_golem:7
 
-WIZKIT
+**`WIZKIT`**
 Debug mode only:  extra items to add to initial inventory.  Value is
 the name of a text file containing a list of  item  names,  one  per
 line,  up  to a maximum of 128 lines.  Each line is processed by the
@@ -3262,21 +3262,21 @@ WIZKIT=~/wizkit.txt
 Here is an example of configuration file contents:
 
 # Set your character's role, race, gender, and alignment.
-OPTIONS=role:Valkyrie, race:Human, gender:female, align:lawful
+    OPTIONS=role:Valkyrie, race:Human, gender:female, align:lawful
 #
 # Turn on autopickup, set automatically picked up object types
-OPTIONS=autopickup,pickup_types:$"=/!?+
+    OPTIONS=autopickup,pickup_types:$"=/!?+
 #
 # Map customization
-OPTIONS=color           # Display things in color if possible
-OPTIONS=`lit_corridor`    # Show lit corridors differently
-OPTIONS=`hilite_pet`,`hilite_pile`
+    OPTIONS=color           # Display things in color if possible
+    OPTIONS=`lit_corridor`    # Show lit corridors differently
+    OPTIONS=`hilite_pet`,`hilite_pile`
 # Replace small punctuation (tick marks) with digits
-OPTIONS=boulder:0
+    OPTIONS=boulder:0
 SYMBOLS=S_golem:7
 #
 # No startup splash screen. Windows GUI only.
-OPTIONS=!`splash_screen`
+    OPTIONS=!`splash_screen`
 
 
 ### 9.3. Using the NETHACKOPTIONS environment variable
@@ -4067,8 +4067,8 @@ plished in the same manner as with boolean options, by prefixing the
 option or its value(s) with `!` or "no".
 Examples:
 
-OPTIONS=role:!arc !bar !kni
-OPTIONS=!role:arc bar kni
+    OPTIONS=role:!arc !bar !kni
+    OPTIONS=!role:arc bar kni
 
 There  can  be  multiple instances of the role option if they're all
 negations.
@@ -4605,18 +4605,18 @@ only).  The name of the handling type is one  of  "default",  "ray",
 
 altmeta
 On  systems  where  this  option is available, it can be set to tell
-NetHack to convert a two character sequence beginning with ESC  into
+NetHack to convert a two character sequence beginning with `ESC`  into
 a meta-shifted version of the second character (default off).
 
 This  conversion  is  only  done  for  commands, not for other input
 prompts.  Note that typing one or more  digits  as  a  count  prefix
 prior  to a command--preceded by n if the `number_pad` option is set--
 is also subject to this conversion, so attempting to abort the count
-by  typing  ESC  will leave NetHack waiting for another character to
-complete the two character sequence.  Type a second  ESC  to  finish
-cancelling such a count.  At other prompts a single ESC suffices.
+by  typing  `ESC`  will leave NetHack waiting for another character to
+complete the two character sequence.  Type a second  `ESC`  to  finish
+cancelling such a count.  At other prompts a single `ESC` suffices.
 
-BIOS
+**`BIOS`**
 Use  BIOS calls to update the screen display quickly and to read the
 keyboard (allowing the use of arrow keys to move) on  machines  with
 an IBM PC compatible BIOS ROM (default off, OS/2, PC, and ST NetHack
@@ -4976,10 +4976,10 @@ ports support the use of user sounds.
 The  following configuration file entries are relevant to mapping
 user sounds to messages:
 
-SOUNDDIR
+**`SOUNDDIR`**
 The directory that houses the sound files to be played.
 
-SOUND
+**`SOUND`**
 An entry that maps a sound file to a user-specified message pattern.
 Each SOUND entry is broken down into the following parts:
 
@@ -5395,7 +5395,7 @@ or individually within your nethack.rc file.
 
 The format for defining a glyph representation is:
 
-OPTIONS=glyph:glyphid/U+nnnn/R-G-B
+    OPTIONS=glyph:glyphid/U+nnnn/R-G-B
 
 The window port that is active needs to provide support for  dis-
 playing  UTF-8  character sequences and explicit red-green-blue colors
@@ -5404,7 +5404,7 @@ following  line in your configuration file will cause the glyph repre-
 sentation for glyphid G_pool to use Unicode codepoint U+224B  and  the
 color represented by R-G-B value 0-0-160:
 
-OPTIONS=glyph:G_pool/U+224B/0-0-160
+    OPTIONS=glyph:G_pool/U+224B/0-0-160
 
 The  list  of acceptable glyphid's can be produced by nethack --dumpg-
 lyphids.  Individual NetHack glyphs can be specified using the G_ pre-

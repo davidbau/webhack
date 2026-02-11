@@ -151,11 +151,11 @@
 <p>You need not memorize all these symbols; you can ask the game what any symbol represents with the <code>/</code> command (see the next section for more info).</p>
 <h2 id="commands">4. Commands</h2>
 <p>Commands can be initiated by typing one or two characters to which the command is bound to, or typing the command name in the extended commands entry. Some commands, like “search”, do not require that any more information be collected by NetHack. Other commands might require additional information, for example a direction, or an object to be used. For those commands that require additional infor- mation, NetHack will present you with either a menu of choices or with a command line prompt requesting information. Which you are presented with will depend chiefly on how you have set the <code>menustyle</code> option.</p>
-<p>For example, a common question, in the form “What do you want to use? [a-zA-Z ?*]”, asks you to choose an object you are carrying. Here, “a-zA-Z” are the inventory letters of your possible choices. Typing <code>?</code> gives you an inventory list of these items, so you can see what each letter refers to. In this example, there is also a <code>*</code> indicating that you may choose an object not on the list, if you wanted to use something unexpected. Typing a <code>*</code> lists your entire inventory, so you can see the inventory letters of every object you’re carrying. Finally, if you change your mind and decide you don’t want to do this command after all, you can press the ESC key to abort the command.</p>
-<p>You can put a number before some commands to repeat them that many times; for example, “10s” will search ten times. If you have the <code>number_pad</code> option set, you must type <code>n</code> to prefix a count, so the example above would be typed “n10s” instead. Commands for which counts make no sense ignore them. In addition, movement commands can be prefixed for greater control (see below). To cancel a count or a prefix, press the ESC key.</p>
+<p>For example, a common question, in the form “What do you want to use? [a-zA-Z ?*]”, asks you to choose an object you are carrying. Here, “a-zA-Z” are the inventory letters of your possible choices. Typing <code>?</code> gives you an inventory list of these items, so you can see what each letter refers to. In this example, there is also a <code>*</code> indicating that you may choose an object not on the list, if you wanted to use something unexpected. Typing a <code>*</code> lists your entire inventory, so you can see the inventory letters of every object you’re carrying. Finally, if you change your mind and decide you don’t want to do this command after all, you can press the <code>ESC</code> key to abort the command.</p>
+<p>You can put a number before some commands to repeat them that many times; for example, “10s” will search ten times. If you have the <code>number_pad</code> option set, you must type <code>n</code> to prefix a count, so the example above would be typed “n10s” instead. Commands for which counts make no sense ignore them. In addition, movement commands can be prefixed for greater control (see below). To cancel a count or a prefix, press the <code>ESC</code> key.</p>
 <p>The list of commands is rather long, but it can be read at any time during the game through the <code>?</code> command, which accesses a menu of helpful texts. Here are the default key bindings for your reference:</p>
 <p><code>?</code> Help menu: display one of several help texts available.</p>
-<p><code>/</code> The “whatis” command, to tell what a symbol represents. You may choose to specify a location or type a symbol (or even a whole word) to explain. Specifying a location is done by moving the cursor to a particular spot on the map and then pressing one of <code>.</code>, <code>,</code>, <code>;</code>, or <code>:</code>. <code>.</code> will explain the symbol at the chosen location, conditionally check for “More info?” depending upon whether the help option is on, and then you will be asked to pick another location; <code>,</code> will explain the symbol but skip any addi- tional information, then let you pick another location; <code>;</code> will skip additional info and also not bother asking you to choose another location to examine; <code>:</code> will show additional info, if any, without asking for confirmation. When picking a location, pressing the ESC key will terminate this command, or pressing <code>?</code> will give a brief reminder about how it works.</p>
+<p><code>/</code> The “whatis” command, to tell what a symbol represents. You may choose to specify a location or type a symbol (or even a whole word) to explain. Specifying a location is done by moving the cursor to a particular spot on the map and then pressing one of <code>.</code>, <code>,</code>, <code>;</code>, or <code>:</code>. <code>.</code> will explain the symbol at the chosen location, conditionally check for “More info?” depending upon whether the help option is on, and then you will be asked to pick another location; <code>,</code> will explain the symbol but skip any addi- tional information, then let you pick another location; <code>;</code> will skip additional info and also not bother asking you to choose another location to examine; <code>:</code> will show additional info, if any, without asking for confirmation. When picking a location, pressing the <code>ESC</code> key will terminate this command, or pressing <code>?</code> will give a brief reminder about how it works.</p>
 <p>If the autodescribe option is on, a short description of what you see at each location is shown as you move the cursor. Typing <code>#</code> while picking a location will toggle that option on or off. The <code>whatis_coord</code> option controls whether the short description includes map coordinates.</p>
 <p>Specifying a name rather than a location always gives any addi- tional information available about that name.</p>
 <p>You may also request a description of nearby monsters, all mon- sters currently displayed, nearby objects, or all objects. The <code>whatis_coord</code> option controls which format of map coordinate is included with their descriptions.</p>
@@ -272,8 +272,7 @@
 <p>Z. - to cast at yourself, use <code>.</code> for the direction.</p>
 <p><code>^Z</code> Suspend the game (UNIX(R) versions with job control only). See “<code>#suspend</code>” below for more details.</p>
 <p><code>:</code> Look at what is here.</p>
-<hr />
-<p>(R)UNIX is a registered trademark of The Open Group.</p>
+<p><strong><code>__________</code></strong> (R)UNIX is a registered trademark of The Open Group.</p>
 <p><code>;</code> Show what type of thing a visible symbol corresponds to.</p>
 <p><code>,</code> Pick up some things from the floor beneath you.</p>
 <p>May be preceded by <code>m</code> to force a selection menu.</p>
@@ -746,42 +745,55 @@
 <p>Any line beginning with <code>[</code> and ending in <code>]</code> is a section marker (the closing <code>]</code> can be followed by whitespace and then an arbitrary comment beginning with <code>#</code>). The text between the square brackets is the section name. Section markers are only valid after a CHOOSE directive and their names are case-insensitive. Lines after a section marker belong to that section up until another section starts or a marker without a name is encountered or the file ends. Lines within sections are ignored unless a CHOOSE directive has selected that sec- tion.</p>
 <p>You can use different configuration directives in the file, some of which can be used multiple times. In general, the directives are written in capital letters, followed by an equals sign, followed by settings particular to that directive.</p>
 <p>Here is a list of allowed directives:</p>
-<p>OPTIONS There are two types of options, boolean and compound options. Bool- ean options toggle a setting on or off, while compound options take more diverse values. Prefix a boolean option with “no” or <code>!</code> to turn it off. For compound options, the option name and value are separated by a colon. Some options are persistent, and apply only to new games. You can specify multiple OPTIONS directives, and mul- tiple options separated by commas in a single OPTIONS directive. (Comma separated options are processed from right to left.)</p>
+<p><strong><code>OPTIONS</code></strong> There are two types of options, boolean and compound options. Bool- ean options toggle a setting on or off, while compound options take more diverse values. Prefix a boolean option with “no” or <code>!</code> to turn it off. For compound options, the option name and value are separated by a colon. Some options are persistent, and apply only to new games. You can specify multiple OPTIONS directives, and mul- tiple options separated by commas in a single OPTIONS directive. (Comma separated options are processed from right to left.)</p>
 <p>Example:</p>
-<p>OPTIONS=dogname:Fido OPTIONS=!legacy,autopickup,pickup_types:$"=/!?+</p>
-<p>HACKDIR Default location of files NetHack needs. On Windows HACKDIR defaults to the location of the NetHack.exe or NetHackw.exe file so setting HACKDIR to override that is not usually necessary or recommended.</p>
-<p>LEVELDIR The location that in-progress level files are stored. Defaults to HACKDIR, must be writable.</p>
-<p>SAVEDIR The location where saved games are kept. Defaults to HACKDIR, must be writable.</p>
-<p>BONESDIR The location that bones files are kept. Defaults to HACKDIR, must be writable.</p>
-<p>LOCKDIR The location that file synchronization locks are stored. Defaults to HACKDIR, must be writable.</p>
-<p>TROUBLEDIR The location that a record of game aborts and self-diagnosed game problems is kept. Defaults to HACKDIR, must be writable.</p>
-<p>AUTOCOMPLETE Enable or disable an extended command autocompletion. Autocomple- tion has no effect for the X11 windowport. You can specify multiple autocompletions. To enable autocompletion, list the extended com- mand. Prefix the command with “!” to disable the autocompletion for that command.</p>
+<pre><code>OPTIONS=dogname:Fido
+OPTIONS=!legacy,autopickup,pickup_types:$&quot;=/!?+</code></pre>
+<p><strong><code>HACKDIR</code></strong> Default location of files NetHack needs. On Windows HACKDIR defaults to the location of the NetHack.exe or NetHackw.exe file so setting HACKDIR to override that is not usually necessary or recommended.</p>
+<p><strong><code>LEVELDIR</code></strong> The location that in-progress level files are stored. Defaults to HACKDIR, must be writable.</p>
+<p><strong><code>SAVEDIR</code></strong> The location where saved games are kept. Defaults to HACKDIR, must be writable.</p>
+<p><strong><code>BONESDIR</code></strong> The location that bones files are kept. Defaults to HACKDIR, must be writable.</p>
+<p><strong><code>LOCKDIR</code></strong> The location that file synchronization locks are stored. Defaults to HACKDIR, must be writable.</p>
+<p><strong><code>TROUBLEDIR</code></strong> The location that a record of game aborts and self-diagnosed game problems is kept. Defaults to HACKDIR, must be writable.</p>
+<p><strong><code>AUTOCOMPLETE</code></strong> Enable or disable an extended command autocompletion. Autocomple- tion has no effect for the X11 windowport. You can specify multiple autocompletions. To enable autocompletion, list the extended com- mand. Prefix the command with “!” to disable the autocompletion for that command.</p>
 <p>Example:</p>
 <p>AUTOCOMPLETE=zap,!annotate</p>
-<p>AUTOPICKUP_EXCEPTION Set exceptions to the <code>pickup_types</code> option. See the “Configuring Autopickup Exceptions” section.</p>
-<p>BINDINGS Change the key bindings of some special keys, menu accelerators, extended commands, or mouse buttons. You can specify multiple bind- ings. Format is key followed by the command, separated by a colon. See the “Changing Key Bindings” section for more information.</p>
+<p><strong><code>AUTOPICKUP_EXCEPTION</code></strong> Set exceptions to the <code>pickup_types</code> option. See the “Configuring Autopickup Exceptions” section.</p>
+<p><strong><code>BINDINGS</code></strong> Change the key bindings of some special keys, menu accelerators, extended commands, or mouse buttons. You can specify multiple bind- ings. Format is key followed by the command, separated by a colon. See the “Changing Key Bindings” section for more information.</p>
 <p>Example:</p>
 <p>BIND=<code>^X</code>:getpos.autodescribe</p>
-<p>CHOOSE Chooses at random one of the comma-separated parameters as an active section name. Lines in other sections are ignored.</p>
+<p><strong><code>CHOOSE</code></strong> Chooses at random one of the comma-separated parameters as an active section name. Lines in other sections are ignored.</p>
 <p>Example:</p>
-<p>OPTIONS=color CHOOSE=char A,char B [char A] OPTIONS=role:arc,race:dwa,align:law,gender:fem [char B] OPTIONS=role:wiz,race:elf,align:cha,gender:mal [] <code>#end</code> of CHOOSE OPTIONS=!<code>rest_on_space</code></p>
-<p>If [] is present, the preceding section is closed and no new section begins; whatever follows will be common to all sections. Otherwise</p>
+<pre><code>OPTIONS=color</code></pre>
+<p>CHOOSE=char A,char B [char A] OPTIONS=role:arc,race:dwa,align:law,gender:fem [char B] OPTIONS=role:wiz,race:elf,align:cha,gender:mal <a href="#section-1"></a> <code>#end</code> of CHOOSE OPTIONS=!<code>rest_on_space</code></p>
+<p>If <a href="#section-1"></a> is present, the preceding section is closed and no new section begins; whatever follows will be common to all sections. Otherwise</p>
 <p>the last section extends to the end of the options file.</p>
-<p>MENUCOLOR Highlight menu lines with different colors. See the “Configuring Menu Colors” section.</p>
-<p>MSGTYPE Change the way messages are shown in the top status line. See the “Configuring Message Types” section.</p>
-<p>ROGUESYMBOLS Custom symbols for the rogue level’s symbol set. See SYMBOLS below.</p>
-<p>SOUND Define a sound mapping. See the “Configuring User Sounds” section.</p>
-<p>SOUNDDIR Define the directory that contains the sound files. See the “Con- figuring User Sounds” section.</p>
-<p>SYMBOLS Override one or more symbols in the symbol set used for all dungeon levels except for the special rogue level. See the “Modifying NetHack Symbols” section.</p>
+<p><strong><code>MENUCOLOR</code></strong> Highlight menu lines with different colors. See the “Configuring Menu Colors” section.</p>
+<p><strong><code>MSGTYPE</code></strong> Change the way messages are shown in the top status line. See the “Configuring Message Types” section.</p>
+<p><strong><code>ROGUESYMBOLS</code></strong> Custom symbols for the rogue level’s symbol set. See SYMBOLS below.</p>
+<p><strong><code>SOUND</code></strong> Define a sound mapping. See the “Configuring User Sounds” section.</p>
+<p><strong><code>SOUNDDIR</code></strong> Define the directory that contains the sound files. See the “Con- figuring User Sounds” section.</p>
+<p><strong><code>SYMBOLS</code></strong> Override one or more symbols in the symbol set used for all dungeon levels except for the special rogue level. See the “Modifying NetHack Symbols” section.</p>
 <p>Example:</p>
 <h1 id="replace-small-punctuation-tick-marks-with-digits">replace small punctuation (tick marks) with digits</h1>
 <p>SYMBOLS=S_golem:7</p>
-<p>WIZKIT Debug mode only: extra items to add to initial inventory. Value is the name of a text file containing a list of item names, one per line, up to a maximum of 128 lines. Each line is processed by the function that handles wishing.</p>
+<p><strong><code>WIZKIT</code></strong> Debug mode only: extra items to add to initial inventory. Value is the name of a text file containing a list of item names, one per line, up to a maximum of 128 lines. Each line is processed by the function that handles wishing.</p>
 <p>Example:</p>
 <p>WIZKIT=~/wizkit.txt</p>
 <p>Here is an example of configuration file contents:</p>
 <h1 id="set-your-characters-role-race-gender-and-alignment.">Set your character’s role, race, gender, and alignment.</h1>
-<p>OPTIONS=role:Valkyrie, race:Human, gender:female, align:lawful # # Turn on autopickup, set automatically picked up object types OPTIONS=autopickup,pickup_types:$"=/!?+ # # Map customization OPTIONS=color # Display things in color if possible OPTIONS=<code>lit_corridor</code> # Show lit corridors differently OPTIONS=<code>hilite_pet</code>,<code>hilite_pile</code> # Replace small punctuation (tick marks) with digits OPTIONS=boulder:0 SYMBOLS=S_golem:7 # # No startup splash screen. Windows GUI only. OPTIONS=!<code>splash_screen</code></p>
+<pre><code>OPTIONS=role:Valkyrie, race:Human, gender:female, align:lawful</code></pre>
+<h1 id="section"></h1>
+<h1 id="turn-on-autopickup-set-automatically-picked-up-object-types">Turn on autopickup, set automatically picked up object types</h1>
+<pre><code>OPTIONS=autopickup,pickup_types:$&quot;=/!?+</code></pre>
+<h1 id="section-1"></h1>
+<h1 id="map-customization">Map customization</h1>
+<pre><code>OPTIONS=color           # Display things in color if possible
+OPTIONS=`lit_corridor`    # Show lit corridors differently
+OPTIONS=`hilite_pet`,`hilite_pile`</code></pre>
+<h1 id="replace-small-punctuation-tick-marks-with-digits-1">Replace small punctuation (tick marks) with digits</h1>
+<pre><code>OPTIONS=boulder:0</code></pre>
+<p>SYMBOLS=S_golem:7 # # No startup splash screen. Windows GUI only. OPTIONS=!<code>splash_screen</code></p>
 <h3 id="using-the-nethackoptions-environment-variable">9.3. Using the NETHACKOPTIONS environment variable</h3>
 <p>The NETHACKOPTIONS variable is a comma-separated list of initial values for the various options. Some can only be turned on or off. You turn one of these on by adding the name of the option to the list, and turn it off by typing a <code>!</code> or “no” before the name. Others take a character string as a value. You can set string options by typing the option name, a colon or equals sign, and then the value of the string. The value is terminated by the next comma or the end of string.</p>
 <p>For example, to set up an environment variable so that color is on, legacy is off, character name is set to “Blue Meanie”, and named fruit is set to “lime”, you would enter the command</p>
@@ -939,7 +951,8 @@
 <p><code>rest_on_space</code> Make the space bar a synonym for the <code>.</code> (<code>#wait</code>) command (default off). Persistent.</p>
 <p>role Pick your type of character (for example, role:Samurai); synonym for character. See name for an alternate method of specifying your role.</p>
 <p>This option can also be used to limit selection when role is chosen randomly. Use a space-separated list of roles and either negate each one or negate the option itself instead. Negation is accom- plished in the same manner as with boolean options, by prefixing the option or its value(s) with <code>!</code> or “no”. Examples:</p>
-<p>OPTIONS=role:!arc !bar !kni OPTIONS=!role:arc bar kni</p>
+<pre><code>OPTIONS=role:!arc !bar !kni
+OPTIONS=!role:arc bar kni</code></pre>
 <p>There can be multiple instances of the role option if they’re all negations.</p>
 <p>If role is not specified, there is no default value; player will be prompted. Cannot be set with the <code>O</code> command. Persistent.</p>
 <p>roguesymset This option may be used to select one of the named symbol sets found within “symbols” to alter the symbols displayed on the screen on the rogue level.</p>
@@ -1059,9 +1072,9 @@
 <h3 id="platform-specific-customization-options">9.7. Platform-specific Customization options</h3>
 <p>Here are explanations of options that are used by specific plat- forms or ports to customize and change the port behavior.</p>
 <p>altkeyhandling Select an alternate way to handle keystrokes (Win32 tty NetHack only). The name of the handling type is one of “default”, “ray”, “340”.</p>
-<p>altmeta On systems where this option is available, it can be set to tell NetHack to convert a two character sequence beginning with ESC into a meta-shifted version of the second character (default off).</p>
-<p>This conversion is only done for commands, not for other input prompts. Note that typing one or more digits as a count prefix prior to a command–preceded by n if the <code>number_pad</code> option is set– is also subject to this conversion, so attempting to abort the count by typing ESC will leave NetHack waiting for another character to complete the two character sequence. Type a second ESC to finish cancelling such a count. At other prompts a single ESC suffices.</p>
-<p>BIOS Use BIOS calls to update the screen display quickly and to read the keyboard (allowing the use of arrow keys to move) on machines with an IBM PC compatible BIOS ROM (default off, OS/2, PC, and ST NetHack only).</p>
+<p>altmeta On systems where this option is available, it can be set to tell NetHack to convert a two character sequence beginning with <code>ESC</code> into a meta-shifted version of the second character (default off).</p>
+<p>This conversion is only done for commands, not for other input prompts. Note that typing one or more digits as a count prefix prior to a command–preceded by n if the <code>number_pad</code> option is set– is also subject to this conversion, so attempting to abort the count by typing <code>ESC</code> will leave NetHack waiting for another character to complete the two character sequence. Type a second <code>ESC</code> to finish cancelling such a count. At other prompts a single <code>ESC</code> suffices.</p>
+<p><strong><code>BIOS</code></strong> Use BIOS calls to update the screen display quickly and to read the keyboard (allowing the use of arrow keys to move) on machines with an IBM PC compatible BIOS ROM (default off, OS/2, PC, and ST NetHack only).</p>
 <p>rawio Force raw (non-cbreak) mode for faster output and more bulletproof input (MS-DOS sometimes treats `<code>^P</code>’ as a printer toggle without it) (default off, OS/2, PC, and ST NetHack only). Note: DEC Rainbows hang if this is turned on. Cannot be set with the <code>O</code> command.</p>
 <p>subkeyvalue (Win32 tty NetHack only). May be used to alter the value of key- strokes that the operating system returns to NetHack to help compen- sate for international keyboard issues. OPTIONS=subkeyvalue:171/92 will return 92 to NetHack, if 171 was originally going to be returned. You can use multiple subkeyvalue assignments in the con- figuration file if needed. Cannot be set with the <code>O</code> command.</p>
 <p>video Set the video mode used (PC NetHack only). Values are “autodetect”, “default”, “vga”, or “vesa”. Setting “vesa” will cause the game to display tiles, using the full capability of the VGA hardware. Set- ting “vga” will cause the game to display tiles, fixed at 640x480 in 16 colors, a mode that is compatible with all VGA hardware. Third party tilesets will probably not work. Setting “autodetect” attempts “vesa”, then “vga”, and finally sets “default” if neither of those modes works. Cannot be set with the <code>O</code> command.</p>
@@ -1146,8 +1159,8 @@
 <h3 id="configuring-user-sounds">9.13. Configuring User Sounds</h3>
 <p>Some platforms allow you to define sound files to be played when a message that matches a user-defined pattern is delivered to the mes- sage window. At this time the Qt port and the win32tty and win32gui ports support the use of user sounds.</p>
 <p>The following configuration file entries are relevant to mapping user sounds to messages:</p>
-<p>SOUNDDIR The directory that houses the sound files to be played.</p>
-<p>SOUND An entry that maps a sound file to a user-specified message pattern. Each SOUND entry is broken down into the following parts:</p>
+<p><strong><code>SOUNDDIR</code></strong> The directory that houses the sound files to be played.</p>
+<p><strong><code>SOUND</code></strong> An entry that maps a sound file to a user-specified message pattern. Each SOUND entry is broken down into the following parts:</p>
 <p>MESG - message window mapping (the only one supported in 3.7.0); msgtype - optional; message type to use, see “Configuring Mes- sage Types” pattern - the pattern to match; sound file - the sound file to play; volume - the volume to be set while playing the sound file; sound index - optional; the index corresponding to a sound file.</p>
 <p>The pattern should be a regular expression.</p>
 <p>For example:</p>
@@ -1213,9 +1226,9 @@
 <h3 id="customizing-map-glyph-representations-using-unicode">9.16. Customizing Map Glyph Representations Using Unicode</h3>
 <p>If your platform or terminal supports the display of UTF-8 char- acter sequences, you can customize your game display by assigning Uni- code codepoint values and red-green-blue colors to glyph representa- tions. The customizations can be specified for use with a symset that has a UTF8 handler within the symbols file such as the enhanced1 set, or individually within your nethack.rc file.</p>
 <p>The format for defining a glyph representation is:</p>
-<p>OPTIONS=glyph:glyphid/U+nnnn/R-G-B</p>
+<pre><code>OPTIONS=glyph:glyphid/U+nnnn/R-G-B</code></pre>
 <p>The window port that is active needs to provide support for dis- playing UTF-8 character sequences and explicit red-green-blue colors in order for the glyph representation to be visible. For example, the following line in your configuration file will cause the glyph repre- sentation for glyphid G_pool to use Unicode codepoint U+224B and the color represented by R-G-B value 0-0-160:</p>
-<p>OPTIONS=glyph:G_pool/U+224B/0-0-160</p>
+<pre><code>OPTIONS=glyph:G_pool/U+224B/0-0-160</code></pre>
 <p>The list of acceptable glyphid’s can be produced by nethack –dumpg- lyphids. Individual NetHack glyphs can be specified using the G_ pre- fix, or you can use an S_ symbol for a glyphid and store the custom representation for all NetHack glyphs that would map to that particu- lar symbol.</p>
 <p>You will need to select a symset with a UTF8 handler to enable the display of the customizations, such as the Enhanced symset.</p>
 <h3 id="configuring-nethack-for-play-by-the-blind">9.17. Configuring NetHack for Play by the Blind</h3>

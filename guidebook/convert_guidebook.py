@@ -184,6 +184,20 @@ def convert_guidebook(input_file, output_file):
         line = re.sub(r'\b([a-z]+_[a-z_]+)(\s|[,.\)]|$)', r'`\1`\2', line)
         line = re.sub(r'\b([a-z]+style)(\s|[,.\)]|$)', r'`\1`\2', line)  # *style options
 
+        # Wrap special key names (ESC, SPACE, RETURN, etc.)
+        line = re.sub(r'\b(ESC|SPACE|RETURN|ENTER|TAB|DELETE|BACKSPACE)\b', r'`\1`', line)
+
+        # Wrap configuration example lines (OPTIONS=...)
+        # These are configuration file examples that should be in code blocks
+        if line.startswith('OPTIONS='):
+            line = '    ' + line  # Indent with 4 spaces to make it a code block in markdown
+
+        # Wrap environment variable names (HACKDIR, LEVELDIR, etc.)
+        # These are definition terms, wrap in inline code
+        line_stripped = line.rstrip('\n')
+        if re.match(r'^([A-Z_]+)$', line_stripped) and len(line_stripped) > 2:
+            line = '**`' + line_stripped + '`**\n'  # Bold code for visibility
+
         # Wrap single symbols in common phrases
         # Pattern: "as X" or "shown as X" where X is a single non-alphanumeric char
         line = re.sub(r'\bas ([#@$%^&*+|<>._-])(\s)', r'as `\1`\2', line)
