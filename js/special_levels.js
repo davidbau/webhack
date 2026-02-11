@@ -314,6 +314,10 @@ registerSpecialLevel(SOKOBAN, 4, [generateSoko4a, generateSoko4b], ['soko4-1', '
 // In Dungeons of Doom, at depths that vary by dungeon generation
 // Using specific depths for testing (actual depths determined at runtime)
 
+// Tutorial levels (optional early game levels)
+registerSpecialLevel(DUNGEONS_OF_DOOM, 1, generateTut1, 'tut-1');
+registerSpecialLevel(DUNGEONS_OF_DOOM, 2, generateTut2, 'tut-2');
+
 // Oracle level (typically depth 5-7 in Dungeons of Doom)
 registerSpecialLevel(DUNGEONS_OF_DOOM, 5, generateOracle, 'oracle');
 
@@ -357,7 +361,10 @@ registerSpecialLevel(VLADS_TOWER, 3, generateTower3, 'tower3');
 // Register Gnomish Mines levels
 // Mines Town can have multiple variants (7 variants)
 // Mine End has 3 variants
+// Minefill is a generic procedural mines level
 // Note: Actual level placement is determined at runtime by dungeon generation
+registerSpecialLevel(GNOMISH_MINES, 3, generateMinefill, 'minefill');
+
 registerSpecialLevel(GNOMISH_MINES, 5, [
     generateMinetn1,
     generateMinetn2,
@@ -373,6 +380,14 @@ registerSpecialLevel(GNOMISH_MINES, 8, [
     generateMinend2,
     generateMinend3
 ], ['minend-1', 'minend-2', 'minend-3']);
+
+// Register Elemental Planes (accessed at end game via negative depths)
+// These are the final 5 levels before ascending
+registerSpecialLevel(DUNGEONS_OF_DOOM, -1, generateAir, 'air');
+registerSpecialLevel(DUNGEONS_OF_DOOM, -2, generateEarth, 'earth');
+registerSpecialLevel(DUNGEONS_OF_DOOM, -3, generateFire, 'fire');
+registerSpecialLevel(DUNGEONS_OF_DOOM, -4, generateWater, 'water');
+registerSpecialLevel(DUNGEONS_OF_DOOM, -5, generateAstral, 'astral');
 
 // Register Quest levels
 // Each role has 5 quest levels: start, locate, fill-a, fill-b, goal

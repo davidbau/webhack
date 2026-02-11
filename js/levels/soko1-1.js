@@ -37,7 +37,7 @@ export function generate() {
 
     `);
 
-    place: selection.new();
+    let place = selection.new();
     place.set(16,11);
     place.set(16,13);
     place.set(16,15);

@@ -225,6 +225,7 @@ function newobj(otyp) {
         corpsenm: -1, // NON_PM
         owt: objectData[otyp].weight,
         displayChar: CLASS_SYMBOLS[objectData[otyp].oc_class] || '?',
+        displayColor: objectData[otyp].color,
         ox: 0, oy: 0,
         where: 'free',
         lamplit: false,

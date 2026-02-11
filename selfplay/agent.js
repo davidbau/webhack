@@ -1112,20 +1112,17 @@ export class Agent {
                 }
             }
 
-            // Balance exploration with descent: descend after moderate exploration
-            // Wait until stuck >15 to ensure some exploration before descending
-            const shouldDescend = level.stairsDown.length > 0 && this.levelStuckCounter > 15;
-
-            if (shouldDescend) {
+            // Only try to path to downstairs if not TOO stuck (≤30 turns)
+            // If stuck >30, let systematic searching (section 6.5) run first
+            if (level.stairsDown.length > 0 && this.levelStuckCounter <= 30) {
                 const stairs = level.stairsDown[0];
                 // If we're already at the downstairs, descend immediately
                 if (px === stairs.x && py === stairs.y) {
-                    console.log(`[DOWNSTAIRS] Descending to Dlvl ${this.dungeon.currentDepth + 1} (explored ${level.exploredCount} cells)`);
-                    return { type: 'descend', key: '>', reason: `descending after ${level.exploredCount} cells explored` };
+                    console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: `descending (stuck ${this.levelStuckCounter})` };
                 }
                 const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
                 if (path.found) {
-                    return this._followPath(path, 'navigate', `heading to downstairs at (${stairs.x},${stairs.y}) (stuck ${this.levelStuckCounter})`);
+                    return this._followPath(path, 'navigate', `heading to downstairs (level stuck ${this.levelStuckCounter}) at (${stairs.x},${stairs.y})`);
                 }
             }
 
@@ -1151,17 +1148,15 @@ export class Agent {
 
             // Occupancy map secret door search (Campbell & Verbrugge 2017 approach)
             // Trigger when stuck and no downstairs found
-            // TUNED: Higher stuck threshold (40 vs 20) to prioritize exploration
             const shouldSearchSecretDoors =
-                this.levelStuckCounter > 40 &&           // Stuck for 40+ turns (was 20)
+                this.levelStuckCounter > 20 &&           // Stuck for 20+ turns
                 level.stairsDown.length === 0 &&         // No downstairs found yet
                 coverageForSearch < 0.90;                // Not almost fully explored
 
             if (shouldSearchSecretDoors) {
                 if (!this.secretDoorSearch) {
                     // Use occupancy map approach: identify large hidden components
-                    // TUNED: Fewer targets (3 vs 5) to reduce search time
-                    const targets = level.getSecretDoorSearchTargets({x: px, y: py}, 3);
+                    const targets = level.getSecretDoorSearchTargets({x: px, y: py}, 5);
 
                     if (targets.length > 0) {
                         const componentIds = new Set(targets.map(t => t.componentId));
@@ -1171,7 +1166,7 @@ export class Agent {
                         this.secretDoorSearch = {
                             targets: targets,           // Prioritized wall list from occupancy map
                             currentIndex: 0,            // Which target we're on
-                            searchesNeeded: 10,         // 10 searches = 75% success (TUNED: was 20 for 94%)
+                            searchesNeeded: 20,         // 20 searches = 94% success for SDOOR
                             searchesDone: 0,            // Searches at current target
                         };
                     } else {
@@ -1853,6 +1848,30 @@ export class Agent {
         //    Use path commitment: stick with a target until we reach it or can't progress
         const exploreAction = this._commitToExploration(level, px, py);
         if (exploreAction) return exploreAction;
+
+        // 8b. If exploration failed but frontier cells exist, they may be behind secret doors
+        //     Trigger occupancy-based search when stuck with unreachable frontier
+        const unreachableFrontier = level.getExplorationFrontier();
+        const coveragePercent = level.exploredCount / (80 * 21);
+        const hasUnreachableFrontier = unreachableFrontier.length > 10 && coveragePercent < 0.50;
+
+        if (hasUnreachableFrontier && this.levelStuckCounter > 30 && level.stairsDown.length === 0) {
+            // Use occupancy map to find likely secret door locations
+            const targets = level.getSecretDoorSearchTargets({x: px, y: py}, 5);
+
+            if (targets.length > 0 && !this.secretDoorSearch) {
+                const componentIds = new Set(targets.map(t => t.componentId));
+                console.log(`[SECRET DOOR TRIGGER] Stuck with ${unreachableFrontier.length} unreachable frontier cells at ${(coveragePercent*100).toFixed(1)}% coverage`);
+                console.log(`[SECRET DOOR] Starting occupancy search: ${targets.length} walls from ${componentIds.size} hidden components`);
+
+                this.secretDoorSearch = {
+                    targets: targets,
+                    currentIndex: 0,
+                    searchesNeeded: 20,  // Full 94% success rate when truly stuck
+                    searchesDone: 0,
+                };
+            }
+        }
 
         // 9. No unexplored areas -- head for downstairs
         if (level.stairsDown.length > 0) {
