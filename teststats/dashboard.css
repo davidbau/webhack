@@ -308,3 +308,11 @@ code {
         grid-template-columns: 1fr;
     }
 }
+
+/* Warning message */
+.warning {
+    color: #da5;
+    font-size: 0.7rem;
+    margin: 0.25rem 0;
+    font-style: italic;
+}

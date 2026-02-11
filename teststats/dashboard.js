@@ -1,24 +1,19 @@
-// Test Dashboard Logic
-// Loads results.jsonl and visualizes test history
-
+// Test Dashboard Logic - NetHack Themed
 let testData = [];
 let timelineChart = null;
 let categoryChart = null;
 let currentIndex = -1;
 
-// Load and parse JSONL file
+// Load test data
 async function loadTestData() {
     try {
         const response = await fetch('results.jsonl');
         const text = await response.text();
 
-        // Parse JSONL (one JSON object per line)
-        testData = text
-            .trim()
-            .split('\n')
+        testData = text.trim().split('\n')
             .filter(line => line.trim())
             .map(line => JSON.parse(line))
-            .sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort chronologically
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
 
         console.log(`Loaded ${testData.length} test results`);
         renderDashboard();
@@ -28,7 +23,7 @@ async function loadTestData() {
     }
 }
 
-// Render all dashboard components
+// Render dashboard
 function renderDashboard() {
     if (testData.length === 0) {
         document.getElementById('latest-commit').textContent = 'No data available';
@@ -37,33 +32,27 @@ function renderDashboard() {
 
     currentIndex = testData.length - 1;
 
-    // Setup scrubber first
-    setupScrubber();
-
-    // Render timeline chart (shows all history)
+    // Render charts
     renderTimelineChart();
-
-    // Render commits table
     renderCommitsTable();
 
     // Update last updated timestamp
     document.getElementById('last-updated').textContent = new Date().toLocaleString();
 
-    // Trigger initial display via scrubber
+    // Initial display
     updateForCommit(currentIndex);
 }
 
-// Update summary cards and category chart for a specific commit
+// Update display for specific commit
 function updateForCommit(index) {
     const commit = testData[index];
     if (!commit) return;
 
     currentIndex = index;
 
-    // Update summary cards
+    // Update summary cards (instant, no animation)
     document.getElementById('latest-commit').textContent = commit.commit;
     document.getElementById('latest-message').textContent = commit.message;
-
     document.getElementById('total-tests').textContent = commit.stats.total;
     document.getElementById('pass-count').textContent = commit.stats.pass;
     document.getElementById('fail-count').textContent = commit.stats.fail;
@@ -81,49 +70,28 @@ function updateForCommit(index) {
         document.getElementById('new-tests').textContent = '';
     }
 
-    // Update category chart
+    // Update category chart (instant)
     renderCategoryChart(commit);
+
+    // Update vertical line on timeline
+    if (timelineChart && timelineChart.options.plugins.annotation) {
+        timelineChart.options.plugins.annotation.annotations.selectedCommit.xMin = index;
+        timelineChart.options.plugins.annotation.annotations.selectedCommit.xMax = index;
+        timelineChart.update('none'); // No animation
+    }
 }
 
-// Setup scrubber
-function setupScrubber() {
-    const scrubber = document.getElementById('commit-scrubber');
-    const scrubberInfo = document.getElementById('scrubber-info');
-
-    scrubber.max = testData.length - 1;
-    scrubber.value = testData.length - 1;
-
-    scrubber.addEventListener('input', (e) => {
-        const index = parseInt(e.target.value);
-        const commit = testData[index];
-
-        if (commit) {
-            const date = new Date(commit.date).toLocaleDateString();
-            const passPercent = ((commit.stats.pass / commit.stats.total) * 100).toFixed(1);
-
-            scrubberInfo.textContent = `${commit.commit} (${date}): ${commit.stats.pass}/${commit.stats.total} (${passPercent}%) - ${commit.message}`;
-
-            // Update summary cards and category chart
-            updateForCommit(index);
-        }
-    });
-
-    // Trigger initial display
-    scrubber.dispatchEvent(new Event('input'));
-}
-
-// Render timeline chart
+// Render timeline with draggable vertical line
 function renderTimelineChart() {
     const ctx = document.getElementById('timeline-chart').getContext('2d');
 
-    const labels = testData.map(d => {
+    const labels = testData.map((d, i) => {
         const date = new Date(d.date);
-        return `${d.commit.substring(0, 7)} (${date.toLocaleDateString()})`;
+        return `${d.commit.substring(0, 7)}`;
     });
 
     const passData = testData.map(d => d.stats.pass);
     const failData = testData.map(d => d.stats.fail);
-    const totalData = testData.map(d => d.stats.total);
 
     if (timelineChart) {
         timelineChart.destroy();
@@ -140,7 +108,9 @@ function renderTimelineChart() {
                     borderColor: '#5a5',
                     backgroundColor: 'rgba(85, 170, 85, 0.1)',
                     fill: true,
-                    tension: 0.4
+                    tension: 0.4,
+                    pointRadius: 2,
+                    pointHoverRadius: 4
                 },
                 {
                     label: 'Failing',
@@ -148,38 +118,75 @@ function renderTimelineChart() {
                     borderColor: '#d55',
                     backgroundColor: 'rgba(221, 85, 85, 0.1)',
                     fill: true,
-                    tension: 0.4
+                    tension: 0.4,
+                    pointRadius: 2,
+                    pointHoverRadius: 4
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false, // No animation
             interaction: {
                 mode: 'index',
                 intersect: false
             },
+            onClick: (event, elements, chart) => {
+                const canvasPosition = Chart.helpers.getRelativePosition(event, chart);
+                const dataX = chart.scales.x.getValueForPixel(canvasPosition.x);
+                if (dataX >= 0 && dataX < testData.length) {
+                    updateForCommit(Math.round(dataX));
+                }
+            },
             plugins: {
                 legend: {
                     position: 'top',
-                    labels: { color: '#aaa' }
+                    labels: { color: '#aaa', font: { size: 11 } }
                 },
-                title: {
-                    display: false
+                annotation: {
+                    annotations: {
+                        selectedCommit: {
+                            type: 'line',
+                            xMin: currentIndex,
+                            xMax: currentIndex,
+                            borderColor: '#da5',
+                            borderWidth: 2,
+                            label: {
+                                display: false
+                            }
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            const idx = context[0].dataIndex;
+                            const commit = testData[idx];
+                            const date = new Date(commit.date).toLocaleDateString();
+                            return `${commit.commit} (${date})`;
+                        },
+                        afterTitle: function(context) {
+                            const idx = context[0].dataIndex;
+                            const commit = testData[idx];
+                            return commit.message;
+                        }
+                    }
                 }
             },
             scales: {
                 y: {
                     beginAtZero: true,
                     grid: { color: '#333' },
-                    ticks: { color: '#888' }
+                    ticks: { color: '#888', font: { size: 10 } }
                 },
                 x: {
                     grid: { color: '#333' },
-                    ticks: { color: '#888', maxRotation: 45 }
+                    ticks: { color: '#888', maxRotation: 45, font: { size: 9 } }
                 }
             }
-        }
+        },
+        plugins: [window.ChartAnnotation || {}]
     });
 }
 
@@ -202,12 +209,12 @@ function renderCategoryChart(commit) {
             labels: labels,
             datasets: [
                 {
-                    label: 'Passing',
+                    label: 'Pass',
                     data: passData,
                     backgroundColor: '#5a5'
                 },
                 {
-                    label: 'Failing',
+                    label: 'Fail',
                     data: failData,
                     backgroundColor: '#d55'
                 }
@@ -216,6 +223,7 @@ function renderCategoryChart(commit) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false, // No animation
             plugins: {
                 legend: {
                     position: 'top',
@@ -232,7 +240,7 @@ function renderCategoryChart(commit) {
                     stacked: true,
                     beginAtZero: true,
                     grid: { color: '#333' },
-                    ticks: { color: '#888' }
+                    ticks: { color: '#888', font: { size: 10 } }
                 }
             }
         }
@@ -244,7 +252,6 @@ function renderCommitsTable() {
     const tbody = document.getElementById('commits-tbody');
     tbody.innerHTML = '';
 
-    // Show last 20 commits by default
     const recentData = testData.slice(-20).reverse();
 
     recentData.forEach((commit, index) => {
@@ -253,7 +260,6 @@ function renderCommitsTable() {
 
         const row = document.createElement('tr');
 
-        // Add regression/improvement highlighting
         if (commit.regression) {
             row.classList.add('regression-row');
         } else if (prev && commit.stats.pass > prev.stats.pass) {
@@ -278,8 +284,6 @@ function renderCommitsTable() {
             }
         }
 
-        const deltaText = delta || '–';
-
         row.innerHTML = `
             <td><span class="commit-hash">${commit.commit}</span></td>
             <td>${date}</td>
@@ -289,14 +293,14 @@ function renderCommitsTable() {
             <td>${commit.stats.pass}</td>
             <td>${commit.stats.fail}</td>
             <td>${passPercent}%</td>
-            <td><span class="${deltaClass}">${deltaText}</span></td>
+            <td><span class="${deltaClass}">${delta || '–'}</span></td>
         `;
 
         tbody.appendChild(row);
     });
 }
 
-// Initialize dashboard
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadTestData();
 });

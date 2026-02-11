@@ -6,6 +6,7 @@
     <title>NetHack Test Dashboard</title>
     <link rel="stylesheet" href="dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 </head>
 <body>
     <header>
@@ -14,12 +15,11 @@
     </header>
 
     <main>
-        <!-- Scrubber at top -->
-        <section class="scrubber-section">
-            <h2>📜 Commit Browser</h2>
-            <div class="scrubber-container">
-                <input type="range" id="commit-scrubber" min="0" max="100" value="100">
-                <div id="scrubber-info"></div>
+        <!-- Time Series Chart with integrated scrubber -->
+        <section class="chart-section">
+            <h2>⚔️ Test History — *Click timeline to browse commits*</h2>
+            <div class="chart-container">
+                <canvas id="timeline-chart"></canvas>
             </div>
         </section>
 
@@ -50,33 +50,16 @@
             
             <div class="category-chart-container">
                 <h2>🎲 Test Categories</h2>
+                <p class="warning">⚠️ Category data incomplete - backfill script only categorizes ~21% of tests</p>
                 <div class="chart-container-small">
                     <canvas id="category-chart"></canvas>
                 </div>
             </div>
         </section>
 
-        <!-- Time Series Chart -->
-        <section class="chart-section">
-            <h2>⚔️ Test History Over Time — *You scan the dungeon for bugs*</h2>
-            <div class="chart-container">
-                <canvas id="timeline-chart"></canvas>
-            </div>
-        </section>
-
         <!-- Recent Commits Table -->
         <section class="commits-section">
             <h2>📜 Recent Commits</h2>
-            <div class="table-controls">
-                <label>
-                    <input type="checkbox" id="show-all-commits" checked>
-                    Show all commits
-                </label>
-                <label>
-                    <input type="checkbox" id="highlight-regressions" checked>
-                    Highlight regressions
-                </label>
-            </div>
             <div class="table-container">
                 <table id="commits-table">
                     <thead>
