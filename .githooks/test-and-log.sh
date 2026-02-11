@@ -226,6 +226,17 @@ rm "$TEST_OUTPUT" "$TEST_OUTPUT.json"
 echo ""
 echo "✅ Test results logged"
 
+# Push test notes to remote immediately (so other contributors can see them)
+if [ "$COMMIT_TO_ANNOTATE" != "pending" ] && git show-ref refs/notes/test-results >/dev/null 2>&1; then
+  echo ""
+  echo "Pushing test notes to remote..."
+  if git push --no-verify origin refs/notes/test-results:refs/notes/test-results 2>/dev/null; then
+    echo "✅ Test notes pushed to GitHub"
+  else
+    echo "ℹ️  Could not push notes (offline or no permissions)"
+  fi
+fi
+
 if [ "$REGRESSION" = true ]; then
   exit 1
 fi
