@@ -309,10 +309,14 @@ export function generateStartupWithRng(seed, session) {
     const preStartupCalls = countPreStartupRng(session);
     for (let i = 0; i < preStartupCalls; i++) rn2(1);
 
+    console.log(`After preStartup: ${getRngLog().length} RNG calls`);
     initLevelGeneration(roleIndex);
+    console.log(`After initLevelGeneration: ${getRngLog().length} RNG calls`);
 
     const map = makelevel(1);
+    console.log(`After makelevel: ${getRngLog().length} RNG calls`);
     wallification(map);
+    console.log(`After wallification: ${getRngLog().length} RNG calls`);
 
     // NOTE: Wizard mode (-D flag) enables omniscience for the PLAYER,
     // but does NOT make pets aware of trap locations (trap.tseen).

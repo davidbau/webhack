@@ -28,7 +28,7 @@ import {
     PM_ARCHEOLOGIST as ROLE_ARCHEOLOGIST, PM_WIZARD as ROLE_WIZARD
 } from './config.js';
 import { GameMap, makeRoom, FILL_NONE, FILL_NORMAL } from './map.js';
-import { rn2, rnd, rn1, d } from './rng.js';
+import { rn2, rnd, rn1, d, getRngLog } from './rng.js';
 import { getbones } from './bones.js';
 import { mkobj, mksobj, mkcorpstat, weight, setLevelDepth, TAINT_AGE } from './mkobj.js';
 import { makemon, mkclass, NO_MM_FLAGS, MM_NOGRP } from './makemon.js';
@@ -352,6 +352,9 @@ export function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth, inThe
 
     // Try to create the room
     do {
+        if (trycnt === 0 && !inThemerooms) {
+            console.log(`create_room: starting trycnt loop for rtype=${rtype}`);
+        }
         wtmp = w;
         htmp = h;
         xtmp = x;
@@ -362,7 +365,7 @@ export function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth, inThe
             || vault) {
             r1 = rnd_rect();
             if (!r1) {
-                if (DEBUG_THEME) console.log(`  create_room: no rect, rtype=${rtype}, VAULT=${rtype===VAULT}`);
+                if (DEBUG_THEME || !inThemerooms) console.log(`  create_room: no rect at trycnt=${trycnt}, rtype=${rtype}, VAULT=${rtype===VAULT}`);
                 return false;
             }
 
@@ -488,10 +491,16 @@ export function create_room(map, x, y, w, h, xal, yal, rtype, rlit, depth, inThe
         // Actually create the room
         add_room_to_map(map, xabs, yabs, xabs + wtmp - 1, yabs + htmp - 1,
                         lit, rtype, false);
-        if (DEBUG_THEME) console.log(`  create_room: SUCCESS, rtype=${rtype}, VAULT=${rtype===VAULT}, nroom=${nroom_before}->${map.nroom}`);
+        if (DEBUG_THEME || (!inThemerooms && trycnt > 5)) {
+            console.log(`  create_room: SUCCESS after ${trycnt} tries, rtype=${rtype}, VAULT=${rtype===VAULT}, nroom=${nroom_before}->${map.nroom}`);
+        }
         return true;
 
     } while (++trycnt <= 100); // C ref: sp_lev.c trycnt limit is 100
+
+    if (!inThemerooms) {
+        console.log(`create_room: FAILED after ${trycnt} tries, rtype=${rtype}`);
+    }
 
     if (DEBUG_THEME) console.log(`  create_room: FAILED after 100 tries, rtype=${rtype}, VAULT=${rtype===VAULT}`);
     return false;
@@ -931,7 +940,17 @@ function makerooms(map, depth) {
     // Make rooms until satisfied (no more rects available)
     // C ref: mklev.c:393-417
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_THEMEROOMS === '1';
+    let loopCount = 0;
+    console.log('makerooms: starting main loop');
     while (map.nroom < (MAXNROFROOMS - 1) && rnd_rect()) {
+        loopCount++;
+        if (loopCount === 1 || loopCount === 10 || loopCount === 100 || loopCount % 10000 === 0) {
+            console.log(`makerooms loop iteration ${loopCount}, nroom=${map.nroom}`);
+        }
+        if (loopCount > 500000) {
+            console.error(`makerooms RUNAWAY at ${loopCount} iterations!`);
+            break;
+        }
 
         if (DEBUG) {
             console.log(`Loop iteration: nroom=${map.nroom}, tries=${themeroom_tries}`);
@@ -944,7 +963,12 @@ function makerooms(map, depth) {
             create_room(map, -1, -1, 2, 2, -1, -1, VAULT, true, depth, true);
         } else {
             // C ref: mklev.c:402-407
+            let rngBefore2 = getRngLog().length;
             const result = themerooms_generate(map, depth);
+            let rngAfter2 = getRngLog().length;
+            if (loopCount === 1 || loopCount === 10 || loopCount === 100) {
+                console.log(`  themerooms_generate: ${rngAfter2 - rngBefore2} RNG calls, result=${result}`);
+            }
             if (!result) {
                 // themeroom_failed
                 if (DEBUG) {
@@ -961,6 +985,7 @@ function makerooms(map, depth) {
             }
         }
     }
+    console.log(`makerooms: exited loop after ${loopCount} iterations, nroom=${map.nroom}`);
     if (DEBUG) {
         console.log(`Exited loop: nroom=${map.nroom}, tries=${themeroom_tries}`);
     }
@@ -2385,8 +2410,14 @@ const extra_classes = [
 
 // C ref: mklev.c fill_ordinary_room()
 // C ref: ROOM_IS_FILLABLE: (rtype == OROOM || rtype == THEMEROOM) && needfill == FILL_NORMAL
+let _fillRoomCallCount = 0;
 export function fill_ordinary_room(map, croom, depth, bonusItems) {
-    if (croom.rtype !== OROOM && croom.rtype !== THEMEROOM) return;
+    const rngBefore = getRngLog().length;
+    _fillRoomCallCount++;
+    if (croom.rtype !== OROOM && croom.rtype !== THEMEROOM) {
+        console.log(`fill_ordinary_room call #${_fillRoomCallCount}: skipped (rtype=${croom.rtype}), 0 RNG calls`);
+        return;
+    }
 
     // C ref: mklev.c:944-952 — recursively fill subrooms first, before
     // checking needfill. An unfilled outer room shouldn't block filling
@@ -2414,8 +2445,13 @@ export function fill_ordinary_room(map, croom, depth, bonusItems) {
     const x = 8 - Math.floor(depth / 6);
     const trapChance = Math.max(x, 2);
     let trycnt = 0;
+    let trapLoopCount = 0;
     while (!rn2(trapChance) && (++trycnt < 1000)) {
+        trapLoopCount++;
         mktrap(map, 0, MKTRAP_NOFLAGS, croom, null, depth);
+    }
+    if (trapLoopCount > 100) {
+        console.warn(`fill_ordinary_room trap loop ran ${trapLoopCount} times (trapChance=${trapChance})`);
     }
 
     // Gold (1/3 chance)
@@ -2490,16 +2526,32 @@ export function fill_ordinary_room(map, croom, depth, bonusItems) {
                 // C ref: mklev.c:1038-1070
                 let tryct = 0;
                 let cursed;
+                console.log('Starting supply items loop');
                 do {
+                    if (tryct === 0) console.log('First iteration of supply loop');
                     const otyp = rn2(2) ? POT_HEALING : supply_items[rn2(9)];
+                    if (tryct === 0) console.log('otyp selected:', otyp);
                     const otmp = mksobj(otyp, true, false);
+                    if (tryct === 0) console.log('mksobj returned:', !!otmp);
                     if (otyp === POT_HEALING && rn2(2)) {
                         // quan = 2 (no extra RNG, just weight update)
                     }
-                    cursed = otmp.cursed;
+                    cursed = otmp ? otmp.cursed : undefined;
+                    if (tryct === 0) console.log('cursed:', cursed);
                     ++tryct;
-                    if (tryct === 50) break;
+                    if (tryct === 1 || tryct === 10 || tryct === 50 || tryct === 100) {
+                        console.log(`Iteration ${tryct}, cursed=${cursed}`);
+                    }
+                    if (tryct === 50) {
+                        console.log('Breaking at tryct=50');
+                        break;
+                    }
+                    if (tryct > 500000) {
+                        console.error(`RUNAWAY at ${tryct}!`);
+                        break;
+                    }
                 } while (cursed || !rn2(5));
+                console.log(`Supply items loop finished after ${tryct} iterations`);
 
                 // Maybe add extra random item
                 // C ref: mklev.c:1075-1110
@@ -2570,6 +2622,11 @@ export function fill_ordinary_room(map, croom, depth, bonusItems) {
                 if (obj2) { obj2.ox = pos2.x; obj2.oy = pos2.y; map.objects.push(obj2); }
             }
         }
+    }
+    const rngAfter = getRngLog().length;
+    const rngCalls = rngAfter - rngBefore;
+    if (rngCalls > 100) {
+        console.log(`fill_ordinary_room call #${_fillRoomCallCount}: ${rngCalls} RNG calls (bonusItems=${bonusItems})`);
     }
 }
 
@@ -3256,6 +3313,7 @@ export function initLevelGeneration(roleIndex) {
  * @returns {GameMap} The generated level
  */
 export function makelevel(depth, dnum, dlevel) {
+    let rngBefore = getRngLog().length;
     setLevelDepth(depth);
     resetThemermsState(); // Reset themed room state for new level
     _mtInitialized = false; // Reset MT RNG state - init happens per level, not per session
@@ -3277,6 +3335,7 @@ export function makelevel(depth, dnum, dlevel) {
     // C ref: bones.c getbones() — rn2(3) + bones load pipeline
     const bonesMap = getbones(null, depth);
     if (bonesMap) return bonesMap;
+    console.log(`After getbones: ${getRngLog().length - rngBefore} RNG calls`);
 
     const map = new GameMap();
     map.clear();
@@ -3290,7 +3349,9 @@ export function makelevel(depth, dnum, dlevel) {
     // Make rooms using rect BSP algorithm
     // C ref: mklev.c:1287 makerooms()
     // Note: makerooms() handles the Lua theme load shuffle (rn2(3), rn2(2))
+    rngBefore = getRngLog().length;
     makerooms(map, depth);
+    console.log(`After makerooms: ${getRngLog().length - rngBefore} RNG calls`);
 
     if (map.nroom === 0) {
         // Fallback: should never happen, but safety
