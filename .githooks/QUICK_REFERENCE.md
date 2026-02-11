@@ -128,9 +128,8 @@ tail -1 teststats/results.jsonl | jq '.categories'
 
 ## 📚 Documentation
 
-- **Main Guide**: ../TESTING_DASHBOARD.md
+- **Main Guide**: ../docs/TESTING.md
 - **Git Notes**: ../docs/TESTING_GIT_NOTES.md
-- **Legacy**: ../docs/TESTING.md
 - **Hooks**: README.md (this directory)
 - **Dashboard**: ../teststats/README.md
 

@@ -17,7 +17,7 @@ git config --add remote.origin.push '+refs/notes/test-results:refs/notes/test-re
 .githooks/commit-with-tests-notes.sh "Your commit message" file1.js file2.js
 ```
 
-**Full documentation**: See [TESTING_DASHBOARD.md](../TESTING_DASHBOARD.md)
+**Full documentation**: See [docs/TESTING.md](../docs/TESTING.md)
 
 ## 📚 Two Approaches
 
@@ -267,9 +267,8 @@ jq -r '.stats.pass' teststats/results.jsonl | tail -1
 
 ## 📚 Further Reading
 
-- **Main Guide**: [TESTING_DASHBOARD.md](../TESTING_DASHBOARD.md)
+- **Main Guide**: [docs/TESTING.md](../docs/TESTING.md)
 - **Git Notes Deep Dive**: [docs/TESTING_GIT_NOTES.md](../docs/TESTING_GIT_NOTES.md)
-- **Legacy Approach**: [docs/TESTING.md](../docs/TESTING.md)
 - **Dashboard Schema**: [teststats/schema.json](../teststats/schema.json)
 
 ---

@@ -19,7 +19,7 @@ echo ""
 echo "=========================================="
 echo "First run:"
 echo "=========================================="
-./setup-testing.sh > /tmp/setup-run1.log 2>&1
+./scripts/setup-testing.sh > /tmp/setup-run1.log 2>&1
 RUN1_EXIT=$?
 echo "Exit code: $RUN1_EXIT"
 echo ""
@@ -39,7 +39,7 @@ echo ""
 echo "=========================================="
 echo "Second run (should detect existing config):"
 echo "=========================================="
-./setup-testing.sh > /tmp/setup-run2.log 2>&1
+./scripts/setup-testing.sh > /tmp/setup-run2.log 2>&1
 RUN2_EXIT=$?
 echo "Exit code: $RUN2_EXIT"
 echo ""
@@ -59,7 +59,7 @@ echo ""
 echo "=========================================="
 echo "Third run (should still detect existing config):"
 echo "=========================================="
-./setup-testing.sh > /tmp/setup-run3.log 2>&1
+./scripts/setup-testing.sh > /tmp/setup-run3.log 2>&1
 RUN3_EXIT=$?
 echo "Exit code: $RUN3_EXIT"
 echo ""

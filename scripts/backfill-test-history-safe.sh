@@ -57,12 +57,13 @@ if [ "$DRY_RUN" = true ]; then
   echo "=========================================="
   echo ""
   echo "To run for real:"
-  echo "  ./backfill-test-history.sh $LIMIT $SKIP"
+  echo "  scripts/backfill-test-history.sh $LIMIT $SKIP"
   echo ""
   echo "Or to backfill ALL history (could take hours!):"
-  echo "  ./backfill-test-history.sh 1000 0"
+  echo "  scripts/backfill-test-history.sh 1000 0"
   exit 0
 fi
 
 # Not dry run - execute the main script
-exec ./backfill-test-history.sh "$LIMIT" "$SKIP"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec "$SCRIPT_DIR/backfill-test-history.sh" "$LIMIT" "$SKIP"

@@ -15,7 +15,7 @@ check_setup() {
     echo "It looks like you haven't run the setup script yet."
     echo ""
     echo "Quick fix (takes 5 seconds):"
-    echo "  ./setup-testing.sh"
+    echo "  ./scripts/setup-testing.sh"
     echo ""
     echo "Or manually:"
     echo "  git config core.hooksPath .githooks"
@@ -27,7 +27,7 @@ check_setup() {
     echo "  - Prevents regressions"
     echo "  - Syncs test results to dashboard"
     echo ""
-    echo "Documentation: TESTING_DASHBOARD.md"
+    echo "Documentation: docs/TESTING.md"
     echo ""
 
     # Ask if user wants to run setup now
@@ -37,11 +37,11 @@ check_setup() {
       if [[ "$response" =~ ^[Yy]$ ]]; then
         echo ""
         echo "Running setup..."
-        if [ -x "./setup-testing.sh" ]; then
-          ./setup-testing.sh
+        if [ -x "./scripts/setup-testing.sh" ]; then
+          ./scripts/setup-testing.sh
           return 0
         else
-          echo "Error: setup-testing.sh not found or not executable"
+          echo "Error: scripts/setup-testing.sh not found or not executable"
           return 1
         fi
       fi

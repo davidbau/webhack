@@ -141,15 +141,13 @@ node --test test/comparison/c_vs_js_golden.test.js
 After cloning, run the one-time setup script to enable test automation:
 
 ```bash
-./setup-testing.sh
+./setup.sh
 ```
 
-This configures:
-- Git hooks for automatic test logging
-- Auto-push for git notes
-- Dashboard data synchronization
+This installs dependencies, configures git hooks and test automation,
+and builds the C NetHack harness for comparison tests.
 
-See **[TESTING.md](TESTING.md)** for the complete testing guide.
+See **[docs/TESTING.md](docs/TESTING.md)** for the complete testing guide.
 
 ## Data Generation
 
@@ -178,11 +176,11 @@ Project documentation is organized in `docs/`:
 
 Testing infrastructure:
 
-- **[TESTING.md](TESTING.md)** - Complete testing guide (setup, usage, backfilling)
+- **[docs/TESTING.md](docs/TESTING.md)** - Complete testing guide (setup, usage, backfilling)
 - **[.githooks/QUICK_REFERENCE.md](.githooks/QUICK_REFERENCE.md)** - Command cheat sheet
 - **[teststats/](teststats/)** - Dashboard (GitHub Pages)
 
-Debug and test scripts are in `scripts/debug/`.
+Shell utility scripts are in `scripts/`. Debug and test scripts are in `scripts/debug/`.
 
 ## License
 

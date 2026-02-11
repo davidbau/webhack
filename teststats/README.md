@@ -251,9 +251,8 @@ GitHub Pages can take 1-2 minutes to update after push.
 
 ## Documentation
 
-- **Main Guide**: [../TESTING_DASHBOARD.md](../TESTING_DASHBOARD.md) ⭐
+- **Main Guide**: [../docs/TESTING.md](../docs/TESTING.md) ⭐
 - **Git Notes**: [../docs/TESTING_GIT_NOTES.md](../docs/TESTING_GIT_NOTES.md)
-- **Legacy (Two-Commit)**: [../docs/TESTING.md](../docs/TESTING.md)
 - **Hooks**: [../.githooks/README.md](../.githooks/README.md)
 - **Schema**: [schema.json](schema.json)
 

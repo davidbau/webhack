@@ -41,7 +41,7 @@ echo ""
 echo "Verifying critical files..."
 
 CRITICAL_FILES=(
-  "setup-testing.sh"
+  "scripts/setup-testing.sh"
   ".githooks/pre-push"
   ".githooks/pre-push-notes"
   ".githooks/pre-commit"
@@ -75,7 +75,7 @@ echo ""
 # Verify scripts are executable
 echo "Verifying script permissions..."
 NON_EXECUTABLE=0
-for script in .githooks/*.sh .githooks/pre-* setup-testing.sh; do
+for script in .githooks/*.sh .githooks/pre-* scripts/setup-testing.sh; do
   if [ -f "$script" ] && [ ! -x "$script" ]; then
     echo "⚠️  Not executable: $script"
     chmod +x "$script"
@@ -171,8 +171,8 @@ echo "Staging files..."
 # Stage testing infrastructure files
 git add .githooks/
 git add teststats/
-git add setup-testing.sh
-git add commit-testing-infrastructure.sh
+git add scripts/setup-testing.sh
+git add scripts/commit-testing-infrastructure.sh
 git add TESTING_DASHBOARD.md
 git add TESTING_INFRASTRUCTURE_SUMMARY.md
 git add AUTOMATION_LAYERS.md
@@ -207,7 +207,7 @@ multiple automation layers and NetHack-themed documentation.
 **Automation Layers**:
 1. npm postinstall - Automatic setup after npm install
 2. Smart hooks - Detect missing setup, prompt to configure
-3. Manual setup script - ./setup-testing.sh (one command)
+3. Manual setup script - ./setup.sh (one command)
 4. Documentation - Clear instructions in multiple places
 
 **Full Schema Compliance**:
@@ -241,8 +241,8 @@ multiple automation layers and NetHack-themed documentation.
 ## Files Added
 
 New files (15):
-- setup-testing.sh
-- commit-testing-infrastructure.sh
+- scripts/setup-testing.sh
+- scripts/commit-testing-infrastructure.sh
 - TESTING_DASHBOARD.md
 - TESTING_INFRASTRUCTURE_SUMMARY.md
 - AUTOMATION_LAYERS.md
@@ -266,7 +266,7 @@ After pulling these changes:
 \`\`\`bash
 npm install  # Automatic setup via postinstall
 # OR
-./setup-testing.sh  # Manual setup
+./setup.sh  # Full setup (dependencies + testing + C harness)
 \`\`\`
 
 Then use the helper script:
@@ -317,7 +317,7 @@ echo "     https://davidbau.github.io/mazesofmenace/teststats/"
 echo ""
 echo "5. Share with team:"
 echo "   - New clones: npm install (auto-setup)"
-echo "   - Existing clones: ./setup-testing.sh"
+echo "   - Existing clones: ./setup.sh"
 echo ""
 echo "Documentation:"
 echo "  - Main guide: TESTING_DASHBOARD.md"
