@@ -575,9 +575,15 @@ section.level1 > p:nth-last-of-type(2) {
   }
 }
 
-/* --- Extra-wide: also show search on right ------------------ */
+/* --- Wide screens (1200px+): also show search on right ------ */
 
-@media screen and (min-width: 1400px) {
+@media screen and (min-width: 1200px) {
+  /* Adjust body margins to account for both sidebars */
+  body {
+    margin-left: 250px;
+    margin-right: 280px;
+  }
+
   #sidebar-search {
     display: block;
     position: fixed;
