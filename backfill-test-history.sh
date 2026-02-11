@@ -216,21 +216,29 @@ while read commit; do
   echo "Results: $PASS_COUNT pass, $FAIL_COUNT fail (${DURATION}s)"
 
   # Parse category-specific results (best effort)
-  MAP_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "map" || echo 0)
-  MAP_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "map" || echo 0)
-  MAP_TOTAL=$((${MAP_PASS:-0} + ${MAP_FAIL:-0}))
+  MAP_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "map" 2>/dev/null || echo 0)
+  MAP_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "map" 2>/dev/null || echo 0)
+  MAP_PASS=$(echo "$MAP_PASS" | tr -d '[:space:]')
+  MAP_FAIL=$(echo "$MAP_FAIL" | tr -d '[:space:]')
+  MAP_TOTAL=$((MAP_PASS + MAP_FAIL))
 
-  GAMEPLAY_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "gameplay" || echo 0)
-  GAMEPLAY_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "gameplay" || echo 0)
-  GAMEPLAY_TOTAL=$((${GAMEPLAY_PASS:-0} + ${GAMEPLAY_FAIL:-0}))
+  GAMEPLAY_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "gameplay" 2>/dev/null || echo 0)
+  GAMEPLAY_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "gameplay" 2>/dev/null || echo 0)
+  GAMEPLAY_PASS=$(echo "$GAMEPLAY_PASS" | tr -d '[:space:]')
+  GAMEPLAY_FAIL=$(echo "$GAMEPLAY_FAIL" | tr -d '[:space:]')
+  GAMEPLAY_TOTAL=$((GAMEPLAY_PASS + GAMEPLAY_FAIL))
 
-  CHARGEN_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "chargen" || echo 0)
-  CHARGEN_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "chargen" || echo 0)
-  CHARGEN_TOTAL=$((${CHARGEN_PASS:-0} + ${CHARGEN_FAIL:-0}))
+  CHARGEN_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "chargen" 2>/dev/null || echo 0)
+  CHARGEN_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "chargen" 2>/dev/null || echo 0)
+  CHARGEN_PASS=$(echo "$CHARGEN_PASS" | tr -d '[:space:]')
+  CHARGEN_FAIL=$(echo "$CHARGEN_FAIL" | tr -d '[:space:]')
+  CHARGEN_TOTAL=$((CHARGEN_PASS + CHARGEN_FAIL))
 
-  SPECIAL_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "special\|oracle\|bigroom" || echo 0)
-  SPECIAL_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "special\|oracle\|bigroom" || echo 0)
-  SPECIAL_TOTAL=$((${SPECIAL_PASS:-0} + ${SPECIAL_FAIL:-0}))
+  SPECIAL_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "special\|oracle\|bigroom" 2>/dev/null || echo 0)
+  SPECIAL_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "special\|oracle\|bigroom" 2>/dev/null || echo 0)
+  SPECIAL_PASS=$(echo "$SPECIAL_PASS" | tr -d '[:space:]')
+  SPECIAL_FAIL=$(echo "$SPECIAL_FAIL" | tr -d '[:space:]')
+  SPECIAL_TOTAL=$((SPECIAL_PASS + SPECIAL_FAIL))
 
   # Create test note
   TEST_NOTE=$(cat <<EOF
