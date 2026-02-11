@@ -11,7 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { resetLevelState } from '../../js/sp_lev.js';
-import { getSpecialLevel, DUNGEONS_OF_DOOM, GEHENNOM, VLADS_TOWER, KNOX, SOKOBAN } from '../../js/special_levels.js';
+import { getSpecialLevel, DUNGEONS_OF_DOOM, GEHENNOM, VLADS_TOWER, KNOX, SOKOBAN, GNOMISH_MINES, QUEST } from '../../js/special_levels.js';
 import { initRng } from '../../js/rng.js';
 
 const ROWNO = 21;
@@ -264,4 +264,169 @@ test('Big Room - seed 42', () => {
     const cSession = loadCReference(42, 'bigroom');
     if (!cSession) return;
     testLevel(42, DUNGEONS_OF_DOOM, 15, 'bigroom', cSession);
+});
+
+// Oracle tests
+test('Oracle - seed 1', () => {
+    const cSession = loadCReference(1, 'oracle');
+    if (!cSession) return;
+    testLevel(1, DUNGEONS_OF_DOOM, 5, 'oracle', cSession);
+});
+
+test('Oracle - seed 42', () => {
+    const cSession = loadCReference(42, 'oracle');
+    if (!cSession) return;
+    testLevel(42, DUNGEONS_OF_DOOM, 5, 'oracle', cSession);
+});
+
+test('Oracle - seed 100', () => {
+    const cSession = loadCReference(100, 'oracle');
+    if (!cSession) return;
+    testLevel(100, DUNGEONS_OF_DOOM, 5, 'oracle', cSession);
+});
+
+// Gnomish Mines - Town (level 5, has 7 variants)
+test('Mines Town - seed 1', () => {
+    const cSession = loadCReference(1, 'mines');
+    if (!cSession) return;
+    testLevel(1, GNOMISH_MINES, 5, 'minetn', cSession);
+});
+
+test('Mines Town - seed 42', () => {
+    const cSession = loadCReference(42, 'mines');
+    if (!cSession) return;
+    testLevel(42, GNOMISH_MINES, 5, 'minetn', cSession);
+});
+
+test('Mines Town - seed 100', () => {
+    const cSession = loadCReference(100, 'mines');
+    if (!cSession) return;
+    testLevel(100, GNOMISH_MINES, 5, 'minetn', cSession);
+});
+
+// Gnomish Mines - End (level 8, has 3 variants)
+test('Mines End - seed 1', () => {
+    const cSession = loadCReference(1, 'mines');
+    if (!cSession) return;
+    testLevel(1, GNOMISH_MINES, 8, 'minend', cSession);
+});
+
+test('Mines End - seed 42', () => {
+    const cSession = loadCReference(42, 'mines');
+    if (!cSession) return;
+    testLevel(42, GNOMISH_MINES, 8, 'minend', cSession);
+});
+
+test('Mines End - seed 100', () => {
+    const cSession = loadCReference(100, 'mines');
+    if (!cSession) return;
+    testLevel(100, GNOMISH_MINES, 8, 'minend', cSession);
+});
+
+// Elemental Planes tests
+test('Plane of Air - seed 1', () => {
+    const cSession = loadCReference(1, 'planes');
+    if (!cSession) return;
+    testLevel(1, DUNGEONS_OF_DOOM, -1, 'air', cSession);
+});
+
+test('Plane of Earth - seed 1', () => {
+    const cSession = loadCReference(1, 'planes');
+    if (!cSession) return;
+    testLevel(1, DUNGEONS_OF_DOOM, -2, 'earth', cSession);
+});
+
+test('Plane of Fire - seed 1', () => {
+    const cSession = loadCReference(1, 'planes');
+    if (!cSession) return;
+    testLevel(1, DUNGEONS_OF_DOOM, -3, 'fire', cSession);
+});
+
+test('Plane of Water - seed 1', () => {
+    const cSession = loadCReference(1, 'planes');
+    if (!cSession) return;
+    testLevel(1, DUNGEONS_OF_DOOM, -4, 'water', cSession);
+});
+
+test('Astral Plane - seed 1', () => {
+    const cSession = loadCReference(1, 'planes');
+    if (!cSession) return;
+    testLevel(1, DUNGEONS_OF_DOOM, -5, 'astral', cSession);
+});
+
+test('Astral Plane - seed 100', () => {
+    const cSession = loadCReference(100, 'planes');
+    if (!cSession) return;
+    testLevel(100, DUNGEONS_OF_DOOM, -5, 'astral', cSession);
+});
+
+// Rogue level tests
+test('Rogue Level - seed 1', () => {
+    const cSession = loadCReference(1, 'rogue');
+    if (!cSession) return;
+    testLevel(1, DUNGEONS_OF_DOOM, 15, 'rogue', cSession);
+});
+
+test('Rogue Level - seed 100', () => {
+    const cSession = loadCReference(100, 'rogue');
+    if (!cSession) return;
+    testLevel(100, DUNGEONS_OF_DOOM, 15, 'rogue', cSession);
+});
+
+// Quest levels (sample - Archeologist)
+test('Quest Start (Arc) - seed 1', () => {
+    const cSession = loadCReference(1, 'quest');
+    if (!cSession) return;
+    testLevel(1, QUEST, 1, 'arc-strt', cSession);
+});
+
+test('Quest Locate (Arc) - seed 1', () => {
+    const cSession = loadCReference(1, 'quest');
+    if (!cSession) return;
+    testLevel(1, QUEST, 2, 'arc-loca', cSession);
+});
+
+test('Quest Goal (Arc) - seed 1', () => {
+    const cSession = loadCReference(1, 'quest');
+    if (!cSession) return;
+    testLevel(1, QUEST, 5, 'arc-goal', cSession);
+});
+
+// Gehennom filler levels
+test('Gehennom Filler - seed 1', () => {
+    const cSession = loadCReference(1, 'gehennom');
+    if (!cSession) return;
+    testLevel(1, GEHENNOM, 3, 'gehennom', cSession);
+});
+
+test('Gehennom Filler - seed 100', () => {
+    const cSession = loadCReference(100, 'gehennom');
+    if (!cSession) return;
+    testLevel(100, GEHENNOM, 3, 'gehennom', cSession);
+});
+
+// Tutorial levels
+test('Tutorial 1 - seed 1', () => {
+    const cSession = loadCReference(1, 'tutorial');
+    if (!cSession) return;
+    testLevel(1, DUNGEONS_OF_DOOM, 1, 'tut-1', cSession);
+});
+
+test('Tutorial 2 - seed 1', () => {
+    const cSession = loadCReference(1, 'tutorial');
+    if (!cSession) return;
+    testLevel(1, DUNGEONS_OF_DOOM, 2, 'tut-2', cSession);
+});
+
+// Mines filler levels
+test('Mines Filler - seed 1', () => {
+    const cSession = loadCReference(1, 'filler');
+    if (!cSession) return;
+    testLevel(1, GNOMISH_MINES, 3, 'minefill', cSession);
+});
+
+test('Mines Filler - seed 100', () => {
+    const cSession = loadCReference(100, 'filler');
+    if (!cSession) return;
+    testLevel(100, GNOMISH_MINES, 3, 'minefill', cSession);
 });
