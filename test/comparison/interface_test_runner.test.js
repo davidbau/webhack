@@ -322,7 +322,7 @@ describe('Interface Tests', () => {
       );
 
       if (!comparison.matches) {
-        const report = formatDiffReport(comparison.diffs, 50);
+        const report = formatDiffReport(comparison.diffs, 10);
         console.log('\n❌ JS vs C screen differences:\n' + report);
       }
 

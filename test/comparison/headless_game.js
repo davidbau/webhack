@@ -92,7 +92,7 @@ export class HeadlessGame {
     }
 
     /**
-     * Show role selection menu
+     * Show role selection menu (matching C NetHack exactly)
      */
     showRoleMenu() {
         const { display } = this;
@@ -105,45 +105,47 @@ export class HeadlessGame {
             }
         }
 
-        // Role menu header with inverse video
-        const header = '                     Pick a role or profession                     ';
-        for (let c = 0; c < header.length && c < 80; c++) {
-            display.grid[0][c] = header[c];
-            display.attrs[0][c] = 1; // Inverse video
-        }
-
-        // Role list
-        const roleList = [
+        // Exact C NetHack role menu layout
+        const lines = [
+            ' Pick a role or profession',
             '',
-            '     a - archeologist          h - ranger',
-            '     b - barbarian             i - rogue',
-            '     c - caveman               j - samurai',
-            '     d - healer                k - tourist',
-            '     e - knight                l - valkyrie',
-            '     f - monk                  m - wizard',
-            '     g - priest',
+            ' <role> <race> <gender> <alignment>',
             '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '     ? - Random Role           ~ - Descriptions',
-            '     q - Quit                  (end)'
+            ' a - an Archeologist',
+            ' b - a Barbarian',
+            ' c - a Caveman/Cavewoman',
+            ' h - a Healer',
+            ' k - a Knight',
+            ' m - a Monk',
+            ' p - a Priest/Priestess',
+            ' r - a Rogue',
+            ' R - a Ranger',
+            ' s - a Samurai',
+            ' t - a Tourist',
+            ' v - a Valkyrie',
+            ' w - a Wizard',
+            ' * * Random',
+            ' / - Pick race first',
+            ' " - Pick gender first',
+            ' [ - Pick alignment first',
+            ' ~ - Set role/race/&c filtering',
+            ' q - Quit',
+            ' (end)'
         ];
 
-        for (let i = 0; i < roleList.length && i + 1 < 24; i++) {
-            const line = roleList[i];
+        // Render lines with exact spacing
+        for (let i = 0; i < lines.length && i < 24; i++) {
+            const line = lines[i];
             for (let c = 0; c < line.length && c < 80; c++) {
-                display.grid[i + 1][c] = line[c];
+                display.grid[i][c] = line[c];
             }
+        }
+
+        // Header has inverse video only on the text, not trailing spaces
+        // C NetHack applies inverse video at positions 1-25, not 0-25
+        const headerText = ' Pick a role or profession';
+        for (let c = 1; c <= 25; c++) {
+            display.attrs[0][c] = 1; // Inverse video
         }
     }
 
