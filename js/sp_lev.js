@@ -15,7 +15,7 @@
 
 import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, getRngCallCount } from './rng.js';
-import { mksobj, mkobj } from './mkobj.js';
+import { mksobj, mkobj, mkcorpstat } from './mkobj.js';
 import { create_room, create_subroom, makecorridors, init_rect, rnd_rect, get_rect, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized } from './dungeon.js';
 import { seedFromMT } from './xoshiro256.js';
 import {
@@ -38,6 +38,7 @@ import {
     GEM_CLASS, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS, VENOM_CLASS,
     SCR_EARTH, objectData
 } from './objects.js';
+import { mons } from './monsters.js';
 
 // Aliases for compatibility with C naming
 const STAIRS_UP = STAIRS;
@@ -124,21 +125,8 @@ export function setLevelContext(map, depth) {
     levelState.roomDepth = 0;
     levelState.currentRoom = null;
 
-    // Lua RNG counter for themed rooms: Initialize to 0 ONLY on first call (undefined)
-    // Once MT is initialized, preserve luaRngCounter across all themed rooms in this level
-    // C ref: MT is initialized ONCE per level, not per themed room
-    const oldCounter = levelState.luaRngCounter;
-    if (levelState.luaRngCounter === undefined) {
-        levelState.luaRngCounter = 0;  // First call - will trigger MT init on first Lua RNG usage
-    }
-    // else: keep existing luaRngCounter value (MT already initialized)
-
     // Callback for room creation failure (set by themed room generator)
     levelState.roomFailureCallback = null;
-
-    if (DEBUG) {
-        console.log(`\n[setLevelContext] depth=${depth}, luaRngCounter: ${oldCounter} → ${levelState.luaRngCounter}`);
-    }
 }
 
 /**
@@ -146,21 +134,11 @@ export function setLevelContext(map, depth) {
  * Always call this to prevent state leakage between levels.
  */
 export function clearLevelContext() {
-    const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
-
-    if (DEBUG) {
-        console.log(`\n[clearLevelContext] Clearing map context, resetting MT flag (keeping luaRngCounter=${levelState.luaRngCounter})`);
-    }
-
     levelState.map = null;
     levelState.depth = 1;
     levelState.roomStack = [];
     levelState.roomDepth = 0;
     levelState.currentRoom = null;
-
-    // C ref: Each themed room gets fresh MT init. Reset flag between rooms.
-    // luaRngCounter continues to increment across all themed rooms.
-    resetMtInitFlag();
 }
 
 /**
@@ -1516,17 +1494,6 @@ export function room(opts = {}) {
                 }
                 return; // Can't place room without a rect
             }
-
-            // Lazy MT initialization for themed rooms
-            // C ref: MT init happens AFTER rnd_rect() but BEFORE create_room()
-            // This is the first des.* API call that needs Lua RNG for object/monster placement
-            const DEBUG_LUA_RNG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
-            if (levelState && levelState.luaRngCounter !== undefined && levelState.luaRngCounter === 0) {
-                if (DEBUG_LUA_RNG) {
-                    console.log(`\n[des.room] Triggering lazy MT init after rnd_rect (luaRngCounter=0)`);
-                }
-                initLuaMT();
-            }
         }
 
         // C ref: sp_lev.c:1598-1619 — Convert grid coordinates to absolute map coordinates
@@ -1940,6 +1907,19 @@ export function stair(direction, x, y) {
  * Map object name to object type constant.
  * C ref: sp_lev.c get_table_mapchr_opt() for objects
  */
+/**
+ * Map monster name to monster index.
+ * C ref: pm.h PM_* constants are indices into mons[] array
+ */
+function monsterNameToIndex(name) {
+    if (!name) return -1;
+    const lowerName = name.toLowerCase();
+
+    // Search mons array for matching name
+    const index = mons.findIndex(m => m.name && m.name.toLowerCase() === lowerName);
+    return index >= 0 ? index : -1;
+}
+
 function objectNameToType(name) {
     const lowerName = name.toLowerCase();
 
@@ -2029,52 +2009,6 @@ export function object(name_or_opts, x, y) {
         }
     }
 
-    // C ref: nhlua.c nhl_rn2() — Lua object generation calls rn2(1000+) for properties
-    // Even though actual object placement is deferred, RNG calls happen immediately
-    // C pattern is complex: first object uses 5 calls (1000-1004), second uses 3 (1010,1012,1014 with gaps),
-    // rest use 4-5 each. Without exact Lua code, approximate with 4 calls average
-    // TODO: Implement exact C Lua pattern once we understand the state machine
-    const DEBUG_LUA_RNG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
-
-    if (DEBUG_LUA_RNG) {
-        console.log(`\n[des.object] luaRngCounter check: ${levelState ? levelState.luaRngCounter : 'no levelState'}`);
-    }
-
-    if (levelState && levelState.luaRngCounter !== undefined) {
-        // Lazy MT initialization on first Lua RNG use
-        // C ref: MT init happens when Lua's math.random() is first called from themed room code
-        if (levelState.luaRngCounter === 0) {
-            if (DEBUG_LUA_RNG) {
-                console.log(`\n[des.object] Triggering lazy MT init (luaRngCounter=0)`);
-            }
-            initLuaMT();
-            // luaRngCounter is now 37 after MT init
-        }
-
-        const baseOffset = levelState.luaRngCounter;
-
-        if (DEBUG_LUA_RNG) {
-            const stack = new Error().stack.split('\n').slice(2, 6).join('\n');
-            console.log(`\n=== Lua RNG triggered for des.object() ===`);
-            console.log(`Counter: ${baseOffset}, object: ${JSON.stringify(name_or_opts).slice(0, 80)}`);
-            console.log(`Call stack:\n${stack}`);
-        }
-
-        // Generate Lua RNG pattern for object properties
-        // C ref: nhlua.c nhl_rn2() with varying offsets
-        const numRngCalls = 4;
-        for (let i = 0; i < numRngCalls; i++) {
-            rn2(1000 + baseOffset + i);
-        }
-        levelState.luaRngCounter = baseOffset + numRngCalls;
-
-        if (DEBUG_LUA_RNG) {
-            console.log(`Counter after: ${levelState.luaRngCounter}`);
-        }
-    } else if (DEBUG_LUA_RNG) {
-        console.log(`[des.object] Skipping Lua RNG (counter is undefined)`);
-    }
-
     // Convert map-relative coordinates to absolute
     // C ref: Lua coordinates after des.map() are relative to map origin
     let absX = x;
@@ -2093,10 +2027,53 @@ export function object(name_or_opts, x, y) {
         absY = levelState.currentRoom.ly + 1 + absY;
     }
 
-    // DEFERRED EXECUTION: Queue object placement for later (after corridors)
-    // Store absolute coordinates since currentRoom context will be lost
-    // Actual placement happens in executeDeferredObjects()
-    levelState.deferredObjects.push({ name_or_opts, x: absX, y: absY });
+    // C ref: mkroom.c somexy() - when no coordinates specified and in a room,
+    // select random position immediately (calls somex/somey with RNG)
+    // CRITICAL: Must happen BEFORE Lua RNG calls to match C execution order
+    if (levelState.currentRoom && absX === undefined && absY === undefined) {
+        const room = levelState.currentRoom;
+        // somex() = rn1(width, lx) = rn2(width) + lx
+        // somey() = rn1(height, ly) = rn2(height) + ly
+        const width = room.hx - room.lx + 1;
+        const height = room.hy - room.ly + 1;
+        absX = rn2(width) + room.lx;   // Match somex() behavior
+        absY = rn2(height) + room.ly;  // Match somey() behavior
+    }
+
+    // C ref: Object creation happens IMMEDIATELY (calls next_ident, rndmonst_adj, etc.)
+    // even though map placement is deferred until after corridors
+    // This ensures RNG timing matches C: create during loop, place after corridors
+
+    let obj = null;
+
+    // Create the object now (triggers next_ident and other creation RNG)
+    if (typeof name_or_opts === 'string') {
+        const otyp = objectNameToType(name_or_opts);
+        if (otyp >= 0) {
+            obj = mksobj(otyp, true, false);
+            if (obj) {
+                obj.id = name_or_opts;  // Store original name
+            }
+        }
+    } else if (name_or_opts && typeof name_or_opts === 'object' && name_or_opts.id) {
+        const otyp = objectNameToType(name_or_opts.id);
+        if (otyp >= 0) {
+            // C ref: Use mkcorpstat() for corpses with specific monster type
+            // This handles corpsenm assignment correctly (assigns random, then overwrites)
+            if (name_or_opts.montype && name_or_opts.id.toLowerCase() === 'corpse') {
+                const mndx = monsterNameToIndex(name_or_opts.montype);
+                obj = mkcorpstat(otyp, mndx, true);
+            } else {
+                obj = mksobj(otyp, true, false);
+            }
+        }
+    }
+
+    // DEFERRED PLACEMENT: Queue object + coordinates for map placement after corridors
+    // Object is already created (RNG consumed), we just need to place it on the map later
+    if (obj) {
+        levelState.deferredObjects.push({ obj, x: absX, y: absY });
+    }
 }
 
 /**
@@ -2391,31 +2368,8 @@ export function monster(opts_or_class, x, y) {
         levelState.map = new GameMap();
     }
 
-    const DEBUG_LUA_RNG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
-
-    // C ref: nhlua.c nhl_rn2() — Lua monster generation calls rn2(1000+) for properties
-    // Similar to des.object(), RNG calls happen immediately even though placement is deferred
-    if (levelState && levelState.luaRngCounter !== undefined) {
-        // Lazy MT initialization on first Lua RNG use
-        if (levelState.luaRngCounter === 0) {
-            if (DEBUG_LUA_RNG) {
-                console.log(`\n[des.monster] Triggering lazy MT init (luaRngCounter=0)`);
-            }
-            initLuaMT();
-        }
-
-        const numRngCalls = 4;  // Approximate - actual pattern varies
-        const baseOffset = levelState.luaRngCounter;
-
-        if (DEBUG_LUA_RNG) {
-            console.log(`\n[des.monster] luaRngCounter: ${baseOffset} → ${baseOffset + numRngCalls}`);
-        }
-
-        for (let i = 0; i < numRngCalls; i++) {
-            rn2(1000 + baseOffset + i);
-        }
-        levelState.luaRngCounter = baseOffset + numRngCalls;
-    }
+    // NOTE: Lua RNG simulation removed - all themed rooms converted to JS
+    // Monster creation RNG happens during executeDeferredMonsters()
 
     // Convert map-relative coordinates to absolute
     // C ref: Lua coordinates after des.map() are relative to map origin
@@ -2707,113 +2661,23 @@ export function random_corridors() {
 /**
  * Execute all deferred object placements
  * Called from finalize_level() after corridor generation
+ * Objects are already created (RNG consumed), just need to be placed on the map
  */
 function executeDeferredObjects() {
     for (const deferred of levelState.deferredObjects) {
-        const { name_or_opts, x, y } = deferred;
+        const { obj, x, y } = deferred;
 
-        // Execute the original object() logic
-        // Handle des.object() with no arguments - random object at random location
-        if (name_or_opts === undefined) {
-            const randClass = rn2(10);  // Random object class
-            const obj = mkobj(randClass, true);
-            if (obj) {
-                obj.ox = rn2(60) + 10;
-                obj.oy = rn2(15) + 3;
-                levelState.map.objects.push(obj);
-            }
-            continue;
-        }
+        if (!obj) continue;
 
-        if (typeof name_or_opts === 'string') {
-            // Check if it's a single-character object class
-            if (name_or_opts.length === 1) {
-                const objClass = objectClassToType(name_or_opts);
-                if (objClass >= 0) {
-                    // If coordinates provided, use them; otherwise random
-                    const objX = (x !== undefined) ? x : rn2(60) + 10;
-                    const objY = (y !== undefined) ? y : rn2(15) + 3;
-                    if (objX >= 0 && objX < 80 && objY >= 0 && objY < 21) {
-                        const obj = mkobj(objClass, true);
-                        if (obj) {
-                            obj.ox = objX;
-                            obj.oy = objY;
-                            levelState.map.objects.push(obj);
-                        }
-                    }
-                }
-            } else if (x !== undefined && y !== undefined) {
-                // Multi-character string - treat as object name
-                const otyp = objectNameToType(name_or_opts);
-                if (otyp >= 0 && x >= 0 && x < 80 && y >= 0 && y < 21) {
-                    const obj = mksobj(otyp, true, false);
-                    if (obj) {
-                        obj.id = name_or_opts;  // Store the original name
-                        obj.ox = x;
-                        obj.oy = y;
-                        levelState.map.objects.push(obj);
-                    }
-                }
-            }
-        } else if (name_or_opts && typeof name_or_opts === 'object') {
-            let objId = name_or_opts.id;
-            let coordX, coordY;
+        // Place the pre-created object on the map
+        // If coordinates not specified, use random dungeon position
+        const coordX = (x !== undefined) ? x : rn2(60) + 10;
+        const coordY = (y !== undefined) ? y : rn2(15) + 3;
 
-            // First, try to use coordinates from the deferred object itself (already unpacked by object())
-            if (x !== undefined && y !== undefined) {
-                coordX = x;
-                coordY = y;
-            } else if (name_or_opts.coord) {
-                // Handle coord property (array or object)
-                if (Array.isArray(name_or_opts.coord)) {
-                    coordX = name_or_opts.coord[0];
-                    coordY = name_or_opts.coord[1];
-                } else {
-                    coordX = name_or_opts.coord.x;
-                    coordY = name_or_opts.coord.y;
-                }
-            } else if (name_or_opts.x !== undefined && name_or_opts.y !== undefined) {
-                coordX = name_or_opts.x;
-                coordY = name_or_opts.y;
-            }
-
-            if (coordX === undefined || coordY === undefined) {
-                coordX = rn2(60) + 10;
-                coordY = rn2(15) + 3;
-            }
-
-            if (objId) {
-                const otyp = objectNameToType(objId);
-                if (otyp >= 0 && coordX >= 0 && coordX < 80 && coordY >= 0 && coordY < 21) {
-                    const obj = mksobj(otyp, true, false);
-                    if (obj) {
-                        obj.ox = coordX;
-                        obj.oy = coordY;
-                        if (name_or_opts.montype && objId.toLowerCase() === 'corpse') {
-                            obj.corpsenm = name_or_opts.montype;
-                        }
-                        levelState.map.objects.push(obj);
-
-                        // TODO: Execute contents callback if provided
-                        // C ref: Lua des.object() with contents function executes after container creation
-                        // NOTE: Objects created in contents() should go into container inventory, not map.objects
-                        // Requires implementing container inventory system before enabling
-                        // if (name_or_opts.contents && typeof name_or_opts.contents === 'function') {
-                        //     name_or_opts.contents(obj);
-                        // }
-                    }
-                }
-            } else if (name_or_opts.class) {
-                const objClass = objectClassToType(name_or_opts.class);
-                if (objClass >= 0 && coordX >= 0 && coordX < 80 && coordY >= 0 && coordY < 21) {
-                    const obj = mkobj(objClass, true);
-                    if (obj) {
-                        obj.ox = coordX;
-                        obj.oy = coordY;
-                        levelState.map.objects.push(obj);
-                    }
-                }
-            }
+        if (coordX >= 0 && coordX < 80 && coordY >= 0 && coordY < 21) {
+            obj.ox = coordX;
+            obj.oy = coordY;
+            levelState.map.objects.push(obj);
         }
     }
 }

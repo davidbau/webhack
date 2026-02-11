@@ -27,7 +27,7 @@ def convert_guidebook(input_file, output_file):
             if i == 0:
                 output.append('# A Guide to the Mazes of Menace\n')
                 output.append('\n')
-                output.append('*Guidebook for NetHack*\n')
+                output.append('<p style="text-align: center; font-style: italic; margin: 1.5em 0;">Guidebook for NetHack</p>\n')
                 output.append('\n')
             elif 'Eric S. Raymond' in line:
                 output.append('> ' + line.strip() + '\n')
@@ -72,21 +72,21 @@ def convert_guidebook(input_file, output_file):
         if re.match(r'^\s*\+[-=]+\+\s*$', line.rstrip()) and not in_ascii_diagram:
             in_ascii_diagram = True
             output.append('```\n')
-            output.append(line.lstrip() + '\n')
+            output.append(line + '\n')  # Preserve exact formatting
             prev_line_empty = False
             continue
 
         # Check for ASCII diagram end (lines like +---Figure-1---+ or +----+)
         if in_ascii_diagram and re.match(r'^\s*\+[-=A-Za-z0-9\s]*\+\s*$', line.rstrip()):
-            output.append(line.lstrip() + '\n')
+            output.append(line + '\n')  # Preserve exact formatting
             output.append('```\n\n')
             in_ascii_diagram = False
             prev_line_empty = True
             continue
 
-        # Inside ASCII diagram - preserve but strip leading indent
+        # Inside ASCII diagram - preserve exact formatting including all spaces
         if in_ascii_diagram:
-            output.append(line.lstrip() + '\n')
+            output.append(line + '\n')  # Preserve exact formatting
             prev_line_empty = False
             continue
 
@@ -147,8 +147,17 @@ def convert_guidebook(input_file, output_file):
         # Wrap control character patterns
         # ^<key> pattern (generic placeholder)
         line = re.sub(r'\^<([a-z]+)>', r'`^<\1>`', line)
-        # ^X, ^C etc. (specific keys)
+        # ^X, ^C etc. (uppercase specific keys)
         line = re.sub(r'\^([A-Z])\b', r'`^\1`', line)
+        # ^x, ^c etc. (lowercase specific keys)
+        line = re.sub(r'\^([a-z])\b', r'`^\1`', line)
+
+        # Wrap Meta key combinations (M-x, M-X, etc.)
+        line = re.sub(r'\b(M-[a-zA-Z])\b', r'`\1`', line)
+
+        # Wrap single letter keys in tables (e.g., "h    #help")
+        # Pattern: start of line, single letter, spaces, #command
+        line = re.sub(r'^([a-zA-Z])\s+(#[a-z]+)', r'`\1`    `\2`', line)
 
         # Special case: ``' (backtick character) needs double backticks to escape
         # Convert ``' -> `` ` `` (backtick shown in code)
@@ -187,15 +196,28 @@ def convert_guidebook(input_file, output_file):
         # Wrap special key names (ESC, SPACE, RETURN, etc.)
         line = re.sub(r'\b(ESC|SPACE|RETURN|ENTER|TAB|DELETE|BACKSPACE)\b', r'`\1`', line)
 
-        # Wrap configuration file syntax (OPTIONS=, CHOOSE=, [section])
-        # These are configuration file examples that should be in code blocks
-        if line.startswith('OPTIONS=') or line.startswith('CHOOSE=') or re.match(r'^\[.*\]', line):
+        # Wrap inline configuration examples (e.g., AUTOCOMPLETE=..., BIND=...)
+        # Match WORD= followed by content, wrap in backticks
+        line = re.sub(r'\b(AUTOCOMPLETE|BIND|MSGTYPE|SYMBOLS)=([^\s]+)', r'`\1=\2`', line)
+
+        # Wrap configuration file syntax (OPTIONS=, CHOOSE=, AUTOCOMPLETE=, BIND=, SYMBOLS=, [section])
+        # These are configuration file examples that should be in code blocks (when at line start)
+        # Also handle comment lines (# followed by space or #$ for empty comments)
+        if (line.startswith('OPTIONS=') or line.startswith('CHOOSE=') or
+            line.startswith('AUTOCOMPLETE=') or line.startswith('BIND=') or
+            line.startswith('SYMBOLS=') or line.startswith('# ') or line == '#' or
+            re.match(r'^\[.*\]', line)):
             line = '    ' + line  # Indent with 4 spaces to make it a code block in markdown
+
+        # Wrap option names (standalone lowercase words, possibly with underscores/numbers)
+        # These appear as definition terms in the options section
+        line_stripped = line.rstrip('\n')
+        if re.match(r'^([a-z][a-z0-9_]*[a-zA-Z0-9])$', line_stripped) and len(line_stripped) > 2:
+            line = '`' + line_stripped + '`\n'  # Wrap in code formatting
 
         # Wrap environment variable names (HACKDIR, LEVELDIR, etc.)
         # These are definition terms, wrap in inline code
-        line_stripped = line.rstrip('\n')
-        if re.match(r'^([A-Z_]+)$', line_stripped) and len(line_stripped) > 2:
+        elif re.match(r'^([A-Z_]+)$', line_stripped) and len(line_stripped) > 2:
             line = '**`' + line_stripped + '`**\n'  # Bold code for visibility
 
         # Wrap single symbols in common phrases

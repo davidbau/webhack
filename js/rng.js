@@ -171,17 +171,20 @@ export function rnl(x, luck = 0) {
     return i;
 }
 
-// d(n, x) = NdX dice roll = n + sum of n RND(x) calls
-// C ref: rnd.c:173-188
+// d(n, x) = NdX dice roll = n + sum of n random calls
+// When called from Lua code (themerms.js), matches Lua's d() implementation
+// which uses math.random() that is replaced with nh.random()
+// C ref: dat/nhlib.lua d() uses math.random(1, faces), replaced with nh.random(1, faces)
+// C ref: nhlua.c nhl_random(1, faces) = 1 + rn2(faces), logs rn2() call
 export function d(n, x) {
-    enterRng();
-    // C: tmp = n; while(n--) tmp += RND(x); return tmp;
+    // Lua's d(): for i=1,dice do sum = sum + math.random(1, faces) end
+    // math.random is replaced with nh.random in C
+    // nh.random(1, x) = 1 + rn2(x), logs rn2(x)
+    // Match C's logging by calling rn2(x) + 1 directly
     let tmp = n;
     for (let i = 0; i < n; i++) {
-        tmp += RND(x);
+        tmp += 1 + rn2(x);  // Match nh.random(1, x) = 1 + rn2(x)
     }
-    logRng('d', `${n},${x}`, tmp);
-    exitRng();
     return tmp;
 }
 

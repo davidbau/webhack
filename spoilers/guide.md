@@ -1,6 +1,6 @@
 # A Traveler's Guide to the <span class="nobr">Mazes of Menace</span>
 
-> *Do not read this guide aloud. The dungeon is listening.*
+<p style="text-align: center; font-style: italic; margin: 1.5em 0;">Do not read this guide aloud. The dungeon is listening.</p>
 
 ---
 

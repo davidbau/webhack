@@ -14,7 +14,40 @@
     <meta property="og:description" content="Play NetHack in your browser - A classic roguelike dungeon crawler adventure.">
     <meta property="og:site_name" content="NetHack JS">
     <style>
-        /* Elegant book-like appearance matching the guidebooks */
+        /* ============================================================
+           CSS Custom Properties (Design Tokens)
+           ============================================================ */
+        :root {
+            /* Colors - Light Mode */
+            --color-bg: #f9f7f1;
+            --color-text: #333;
+            --color-text-muted: #666;
+            --color-text-light: #888;
+            --color-accent: #6b2c2c;
+            --color-accent-dark: #4a2020;
+            --color-border: #2a2a2a;
+            --color-terminal-bg: #000;
+            --color-terminal-border: #2a2a2a;
+            --color-shadow: rgba(0, 0, 0, 0.15);
+
+            /* Spacing */
+            --spacing-xs: 0.3em;
+            --spacing-sm: 0.5em;
+            --spacing-md: 1em;
+            --spacing-lg: 1.5em;
+
+            /* Typography */
+            --font-mono: "DejaVu Sans Mono", "Courier New", "Lucida Console", monospace;
+            --font-size-sm: 13px;
+            --font-size-md: 16px;
+
+            /* Transitions */
+            --transition-fast: 0.2s;
+        }
+
+        /* ============================================================
+           Base Styles
+           ============================================================ */
         html {
             scroll-behavior: smooth;
         }
@@ -33,77 +66,100 @@
         }
 
         body {
-            background: #f9f7f1;  /* Cream parchment color like guidebooks */
-            color: #333;
-            font-family: "DejaVu Sans Mono", "Courier New", "Lucida Console", monospace;
+            background: var(--color-bg);
+            color: var(--color-text);
+            font-family: var(--font-mono);
             margin: 0;
             padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            transition: background-color var(--transition-fast), color var(--transition-fast);
         }
 
+        /* ============================================================
+           Layout
+           ============================================================ */
         #page {
             display: flex;
             flex-direction: column;
             align-items: center;
+            width: 100%;
         }
 
+        /* ============================================================
+           Navigation
+           ============================================================ */
         #nav {
             display: flex;
             flex-wrap: wrap;
-            gap: 1.5em;
-            padding: 0.5em 0;
-            font-size: 13px;
+            gap: var(--spacing-lg);
+            padding: var(--spacing-sm) 0;
+            font-size: var(--font-size-sm);
             justify-content: center;
+            width: 100%;
+            order: -2;  /* Ensure nav appears first */
         }
 
         #nav a {
-            color: #4a2020;  /* Brown to match spoilers */
+            color: var(--color-accent-dark);
             text-decoration: none;
+            transition: color var(--transition-fast);
         }
 
         #nav a:hover {
-            color: #6b2c2c;
+            color: var(--color-accent);
             text-decoration: underline;
         }
 
         #nav a:focus-visible {
-            outline: 2px solid #6b2c2c;
+            outline: 2px solid var(--color-accent);
             outline-offset: 3px;
             border-radius: 2px;
         }
 
+        /* ============================================================
+           Control Buttons
+           ============================================================ */
         #controls {
             position: fixed;
             bottom: 20px;
             right: 20px;
             display: flex;
-            gap: 0.5em;
+            gap: var(--spacing-sm);
             z-index: 10;
-            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+            filter: drop-shadow(0 2px 8px var(--color-shadow));
+            order: -1;  /* Ensure controls appear after nav */
         }
 
         #controls button {
-            background: #f9f7f1;  /* Beige paper background */
-            border: 2px solid #6b2c2c;
-            color: #6b2c2c;
+            background: var(--color-bg);
+            border: 2px solid var(--color-accent);
+            color: var(--color-accent);
             padding: 0.4em 0.8em;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             border-radius: 4px;
-            transition: all 0.2s;
+            transition: all var(--transition-fast);
+            font-family: var(--font-mono);
+            will-change: transform, background-color, color;
         }
 
         #controls button:hover {
-            background: #6b2c2c;
+            background: var(--color-accent);
             color: #fff;
         }
 
         #controls button:active {
             transform: scale(0.95);
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            #controls button {
+                will-change: transform;
+            }
         }
 
         /* Panel toggle button state indication */
@@ -115,18 +171,33 @@
             opacity: 1;
         }
 
-        /* Light mode - ensure side panels are readable */
+        /* ============================================================
+           Dark Mode Variables
+           ============================================================ */
+        body.dark-mode {
+            --color-bg: #111;
+            --color-text: #aaa;
+            --color-text-muted: #888;
+            --color-text-light: #666;
+            --color-accent: #555;
+            --color-accent-dark: #888;
+            --color-shadow: rgba(0, 0, 0, 0.4);
+        }
+
+        /* ============================================================
+           Side Panels
+           ============================================================ */
         .side-panel {
-            color: #333;  /* Dark text for light background */
+            color: var(--color-text);
         }
 
         #hover-panel {
-            padding-left: 1em;
+            padding-left: var(--spacing-md);
         }
 
         #hover-info {
             visibility: hidden;
-            background: #000;  /* Black background when visible */
+            background: var(--color-terminal-bg);
             padding: 0.8em;
             border-radius: 4px;
         }
@@ -135,50 +206,30 @@
             visibility: visible;
         }
 
-        /* Dark mode styles */
-        body.dark-mode {
-            background: #111;
-            color: #aaa;
-        }
-
-        body.dark-mode #nav a {
-            color: #888;
-        }
-
-        body.dark-mode #nav a:hover {
-            color: #aaa;
+        /* Dark mode specific overrides */
+        body.dark-mode #controls {
+            filter: drop-shadow(0 2px 12px var(--color-shadow));
         }
 
         body.dark-mode #controls button {
             background: #222;
-            border-color: #555;
-            color: #888;
         }
 
         body.dark-mode #controls button:hover {
             background: #333;
-            color: #aaa;
             border-color: #666;
         }
 
-        body.dark-mode #controls {
-            filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.4));
-        }
-
-        body.dark-mode .side-panel {
-            color: #888;  /* Lighter text for dark background */
-        }
-
         body.dark-mode #keyref td:first-child {
-            color: #d4d4d4;  /* Light gray for dark mode */
+            color: #d4d4d4;
         }
 
         body.dark-mode #keyref .keyref-section td {
-            color: #ccc;  /* Light gray for dark mode */
+            color: #ccc;
         }
 
         body.dark-mode #hover-info {
-            border: 1px solid #444;  /* Gray border in dark mode */
+            border: 1px solid #444;
         }
 
         #main {
@@ -186,15 +237,21 @@
             flex-wrap: wrap;
             gap: 0 16px;
             align-items: flex-start;
+            width: 100%;
+            justify-content: center;
+            order: 0;  /* Ensure main appears after nav and controls */
         }
 
+        /* ============================================================
+           Game Terminal
+           ============================================================ */
         #game {
             /* Terminal container - classic terminal on elegant background */
-            background: #000;
-            border: 3px solid #2a2a2a;
+            background: var(--color-terminal-bg);
+            border: 3px solid var(--color-terminal-border);
             padding: 6px;
             box-shadow:
-                0 4px 12px rgba(0, 0, 0, 0.15),
+                0 4px 12px var(--color-shadow),
                 0 2px 4px rgba(0, 0, 0, 0.1);
             border-radius: 4px;
             flex-shrink: 0;
@@ -209,10 +266,10 @@
         #terminal {
             /* The pre element is created by display.js */
             /* These styles are set in JS but we provide fallbacks */
-            font-family: "DejaVu Sans Mono", "Courier New", "Lucida Console", monospace;
-            font-size: 16px;
+            font-family: var(--font-mono);
+            font-size: var(--font-size-md);
             line-height: 1.2;
-            background: #000;
+            background: var(--color-terminal-bg);
             color: #fff;
         }
 
@@ -224,7 +281,7 @@
 
         /* Loading message */
         #loading {
-            color: #666;
+            color: var(--color-text-muted);
             font-size: 15px;
             padding: 20px;
             /* Center in the pre-sized container */
@@ -236,15 +293,23 @@
             letter-spacing: 0.02em;
         }
 
-        body.dark-mode #loading {
-            color: #888;
+        /* Loading animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            #loading {
+                animation: pulse 2s ease-in-out infinite;
+            }
         }
 
         /* Focus indicator */
         #game:focus-within {
-            border-color: #6b2c2c;  /* Brown accent when focused */
+            border-color: var(--color-accent);
             box-shadow:
-                0 4px 12px rgba(0, 0, 0, 0.15),
+                0 4px 12px var(--color-shadow),
                 0 2px 4px rgba(0, 0, 0, 0.1),
                 0 0 0 2px rgba(107, 44, 44, 0.2);
         }
@@ -264,9 +329,11 @@
             display: none;
         }
 
-        /* Keyboard quick-reference (left panel) */
+        /* ============================================================
+           Keyboard Reference (Left Panel)
+           ============================================================ */
         #keyref {
-            padding-right: 1em;
+            padding-right: var(--spacing-md);
         }
 
         #keyref table {
@@ -274,18 +341,18 @@
         }
 
         #keyref td {
-            padding: 0 0.5em 0 0;
+            padding: 0 var(--spacing-sm) 0 0;
             white-space: nowrap;
         }
 
         #keyref td:first-child {
-            color: #444;  /* Dark for light mode */
+            color: #444;
             text-align: right;
             padding-right: 0.8em;
         }
 
         #keyref .keyref-section td {
-            color: #555;  /* Dark for light mode */
+            color: #555;
             font-size: 10px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -323,7 +390,10 @@
             margin-top: 0.3em;
         }
 
-        /* Responsive: stack vertically on narrow screens */
+        /* ============================================================
+           Responsive Design - Tablet & Below (< 1100px)
+           Stack panels vertically, hide panel toggle, adjust controls
+           ============================================================ */
         @media (max-width: 1100px) {
             #main {
                 flex-direction: column;
@@ -379,7 +449,10 @@
             }
         }
 
-        /* Very narrow screens (phones) */
+        /* ============================================================
+           Responsive Design - Mobile (< 600px)
+           Compact navigation, reduced spacing, smaller controls
+           ============================================================ */
         @media (max-width: 600px) {
             #nav {
                 font-size: 12px;
@@ -396,11 +469,34 @@
                 right: 8px;
             }
         }
+
+        /* ============================================================
+           Skip Link (Accessibility)
+           ============================================================ */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--color-accent);
+            color: #fff;
+            padding: 8px 16px;
+            text-decoration: none;
+            font-weight: 600;
+            z-index: 100;
+            border-radius: 0 0 4px 0;
+        }
+
+        .skip-link:focus {
+            top: 0;
+        }
     </style>
 </head>
 <body>
+    <!-- Skip to main content for keyboard users -->
+    <a href="#game" class="skip-link">Skip to game</a>
+
     <div id="page">
-        <nav id="nav">
+        <nav id="nav" role="navigation" aria-label="Main navigation">
             <a href="https://en.wikipedia.org/wiki/NetHack" target="_blank">About NetHack</a>
             <a href="guidebook/" target="nh-guidebook">How to Play</a>
             <a href="spoilers/" target="nh-spoilers">Spoilers</a>
@@ -412,9 +508,9 @@
             <button id="font-larger" title="Increase font size" aria-label="Increase font size" tabindex="-1">A+</button>
             <button id="theme-toggle" title="Toggle dark/light mode" aria-label="Toggle dark/light mode" tabindex="-1">◐</button>
         </div>
-        <div id="main">
+        <main id="main" role="main">
             <!-- Left: keyboard controls -->
-            <div id="keyref" class="side-panel">
+            <aside id="keyref" class="side-panel" role="complementary" aria-label="Keyboard reference">
                 <table>
                     <tr class="keyref-section"><td colspan="2">Move</td></tr>
                     <tr><td>h j k l</td><td>left/down/up/right</td></tr>
@@ -448,30 +544,56 @@
             </div>
 
             <!-- Center: game terminal -->
-            <div id="game">
-                <div id="loading">Loading NetHack JS...</div>
+            <div id="game" role="application" aria-label="NetHack game terminal">
+                <div id="loading" role="status" aria-live="polite">Loading NetHack JS...</div>
             </div>
 
             <!-- Right: hover symbol info -->
-            <div id="hover-panel" class="side-panel">
+            <aside id="hover-panel" class="side-panel" role="complementary" aria-label="Symbol information">
                 <div id="hover-info">
                     <span id="hover-symbol"></span>
                     <span id="hover-name"></span>
                     <span id="hover-desc"></span>
                     <span id="hover-stats"></span>
                 </div>
-            </div>
-        </div>
+            </aside>
+        </main>
     </div>
 
     <script>
-    // Side panel toggle logic
+    /* ============================================================
+       Welcome Message & Keyboard Shortcuts Hint
+       ============================================================ */
+    (function() {
+        // Performance mark for page ready
+        if (window.performance && performance.mark) {
+            performance.mark('ui-ready');
+        }
+
+        console.log('%cNetHack JS - Mazes of Menace', 'font-size: 18px; font-weight: bold; color: #6b2c2c;');
+        console.log('%cKeyboard Shortcuts:', 'font-weight: bold; margin-top: 10px;');
+        console.log('  Ctrl+B        Toggle side panels');
+        console.log('  Ctrl++        Increase font size');
+        console.log('  Ctrl+-        Decrease font size');
+        console.log('\n%cGame Controls:', 'font-weight: bold;');
+        console.log('  See the left panel for complete NetHack keyboard commands');
+        console.log('\n%cHave fun exploring the dungeons!', 'color: #4a2020; font-style: italic;');
+    })();
+
+    /* ============================================================
+       Side Panel Toggle Management
+       Controls visibility of left (keyref) and right (hover) panels
+       State persists via localStorage
+       ============================================================ */
     (function() {
         var keyrefPanel = document.getElementById('keyref');
         var hoverPanel = document.getElementById('hover-panel');
         var panelToggle = document.getElementById('panel-toggle');
         var storageKey = 'webhack-panels-hidden';
 
+        /**
+         * Update panel toggle button appearance based on panel visibility
+         */
         function updateToggleButton() {
             var isHidden = keyrefPanel.classList.contains('hidden');
             if (isHidden) {
@@ -483,17 +605,24 @@
             }
         }
 
+        /**
+         * Toggle visibility of both side panels and persist state
+         */
         function togglePanels() {
             var isHidden = keyrefPanel.classList.contains('hidden');
+
             if (isHidden) {
+                // Show panels
                 keyrefPanel.classList.remove('hidden');
                 hoverPanel.classList.remove('hidden');
                 try { localStorage.removeItem(storageKey); } catch(e) {}
             } else {
+                // Hide panels
                 keyrefPanel.classList.add('hidden');
                 hoverPanel.classList.add('hidden');
                 try { localStorage.setItem(storageKey, '1'); } catch(e) {}
             }
+
             updateToggleButton();
         }
 
@@ -512,7 +641,11 @@
         updateToggleButton();
     })();
 
-    // Theme toggle and font size controls
+    /* ============================================================
+       Theme Toggle and Font Size Controls
+       Manages dark/light mode switching and terminal font sizing
+       Preferences persist via localStorage with error handling
+       ============================================================ */
     (function() {
         const themeToggle = document.getElementById('theme-toggle');
         const fontSmaller = document.getElementById('font-smaller');
@@ -534,10 +667,15 @@
             savedFontSize = localStorage.getItem('nh-font-size') || '16';
         } catch(e) {}
 
+        /**
+         * Apply font size to game container and terminal
+         * @param {string|number} size - Font size in pixels
+         */
         function applyFontSize(size) {
             // Apply to game div - will cascade to terminal when it's created
             gameDiv.style.fontSize = size + 'px';
-            // Also try to apply to terminal if it exists
+
+            // Also apply directly to terminal if it already exists
             const terminal = document.getElementById('terminal');
             if (terminal) {
                 terminal.style.fontSize = size + 'px';
@@ -581,7 +719,11 @@
         });
     })();
 
-    // Watch hover-info visibility to show/hide background
+    /* ============================================================
+       Hover Info Background Management
+       Shows/hides black background when hover info becomes visible
+       Uses MutationObserver for efficient style change detection
+       ============================================================ */
     (function() {
         const hoverInfo = document.getElementById('hover-info');
         if (!hoverInfo) return;
@@ -607,7 +749,11 @@
         });
     })();
 
-    // Watch for terminal creation and apply font size
+    /* ============================================================
+       Terminal Creation Observer
+       Watches for terminal element creation and applies saved font size
+       Disconnects after successful application for performance
+       ============================================================ */
     (function() {
         const gameDiv = document.getElementById('game');
         let savedFontSize = null;
@@ -629,6 +775,98 @@
             childList: true,
             subtree: true
         });
+    })();
+
+    /* ============================================================
+       Keyboard Shortcuts
+       Global shortcuts for power users (only active outside game)
+       - Ctrl+B: Toggle side panels
+       - Ctrl+Plus: Increase font size
+       - Ctrl+Minus: Decrease font size
+       ============================================================ */
+    (function() {
+        const gameDiv = document.getElementById('game');
+        const panelToggle = document.getElementById('panel-toggle');
+        const fontSmaller = document.getElementById('font-smaller');
+        const fontLarger = document.getElementById('font-larger');
+
+        document.addEventListener('keydown', function(e) {
+            // Only handle shortcuts when game is not focused
+            if (document.activeElement &&
+                (document.activeElement === gameDiv ||
+                 gameDiv.contains(document.activeElement))) {
+                return;
+            }
+
+            // Ctrl+B: Toggle panels
+            if (e.ctrlKey && e.key === 'b') {
+                e.preventDefault();
+                if (panelToggle) panelToggle.click();
+            }
+
+            // Ctrl+Plus/Equal: Increase font
+            if (e.ctrlKey && (e.key === '+' || e.key === '=')) {
+                e.preventDefault();
+                if (fontLarger) fontLarger.click();
+            }
+
+            // Ctrl+Minus: Decrease font
+            if (e.ctrlKey && e.key === '-') {
+                e.preventDefault();
+                if (fontSmaller) fontSmaller.click();
+            }
+        });
+    })();
+
+    /* ============================================================
+       Game Focus Management & Load Timeout
+       Automatically focus game when terminal loads
+       Show error message if game fails to load within timeout
+       ============================================================ */
+    (function() {
+        const gameDiv = document.getElementById('game');
+        const loadingDiv = document.getElementById('loading');
+        if (!gameDiv) return;
+
+        let gameLoaded = false;
+
+        // Watch for terminal creation and focus it
+        const observer = new MutationObserver(function(mutations) {
+            const terminal = document.getElementById('terminal');
+            if (terminal) {
+                gameLoaded = true;
+
+                // Performance mark for game load
+                if (window.performance && performance.mark) {
+                    performance.mark('game-loaded');
+                    try {
+                        performance.measure('game-load-time', 'ui-ready', 'game-loaded');
+                        const measure = performance.getEntriesByName('game-load-time')[0];
+                        console.log('%cGame loaded in ' + Math.round(measure.duration) + 'ms', 'color: #4a2020;');
+                    } catch(e) {}
+                }
+
+                // Small delay to ensure game is ready
+                setTimeout(function() {
+                    terminal.focus();
+                }, 100);
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(gameDiv, {
+            childList: true,
+            subtree: true
+        });
+
+        // Timeout: show error if game doesn't load within 30 seconds
+        setTimeout(function() {
+            if (!gameLoaded && loadingDiv) {
+                loadingDiv.innerHTML = 'Failed to load NetHack. Please refresh the page.<br><small style="margin-top: 0.5em; display: block;">Check the browser console for error details.</small>';
+                loadingDiv.style.color = '#c33';
+                console.error('NetHack failed to load within timeout period');
+            }
+        }, 30000);
     })();
     </script>
 
