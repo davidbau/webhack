@@ -2190,7 +2190,7 @@ export class Agent {
 
         // PRIORITY: Systematic door opening when stuck with high frontier
         // If we have many unreachable frontier cells, closed doors are likely blocking access
-        if (frontier.length > 40 && this.levelStuckCounter > 20) {
+        if (frontier.length > 25 && this.levelStuckCounter > 20) {
             // Find all closed/locked doors in explored areas
             const closedDoors = [];
             for (let y = 0; y < 21; y++) {
