@@ -5,7 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection, shuffle } from '../sp_lev.js';
-import { d } from '../rng.js';
+import { d, rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack Rogue Rog-strt.lua	$NHDT-Date: 1652196012 2022/5/10 15:20:12 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.4 $
@@ -169,11 +169,11 @@ export function generate() {
     des.monster({ id: "leprechaun", x: 25, y: 19, peaceful: 0 });
     des.monster({ id: "water nymph", x: 25, y: 18, peaceful: 0 });
     // Wandering the streets.
-    for (let i = 1; i <= 4 + Math.random(1 - 1,1*3); i++) {
+    for (let i = 1; i <= 4 + rn2(4); i++) {
        des.monster({ id: "water nymph", coord: streets.rndcoord(1), peaceful: 0 });
        des.monster({ id: "leprechaun", coord: streets.rndcoord(1), peaceful: 0 });
     }
-    for (let i = 1; i <= 7 + Math.random(1 - 1,1*3); i++) {
+    for (let i = 1; i <= 7 + rn2(4); i++) {
        des.monster({ id: "chameleon", coord: streets.rndcoord(1), peaceful: 0 });
     }
 

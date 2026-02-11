@@ -5,6 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection, percent, shuffle } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 // hell_tweaks - Add Gehennom-specific features to a selection
 // C ref: Not in C - Lua runtime function for special level generation
@@ -68,7 +69,7 @@ export function generate() {
     // 
 
     function populatemaze() {
-       for (let i = 1; i <= Math.random(8) + 11; i++) {
+       for (let i = 1; i <= 12 + rn2(8); i++) {
           if ((percent(50))) {
              des.object("*");
           } else {
@@ -76,23 +77,23 @@ export function generate() {
           }
        }
 
-       for (let i = 1; i <= Math.random(10) + 2; i++) {
+       for (let i = 1; i <= 3 + rn2(10); i++) {
           des.object("`");
        }
 
-       for (let i = 1; i <= Math.random(3); i++) {
+       for (let i = 1; i <= 1 + rn2(3); i++) {
           des.monster({ id: "minotaur", peaceful: 0 });
        }
 
-       for (let i = 1; i <= Math.random(5) + 7; i++) {
+       for (let i = 1; i <= 8 + rn2(5); i++) {
           des.monster({ peaceful: 0 });
        }
 
-       for (let i = 1; i <= Math.random(6) + 7; i++) {
+       for (let i = 1; i <= 8 + rn2(6); i++) {
           des.gold();
        }
 
-       for (let i = 1; i <= Math.random(6) + 7; i++) {
+       for (let i = 1; i <= 8 + rn2(6); i++) {
           des.trap();
        }
     }
@@ -101,12 +102,12 @@ export function generate() {
 
     function rnd_halign() {
        let aligns = [ "half-left", "center", "half-right" ];
-       // return aligns[Math.random(1, aligns.length)];
+       // return aligns[rn2(aligns.length)];
     }
 
     function rnd_valign() {
        aligns: [ "top", "center", "bottom" ];
-       // return aligns[Math.random(1, aligns.length)];
+       // return aligns[rn2(aligns.length)];
     }
 
     // the prefab maps must have contents-function, || populatemaze()
@@ -193,12 +194,12 @@ export function generate() {
           { x: 6, y: 9, dir: "north", state: "closed" }
        ]
        shuffle(dblocs);
-       for (let i = 1; i <= Math.random(1, dblocs.length); i++) {
+       for (let i = 1; i <= 1 + rn2(dblocs.length); i++) {
           des.drawbridge(dblocs[i]);
        }
        let mons = [ "H", "T", "@" ];
        shuffle(mons);
-       for (let i = 1; i <= 3 + Math.random(1, 5); i++) {
+       for (let i = 1; i <= 3 + 1 + rn2(5); i++) {
           des.monster(mons[1], 6, 5);
        }
           } });
@@ -262,7 +263,7 @@ export function generate() {
     `, contents: function() {
        des.exclusion({ type: "teleport", region: [ 4,4, 5,5 ] });
        mons: [ "Angel", "D", "H", "L" ];
-       des.monster(mons[Math.random(1, mons.length)], 4,4);
+       des.monster(mons[rn2(mons.length)], 4,4);
           } });
        },
 
@@ -301,7 +302,7 @@ export function generate() {
     .....
     `;
           for (let dx = 1; dx <= 5; dx++) {
-             des.map({ x: dx*14 - 4, y: Math.random(3, 15),
+             des.map({ x: dx*14 - 4, y: 3 + rn2(13),
                        map: mapstr, contents: function() { } })
           }
        },
@@ -329,7 +330,7 @@ export function generate() {
     ...
     `;
           for (let dx = 1; dx <= 3; dx++) {
-             des.map({ x: Math.random(3, 75), y: 3,
+             des.map({ x: 3 + rn2(73), y: 3,
                        map: mapstr, contents: function() { } })
           }
        }
@@ -339,20 +340,20 @@ export function generate() {
     function rnd_hell_prefab(coldhell) {
        let dorepeat = true;
        let nloops = 0;
-       repeat
+       do {
           nloops = nloops + 1;
-          let pf = Math.random(1, hell_prefabs.length);
+          let pf = rn2(hell_prefabs.length);
           let fab = hell_prefabs[pf];
-          let fabtype = type(fab);
+          let fabtype = typeof fab;
 
           if ((fabtype == "function")) {
              fab(coldhell);
              dorepeat = false;
-          } else if ((fabtype == "table")) {
+          } else if ((fabtype == "object")) {
              fab.contents(coldhell);
-             dorepeat = ! (fab.repeatable && Math.random(0, nloops * 2) == 0);
+             dorepeat = ! (fab.repeatable && rn2(nloops * 2 + 1) == 0);
           }
-       until ((! dorepeat) || (nloops > 5));
+       } while (dorepeat && nloops <= 5);
     }
 
     hells = {
@@ -395,7 +396,7 @@ export function generate() {
 
        // 4: mazes, style 2: replace wall with iron bars || lava
        function() {
-          let cwid = Math.random(4);
+          let cwid = 1 + rn2(4);
           des.level_init({ style: "solidfill", fg: " ", lit: 0 });
           des.level_flags("mazelevel", "noflip");
           des.level_init({ style: "maze", wallthick: 1, corrwid: cwid });
@@ -406,7 +407,7 @@ export function generate() {
           if ((cwid == 1)) {
              if ((wallterrain[1] == "F" && percent(80))) {
                 // replace some horizontal iron bars walls with floor
-                des.replace_terrain({ mapfragment: ".\nF\n.", toterrain: ".", chance: 25 * Math.random(4) });
+                des.replace_terrain({ mapfragment: ".\nF\n.", toterrain: ".", chance: 25 * 1 + rn2(4) });
              } else if ((percent(25))) {
                 rnd_hell_prefab(false);
              }
@@ -416,24 +417,24 @@ export function generate() {
 
        // 5: mazes, thick walls, occasionally lava instead of walls
        function() {
-          let wwid = 1 + Math.random(2);
+          let wwid = 1 + 1 + rn2(2);
           des.level_init({ style: "solidfill", fg: " ", lit: 0 });
           des.level_flags("mazelevel", "noflip");
-          des.level_init({ style: "maze", wallthick: wwid, corrwid: Math.random(2) });
+          des.level_init({ style: "maze", wallthick: wwid, corrwid: 1 + rn2(2) });
           if ((percent(50))) {
              outside_walls = selection.match(" ");
              des.replace_terrain({ mapfragment: "w", toterrain: "L" });
              des.terrain(outside_walls, " ");  // return the outside back to solid wall;
              if ((wwid == 3 && percent(40))) {
                 let sel = selection.match("LLL\nLLL\nLLL");
-                des.terrain(sel.percentage(30 * Math.random(4)), "Z");
+                des.terrain(sel.percentage(30 * 1 + rn2(4)), "Z");
              }
           }
        },
 
        // 6: cold maze, with ice && water
        function() {
-          cwid = Math.random(4);
+          cwid = 1 + rn2(4);
           des.level_init({ style: "solidfill", fg: " ", lit: 0 });
           des.level_flags("mazelevel", "noflip", "cold");
           des.level_init({ style: "maze", wallthick: 1, corrwid: cwid });
@@ -469,7 +470,7 @@ export function generate() {
 
     };
 
-    let hellno = Math.random(1, hells.length);
+    let hellno = rn2(hells.length);
     hells[hellno]();
 
     // 

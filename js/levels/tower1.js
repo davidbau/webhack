@@ -5,6 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection, shuffle, nh } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack tower tower1.lua	$NHDT-Date: 1717178759 2024/5/31 18:5:59 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.3 $
@@ -73,12 +74,12 @@ export function generate() {
     des.object("chest",niches[3]);
     des.object({ id: "chest", coord: niches[4],
                  contents: function() {
-                    des.object({ id: "wax candle", quantity: Math.random(4,8) });
+                    des.object({ id: "wax candle", quantity: 4 + rn2(5) });
                  }
     });
     des.object({ id: "chest", coord: niches[5],
                  contents: function() {
-                    des.object({ id: "tallow candle", quantity: Math.random(4,8) });
+                    des.object({ id: "tallow candle", quantity: 4 + rn2(5) });
                  }
     });
     // We have to protect the tower against outside attacks

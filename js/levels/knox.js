@@ -5,6 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection, percent } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack knox knox.lua	$NHDT-Date: 1652196027 2022/5/10 15:20:27 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.5 $
@@ -66,9 +67,9 @@ export function generate() {
 
     // The Vault
     function treasure_spot(x,y) {
-       des.gold({ x: x, y: y, amount: 600 + Math.random(0, 300) });
-       if ((Math.random(0,2) == 0)) {
-          if ((Math.random(0,2) == 0)) {
+       des.gold({ x: x, y: y, amount: 600 + rn2(301) });
+       if ((rn2(3) == 0)) {
+          if ((rn2(3) == 0)) {
              des.trap("spiked pit", x,y);
           } else {
              des.trap("land mine", x,y);

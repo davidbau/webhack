@@ -6,6 +6,7 @@
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
 import { hell_tweaks } from './hellfill.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack yendor wizard1.lua	$NHDT-Date: 1652196039 2022/5/10 15:20:39 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.3 $
@@ -47,7 +48,7 @@ export function generate() {
        des.teleport_region({ region: [1,0,79,20], region_islev: 1, exclude: [0,0,27,12] });
        des.region({ region: [12,1, 20,9], lit: 0, type: "morgue", filled: 2, contents: function() {
                        let sdwall = [ "south", "west", "east" ];
-                       des.door({ wall: sdwall[Math.random(1, sdwall.length)], state: "secret" });
+                       des.door({ wall: sdwall[rn2(sdwall.length)], state: "secret" });
        } })
        // another region to constrain monster arrival
        des.region({ region: [1,1, 10,11], lit: 0, type: "ordinary", arrival_room: true });

@@ -4,9 +4,13 @@
  */
 
 import * as des from '../sp_lev.js';
-import { selection } from '../sp_lev.js';
+import { selection, shuffle } from '../sp_lev.js';
+import { A_CHAOTIC, A_NEUTRAL, A_LAWFUL } from '../config.js';
 
 export function generate() {
+    // Shuffle alignment array for altar shrines (standard NetHack pattern)
+    const align = [A_CHAOTIC, A_NEUTRAL, A_LAWFUL];
+    shuffle(align);
     // NetHack Archeologist Arc-loca.lua	$NHDT-Date: 1652195999 2022/5/10 15:19:59 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.2 $
     // Copyright (c) 1989 by Jean-Christophe Collet
     // Copyright (c) 1991 by M. Stephenson

@@ -5,6 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection, percent, shuffle } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
 
@@ -192,11 +193,11 @@ export function generate() {
     // 
 
     // rock fall
-    des.object({ coord: [14, 5], id: "rock", quantity: Math.random(50,99) });
-    des.object({ coord: [15, 5], id: "rock", quantity: Math.random(10,30) });
-    des.object({ coord: [14, 4], id: "rock", quantity: Math.random(10,30) });
-    des.object({ coord: [15, 6], id: "rock", quantity: Math.random(30,60) });
-    des.object({ coord: [14, 6], id: "rock", quantity: Math.random(30,60) });
+    des.object({ coord: [14, 5], id: "rock", quantity: 50 + rn2(50) });
+    des.object({ coord: [15, 5], id: "rock", quantity: 10 + rn2(21) });
+    des.object({ coord: [14, 4], id: "rock", quantity: 10 + rn2(21) });
+    des.object({ coord: [15, 6], id: "rock", quantity: 30 + rn2(31) });
+    des.object({ coord: [14, 6], id: "rock", quantity: 30 + rn2(31) });
     des.object({ coord: [14, 6], id: "boulder" });
 
     des.door({ coord: [ 20,3 ], state: percent(50) && "open" || "closed" });

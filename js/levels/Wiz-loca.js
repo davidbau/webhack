@@ -5,6 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack Wizard Wiz-loca.lua	$NHDT-Date: 1652196019 2022/5/10 15:20:19 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.2 $
@@ -61,7 +62,7 @@ export function generate() {
     des.region({ region: [41,8,46,12], lit: 1, type: "ordinary", irregular: 1,
                  contents: function() {
                     let walls = [ "north", "south", "west" ]
-                    let widx = Math.random(1, walls.length)
+                    let widx = rn2(walls.length)
                     des.door({ state: "secret", wall: walls[widx] });
                  }
     })
@@ -69,7 +70,7 @@ export function generate() {
     des.region({ region: [56,8,61,12], lit: 1, type: "ordinary", irregular: 1,
                  contents: function() {
                     walls = [ "north", "south", "east" ]
-                    widx = Math.random(1, walls.length)
+                    widx = rn2(walls.length)
                     des.door({ state: "secret", wall: walls[widx] });
                  }
     })

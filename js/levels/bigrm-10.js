@@ -1,10 +1,5 @@
-/**
- * bigrm-10 - NetHack special level
- * Converted from: bigrm-10.lua
- */
-
-import * as des from '../sp_lev.js';
 import { selection, percent } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack bigroom bigrm-10.lua	$NHDT-Date: 1652196024 2022/5/10 15:20:24 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.2 $
@@ -42,7 +37,7 @@ export function generate() {
     if (percent(40)) {
        // occasionally it's ! a fog maze
        let terrain = [ "L", "}", "T", "-", "F" ];
-       let tidx = Math.random(1, terrain.length);
+       let tidx = rn2(terrain.length);
        // break it up a bit
        des.replace_terrain({ region: [0, 0, 70, 18], fromterrain: "C", toterrain: ".", chance: 5 });
        des.replace_terrain({ region: [0, 0, 70, 18], fromterrain: "C", toterrain: terrain[tidx] });

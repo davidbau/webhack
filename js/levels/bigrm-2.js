@@ -1,10 +1,5 @@
-/**
- * bigrm-2 - NetHack special level
- * Converted from: bigrm-2.lua
- */
-
-import * as des from '../sp_lev.js';
 import { selection, percent } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack bigroom bigrm-2.lua	$NHDT-Date: 1652196021 2022/5/10 15:20:21 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.1 $
@@ -42,7 +37,7 @@ export function generate() {
 
     let darkness;
 
-    let choice = Math.random(0, 3)
+    let choice = rn2(4)
     if (choice == 0) {
        darkness: selection.area(1,7,22,9)
           | selection.area(24,1,50,5)

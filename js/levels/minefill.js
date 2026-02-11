@@ -5,6 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { percent } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack mines minefill.lua	$NHDT-Date: 1652196028 2022/5/10 15:20:28 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.3 $
@@ -29,20 +30,20 @@ export function generate() {
     des.stair("up");
     des.stair("down");
     // 
-    for (let i = 1; i <= Math.random(2, 5); i++) {
+    for (let i = 1; i <= 2 + rn2(4); i++) {
        des.object("*");
     }
     des.object("(");
-    for (let i = 1; i <= Math.random(2, 4); i++) {
+    for (let i = 1; i <= 2 + rn2(3); i++) {
        des.object();
     }
     if (percent(75)) {
-       for (let i = 1; i <= Math.random(1, 2); i++) {
+       for (let i = 1; i <= 1 + rn2(2); i++) {
           des.object("boulder");
        }
     }
     // 
-    for (let i = 1; i <= Math.random(6, 8); i++) {
+    for (let i = 1; i <= 6 + rn2(3); i++) {
        des.monster("gnome");
     }
     des.monster("gnome lord");

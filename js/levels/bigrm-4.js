@@ -1,10 +1,5 @@
-/**
- * bigrm-4 - NetHack special level
- * Converted from: bigrm-4.lua
- */
-
-import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack bigroom bigrm-4.lua	$NHDT-Date: 1652196022 2022/5/10 15:20:22 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.1 $
@@ -39,7 +34,7 @@ export function generate() {
     `);
 
     let terrains = [ ".", ".", ".", ".", "P", "L", "-", "T", "W", "Z" ];
-    let tidx = Math.random(1, terrains.length);
+    let tidx = rn2(terrains.length);
     let toterr = terrains[tidx];
     if ((toterr !== "L")) {
        des.replace_terrain({ fromterrain: "L", toterrain: toterr });
