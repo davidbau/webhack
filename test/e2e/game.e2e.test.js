@@ -84,11 +84,27 @@ async function waitForGameLoad(page) {
         () => document.querySelectorAll('#terminal span').length > 100,
         { timeout: 5000 }
     );
+    // CRITICAL: Wait for game to be ready for input (not just rendered)
+    // The game shows "Shall I pick" or "Who are you?" when ready
+    await page.waitForFunction(
+        () => {
+            const text = document.getElementById('terminal')?.textContent || '';
+            return text.includes('Shall I pick') || text.includes('Who are you?');
+        },
+        { timeout: 5000 }
+    );
 }
 
 // Helper: select role and start game
-// New chargen flow: 'a' = auto-pick all (skip confirm), then dismiss lore + welcome --More--
+// Chargen flow: enter name, then 'a' = auto-pick all, then dismiss lore + welcome --More--
 async function selectRoleAndStart(page) {
+    // "Who are you?" → enter name
+    await sendChar(page, 'T');
+    await sendChar(page, 'e');
+    await sendChar(page, 's');
+    await sendChar(page, 't');
+    await sendKey(page, 'Enter');
+    await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
     // "Shall I pick..." → 'a' (auto-pick all, skip confirmation)
     await sendChar(page, 'a');
     await page.evaluate(() => new Promise(r => setTimeout(r, 100)));

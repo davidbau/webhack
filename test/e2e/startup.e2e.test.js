@@ -51,15 +51,37 @@ describe('E2E: Critical startup checks', () => {
             // Wait for terminal to be ready
             await page.waitForSelector('#terminal', { timeout: 5000 });
 
+            // CRITICAL: Wait for game to be ready for input
+            await page.waitForFunction(
+                () => {
+                    const text = document.getElementById('terminal')?.textContent || '';
+                    return text.includes('Shall I pick') || text.includes('Who are you?');
+                },
+                { timeout: 5000 }
+            );
+
+            // Enter name first
+            await page.keyboard.type('Test');
+            await page.keyboard.press('Enter');
+            await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
             // Auto-select role and start game (this triggers makerooms())
             await page.keyboard.type('a'); // Auto-pick all
             await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
             await page.keyboard.press('Space'); // Dismiss lore
             await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
             await page.keyboard.press('Space'); // Dismiss welcome
-            await page.evaluate(() => new Promise(r => setTimeout(r, 500)));
+            await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
 
-            // Check for player @ on the map (proves game started)
+            // Wait for player @ to appear on the map (proves game started and rendered)
+            await page.waitForFunction(
+                () => {
+                    const pre = document.getElementById('terminal');
+                    if (!pre) return false;
+                    return pre.textContent.includes('@');
+                },
+                { timeout: 5000 }
+            );
+
             const playerFound = await page.evaluate(() => {
                 const pre = document.getElementById('terminal');
                 if (!pre) return false;
@@ -89,13 +111,35 @@ describe('E2E: Critical startup checks', () => {
             await page.goto(serverInfo.url);
             await page.waitForSelector('#terminal', { timeout: 5000 });
 
-            // Start game
+            // Wait for game to be ready for input
+            await page.waitForFunction(
+                () => {
+                    const text = document.getElementById('terminal')?.textContent || '';
+                    return text.includes('Shall I pick') || text.includes('Who are you?');
+                },
+                { timeout: 5000 }
+            );
+
+            // Start game - enter name first
+            await page.keyboard.type('Test');
+            await page.keyboard.press('Enter');
+            await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
             await page.keyboard.type('a');
             await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
             await page.keyboard.press('Space');
             await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
             await page.keyboard.press('Space');
-            await page.evaluate(() => new Promise(r => setTimeout(r, 500)));
+            await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
+
+            // Wait for game to start and render (may take longer on first load)
+            await page.waitForFunction(
+                () => {
+                    const pre = document.getElementById('terminal');
+                    if (!pre) return false;
+                    return pre.textContent.includes('@');
+                },
+                { timeout: 5000 }
+            );
 
             // Check for dungeon characters (walls, floor)
             const hasDungeonChars = await page.evaluate(() => {
