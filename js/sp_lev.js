@@ -2630,19 +2630,23 @@ function executeDeferredObjects() {
 
         if (typeof name_or_opts === 'string') {
             // Check if it's a single-character object class
-            if (name_or_opts.length === 1 && x === undefined) {
+            if (name_or_opts.length === 1) {
                 const objClass = objectClassToType(name_or_opts);
                 if (objClass >= 0) {
-                    const randX = rn2(60) + 10;
-                    const randY = rn2(15) + 3;
-                    const obj = mkobj(objClass, true);
-                    if (obj) {
-                        obj.ox = randX;
-                        obj.oy = randY;
-                        levelState.map.objects.push(obj);
+                    // If coordinates provided, use them; otherwise random
+                    const objX = (x !== undefined) ? x : rn2(60) + 10;
+                    const objY = (y !== undefined) ? y : rn2(15) + 3;
+                    if (objX >= 0 && objX < 80 && objY >= 0 && objY < 21) {
+                        const obj = mkobj(objClass, true);
+                        if (obj) {
+                            obj.ox = objX;
+                            obj.oy = objY;
+                            levelState.map.objects.push(obj);
+                        }
                     }
                 }
             } else if (x !== undefined && y !== undefined) {
+                // Multi-character string - treat as object name
                 const otyp = objectNameToType(name_or_opts);
                 if (otyp >= 0 && x >= 0 && x < 80 && y >= 0 && y < 21) {
                     const obj = mksobj(otyp, true, false);
