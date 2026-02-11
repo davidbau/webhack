@@ -1,0 +1,39 @@
+{
+  "commit": "34cdf4f",
+  "parent": "2b1d81a",
+  "date": "2026-02-11T06:27:10-05:00",
+  "author": "David Bau",
+  "message": "Fix arithmetic error by trimming whitespace from grep output",
+  "stats": {
+    "total": 1376,
+    "pass": 290,
+    "fail": 1086,
+    "skip": 0,
+    "duration": 1
+  },
+  "categories": {
+    "map": {
+      "total": 10,
+      "pass": 00,
+      "fail": 10
+    },
+    "gameplay": {
+      "total": 25,
+      "pass": 2,
+      "fail": 23
+    },
+    "chargen": {
+      "total": 180,
+      "pass": 180,
+      "fail": 00
+    },
+    "special": {
+      "total": 84,
+      "pass": 84,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
