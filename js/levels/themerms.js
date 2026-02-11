@@ -42,6 +42,19 @@ const obj = {
 export function reset_state() {
     postprocess = [];
     _initialized = false;
+    themeroom_failed = false;
+}
+
+// Themeroom failure flag (set when room creation fails in themed rooms)
+// C ref: mklev.c themeroom_failed global
+let themeroom_failed = false;
+
+export function set_themeroom_failed() {
+    themeroom_failed = true;
+}
+
+export function get_themeroom_failed() {
+    return themeroom_failed;
 }
 
 // themeroom_fills: Contents that can fill any room shape

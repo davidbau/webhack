@@ -732,6 +732,11 @@ export function sp_create_door(map, dd, broom) {
 
 // C ref: mklev.c mkroom_cmp() — sort rooms by lx only
 function mkroom_cmp(a, b) {
+    // Handle undefined rooms (push to end)
+    if (!a && !b) return 0;
+    if (!a) return 1;
+    if (!b) return -1;
+
     if (a.lx < b.lx) return -1;
     if (a.lx > b.lx) return 1;
     return 0;
@@ -807,7 +812,9 @@ function sort_rooms(map) {
     // Build reverse index: ri[old_roomnoidx] = new_index
     const ri = new Array(MAXNROFROOMS + 1).fill(0);
     for (let i = 0; i < n; i++) {
-        ri[map.rooms[i].roomnoidx] = i;
+        if (map.rooms[i]) { // Skip undefined rooms
+            ri[map.rooms[i].roomnoidx] = i;
+        }
     }
 
     // Update roomno on the map cells
@@ -994,14 +1001,17 @@ function makerooms(map, depth) {
 
     // Log room sizes and positions
     let totalArea = 0;
+    let loggedCount = 0;
     for (let i = 0; i < map.nroom; i++) {
         const r = map.rooms[i];
+        if (!r) continue; // Skip undefined rooms (sparse array)
         const w = r.hx - r.lx + 1;
         const h = r.hy - r.ly + 1;
         const area = w * h;
         totalArea += area;
-        if (i < 5) { // Log first 5 rooms
+        if (loggedCount < 5) { // Log first 5 valid rooms
             console.log(`  Room ${i}: (${r.lx},${r.ly})-(${r.hx},${r.hy}) size=${w}x${h} area=${area}`);
+            loggedCount++;
         }
     }
     console.log(`  Total room area: ${totalArea} squares (screen is ~1920 squares)`);
