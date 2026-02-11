@@ -1181,16 +1181,16 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>(The 26x82 size threshold for <code>2</code> refers to number of rows and col- umns of the display. A width of at least 110 columns (80+2+26+2) is needed to show borders if <code>align_status</code> is set to left or right.)</p>
 <p>The persistent inventory window, when enabled, can grow until it is too big to fit on most displays, resulting in truncation of its con- tents. If borders are forced on (1) or the display is big enough to show them (2), setting the value to 3 or 4 instead will keep borders for the map, message, and status windows but have room for two addi- tional lines of inventory plus widen each inventory line by two col- umns.</p>
 <p><code>windowcolors</code> If NetHack can, it should display all windows of a particular style with the specified foreground and background colors. Windows GUI and curses windowport only. The format is</p>
-<p>OPTION=windowcolors:style foreground/background</p>
+<p><code>OPTION=windowcolors:style</code> foreground/background</p>
 <p>where style is one of “menu”, “message”, “status”, or “text”, and foreground and background are colors, either numeric (hash sign fol- lowed by three pairs of hexadecimal digits, <code>#rrggbb</code>), one of the named colors (black, red, green, brown, blue, magenta, cyan, orange, bright-green, yellow, bright-blue, bright-magenta, bright-cyan, white, gray, purple, silver, maroon, fuchsia, lime, olive, navy, teal, aqua), or (for Windows only) one of Windows UI colors (true- black, activeborder, activecaption, appworkspace, background, btn- face, btnshadow, btntext, captiontext, graytext, greytext, high- light, highlighttext, inactiveborder, inactivecaption, menu, menu- text, scrollbar, window, windowframe, windowtext).</p>
 <p><code>wraptext</code> If NetHack can, it should wrap long lines of text if they don’t fit in the visible area of the window.</p>
 </section>
 <section id="crash-report-options" class="level3">
 <h3>9.6. Crash Report Options</h3>
 <p>Please note that NetHack does not send any information off your computer unless you manually click submit on a form.</p>
-<p>OPTION=crash_email:<code>email_address</code></p>
-<p>OPTION=crash_name:<code>your_name</code> These options are used only to save you some typing on the crash report and <code>#bugreport</code> forms.</p>
-<p>OPTION=crash_urlmax:bytes This option is used to limit the length of the URLs generated and is only needed if your browser cannot handle arbitrarily long URLs.</p>
+<p><code>OPTION=crash_email:</code>email_address``</p>
+<p><code>OPTION=crash_name:</code>your_name`<code>These  options  are  used  only  to save you some typing on the crash report and</code>#bugreport` forms.</p>
+<p><code>OPTION=crash_urlmax:bytes</code> This option is used to limit the length of the URLs generated and is only needed if your browser cannot handle arbitrarily long URLs.</p>
 </section>
 <section id="platform-specific-customization-options" class="level3">
 <h3>9.7. Platform-specific Customization options</h3>
@@ -1306,12 +1306,12 @@ OPTIONS=!role:arc bar kni</code></pre>
 <h3>9.14. Configuring Status Hilites</h3>
 <p>Your copy of NetHack may have been compiled with support for “Status Hilites”. If so, you can customize your game display by set- ting thresholds to change the color or appearance of fields in the status display.</p>
 <p>The format for defining status colors is:</p>
-<p>OPTION=hilite_status:field-name/behavior/color&amp;attributes</p>
+<p><code>OPTION=hilite_status:field-name/behavior/color&amp;attributes</code></p>
 <p>For example, the following line in your configuration file will cause the hitpoints field to display in the color red if your hit- points drop to or below a threshold of 30%:</p>
-<p>OPTION=hilite_status:hitpoints/&lt;=30%/red/normal</p>
+<p><code>OPTION=hilite_status:hitpoints/&lt;=30%/red/normal</code></p>
 <p>(That example is actually specifying red&amp;normal for &lt;=30% and no- color&amp;normal for &gt;30%.)</p>
 <p>For another example, the following line in your configuration file will cause wisdom to be displayed red if it drops and green if it rises:</p>
-<p>OPTION=hilite_status:wisdom/down/red/up/green</p>
+<p><code>OPTION=hilite_status:wisdom/down/red/up/green</code></p>
 <p>Allowed colors are black, red, green, brown, blue, magenta, cyan, gray, orange, light-green, yellow, light-blue, light-magenta, light- cyan, and white. And “no-color”, the default foreground color on the display, which is not necessarily the same as black or white or any of the other colors.</p>
 <p>Allowed attributes are none, bold, dim, underline, italic, blink, and inverse. “Normal” is a synonym for “none”; they should not be used in combination with any of the other attributes.</p>
 <p>To specify both a color and an attribute, use <code>&amp;</code> to combine them. To specify multiple attributes, use <code>+</code> to combine those. For example: “magenta&amp;inverse+dim”.</p>
@@ -1336,7 +1336,7 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>The in-game options menu can help you determine the correct syn- tax for a configuration file.</p>
 <p>The whole feature can be disabled by setting option statushilites to 0.</p>
 <p>Example hilites:</p>
-<p>OPTION=hilite_status: gold/up/yellow/down/brown OPTION=hilite_status: characteristics/up/green/down/red OPTION=hilite_status: hitpoints/100%/gray&amp;normal OPTION=hilite_status: hitpoints/&lt;100%/green&amp;normal OPTION=hilite_status: hitpoints/&lt;66%/yellow&amp;normal OPTION=hilite_status: hitpoints/&lt;50%/orange&amp;normal OPTION=hilite_status: hitpoints/&lt;33%/red&amp;bold OPTION=hilite_status: hitpoints/&lt;15%/red&amp;inverse OPTION=hilite_status: condition/major/orange&amp;inverse OPTION=hilite_status: condition/lev+fly/red&amp;inverse</p>
+<p><code>OPTION=hilite_status:</code> gold/up/yellow/down/brown <code>OPTION=hilite_status:</code> characteristics/up/green/down/red <code>OPTION=hilite_status:</code> hitpoints/100%/gray&amp;normal <code>OPTION=hilite_status:</code> hitpoints/&lt;100%/green&amp;normal <code>OPTION=hilite_status:</code> hitpoints/&lt;66%/yellow&amp;normal <code>OPTION=hilite_status:</code> hitpoints/&lt;50%/orange&amp;normal <code>OPTION=hilite_status:</code> hitpoints/&lt;33%/red&amp;bold <code>OPTION=hilite_status:</code> hitpoints/&lt;15%/red&amp;inverse <code>OPTION=hilite_status:</code> condition/major/orange&amp;inverse <code>OPTION=hilite_status:</code> condition/lev+fly/red&amp;inverse</p>
 </section>
 <section id="modifying-nethack-symbols" class="level3">
 <h3>9.15. Modifying NetHack Symbols</h3>

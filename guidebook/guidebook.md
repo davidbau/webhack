@@ -4557,7 +4557,7 @@ If  NetHack can, it should display all windows of a particular style
 with the specified foreground and background  colors.   Windows  GUI
 and curses windowport only.  The format is
 
-OPTION=windowcolors:style foreground/background
+`OPTION=windowcolors:style` foreground/background
 
 where  style  is  one of "menu", "message", "status", or "text", and
 foreground and background are colors, either numeric (hash sign fol-
@@ -4581,13 +4581,13 @@ in the visible area of the window.
 Please note that NetHack does not send any information  off  your
 computer unless you manually click submit on a form.
 
-OPTION=crash_email:`email_address`
+`OPTION=crash_email:`email_address``
 
-OPTION=crash_name:`your_name`
+`OPTION=crash_name:`your_name``
 These  options  are  used  only  to save you some typing on the
 crash report and `#bugreport` forms.
 
-OPTION=crash_urlmax:bytes
+`OPTION=crash_urlmax:bytes`
 This option is used to limit the length of the  URLs  generated
 and  is  only  needed if your browser cannot handle arbitrarily
 long URLs.
@@ -5010,13 +5010,13 @@ status display.
 
 The format for defining status colors is:
 
-OPTION=hilite_status:field-name/behavior/color&attributes
+`OPTION=hilite_status:field-name/behavior/color&attributes`
 
 For example, the following line in your configuration  file  will
 cause  the  hitpoints  field  to display in the color red if your hit-
 points drop to or below a threshold of 30%:
 
-OPTION=hilite_status:hitpoints/<=30%/red/normal
+`OPTION=hilite_status:hitpoints/<=30%/red/normal`
 
 (That example is actually specifying  red&normal  for  <=30%  and  no-
 color&normal for >30%.)
@@ -5025,7 +5025,7 @@ For  another  example,  the  following line in your configuration
 file will cause wisdom to be displayed red if it drops and green if it
 rises:
 
-OPTION=hilite_status:wisdom/down/red/up/green
+`OPTION=hilite_status:wisdom/down/red/up/green`
 
 Allowed colors are black, red, green, brown, blue, magenta, cyan,
 gray, orange, light-green, yellow, light-blue,  light-magenta,  light-
@@ -5143,16 +5143,16 @@ to 0.
 
 Example hilites:
 
-OPTION=hilite_status: gold/up/yellow/down/brown
-OPTION=hilite_status: characteristics/up/green/down/red
-OPTION=hilite_status: hitpoints/100%/gray&normal
-OPTION=hilite_status: hitpoints/<100%/green&normal
-OPTION=hilite_status: hitpoints/<66%/yellow&normal
-OPTION=hilite_status: hitpoints/<50%/orange&normal
-OPTION=hilite_status: hitpoints/<33%/red&bold
-OPTION=hilite_status: hitpoints/<15%/red&inverse
-OPTION=hilite_status: condition/major/orange&inverse
-OPTION=hilite_status: condition/lev+fly/red&inverse
+`OPTION=hilite_status:` gold/up/yellow/down/brown
+`OPTION=hilite_status:` characteristics/up/green/down/red
+`OPTION=hilite_status:` hitpoints/100%/gray&normal
+`OPTION=hilite_status:` hitpoints/<100%/green&normal
+`OPTION=hilite_status:` hitpoints/<66%/yellow&normal
+`OPTION=hilite_status:` hitpoints/<50%/orange&normal
+`OPTION=hilite_status:` hitpoints/<33%/red&bold
+`OPTION=hilite_status:` hitpoints/<15%/red&inverse
+`OPTION=hilite_status:` condition/major/orange&inverse
+`OPTION=hilite_status:` condition/lev+fly/red&inverse
 
 
 ### 9.15. Modifying NetHack Symbols
