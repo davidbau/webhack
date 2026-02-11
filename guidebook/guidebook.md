@@ -1,4 +1,4 @@
-# A Guide to the Mazes of Menace
+    # A Guide to the Mazes of Menace
 
 <p style="text-align: center; font-style: italic; margin: 1.5em 0;">Guidebook for NetHack</p>
 
@@ -1006,7 +1006,7 @@ so this is a way to introduce the less frequently used commands.  What
 extended  commands are available depends on what features the game was
 compiled with.
 
-#adjust
+`#adjust`
 Adjust inventory letters (most useful when the fixinv  option  is
 "on").  Autocompletes.  Default key is ``M-a`'.
 
@@ -1036,13 +1036,13 @@ doesn't and give that name to the result, while splitting  (count
 given)  will ignore the source stack's name when deciding whether
 to merge with the destination stack.
 
-#annotate
+`#annotate`
 Allows you to specify one line of text to associate with the cur-
 rent dungeon level.  All levels with annotations are displayed by
 the "`#overview`" command.  Autocompletes.  Default key  is  ``M-A`',
 and also ``^N`' if `number_pad` is on.
 
-#apply
+`#apply`
 Apply (use) a tool such as a pick-axe, a key, or a lamp.  Default
 key is `a`.
 
@@ -1052,72 +1052,72 @@ skips those items.
 If  used on a wand, that wand will be broken, releasing its magic
 in the process.  Confirmation is required.
 
-#attributes
+`#attributes`
 Show your attributes.  Default key is ``^X`'.
 
-#autopickup
+`#autopickup`
 Toggle the autopickup option on/off.  Default key is `@`.
 
-#bugreport
+`#bugreport`
 Bring up a browser window to  submit  a  report  to  the  NetHack
 Development  Team.   Can  be  disabled at the time the program is
 built; when enabled, CRASHREPORTURL must be  set  in  the  system
 configuration file.
 
-#call
+`#call`
 Call  (name)  a monster, or an object in inventory, on the floor,
 or in the discoveries list, or add an annotation for the  current
 level (same as "`#annotate`").  Default key is `C`.
 
-#cast
+`#cast`
 Cast a spell.  Default key is `Z`.
 
-#chat
+`#chat`
 Talk to someone.  Default key is ``M-c`'.
 
-#chronicle
+`#chronicle`
 Show a list of important game events.
 
-#close
+`#close`
 Close a door.  Default key is `c`.
 
-#conduct
+`#conduct`
 List  voluntary  challenges  you have maintained.  Autocompletes.
 Default key is ``M-C`'.
 
 See the section below entitled "Conduct" for details.
 
-#debugfuzzer
+`#debugfuzzer`
 Start the fuzz tester.  Debug mode only.
 
-#dip
+`#dip`
 Dip an object into something.  Autocompletes.  Default key is `M-
 d'.
 
 The  `m` prefix skips dipping into a fountain or pool if there is
 one at your location.
 
-#down
+`#down`
 Go down a staircase.  Default key is `>`.
 
-#drop
+`#drop`
 Drop an item.  Default key is `d`.
 
-#droptype
+`#droptype`
 Drop specific item types.  Default key is `D`.
 
-#eat
+`#eat`
 Eat something.  Default key is `e`.  The `m` prefix skips  eating
 items on the floor.
 
-#engrave
+`#engrave`
 Engrave writing on the floor.  Default key is `E`.
 
-#enhance
+`#enhance`
 Advance   or  check  weapon  and  spell  skills.   Autocompletes.
 Default key is ``M-e`'.
 
-#exploremode
+`#exploremode`
 Switch from normal play to non-scoring explore mode.  Default key
 is ``M-X`'.
 
@@ -1126,18 +1126,18 @@ switch to explore mode, respond with y.  You can  set  the  para-
 noid_confirmation:quit  option  to  require  a  response  of  yes
 instead.
 
-#fight
+`#fight`
 Prefix key to force fight a direction, even if you see nothing to
 fight there.  Default key is `F`, or `-` with `number_pad`
 
-#fire
+`#fire`
 Fire ammunition from quiver, possibly autowielding a launcher, or
 hit with a wielded polearm.  Default key is `f`.
 
-#force
+`#force`
 Force a lock.  Autocompletes.  Default key is ``M-f`'.
 
-#genocided
+`#genocided`
 List any monster types which have  been  genocided.   In  explore
 mode  and  debug  mode  it  also  shows  types  which have become
 extinct.
@@ -1154,15 +1154,15 @@ The menu omits those two choices when used for `#genocide`.
 
 Autocompletes.  Default key is ``M-g`'.
 
-#glance
+`#glance`
 Show what type of thing a map symbol corresponds to.  Default key
 is `;`.
 
-#help
+`#help`
 Show  the  help  menu.   Default key is `?`, and also `h` if num-
 `ber_pad` is on.
 
-#herecmdmenu
+`#herecmdmenu`
 Show a menu of possible actions directed at  your  current  loca-
 tion.   The menu is limited to a subset of the likeliest actions,
 not an exhaustive set of all possibilities.  Autocompletes.
@@ -1171,69 +1171,69 @@ If mouse support is enabled and the `herecmd_menu`  option  is  On,
 clicking  on  the  hero (or steed when mounted) will execute this
 command.
 
-#history
+`#history`
 Show long version and game history.  Default key is `V`.
 
-#inventory
+`#inventory`
 Show your inventory.  Default key is `i`.
 
-#inventtype
+`#inventtype`
 Inventory specific item types.  Default key is `I`.
 
-#invoke
+`#invoke`
 Invoke an object's special powers.  Autocompletes.   Default  key
 is ``M-i`'.
 
-#jump
+`#jump`
 Jump  to another location.  Autocompletes.  Default key is ``M-j`',
 and also `j` if `number_pad` is on.
 
-#kick
+`#kick`
 Kick something.  Default key is ``^D`', and `k`  if  `number_pad`  is
 on.
 
-#known
+`#known`
 Show what object types have been discovered.  Default key is `\`.
 
 The  `m` prefix allows assigning a new value to the sortdiscover-
 ies option to control the order in which the discoveries are dis-
 played.
 
-#knownclass
+`#knownclass`
 Show  discovered  types for one class of objects.  Default key is
 `` ` ``.
 
 The `m` prefix operates the same as for "`#known`".
 
-#levelchange
+`#levelchange`
 Change your experience level.  Autocompletes.  Debug mode only.
 
-#lightsources
+`#lightsources`
 Show mobile light sources.  Autocompletes.  Debug mode only.
 
-#look
+`#look`
 Look at what is here, under you.  Default key is `:`.
 
-#lookaround
+`#lookaround`
 Describe what you can see, or remember, of your surroundings.
 
-#loot
+`#loot`
 Loot a box or bag on the floor beneath you, or the saddle from  a
 steed standing next to you.  Autocompletes.  Precede with the `m`
 prefix to skip containers at your location  and  go  directly  to
 removing  a  saddle.   Default key is ``M-l`', and also `l` if num-
 `ber_pad` is on.
 
-#monster
+`#monster`
 Use a monster's special ability (when  polymorphed  into  monster
 form).  Autocompletes.  Default key is ``M-m`'.
 
-#name
+`#name`
 Name  a monster, an individual object, or a type of object.  Same
 as "`#call`".  Autocompletes.  Default keys are `N`, ``M-n`', and `M-
 N'.
 
-#offer
+`#offer`
 Offer  a  sacrifice  to the gods.  Autocompletes.  Default key is
 ``M-o`'.
 
@@ -1242,20 +1242,20 @@ Corpses of recently killed monsters are the fodder of choice.
 
 The `m` prefix skips offering any items which are on the altar.
 
-#open
+`#open`
 Open a door.  Default key is `o`.
 
-#options
+`#options`
 Show  and  change  option settings.  Default key is `O`.  Precede
 with the `m` prefix to show advanced options.
 
-#optionsfull
+`#optionsfull`
 Show advanced game option settings.   No  default  key.   Precede
 with  the  `m`  prefix  to  execute  the simpler options command.
 (Mainly useful if you use  BINDING=O:optionsfull  to  switch  `O`
 from simple options back to traditional advanced options.)
 
-#overview
+`#overview`
 Display  information  you've  discovered  about the dungeon.  Any
 visited level with an annotation is  included,  and  many  things
 (altars,  thrones,  fountains, and so on; extra stairs leading to
@@ -1271,7 +1271,7 @@ than just the "interesting" subset.
 
 Autocompletes.  Default keys are ``^O`', and ``M-O`'.
 
-#panic
+`#panic`
 Test the panic routine.  Terminates the current  game.   Autocom-
 pletes.  Debug mode only.
 
@@ -1279,24 +1279,24 @@ Asks  for  confirmation; default is n (no); continue playing.  To
 really panic, respond with y.  You can set the paranoid_confirma-
 tion:quit option to require a response of yes instead.
 
-#pay
+`#pay`
 Pay your shopping bill.  Default key is `p`.
 
-#perminv
+`#perminv`
 If  persistent  inventory  display is supported and enabled (with
 the `perm_invent` option), interact with it  instead  of  with  the
 map.   You'll  be  prompted for menu scrolling keystrokes such as
 `>` and `<`.  Press Return  or  Escape  to  resume  normal  play.
 Default key is `|`.
 
-#pickup
+`#pickup`
 Pick up things at the current location.  Default key is `,`.  The
 `m` prefix forces use of a menu.
 
-#polyself
+`#polyself`
 Polymorph self.  Autocompletes.  Debug mode only.
 
-#pray
+`#pray`
 Pray to the gods for help.  Autocompletes.  Default key is ``M-p`'.
 
 Praying too soon after  receiving  prior  help  is  a  bad  idea.
@@ -1308,19 +1308,19 @@ trouble, there is an option  to  make  you  confirm  your  intent
 before  praying.  It is enabled by default, and you can reset the
 `paranoid_confirmation` option to disable it.
 
-#prevmsg
+`#prevmsg`
 Show previously displayed game messages.  Default key is ``^P`'.
 
-#puton
+`#puton`
 Put on an accessory (ring, amulet, etc).  Default key is `P`.
 
-#quaff
+`#quaff`
 Quaff (drink) something.  Default key is `q`.
 
 The `m` prefix skips drinking from a fountain or sink if there is
 one at your location.
 
-#quit
+`#quit`
 Quit the program without saving your game.  Autocompletes.
 
 Since using this command by accident would throw away the current
@@ -1329,86 +1329,86 @@ Default  response  is  n (no); continue playing.  To really quit,
 respond with  y.   You  can  set  the  paranoid_confirmation:quit
 option to require a response of yes instead.
 
-#quiver
+`#quiver`
 Select ammunition for quiver.  Default key is `Q`.
 
-#read
+`#read`
 Read  a  scroll,  a spellbook, or something else.  Default key is
 `r`.
 
-#redraw
+`#redraw`
 Redraw the screen.  Default key is ``^R`', and also  ``^L`'  if  num-
 `ber_pad` is on.
 
-#remove
+`#remove`
 Remove an accessory (ring, amulet, etc).  Default key is `R`.
 
-#repeat
+`#repeat`
 Repeat the previous command.  Default key is ``^A`'.
 
-#reqmenu
+`#reqmenu`
 Prefix  key to modify the behavior or request menu from some com-
 mands.  Prevents autopickup when  used  with  movement  commands.
 Default key is `m`.
 
-#retravel
+`#retravel`
 Travel  to a previously selected travel destination.  Default key
 is `C-_`.  See also `#travel`.
 
-#ride
+`#ride`
 Ride  (or  stop  riding)  a  saddled  creature.    Autocompletes.
 Default key is ``M-R`'.
 
-#rub
+`#rub`
 Rub a lamp or a stone.  Autocompletes.  Default key is ``M-r`'.
 
-#run
+`#run`
 Prefix  key  to run towards a direction.  Default key is `G` when
 `number_pad` is off, `5` when `number_pad` is set to 1 or  3,  other-
 wise `M-5` when it is set to 2 or 4.
 
-#rush
+`#rush`
 Prefix key to rush towards a direction.  Default is `g` when num-
 `ber_pad` is off, `M-5` when `number_pad` is set to 1 or 3, otherwise
 `5` when it is set to 2 or 4.
 
-#save
+`#save`
 Save the game and exit the program.  Default key is `S`.
 
-#saveoptions
+`#saveoptions`
 Save  configuration  options to the config file.  This will over-
 write the file, removing all comments, so if  you  have  manually
 edited the config file, don't use this.
 
-#search
+`#search`
 Search  for  traps  and  secret doors around you.  Default key is
 `s`.
 
-#seeall
+`#seeall`
 Show all equipment in use.  Default key is `*`.
 
 Will display in-use items in a menu even when there is only one.
 
-#seeamulet
+`#seeamulet`
 Show the amulet currently worn.  Default key is `"`.
 
 Using the `m` prefix will force the display of a worn amulet in a
 menu rather than with just a message.
 
-#seearmor
+`#seearmor`
 Show the armor currently worn.  Default key is `[`.
 
 Will  display  worn armor in a menu even when there is only thing
 worn.
 
-#seerings
+`#seerings`
 Show the ring(s) currently worn.  Default key is `=`.
 
 Will display worn rings in a menu if there are two (or  there  is
 just  one and is a meat ring rather than a "real" ring).  Use the
 `m` prefix to force a menu for one ring.
 
-#seetools
+`#seetools`
 Show the tools currently in use.  Default key is `(`.
 
 Will display the result in a message if there is one tool in  use
@@ -1417,7 +1417,7 @@ Will display the result in a message if there is one tool in  use
 leashes attached to pets).  Will display a menu if there are more
 than one or if the command is preceded by the `m` prefix.
 
-#seeweapon
+`#seeweapon`
 Show the weapon currently wielded.  Default key is `)`.
 
 If  dual-wielding,  a separate message about the secondary weapon
@@ -1426,54 +1426,54 @@ will include primary weapon, alternate weapon even when not dual-
 wielding, and also whatever is currently assigned to  the  quiver
 slot.
 
-#shell
+`#shell`
 Do  a  shell escape, switching from NetHack to a subprocess.  Can
 be disabled at the time the  program  is  built.   When  enabled,
 access for specific users can be controlled by the system config-
 uration file.  Use the shell command  `exit`  to  return  to  the
 game.  Default key is `!`.
 
-#showgold
+`#showgold`
 Report  the gold in your inventory, including gold you know about
 in containers you're carrying.  If you are inside a shop,  report
 any credit or debt you have in that shop.  Default key is `$`.
 
-#showspells
+`#showspells`
 List and reorder known spells.  Default key is `+`.
 
-#showtrap
+`#showtrap`
 Describe  an adjacent trap, possibly covered by objects or a mon-
 ster.  To be eligible, the trap must already be discovered.  (The
 "`#terrain`" command can display your map with all objects and mon-
 sters temporarily removed, making it possible to see all  discov-
 ered traps.)  Default key is `^`.
 
-#sit
+`#sit`
 Sit down.  Autocompletes.  Default key is ``M-s`'.
 
-#stats
+`#stats`
 Show memory usage statistics.  Autocompletes.  Debug mode only.
 
-#suspend
+`#suspend`
 Suspend  the  game, switching from NetHack to the terminal it was
 started from without performing save-and-exit.  Can  be  disabled
 at  the  time  the program is built.  When enabled, mainly useful
 for tty and curses interfaces on UNIX.   Use  the  shell  command
 `fg` to return to the game.  Default key is ``^Z`'.
 
-#swap
+`#swap`
 Swap wielded and secondary weapons.  Default key is `x`.
 
-#takeoff
+`#takeoff`
 Take off one piece of armor.  Default key is `T`.
 
-#takeoffall
+`#takeoffall`
 Remove all armor.  Default key is `A`.
 
-#teleport
+`#teleport`
 Teleport around the level.  Default key is ``^T`'.
 
-#terrain
+`#terrain`
 Show  map  without obstructions.  In normal play you can view the
 explored portion of the current  level's  map  without  monsters;
 without  monsters  and objects; or without monsters, objects, and
@@ -1490,18 +1490,18 @@ choices.
 Autocompletes.  Default key is `<del>`  or  `<delete>`  (see  Del
 above).
 
-#therecmdmenu
+`#therecmdmenu`
 Show  a  menu  of possible actions directed at a location next to
 you.  The menu is limited to a subset of the  likeliest  actions,
 not an exhaustive set of all possibilities.  Autocompletes.
 
-#throw
+`#throw`
 Throw something.  Default key is `t`.
 
-#timeout
+`#timeout`
 Look at the timeout queue.  Autocompletes.  Debug mode only.
 
-#tip
+`#tip`
 Tip over a container (bag or box) to pour out its contents.  When
 there are containers on the floor, the game will prompt  to  pick
 one  of  them or "tip something being carried".  If the latter is
@@ -1515,7 +1515,7 @@ situation will start with the floor container menu.
 
 Autocompletes.  Default key is ``M-T`'.
 
-#travel
+`#travel`
 Travel to a specific location on the map.  Default  key  is  `_`.
 Using  the "request menu" prefix shows a menu of interesting tar-
 gets in sight without asking to move the cursor.  When picking  a
@@ -1524,27 +1524,27 @@ line will show "(no travel path)" if your character does not know
 
 of a path to that location.  See also `#retravel`.
 
-#turn
+`#turn`
 Turn undead away.  Autocompletes.  Default key is ``M-t`'.
 
-#twoweapon
+`#twoweapon`
 Toggle  two-weapon combat on or off.  Autocompletes.  Default key
 is `X`, and also `M-2` if `number_pad` is off.
 
 Note that you must use suitable weapons for this type of  combat,
 or it will be automatically turned off.
 
-#untrap
+`#untrap`
 Untrap  something  (trap, door, or chest).  Default key is ``M-u`',
 and `u` if `number_pad` is on.
 
 In some circumstances it can also be used to rescue trapped  mon-
 sters.
 
-#up
+`#up`
 Go up a staircase.  Default key is `<`.
 
-#vanquished
+`#vanquished`
 List vanquished monsters by type and count.
 
 Note  that  the  vanquished  monsters  list includes all monsters
@@ -1566,7 +1566,7 @@ menu.
 
 Autocompletes.  Default key is ``M-V`'.
 
-#version
+`#version`
 Print compile time options for this version of NetHack.
 
 The  second  paragraph  lists  the  user  interface(s)  that  are
@@ -1576,78 +1576,78 @@ want.
 
 Autocompletes.  Default key is ``M-v`'.
 
-#versionshort
+`#versionshort`
 Show  the  program's  version number, plus the date and time that
 the running copy  was  built  from  sources  (not  the  version's
 release date).  Default key is `v`.
 
-#vision
+`#vision`
 Show vision array.  Autocompletes.  Debug mode only.
 
-#wait
+`#wait`
 Rest  one move while doing nothing.  Default key is `.`, and also
 ` ` if `rest_on_space` is on.
 
-#wear
+`#wear`
 Wear a piece of armor.  Default key is `W`.
 
-#whatdoes
+`#whatdoes`
 Tell what a key does.  Default key is `&`.
 
-#whatis
+`#whatis`
 Show what type of thing a symbol corresponds to.  Default key  is
 `/`.
 
-#wield
+`#wield`
 Wield a weapon.  Default key is `w`.
 
-#wipe
+`#wipe`
 Wipe off your face.  Autocompletes.  Default key is ``M-w`'.
 
-#wizborn
+`#wizborn`
 Show  monster  birth,  death,  genocide,  and extinct statistics.
 Debug mode only.
 
-#wizbury
+`#wizbury`
 Bury objects under and around you.   Autocompletes.   Debug  mode
 only.
 
-#wizcast
+`#wizcast`
 Cast any spell.  Debug mode only.
 
-#wizdetect
+`#wizdetect`
 Reveal  hidden  things (secret doors or traps or unseen monsters)
 within a modest radius.  No time elapses.  Autocompletes.   Debug
 mode only.  Default key is ``^E`'.
 
-#wizgenesis
+`#wizgenesis`
 Create a monster.  May be prefixed by a count to create more than
 one.  Autocompletes.  Debug mode only.  Default key is ``^G`'.
 
-#wizidentify
+`#wizidentify`
 Identify all items  in  inventory.   Autocompletes.   Debug  mode
 only.  Default key is ``^I`'.
 
-#wizintrinsic
+`#wizintrinsic`
 Set one or more intrinsic attributes.  Autocompletes.  Debug mode
 
 only.
 
-#wizkill
+`#wizkill`
 Remove monsters from play by just pointing at them.   By  default
 the  hero  gets credit or blame for killing the targets.  Precede
 this command with the `m`  prefix  to  override  that.   Autocom-
 pletes.  Debug mode only.
 
-#wizlevelport
+`#wizlevelport`
 Teleport  to  another  level.   Autocompletes.   Debug mode only.
 Default key is ``^V`'.
 
-#wizmap
+`#wizmap`
 Map the level.  Autocompletes.  Debug mode only.  Default key  is
 ``^F`'.
 
-#wizrumorcheck
+`#wizrumorcheck`
 Verify  rumor boundaries by displaying first and last true rumors
 and first and last false rumors.
 
@@ -1656,25 +1656,25 @@ taphs, and hallucinatory monsters.
 
 Autocompletes.  Debug mode only.
 
-#wizseenv
+`#wizseenv`
 Show  map  locations'  seen  vectors.  Autocompletes.  Debug mode
 only.
 
-#wizsmell
+`#wizsmell`
 Smell monster.  Autocompletes.  Debug mode only.
 
-#wizwhere
+`#wizwhere`
 Show locations of special  levels.   Autocompletes.   Debug  mode
 only.
 
-#wizwish
+`#wizwish`
 Wish  for  something.   Autocompletes.  Debug mode only.  Default
 key is ``^W`'.
 
-#wmode
+`#wmode`
 Show wall modes.  Autocompletes.  Debug mode only.
 
-#zap
+`#zap`
 Zap a wand.  Default key is `z`.
 
 #?
@@ -1760,17 +1760,17 @@ M-2  `#twoweapon` (unless the `number_pad` option is enabled)
 If the `number_pad` option is on, some additional  letter  commands
 are available:
 
-h    `#help`
+`h`    `#help`
 
-j    `#jump`
+`j`    `#jump`
 
-k    `#kick`
+`k`    `#kick`
 
-l    `#loot`
+`l`    `#loot`
 
-N    `#name`
+`N`    `#name`
 
-u    `#untrap`
+`u`    `#untrap`
 
 
 ## 5. Rooms and corridors
@@ -3148,8 +3148,8 @@ tiple  options  separated  by  commas in a single OPTIONS directive.
 
 Example:
 
-`OPTIONS=dogname:Fido`
-`OPTIONS=!legacy,autopickup,pickup_types:$"=/!?+`
+    OPTIONS=dogname:Fido
+    OPTIONS=!legacy,autopickup,pickup_types:$"=/!?+
 
 **`HACKDIR`**
 Default location of files NetHack needs. On Windows HACKDIR defaults
@@ -3185,7 +3185,7 @@ that command.
 
 Example:
 
-`AUTOCOMPLETE=zap,!annotate`
+    AUTOCOMPLETE=zap,!annotate
 
 **`AUTOPICKUP_EXCEPTION`**
 Set  exceptions  to  the  `pickup_types` option.  See the "Configuring
@@ -3199,7 +3199,7 @@ See the "Changing Key Bindings" section for more information.
 
 Example:
 
-`BIND=`^X`:getpos.autodescribe`
+    BIND=`^X`:getpos.autodescribe
 
 **`CHOOSE`**
 Chooses at random one of the comma-separated parameters as an active
@@ -3207,14 +3207,14 @@ section name.  Lines in other sections are ignored.
 
 Example:
 
-`OPTIONS=color`
-`CHOOSE=char` A,char B
+    OPTIONS=color
+    CHOOSE=char A,char B
     [char A]
-`OPTIONS=role:arc,race:dwa,align:law,gender:fem`
+    OPTIONS=role:arc,race:dwa,align:law,gender:fem
     [char B]
-`OPTIONS=role:wiz,race:elf,align:cha,gender:mal`
+    OPTIONS=role:wiz,race:elf,align:cha,gender:mal
     [] `#end` of CHOOSE
-`OPTIONS=!`rest_on_space``
+    OPTIONS=!`rest_on_space`
 
 If [] is present, the preceding section is closed and no new section
 begins;  whatever follows will be common to all sections.  Otherwise
@@ -3246,8 +3246,8 @@ NetHack Symbols" section.
 
 Example:
 
-# replace small punctuation (tick marks) with digits
-`SYMBOLS=S_golem:7`
+    # replace small punctuation (tick marks) with digits
+    SYMBOLS=S_golem:7
 
 **`WIZKIT`**
 Debug mode only:  extra items to add to initial inventory.  Value is
@@ -3257,26 +3257,26 @@ function that handles wishing.
 
 Example:
 
-`WIZKIT=~/wizkit.txt`
+    WIZKIT=~/wizkit.txt
 
 Here is an example of configuration file contents:
 
-# Set your character's role, race, gender, and alignment.
-`OPTIONS=role:Valkyrie,` race:Human, gender:female, align:lawful
+    # Set your character's role, race, gender, and alignment.
+    OPTIONS=role:Valkyrie, race:Human, gender:female, align:lawful
 #
-# Turn on autopickup, set automatically picked up object types
-`OPTIONS=autopickup,pickup_types:$"=/!?+`
+    # Turn on autopickup, set automatically picked up object types
+    OPTIONS=autopickup,pickup_types:$"=/!?+
 #
-# Map customization
-`OPTIONS=color`           # Display things in color if possible
-`OPTIONS=`lit_corridor``    # Show lit corridors differently
-`OPTIONS=`hilite_pet`,`hilite_pile``
-# Replace small punctuation (tick marks) with digits
-`OPTIONS=boulder:0`
-`SYMBOLS=S_golem:7`
+    # Map customization
+    OPTIONS=color           # Display things in color if possible
+    OPTIONS=`lit_corridor`    # Show lit corridors differently
+    OPTIONS=`hilite_pet`,`hilite_pile`
+    # Replace small punctuation (tick marks) with digits
+    OPTIONS=boulder:0
+    SYMBOLS=S_golem:7
 #
-# No startup splash screen. Windows GUI only.
-`OPTIONS=!`splash_screen``
+    # No startup splash screen. Windows GUI only.
+    OPTIONS=!`splash_screen`
 
 
 ### 9.3. Using the NETHACKOPTIONS environment variable
@@ -3481,7 +3481,7 @@ The listings of vanquished monsters and of genocided  types  can  be
 sorted, so there are two additional choices for `v` and `g`:
 
 ? - prompt you and default to ask on the prompt;
-# - disclose it without prompting, ask for sort order.
+    # - disclose it without prompting, ask for sort order.
 
 Asking  refers to picking one of the orderings from a menu.  The `+`
 disclose without prompting choice, or being prompted  and  answering
@@ -4067,8 +4067,8 @@ plished in the same manner as with boolean options, by prefixing the
 option or its value(s) with `!` or "no".
 Examples:
 
-`OPTIONS=role:!arc` !bar !kni
-`OPTIONS=!role:arc` bar kni
+    OPTIONS=role:!arc !bar !kni
+    OPTIONS=!role:arc bar kni
 
 There  can  be  multiple instances of the role option if they're all
 negations.
@@ -4173,7 +4173,7 @@ prefix before the `\` or `` ` `` command.
 
 `sortloot`
 Controls the sorting behavior of the pickup lists for inventory  and
-#loot commands and some others.  Persistent.
+`#loot` commands and some others.  Persistent.
 
 The possible values are:
 
@@ -4557,7 +4557,7 @@ If  NetHack can, it should display all windows of a particular style
 with the specified foreground and background  colors.   Windows  GUI
 and curses windowport only.  The format is
 
-`OPTION=windowcolors:style` foreground/background
+    OPTION=windowcolors:style foreground/background
 
 where  style  is  one of "menu", "message", "status", or "text", and
 foreground and background are colors, either numeric (hash sign fol-
@@ -4581,13 +4581,13 @@ in the visible area of the window.
 Please note that NetHack does not send any information  off  your
 computer unless you manually click submit on a form.
 
-`OPTION=crash_email:`email_address``
+    OPTION=crash_email:`email_address`
 
-`OPTION=crash_name:`your_name``
+    OPTION=crash_name:`your_name`
 These  options  are  used  only  to save you some typing on the
 crash report and `#bugreport` forms.
 
-`OPTION=crash_urlmax:bytes`
+    OPTION=crash_urlmax:bytes
 This option is used to limit the length of the  URLs  generated
 and  is  only  needed if your browser cannot handle arbitrarily
 long URLs.
@@ -4710,9 +4710,9 @@ saved with the game.
 
 Here are some examples:
 
-`autopickup_exception="<*arrow"`
-`autopickup_exception=">*corpse"`
-`autopickup_exception=">* cursed*"`
+    autopickup_exception="<*arrow"
+    autopickup_exception=">*corpse"
+    autopickup_exception=">* cursed*"
 
 The first example above will result in autopickup of any type  of
 arrow.  The second example results in the exclusion of any corpse from
@@ -4731,9 +4731,9 @@ mouse button, or a three-digit decimal ASCII code.
 
 For example:
 
-`BIND=`^X`:getpos.autodescribe`
-`BIND=\:`menu_first_page``
-`BIND=v:loot`
+    BIND=`^X`:getpos.autodescribe
+    BIND=\:`menu_first_page`
+    BIND=v:loot
 
 Extended command keys
 You can bind multiple keys to the same extended command.   Unbind  a
@@ -4906,8 +4906,8 @@ shown in between.
 Here's an example of message types using NetHack's internal  pattern
 matching facility:
 
-`MSGTYPE=stop` "You feel hungry."
-`MSGTYPE=hide` "You displaced *."
+    MSGTYPE=stop "You feel hungry."
+    MSGTYPE=hide "You displaced *."
 
 specifies  that  whenever  a message "You feel hungry" is shown, the
 user is prompted with more-prompt, and a message matching "You  dis-
@@ -4926,7 +4926,7 @@ curses, win32tty and win32gui interfaces support this.
 In general, the configuration file entries to describe  the  menu
 color mappings look like this:
 
-`MENUCOLOR="pattern"`=color&attribute
+    MENUCOLOR="pattern"=color&attribute
 
 pattern    - the pattern to match;
 color      - the color to use for lines matching the pattern;
@@ -4949,9 +4949,9 @@ form used may interpret the attributes any way it wants.
 Here's  an  example  of menu colors using NetHack's internal pattern
 matching facility:
 
-`MENUCOLOR="* blessed *"`=green
-`MENUCOLOR="* cursed *"`=red
-`MENUCOLOR="* cursed *(being worn)"`=red&underline
+    MENUCOLOR="* blessed *"=green
+    MENUCOLOR="* cursed *"=red
+    MENUCOLOR="* cursed *(being worn)"=red&underline
 
 specifies that any menu line with " blessed " contained in  it  will
 be shown in green color, lines with " cursed " will be shown in red,
@@ -4996,9 +4996,9 @@ The pattern should be a regular expression.
 
 For example:
 
-`SOUNDDIR=C:\nethack\sounds`
-`SOUND=MESG` "This door is locked" "lock.wav" 100
-`SOUND=MESG` hide "^You miss the " "swing.wav" 75
+    SOUNDDIR=C:\nethack\sounds
+    SOUND=MESG "This door is locked" "lock.wav" 100
+    SOUND=MESG hide "^You miss the " "swing.wav" 75
 
 
 ### 9.14. Configuring Status Hilites
@@ -5010,13 +5010,13 @@ status display.
 
 The format for defining status colors is:
 
-`OPTION=hilite_status:field-name/behavior/color&attributes`
+    OPTION=hilite_status:field-name/behavior/color&attributes
 
 For example, the following line in your configuration  file  will
 cause  the  hitpoints  field  to display in the color red if your hit-
 points drop to or below a threshold of 30%:
 
-`OPTION=hilite_status:hitpoints/<=30%/red/normal`
+    OPTION=hilite_status:hitpoints/<=30%/red/normal
 
 (That example is actually specifying  red&normal  for  <=30%  and  no-
 color&normal for >30%.)
@@ -5025,7 +5025,7 @@ For  another  example,  the  following line in your configuration
 file will cause wisdom to be displayed red if it drops and green if it
 rises:
 
-`OPTION=hilite_status:wisdom/down/red/up/green`
+    OPTION=hilite_status:wisdom/down/red/up/green
 
 Allowed colors are black, red, green, brown, blue, magenta, cyan,
 gray, orange, light-green, yellow, light-blue,  light-magenta,  light-
@@ -5143,16 +5143,16 @@ to 0.
 
 Example hilites:
 
-`OPTION=hilite_status:` gold/up/yellow/down/brown
-`OPTION=hilite_status:` characteristics/up/green/down/red
-`OPTION=hilite_status:` hitpoints/100%/gray&normal
-`OPTION=hilite_status:` hitpoints/<100%/green&normal
-`OPTION=hilite_status:` hitpoints/<66%/yellow&normal
-`OPTION=hilite_status:` hitpoints/<50%/orange&normal
-`OPTION=hilite_status:` hitpoints/<33%/red&bold
-`OPTION=hilite_status:` hitpoints/<15%/red&inverse
-`OPTION=hilite_status:` condition/major/orange&inverse
-`OPTION=hilite_status:` condition/lev+fly/red&inverse
+    OPTION=hilite_status: gold/up/yellow/down/brown
+    OPTION=hilite_status: characteristics/up/green/down/red
+    OPTION=hilite_status: hitpoints/100%/gray&normal
+    OPTION=hilite_status: hitpoints/<100%/green&normal
+    OPTION=hilite_status: hitpoints/<66%/yellow&normal
+    OPTION=hilite_status: hitpoints/<50%/orange&normal
+    OPTION=hilite_status: hitpoints/<33%/red&bold
+    OPTION=hilite_status: hitpoints/<15%/red&inverse
+    OPTION=hilite_status: condition/major/orange&inverse
+    OPTION=hilite_status: condition/lev+fly/red&inverse
 
 
 ### 9.15. Modifying NetHack Symbols
@@ -5191,7 +5191,7 @@ a  S_ant                  (ant or other insect)
 [  S_armour               (suit or piece of armor)
 ^  S_arrow_trap           (arrow trap)
 0  S_ball                 (iron ball)
-#  S_bars                 (iron bars)
+    #  S_bars                 (iron bars)
 B  S_bat                  (bat or bird)
 ^  S_bear_trap            (bear trap)
 -  S_blcorn               (bottom left corner)
@@ -5207,12 +5207,12 @@ b  S_blob                 (blob)
 <  S_brupstair            (branch staircase up)
 C  S_centaur              (centaur)
 _  S_chain                (iron chain)
-#  S_cloud                (cloud)
+    #  S_cloud                (cloud)
 c  S_cockatrice           (cockatrice)
 $  S_coin                 (pile of coins)
-#  S_corr                 (corridor)
+    #  S_corr                 (corridor)
 -  S_crwall               (wall)
-#  S_darkroom             (dark room)
+    #  S_darkroom             (dark room)
 ^  S_dart_trap            (dart trap)
 &  S_demon                (major demon)
 
@@ -5223,7 +5223,7 @@ d  S_dog                  (dog or other canine)
 D  S_dragon               (dragon)
 ;  S_eel                  (sea monster)
 E  S_elemental            (elemental)
-#  S_engrcorr             (engraving in a corridor)
+    #  S_engrcorr             (engraving in a corridor)
 `  S_engroom              (engraving in a room)
 /  S_expl_tl              (explosion top left)
 -  S_expl_tc              (explosion top center)
@@ -5250,7 +5250,7 @@ G  S_gnome                (gnome)
 |  S_grave                (grave)
 g  S_gremlin              (gremlin)
 -  S_hbeam                (horizontal beam [zap animation])
-#  S_hcdbridge            (horizontal raised drawbridge)
+    #  S_hcdbridge            (horizontal raised drawbridge)
 +  S_hcdoor               (closed door in horizontal wall)
 .  S_hodbridge            (horizontal lowered drawbridge)
 |  S_hodoor               (open door in horizontal wall)
@@ -5273,7 +5273,7 @@ l  S_leprechaun           (leprechaun)
 ^  S_level_teleporter     (level teleporter)
 L  S_lich                 (lich)
 y  S_light                (light)
-#  S_litcorr              (lit corridor)
+    #  S_litcorr              (lit corridor)
 :  S_lizard               (lizard)
 \  S_lslant               (diagonal beam [zap animation])
 ^  S_magic_portal         (magic portal)
@@ -5288,7 +5288,7 @@ O  S_ogre                 (ogre)
 o  S_orc                  (orc)
 p  S_piercer              (piercer)
 ^  S_pit                  (pit)
-#  S_poisoncloud          (poison cloud)
+    #  S_poisoncloud          (poison cloud)
 ^  S_polymorph_trap       (polymorph trap)
 }  S_pool                 (water)
 !  S_potion               (potion)
@@ -5304,14 +5304,14 @@ r  S_rodent               (rodent)
 ^  S_rust_trap            (rust trap)
 R  S_rustmonst            (rust monster or disenchanter)
 ?  S_scroll               (scroll)
-#  S_sink                 (sink)
+    #  S_sink                 (sink)
 ^  S_sleeping_gas_trap    (sleeping gas trap)
 S  S_snake                (snake)
 s  S_spider               (arachnid or centipede)
 ^  S_spiked_pit           (spiked pit)
 ^  S_squeaky_board        (squeaky board)
 0  S_ss1                  (magic shield 1 of 4)
-#  S_ss2                  (magic shield 2 of 4)
+    #  S_ss2                  (magic shield 2 of 4)
 @  S_ss3                  (magic shield 3 of 4)
 *  S_ss4                  (magic shield 4 of 4)
 ^  S_statue_trap          (statue trap)
@@ -5335,7 +5335,7 @@ S_stone                (solid rock)
 ^  S_trap_door            (trap door)
 t  S_trapper              (trapper or lurker above)
 -  S_trcorn               (top right corner)
-#  S_tree                 (tree)
+    #  S_tree                 (tree)
 T  S_troll                (troll)
 |  S_trwall               (wall)
 -  S_tuwall               (wall)
@@ -5346,7 +5346,7 @@ u  S_unicorn              (unicorn or horse)
 <  S_upstair              (staircase up)
 V  S_vampire              (vampire)
 |  S_vbeam                (vertical beam [zap animation])
-#  S_vcdbridge            (vertical raised drawbridge)
+    #  S_vcdbridge            (vertical raised drawbridge)
 +  S_vcdoor               (closed door in vertical wall)
 .  S_venom                (splash of venom)
 ^  S_vibrating_square     (vibrating square)
@@ -5395,7 +5395,7 @@ or individually within your nethack.rc file.
 
 The format for defining a glyph representation is:
 
-`OPTIONS=glyph:glyphid/U+nnnn/R-G-B`
+    OPTIONS=glyph:glyphid/U+nnnn/R-G-B
 
 The window port that is active needs to provide support for  dis-
 playing  UTF-8  character sequences and explicit red-green-blue colors
@@ -5404,7 +5404,7 @@ following  line in your configuration file will cause the glyph repre-
 sentation for glyphid G_pool to use Unicode codepoint U+224B  and  the
 color represented by R-G-B value 0-0-160:
 
-`OPTIONS=glyph:G_pool/U+224B/0-0-160`
+    OPTIONS=glyph:G_pool/U+224B/0-0-160
 
 The  list  of acceptable glyphid's can be produced by nethack --dumpg-
 lyphids.  Individual NetHack glyphs can be specified using the G_ pre-
