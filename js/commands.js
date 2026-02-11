@@ -209,6 +209,11 @@ export async function rhack(ch, game) {
         return await handleSet(game);
     }
 
+    // Toggle autopickup (@) — C ref: dotogglepickup()
+    if (c === '@') {
+        return await handleTogglePickup(game);
+    }
+
     // Quit (#quit or Ctrl+C)
     if (ch === 3) {
         const ans = await ynFunction('Really quit?', 'yn', 'n'.charCodeAt(0), display);
@@ -1290,6 +1295,29 @@ async function handlePrevMessages(display) {
         }
     }
 
+    return { moved: false, tookTime: false };
+}
+
+// Toggle autopickup (@)
+// C ref: options.c dotogglepickup()
+async function handleTogglePickup(game) {
+    const { player, display } = game;
+    const flags = player.flags;
+
+    // Toggle pickup flag
+    flags.pickup = !flags.pickup;
+
+    // Build message matching C NetHack format
+    let msg;
+    if (flags.pickup) {
+        // For now, show simple "ON" message
+        // TODO: Add pickup_types support ("ON, for $ objects" etc.)
+        msg = 'Autopickup: ON, for all objects.';
+    } else {
+        msg = 'Autopickup: OFF.';
+    }
+
+    display.putstr_message(msg);
     return { moved: false, tookTime: false };
 }
 
