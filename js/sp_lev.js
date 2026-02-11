@@ -625,9 +625,17 @@ export function level_init(opts = {}) {
                 }
             }
         }
+    } else if (style === 'mines' || style === 'rogue') {
+        // Mines/rogue styles need complex cavern generation (not yet implemented)
+        // For now, fill with STONE background and let des.map() overlay the structure
+        // C ref: NetHack mines use cellular automata for cave generation
+        for (let x = 0; x < 80; x++) {
+            for (let y = 0; y < 21; y++) {
+                levelState.map.locations[x][y].typ = STONE;
+            }
+        }
     } else {
-        // Other styles (rogue, mines) would need more complex generation
-        // For now, default to solidfill behavior
+        // Unknown style - default to solidfill behavior
         console.warn(`Level init style "${style}" using default solidfill behavior`);
         const fillChar = levelState.init.fg;
         for (let x = 0; x < 80; x++) {

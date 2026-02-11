@@ -4,9 +4,20 @@
  */
 
 import * as des from '../sp_lev.js';
-import { selection } from '../sp_lev.js';
+import { selection, percent, shuffle } from '../sp_lev.js';
+import { A_CHAOTIC, A_NEUTRAL, A_LAWFUL } from '../config.js';
+
+// Helper function: returns shop type based on role
+// C ref: NetHack minetn levels - "health food shop" for Monk, "food shop" otherwise
+// During level generation, role is unknown, so use 50/50 random selection
+function monkfoodshop() {
+    return percent(50) ? "health food shop" : "food shop";
+}
 
 export function generate() {
+    // Shuffle alignment array for altar shrines (standard NetHack pattern)
+    const align = [A_CHAOTIC, A_NEUTRAL, A_LAWFUL];
+    shuffle(align);
     // NetHack mines minetn-6.lua	$NHDT-Date: 1652196031 2022/5/10 15:20:31 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.3 $
     // Copyright (c) 1989-95 by Jean-Christophe Collet
     // Copyright (c) 1991-95 by M. Stephenson
