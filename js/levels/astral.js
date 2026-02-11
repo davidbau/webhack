@@ -5,6 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection, percent } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack endgame astral.lua	$NHDT-Date: 1652196020 2022/5/10 15:20:20 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.7 $
@@ -69,7 +70,7 @@ export function generate() {
             des.terrain(41,18, ".");
          }
          // extra monsters; was [6 + 3d4] when both wings were opened up at once
-         for (let i = 1; i <= 3 + Math.random(2 - 1,2*3); i++) {
+         for (let i = 1; i <= 3 + 1 + rn2(6); i++) {
             des.monster({ id: "Angel", coord: hall.rndcoord(1), align: "noalign", peaceful: 0 });
             if (percent(50)) {
                des.monster({ coord: hall.rndcoord(1), peaceful: 0 });

@@ -5,6 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack Samurai Sam-goal.lua	$NHDT-Date: 1652196013 2022/5/10 15:20:13 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.1 $
@@ -42,7 +43,7 @@ export function generate() {
     `);
     // Dungeon Description
     let place = [ [2,11],[42,9] ]
-    let placeidx = Math.random(1, place.length);
+    let placeidx = rn2(place.length);
 
     des.region(selection.area(0,0,44,19), "unlit");
     // Doors
@@ -55,13 +56,13 @@ export function generate() {
 
     // Holes in the concentric ring walls
     place: [ [22,14],[30,10],[22, 6],[14,10] ]
-    placeidx: Math.random(1, place.length);
+    placeidx: rn2(place.length);
     des.terrain(place[placeidx], ".");
     place: [ [22, 4],[35,10],[22,16],[ 9,10] ]
-    placeidx: Math.random(1, place.length);
+    placeidx: rn2(place.length);
     des.terrain(place[placeidx], ".");
     place: [ [22, 2],[22,18] ]
-    placeidx: Math.random(1, place.length);
+    placeidx: rn2(place.length);
     des.terrain(place[placeidx], ".");
 
     // Non diggable walls

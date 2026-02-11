@@ -1112,17 +1112,20 @@ export class Agent {
                 }
             }
 
-            // Only try to path to downstairs if not TOO stuck (≤30 turns)
-            // If stuck >30, let systematic searching (section 6.5) run first
-            if (level.stairsDown.length > 0 && this.levelStuckCounter <= 30) {
+            // Balance exploration with descent: descend after moderate exploration
+            // Wait until stuck >15 to ensure some exploration before descending
+            const shouldDescend = level.stairsDown.length > 0 && this.levelStuckCounter > 15;
+
+            if (shouldDescend) {
                 const stairs = level.stairsDown[0];
                 // If we're already at the downstairs, descend immediately
                 if (px === stairs.x && py === stairs.y) {
-                    console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: `descending (stuck ${this.levelStuckCounter})` };
+                    console.log(`[DOWNSTAIRS] Descending to Dlvl ${this.dungeon.currentDepth + 1} (explored ${level.exploredCount} cells)`);
+                    return { type: 'descend', key: '>', reason: `descending after ${level.exploredCount} cells explored` };
                 }
                 const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
                 if (path.found) {
-                    return this._followPath(path, 'navigate', `heading to downstairs (level stuck ${this.levelStuckCounter}) at (${stairs.x},${stairs.y})`);
+                    return this._followPath(path, 'navigate', `heading to downstairs at (${stairs.x},${stairs.y}) (stuck ${this.levelStuckCounter})`);
                 }
             }
 
@@ -1148,15 +1151,17 @@ export class Agent {
 
             // Occupancy map secret door search (Campbell & Verbrugge 2017 approach)
             // Trigger when stuck and no downstairs found
+            // TUNED: Higher stuck threshold (40 vs 20) to prioritize exploration
             const shouldSearchSecretDoors =
-                this.levelStuckCounter > 20 &&           // Stuck for 20+ turns
+                this.levelStuckCounter > 40 &&           // Stuck for 40+ turns (was 20)
                 level.stairsDown.length === 0 &&         // No downstairs found yet
                 coverageForSearch < 0.90;                // Not almost fully explored
 
             if (shouldSearchSecretDoors) {
                 if (!this.secretDoorSearch) {
                     // Use occupancy map approach: identify large hidden components
-                    const targets = level.getSecretDoorSearchTargets({x: px, y: py}, 5);
+                    // TUNED: Fewer targets (3 vs 5) to reduce search time
+                    const targets = level.getSecretDoorSearchTargets({x: px, y: py}, 3);
 
                     if (targets.length > 0) {
                         const componentIds = new Set(targets.map(t => t.componentId));
@@ -1166,7 +1171,7 @@ export class Agent {
                         this.secretDoorSearch = {
                             targets: targets,           // Prioritized wall list from occupancy map
                             currentIndex: 0,            // Which target we're on
-                            searchesNeeded: 20,         // 20 searches = 94% success for SDOOR
+                            searchesNeeded: 10,         // 10 searches = 75% success (TUNED: was 20 for 94%)
                             searchesDone: 0,            // Searches at current target
                         };
                     } else {
@@ -1177,11 +1182,48 @@ export class Agent {
                 // If we have an active secret door search, continue it
                 if (this.secretDoorSearch) {
                     const search = this.secretDoorSearch;
-                    const target = search.targets[search.currentIndex];
 
-                    if (target) {
-                        // Navigate to wall if not adjacent
-                        const dist = Math.max(Math.abs(px - target.x), Math.abs(py - target.y));
+                    // Check if we found a secret door via game message OR cell type change
+                    let foundDoor = false;
+                    const message = this.screen.message.toLowerCase();
+
+                    // Check for success message
+                    if (message.includes('you find a hidden door') || message.includes('you find a hidden passage')) {
+                        console.log(`[SECRET DOOR] ✓ FOUND! "${this.screen.message}"`);
+                        foundDoor = true;
+                    }
+
+                    // Also check if any search targets became doors (cell type changed from wall to door)
+                    if (!foundDoor) {
+                        for (let i = 0; i <= search.currentIndex && i < search.targets.length; i++) {
+                            const checkTarget = search.targets[i];
+                            const checkCell = level.at(checkTarget.x, checkTarget.y);
+                            if (checkCell && (checkCell.type === 'door_closed' || checkCell.type === 'door_open')) {
+                                console.log(`[SECRET DOOR] ✓ FOUND! Wall at (${checkTarget.x},${checkTarget.y}) became ${checkCell.type}`);
+                                foundDoor = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (foundDoor) {
+                        // Cancel search session to prioritize exploration of newly accessible area
+                        this.secretDoorSearch = null;
+                        this.searchExhausted = false;
+
+                        // Reset search tracking
+                        this.searchSessionTurn = null;
+                        this.searchesThisSession = 0;
+                        this.searchesAtCurrentPosition = 0;
+                        this.lastSearchPosition = null;
+
+                        console.log(`[SECRET DOOR] Canceling remaining searches to explore new area`);
+                        // Fall through to exploration logic
+                    } else {
+                        const target = search.targets[search.currentIndex];
+                        if (target) {
+                            // Navigate to wall if not adjacent
+                            const dist = Math.max(Math.abs(px - target.x), Math.abs(py - target.y));
                         if (dist > 1) {
                             console.log(`[SECRET DOOR] Moving to search target ${search.currentIndex+1}/${search.targets.length} at (${target.x},${target.y}) [component ${target.componentId}]`);
                             const path = findPath(level, px, py, target.x, target.y, { allowUnexplored: false });
@@ -1219,9 +1261,16 @@ export class Agent {
 
                             console.log(`[SECRET DOOR] Searching target ${search.currentIndex+1}/${search.targets.length} at (${target.x},${target.y}) [${search.searchesDone}/${search.searchesNeeded}]`);
 
+                            // Check if we should move to next target (either completed searches or found door)
+                            let moveToNext = false;
+
                             if (search.searchesDone >= search.searchesNeeded) {
-                                // Done with this target - move to next
+                                // Done searching this target
+                                moveToNext = true;
                                 console.log(`[SECRET DOOR] Completed ${search.searchesNeeded} searches at (${target.x},${target.y}), moving to next`);
+                            }
+
+                            if (moveToNext) {
                                 search.currentIndex++;
                                 search.searchesDone = 0;
 
@@ -1260,11 +1309,12 @@ export class Agent {
                             } else {
                                 return {type: 'search', key: 's', reason: `occupancy-based secret door search at (${target.x},${target.y})`};
                             }
-                        }
-                    } else {
-                        // No more targets
-                        this.secretDoorSearch = null;
-                    }
+                        }  // Close if (dist <= 1)
+                        } else {
+                            // No more targets
+                            this.secretDoorSearch = null;
+                        }  // Close if/else for if (target)
+                    }  // Close else for if (foundDoor)
                 }
             }
 

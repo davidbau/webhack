@@ -1,10 +1,5 @@
-/**
- * bigrm-1 - NetHack special level
- * Converted from: bigrm-1.lua
- */
-
-import * as des from '../sp_lev.js';
 import { selection, percent } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack bigroom bigrm-1.lua	$NHDT-Date: 1652196021 2022/5/10 15:20:21 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.3 $
@@ -41,8 +36,8 @@ export function generate() {
 
     if (percent(80)) {
        let terrains = [ "-", "F", "L", "T", "C" ];
-       let tidx = Math.random(1, terrains.length);
-       let choice = Math.random(0, 5);
+       let tidx = rn2(terrains.length);
+       let choice = rn2(6);
        if (choice == 0) {
           // one horizontal line
           des.terrain(selection.line(10,8, 65,8), terrains[tidx]);

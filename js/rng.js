@@ -95,6 +95,15 @@ export function initRng(seed) {
         rngLog.length = 0;
         rngCallCount = 0;
     }
+
+    // Also seed xoshiro256** for Lua math.random emulation
+    // C ref: Lua's math.random is seeded once at initialization, not per-themed-room
+    // Try seeding from the main RNG seed instead of MT init values
+    if (typeof import('./xoshiro256.js') !== 'undefined') {
+        import('./xoshiro256.js').then(({ seedFromMainRng }) => {
+            if (seedFromMainRng) seedFromMainRng(seed);
+        }).catch(() => {}); // Ignore if module not available
+    }
 }
 
 // Raw 64-bit value, modulo x -- matches C's RND(x) macro

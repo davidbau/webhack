@@ -5,6 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack Priest Pri-goal.lua	$NHDT-Date: 1687033651 2023/6/17 20:27:31 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.2 $
@@ -35,7 +36,7 @@ export function generate() {
     `);
     // Dungeon Description
     let place = [ [14,4], [13,7] ]
-    let placeidx = Math.random(1, place.length);
+    let placeidx = rn2(place.length);
 
     des.region(selection.area(0,0,25,10), "unlit");
     // Stairs

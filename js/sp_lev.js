@@ -17,6 +17,7 @@ import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, getRngCallCount } from './rng.js';
 import { mksobj, mkobj } from './mkobj.js';
 import { create_room, create_subroom, makecorridors, init_rect, rnd_rect, get_rect, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized } from './dungeon.js';
+import { seedFromMT } from './xoshiro256.js';
 import {
     STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,
     CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, ROOM, CORR,
@@ -213,11 +214,19 @@ export function initLuaMT() {
         console.log(`luaRngCounter BEFORE init: ${levelState ? levelState.luaRngCounter : 'no levelState'}`);
     }
 
-    for (let i = 1000; i <= 1004; i++) rn2(i);
-    rn2(1010);
-    rn2(1012);
-    for (let i = 1014; i <= 1036; i++) rn2(i);
+    // Capture MT init values to seed xoshiro for THIS themed room
+    const mtInitValues = [];
+    for (let i = 1000; i <= 1004; i++) mtInitValues.push(rn2(i));
+    mtInitValues.push(rn2(1010));
+    mtInitValues.push(rn2(1012));
+    for (let i = 1014; i <= 1036; i++) mtInitValues.push(rn2(i));
     _mtInitializedLocal = true;
+
+    // Seed xoshiro256** for THIS themed room's reservoir sampling
+    // C ref: Each themed room might get fresh Lua state with fresh math.random seed
+    if (typeof seedFromMT === 'function') {
+        seedFromMT(mtInitValues);
+    }
 
     if (DEBUG) {
         const rngCount = typeof getRngCallCount === 'function' ? getRngCallCount() : '?';
