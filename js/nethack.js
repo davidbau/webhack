@@ -7,7 +7,7 @@ import { COLNO, ROWNO, ROOM, STAIRS, NORMAL_SPEED, ACCESSIBLE, isok, A_DEX, A_CO
          RACE_HUMAN, RACE_ELF, RACE_DWARF, RACE_GNOME, RACE_ORC,
          FEMALE, MALE, TERMINAL_COLS } from './config.js';
 import { initRng, rn2, rnd, rn1, getRngState, setRngState, getRngCallCount, setRngCallCount } from './rng.js';
-import { Display } from './display.js';
+import { Display, CLR_GRAY } from './display.js';
 import { initInput, nhgetch, getCount, getlin } from './input.js';
 import { FOV } from './vision.js';
 import { Player, roles, races, validRacesForRole, validAlignsForRoleRace,
@@ -282,6 +282,14 @@ class NetHackGame {
         // C ref: role.c plnamesuffix() -> askname() — prompts "Who are you?"
         // Name prompt happens BEFORE role/race/gender/alignment selection
         await this._promptPlayerName();
+
+        // Display copyright notice
+        // C ref: allmain.c -- copyright screen displayed with autopick prompt
+        this.display.clearScreen();
+        this.display.putstr(0, 4, "NetHack, Copyright 1985-2026", CLR_GRAY);
+        this.display.putstr(0, 5, "         By Stichting Mathematisch Centrum and M. Stephenson.", CLR_GRAY);
+        this.display.putstr(0, 6, `         Version 3.7.0 JS Port, built ${new Date().toLocaleDateString()}.`, CLR_GRAY);
+        this.display.putstr(0, 7, "         See license for details.", CLR_GRAY);
 
         // Phase 1: "Shall I pick character's race, role, gender and alignment for you?"
         this.display.putstr_message(

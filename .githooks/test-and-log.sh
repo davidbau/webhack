@@ -151,14 +151,26 @@ cat > "$TEST_OUTPUT.json" <<EOF
 }
 EOF
 
-# Append to results file
+# Store test results in git notes (source of truth)
+# The pre-commit hook will rebuild results.jsonl from all notes
+COMMIT_TO_ANNOTATE="$COMMIT_HASH"
+if [ "$COMMIT_TO_ANNOTATE" = "pending" ]; then
+  # If no commit yet, we'll annotate HEAD once it exists
+  echo "⚠️  No commit yet, will annotate after commit"
+else
+  # Add git note with test results
+  cat "$TEST_OUTPUT.json" | git notes --ref=test-results add -f -F - "$COMMIT_TO_ANNOTATE"
+  echo "✅ Test results stored in git notes for commit $COMMIT_TO_ANNOTATE"
+fi
+
+# Also append to results file for immediate use (will be rebuilt from notes)
 cat "$TEST_OUTPUT.json" >> "$RESULTS_FILE"
 
 # Cleanup
 rm "$TEST_OUTPUT" "$TEST_OUTPUT.json"
 
 echo ""
-echo "✅ Test results logged to: $RESULTS_FILE"
+echo "✅ Test results logged"
 
 if [ "$REGRESSION" = true ]; then
   exit 1

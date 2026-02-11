@@ -523,15 +523,13 @@ export class Display {
         }
 
         // Handle secret door/corridor (appears as wall/stone when unseen)
-        // C ref: display.c - secret doors render as walls in their orientation
+        // C ref: display.c - SDOOR falls through to wall cases, using wall symbols
+        // Secret doors must render as the appropriate wall type (including corners)
+        // to be truly invisible
         if (typ === SDOOR) {
-            // Determine orientation from surrounding walls
-            // If walls E/W: door between them, appears as vertical wall '|'
-            // If walls N/S: door between them, appears as horizontal wall '-'
-            const isHorizontal = this._isDoorHorizontal(gameMap, x, y);
-            return isHorizontal
-                ? (useDEC ? { ch: '\u2502', color: CLR_GRAY } : { ch: '|', color: CLR_GRAY })
-                : (useDEC ? { ch: '\u2500', color: CLR_GRAY } : { ch: '-', color: CLR_GRAY });
+            // Determine what kind of wall this should appear as based on surroundings
+            const wallType = this._determineWallType(gameMap, x, y);
+            return TERRAIN_SYMBOLS[wallType] || TERRAIN_SYMBOLS[VWALL];
         }
 
         // Handle lit_corridor option
@@ -766,6 +764,39 @@ export class Display {
 
         // If walls E/W, door is horizontal; otherwise vertical
         return hasWallEast || hasWallWest;
+    }
+
+    // Determine what wall type a secret door should appear as
+    // C ref: display.c - SDOOR falls through to wall rendering, matching surroundings
+    _determineWallType(gameMap, x, y) {
+        if (!gameMap || x < 0 || y < 0) return VWALL;
+
+        // Check all 4 directions for walls
+        const N = y - 1 >= 0 && IS_WALL(gameMap.at(x, y - 1)?.typ || 0);
+        const S = y + 1 < ROWNO && IS_WALL(gameMap.at(x, y + 1)?.typ || 0);
+        const E = x + 1 < COLNO && IS_WALL(gameMap.at(x + 1, y)?.typ || 0);
+        const W = x - 1 >= 0 && IS_WALL(gameMap.at(x - 1, y)?.typ || 0);
+
+        // Determine wall type based on adjacent walls
+        // Corners: walls in two perpendicular directions
+        if (N && W && !S && !E) return TLCORNER;  // Top-left: walls above and left
+        if (N && E && !S && !W) return TRCORNER;  // Top-right: walls above and right
+        if (S && W && !N && !E) return BLCORNER;  // Bottom-left: walls below and left
+        if (S && E && !N && !W) return BRCORNER;  // Bottom-right: walls below and right
+
+        // T-junctions and crosses
+        if (N && S && E && !W) return TLWALL;     // T pointing left
+        if (N && S && W && !E) return TRWALL;     // T pointing right
+        if (E && W && N && !S) return TUWALL;     // T pointing up
+        if (E && W && S && !N) return TDWALL;     // T pointing down
+        if (N && S && E && W) return CROSSWALL;   // Cross
+
+        // Straight walls: walls in opposite directions or one direction
+        if ((N || S) && !E && !W) return VWALL;   // Vertical wall
+        if ((E || W) && !N && !S) return HWALL;   // Horizontal wall
+
+        // Default to vertical wall if unclear
+        return VWALL;
     }
 
     // Get terrain description for a map location

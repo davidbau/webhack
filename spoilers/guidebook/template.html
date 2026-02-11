@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>A Traveler's Guide to the Mazes of Menace</title>
+  <title>A Guide to the Mazes of Menace — NetHack Guidebook</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Source+Code+Pro:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
@@ -16,9 +16,8 @@
 </nav>
 <aside id="sidebar-search" aria-label="Search">
   <div class="sidebar-title">Search</div>
-  <input type="text" id="search-input" placeholder="Search the guide...">
+  <input type="text" id="search-input" placeholder="Search the guidebook...">
   <div id="search-results"></div>
-  <div id="search-index"></div>
 </aside>
 <main id="guide-content">
 $body$
@@ -108,7 +107,6 @@ $body$
   // --- Search ---
   var searchInput = document.getElementById('search-input');
   var searchResults = document.getElementById('search-results');
-  var searchIndex = document.getElementById('search-index');
 
   // Build searchable data from headings and paragraphs
   var searchData = [];
@@ -139,10 +137,8 @@ $body$
     if (query.length < 2) {
       searchResults.innerHTML = '';
       searchResults.style.display = 'none';
-      searchIndex.style.display = '';
       return;
     }
-    searchIndex.style.display = 'none';
     searchResults.style.display = '';
 
     var words = query.split(/\s+/);
@@ -170,7 +166,7 @@ $body$
     matches.sort(function(a, b) { return b.score - a.score; });
 
     if (matches.length === 0) {
-      searchResults.innerHTML = '<div class="search-empty">No results found.<br><span class="search-hint">The dungeon keeps its secrets.</span></div>';
+      searchResults.innerHTML = '<div class="search-empty">No results found.</div>';
       return;
     }
 
@@ -312,43 +308,6 @@ $body$
     var re = new RegExp('(' + escaped.join('|') + ')', 'gi');
     return safe.replace(re, '<b>$$1</b>');
   }
-
-  // --- Humorous index (shown when search is empty) ---
-  var indexEntries = [
-    ['Acid blob, rubber-banded', 'your-first-descent'],
-    ['Amulet of Yendor, retrieving', 'the-ascension-run'],
-    ['Ascension, how to not die during', 'the-ascension-run'],
-    ['Boulders, pushing (see: Sokoban)', 'sokoban-solutions'],
-    ['Castle, storming the', 'the-castle'],
-    ['Cockatrice corpse, wielding', 'dangerous-encounters'],
-    ['Death, causes of (see: everything)', 'dangerous-encounters'],
-    ['Drowning, preventable', 'dangerous-encounters'],
-    ['Elbereth, writing frantically', 'traps-and-hazards'],
-    ['Floating eye, do not hit', 'a-field-guide-to-dungeon-fauna'],
-    ['Food, running out of', 'provisions-and-dining'],
-    ['Gehennom, why is it so hot', 'gehennom'],
-    ['Gods, angering', 'divine-relations'],
-    ['Identify, never enough scrolls of', 'the-identification-problem'],
-    ['Luck, secretly ruining yours', 'luck-and-fortune'],
-    ['Mines, gnomish', 'branches-and-landmarks'],
-    ['Pet, accidentally killing your', 'making-friends'],
-    ['Prayer, when to', 'divine-relations'],
-    ['Shopkeeper, angering', 'shopping-and-shopkeeper-pricing'],
-    ['Sokoban, solving without cheating', 'sokoban-solutions'],
-    ['Stoning, avoiding', 'dangerous-encounters'],
-    ['Tourists, playing as', 'choosing-your-expedition'],
-    ['Unicorn horn, no longer a cure-all', 'what-changed-since-last-time'],
-    ['Wand, identifying by engraving', 'the-identification-problem'],
-    ['Wishes, optimal use of', 'wishes-and-wishing'],
-    ['YASD, inevitability of', 'your-first-descent'],
-  ];
-
-  var indexHtml = '<div class="humorous-index"><div class="index-title">Index of Useful Knowledge</div>';
-  indexEntries.forEach(function(entry) {
-    indexHtml += '<a class="index-entry" href="#' + entry[1] + '">' + entry[0] + '</a>';
-  });
-  indexHtml += '</div>';
-  searchIndex.innerHTML = indexHtml;
 })();
 </script>
 </body>

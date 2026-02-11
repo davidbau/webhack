@@ -21,6 +21,15 @@ else
   echo "✅ Hooks configured: .githooks"
 fi
 
+# Check if auto-fetch is configured
+if git config --local --get-all remote.origin.fetch | grep -q "refs/notes/test-results"; then
+  echo "✅ Auto-fetch for test notes already configured"
+else
+  echo "Configuring auto-fetch for test notes..."
+  git config --add remote.origin.fetch '+refs/notes/test-results:refs/notes/test-results'
+  echo "✅ Auto-fetch configured for test notes"
+fi
+
 # Check if auto-push is configured
 if git config --local --get-all remote.origin.push | grep -q "refs/notes/test-results"; then
   echo "✅ Auto-push for test notes already configured"
@@ -28,6 +37,15 @@ else
   echo "Configuring auto-push for test notes..."
   git config --add remote.origin.push '+refs/notes/test-results:refs/notes/test-results'
   echo "✅ Auto-push configured for test notes"
+fi
+
+# Configure notes rewriting on rebase
+if git config --local notes.rewriteRef | grep -q "test-results"; then
+  echo "✅ Notes rewriting already configured"
+else
+  echo "Configuring notes to survive rebases..."
+  git config notes.rewriteRef refs/notes/test-results
+  echo "✅ Notes rewriting configured"
 fi
 
 # Make sure all scripts are executable

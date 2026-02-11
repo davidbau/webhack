@@ -27,6 +27,13 @@ different place. Some adventurers prefer the thrill of discovery over
 the comfort of preparation. If that's you, close this guide now and
 go learn things the hard way. There is real joy in that.
 
+**Looking for the manual instead?** If you're just looking for game
+commands, item lists, and mechanics without spoilers, you want the
+[official NetHack Guidebook](guidebook/) instead. That's the reference
+manual that comes with NetHack. This document is a *strategic* guide —
+it assumes you already know how to play and want to know how to
+*survive*.
+
 But if you've died to one too many rubber-banded acid blobs, or you're
 tired of starving on dungeon level four because you didn't know you
 could pray — read on. We'll do our best to keep you alive.
