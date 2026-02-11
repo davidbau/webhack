@@ -860,10 +860,13 @@ function initAttributes(player) {
 export function simulatePostLevelInit(player, map, depth) {
     const role = roles[player.roleIndex];
 
+    // Helper to safely get RNG log length (returns 0 if logging disabled)
+    const getRngCount = () => getRngLog()?.length ?? 0;
+
     // 1. makedog() — pet creation (actually places pet on map)
-    let rngBefore = getRngLog().length;
+    let rngBefore = getRngCount();
     const pet = makedog(map, player, depth || 1);
-    console.log(`makedog: ${getRngLog().length - rngBefore} RNG calls`);
+    console.log(`makedog: ${getRngCount() - rngBefore} RNG calls`);
 
     // C ref: dog.c initedog() — apport = ACURR(A_CHA)
     // Called inside makedog() BEFORE init_attr(), and u.acurr is still zeroed.
@@ -874,17 +877,17 @@ export function simulatePostLevelInit(player, map, depth) {
 
     // 2. u_init_inventory_attrs()
     //    a. u_init_role() → role-specific inventory
-    rngBefore = getRngLog().length;
+    rngBefore = getRngCount();
     u_init_role(player);
-    console.log(`u_init_role: ${getRngLog().length - rngBefore} RNG calls`);
+    console.log(`u_init_role: ${getRngCount() - rngBefore} RNG calls`);
     //    b. u_init_race() → race-specific inventory (instruments, food)
-    rngBefore = getRngLog().length;
+    rngBefore = getRngCount();
     u_init_race(player);
-    console.log(`u_init_race: ${getRngLog().length - rngBefore} RNG calls`);
+    console.log(`u_init_race: ${getRngCount() - rngBefore} RNG calls`);
     //    c+d. init_attr(75) + vary_init_attr()
-    rngBefore = getRngLog().length;
+    rngBefore = getRngCount();
     initAttributes(player);
-    console.log(`initAttributes: ${getRngLog().length - rngBefore} RNG calls`);
+    console.log(`initAttributes: ${getRngCount() - rngBefore} RNG calls`);
     //    e. u_init_carry_attr_boost() — no RNG
 
     // Set HP/PW from role + race

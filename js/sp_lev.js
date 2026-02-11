@@ -1407,7 +1407,9 @@ export function room(opts = {}) {
         rlit: lit >= 0 ? lit : (rn2(2) === 1 ? 1 : 0),
         irregular: false,
         // C ref: mklev.c - OROOM and THEMEROOM get needfill=FILL_NORMAL by default
-        needfill: (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL) ? FILL_NORMAL : undefined
+        needfill: (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL) ? FILL_NORMAL : undefined,
+        // Lua compatibility: region property for accessing room bounds
+        region: { x1: roomX, y1: roomY, x2: roomX + roomW - 1, y2: roomY + roomH - 1 }
     };
 
     // Mark floor tiles for the room
@@ -2629,6 +2631,45 @@ export const selection = {
                     func(coord.x, coord.y);
                 }
             },
+            /**
+             * filter_mapchar(ch)
+             * Filter this selection to only include tiles matching a map character.
+             * Returns a new selection.
+             */
+            filter_mapchar: (ch) => {
+                return selection.filter_mapchar(sel, ch);
+            },
+            /**
+             * negate()
+             * Return a new selection with all map tiles NOT in this selection.
+             */
+            negate: () => {
+                return selection.negate(sel);
+            },
+            /**
+             * grow(iterations)
+             * Expand selection by N cells in all 8 directions.
+             */
+            grow: (iterations = 1) => {
+                return selection.grow(sel, iterations);
+            },
+            /**
+             * union(other)
+             * Return a new selection containing all coords from this selection and another.
+             */
+            union: (other) => {
+                const coordSet = new Set();
+                coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
+                if (other && other.coords) {
+                    other.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
+                }
+                const result = selection.new();
+                coordSet.forEach(key => {
+                    const [x, y] = key.split(',').map(Number);
+                    result.set(x, y);
+                });
+                return result;
+            },
         };
         return sel;
     },
@@ -2717,12 +2758,14 @@ export const selection = {
             coordSet = newCoords;
         }
 
-        // Convert back to coords array
+        // Convert back to coords array and return proper selection object
         const coords = Array.from(coordSet).map(key => {
             const [x, y] = key.split(',').map(Number);
             return { x, y };
         });
-        return { coords };
+        const result = selection.new();
+        coords.forEach(c => result.set(c.x, c.y));
+        return result;
     },
 
     /**
@@ -2767,42 +2810,9 @@ export const selection = {
             }
         }
 
-        // Return selection object with methods
-        const result = {
-            coords,
-            bounds: function() {
-                if (coords.length === 0) return { lx: 0, ly: 0, hx: 0, hy: 0 };
-                let lx = coords[0].x, hx = coords[0].x;
-                let ly = coords[0].y, hy = coords[0].y;
-                for (const c of coords) {
-                    if (c.x < lx) lx = c.x;
-                    if (c.x > hx) hx = c.x;
-                    if (c.y < ly) ly = c.y;
-                    if (c.y > hy) hy = c.y;
-                }
-                return { lx, ly, hx, hy };
-            },
-            negate: function() {
-                return selection.negate(this);
-            },
-            union: function(other) {
-                const coordSet = new Set();
-                this.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
-                if (other && other.coords) {
-                    other.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
-                }
-                const unionCoords = Array.from(coordSet).map(s => {
-                    const [x, y] = s.split(',').map(Number);
-                    return { x, y };
-                });
-                return {
-                    coords: unionCoords,
-                    bounds: result.bounds,
-                    negate: result.negate,
-                    union: result.union
-                };
-            }
-        };
+        // Return a proper selection object with all methods
+        const result = selection.new();
+        coords.forEach(c => result.set(c.x, c.y));
         return result;
     },
 
@@ -3035,7 +3045,10 @@ export const selection = {
             return loc && loc.typ === targetType;
         });
 
-        return { coords };
+        // Return a proper selection object with methods
+        const result = selection.new();
+        coords.forEach(c => result.set(c.x, c.y));
+        return result;
     },
 };
 

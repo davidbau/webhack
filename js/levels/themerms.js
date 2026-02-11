@@ -293,9 +293,9 @@ export const themeroom_fills = [
          const locs = selection.room().filter_mapchar(".");
          for (let i = 1; i <= 2 + rn2(3); i++) {
             const pos = locs.rndcoord(1);
-            if (pos.x > 0) {
-               pos.x = pos.x + rm.region.x1 - 1;
-               pos.y = pos.y + rm.region.y1;
+            // JS note: selection.room() returns absolute coords, no adjustment needed
+            // (unlike Lua which returns room-relative coords)
+            if (pos && pos.x > 0) {
                postprocess.push({ handler: make_a_trap,
                                   data: { type: "teleport", seen: true,
                                           coord: pos, teledest: 1 } });
