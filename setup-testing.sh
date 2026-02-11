@@ -22,29 +22,30 @@ else
 fi
 
 # Check if auto-fetch is configured
-if git config --local --get-all remote.origin.fetch | grep -q "refs/notes/test-results"; then
-  echo "✅ Auto-fetch for test notes already configured"
+if git config --local --get-all remote.origin.fetch | grep -q "refs/notes/"; then
+  echo "✅ Auto-fetch for notes already configured"
 else
-  echo "Configuring auto-fetch for test notes..."
-  git config --add remote.origin.fetch '+refs/notes/test-results:refs/notes/test-results'
-  echo "✅ Auto-fetch configured for test notes"
+  echo "Configuring auto-fetch for notes..."
+  git config --local --add remote.origin.fetch '+refs/notes/*:refs/notes/*'
+  echo "✅ Auto-fetch configured for notes"
 fi
 
 # Check if auto-push is configured
-if git config --local --get-all remote.origin.push | grep -q "refs/notes/test-results"; then
-  echo "✅ Auto-push for test notes already configured"
+if git config --local --get-all remote.origin.push | grep -q "refs/notes/"; then
+  echo "✅ Auto-push for notes already configured"
 else
-  echo "Configuring auto-push for test notes..."
-  git config --add remote.origin.push '+refs/notes/test-results:refs/notes/test-results'
-  echo "✅ Auto-push configured for test notes"
+  echo "Configuring auto-push for all refs..."
+  git config --local remote.origin.push "refs/heads/*:refs/heads/*"
+  git config --local --add remote.origin.push "refs/notes/*:refs/notes/*"
+  echo "✅ Auto-push configured for branches and notes"
 fi
 
 # Configure notes rewriting on rebase
-if git config --local notes.rewriteRef | grep -q "test-results"; then
+if git config --local notes.rewriteRef | grep -q "refs/notes/"; then
   echo "✅ Notes rewriting already configured"
 else
   echo "Configuring notes to survive rebases..."
-  git config notes.rewriteRef refs/notes/test-results
+  git config notes.rewriteRef refs/notes/*
   echo "✅ Notes rewriting configured"
 fi
 
@@ -53,10 +54,10 @@ echo "Ensuring all hook scripts are executable..."
 chmod +x .githooks/*.sh .githooks/pre-* 2>/dev/null || true
 echo "✅ Scripts are executable"
 
-# Fetch test notes if they exist
-echo "Fetching test notes from remote..."
-if git fetch origin refs/notes/test-results:refs/notes/test-results 2>/dev/null; then
-  echo "✅ Test notes fetched"
+# Fetch notes if they exist
+echo "Fetching notes from remote..."
+if git fetch origin 'refs/notes/*:refs/notes/*' 2>/dev/null; then
+  echo "✅ Notes fetched"
 
   # Rebuild dashboard from notes
   if [ -x .githooks/sync-notes-to-jsonl.sh ]; then

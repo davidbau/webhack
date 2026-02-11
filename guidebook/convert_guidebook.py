@@ -97,6 +97,6 @@ def convert_guidebook(input_file, output_file):
     print(f"Output: {len(output)} lines")
 
 if __name__ == '__main__':
-    input_file = '../../docs/reference/Guidebook.txt'
+    input_file = '../docs/reference/Guidebook.txt'
     output_file = 'guidebook.md'
     convert_guidebook(input_file, output_file)

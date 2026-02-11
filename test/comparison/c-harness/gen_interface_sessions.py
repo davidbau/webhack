@@ -80,13 +80,64 @@ def parse_attributes(escaped_text, plain_lines):
     - '2' = bold
     - '4' = underline
     """
-    attrs = []
-    for line in plain_lines:
-        # For now, create all-normal attrs (we'll enhance this)
-        attrs.append('0' * len(line) + '0' * (80 - len(line)))
+    import re
 
-    # TODO: Parse escape codes like \x1b[7m (inverse), \x1b[1m (bold)
-    # This is a placeholder - full implementation needed
+    # ANSI escape sequence pattern: \x1b[...m
+    # Common codes: 0=reset, 1=bold, 4=underline, 7=inverse, 22=bold off, 24=underline off, 27=inverse off
+    escape_pattern = re.compile(r'\x1b\[([0-9;]+)m')
+
+    attrs = []
+    for row_idx, plain_line in enumerate(plain_lines):
+        # Build attribute string for this row
+        row_attrs = ['0'] * 80
+
+        # Find corresponding line in escaped text
+        # Split escaped text by newlines and process line by line
+        escaped_lines = escaped_text.split('\n')
+        if row_idx < len(escaped_lines):
+            escaped_line = escaped_lines[row_idx]
+
+            # Track current attributes as we scan through the line
+            current_attr = 0  # Start with normal
+            char_pos = 0  # Position in the actual displayed text (not including escape codes)
+
+            i = 0
+            while i < len(escaped_line):
+                # Check for escape sequence
+                match = escape_pattern.match(escaped_line, i)
+                if match:
+                    # Parse the SGR codes
+                    codes = match.group(1).split(';')
+                    for code in codes:
+                        code_int = int(code) if code else 0
+                        if code_int == 0:
+                            current_attr = 0  # Reset
+                        elif code_int == 1:
+                            current_attr |= 2  # Bold (we use bit 1)
+                        elif code_int == 4:
+                            current_attr |= 4  # Underline (we use bit 2)
+                        elif code_int == 7:
+                            current_attr |= 1  # Inverse (we use bit 0)
+                        elif code_int == 22:
+                            current_attr &= ~2  # Bold off
+                        elif code_int == 24:
+                            current_attr &= ~4  # Underline off
+                        elif code_int == 27:
+                            current_attr &= ~1  # Inverse off
+
+                    i = match.end()
+                else:
+                    # Regular character
+                    if char_pos < 80:
+                        row_attrs[char_pos] = str(current_attr)
+                    char_pos += 1
+                    i += 1
+
+        attrs.append(''.join(row_attrs))
+
+    # Ensure we have exactly 24 rows
+    while len(attrs) < 24:
+        attrs.append('0' * 80)
 
     return attrs[:24]
 
@@ -103,16 +154,25 @@ def capture_startup_sequence():
     steps = []
 
     try:
-        # Start NetHack with TERM set
+        # Set up environment and run NetHack
         nethack_dir = os.path.dirname(NETHACK_BINARY)
-        tmux_send(session, f'cd {nethack_dir}', delay=0.2)
-        tmux_send(session, 'clear', delay=0.2)
-        tmux_send(session, 'TERM=xterm ./nethack', delay=0.5)
 
-        # Wait for game to start and display first screen
-        time.sleep(1.5)
+        # Clear screen first
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'clear', 'Enter'], check=True)
+        time.sleep(0.2)
 
-        # Capture initial screen (tutorial prompt or copyright)
+        # Start NetHack with proper environment
+        cmd = (
+            f'NETHACKDIR={nethack_dir} '
+            f'TERM=xterm-256color '
+            f'{NETHACK_BINARY}'
+        )
+        subprocess.run(['tmux', 'send-keys', '-t', session, cmd, 'Enter'], check=True)
+
+        # Wait for NetHack to fully initialize and display
+        time.sleep(2.5)
+
+        # Capture initial screen (random character prompt + copyright)
         lines, attrs = capture_screen_with_attrs(session)
         steps.append({
             "key": "startup",
@@ -121,21 +181,49 @@ def capture_startup_sequence():
             "attrs": attrs
         })
 
-        # If tutorial prompt appears, capture response
-        if any('tutorial' in line.lower() for line in lines):
-            # Press 'n' to decline tutorial
-            tmux_send(session, 'n')
-            time.sleep(0.3)
+        # Press 'n' to decline random character
+        if any('pick character' in line.lower() for line in lines):
+            tmux_send(session, 'n', delay=0.5)
             lines, attrs = capture_screen_with_attrs(session)
             steps.append({
                 "key": "n",
-                "description": "Decline tutorial",
+                "description": "Decline random character",
                 "screen": lines,
                 "attrs": attrs
             })
 
-        # Continue through startup...
-        # (more steps to be added)
+        # Should now be at role selection - capture it
+        if any('role' in line.lower() or 'profession' in line.lower() for line in lines):
+            steps.append({
+                "key": "role_menu",
+                "description": "Role selection menu",
+                "screen": lines,
+                "attrs": attrs
+            })
+
+            # Press '?' to see help/navigation
+            tmux_send(session, '?', delay=0.5)
+            lines, attrs = capture_screen_with_attrs(session)
+            steps.append({
+                "key": "?",
+                "description": "Role menu help",
+                "screen": lines,
+                "attrs": attrs
+            })
+
+            # Press '?' again to go back
+            tmux_send(session, '?', delay=0.5)
+            lines, attrs = capture_screen_with_attrs(session)
+
+            # Select archeologist (a)
+            tmux_send(session, 'a', delay=0.5)
+            lines, attrs = capture_screen_with_attrs(session)
+            steps.append({
+                "key": "a",
+                "description": "Select Archeologist role",
+                "screen": lines,
+                "attrs": attrs
+            })
 
     finally:
         kill_tmux_session(session)
@@ -156,42 +244,50 @@ def capture_options_menu():
     steps = []
 
     try:
-        # Start NetHack and get to main game
-        tmux_send(session, f'cd {os.path.dirname(NETHACK_BINARY)} && ./nethack -u wizard -D')
-        time.sleep(1.0)
+        # Set up environment and run NetHack
+        nethack_dir = os.path.dirname(NETHACK_BINARY)
 
-        # Skip startup prompts (adapt based on what appears)
-        tmux_send(session, 'n')  # Decline autopick
-        time.sleep(0.3)
-        tmux_send(session, 'y')  # Confirm character
+        # Clear screen
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'clear', 'Enter'], check=True)
+        time.sleep(0.2)
+
+        # Start NetHack with wizard mode
+        cmd = (
+            f'NETHACKDIR={nethack_dir} '
+            f'TERM=xterm-256color '
+            f'{NETHACK_BINARY} -u wizard -D'
+        )
+        subprocess.run(['tmux', 'send-keys', '-t', session, cmd, 'Enter'], check=True)
+        time.sleep(2.5)
+
+        # Capture startup
+        lines, attrs = capture_screen_with_attrs(session)
+
+        # Decline random character
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'n', 'Enter'], check=True)
         time.sleep(0.5)
 
+        # Auto-select wizard by pressing Enter through role selection
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'Enter'], check=True)
+        time.sleep(0.5)
+
+        # Should be in game now - wait for it to load
+        time.sleep(1.0)
+
         # Open options menu with 'O'
-        tmux_send(session, 'O')
-        time.sleep(0.3)
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'O'], check=True)
+        time.sleep(0.5)
 
         lines, attrs = capture_screen_with_attrs(session)
         steps.append({
             "key": "O",
-            "description": "Options menu main view",
+            "description": "Options menu page 1",
             "screen": lines,
             "attrs": attrs
         })
 
-        # Press '?' for help/alternate view
-        tmux_send(session, '?')
-        time.sleep(0.3)
-
-        lines, attrs = capture_screen_with_attrs(session)
-        steps.append({
-            "key": "?",
-            "description": "Options menu help/alternate view",
-            "screen": lines,
-            "attrs": attrs
-        })
-
-        # Navigate pages with > and <
-        tmux_send(session, '>')
+        # Press '>' for page 2
+        subprocess.run(['tmux', 'send-keys', '-t', session, '>'], check=True)
         time.sleep(0.3)
 
         lines, attrs = capture_screen_with_attrs(session)
@@ -202,7 +298,29 @@ def capture_options_menu():
             "attrs": attrs
         })
 
-        # More exploration steps...
+        # Press '<' to go back to page 1
+        subprocess.run(['tmux', 'send-keys', '-t', session, '<'], check=True)
+        time.sleep(0.3)
+
+        lines, attrs = capture_screen_with_attrs(session)
+        steps.append({
+            "key": "<",
+            "description": "Back to options page 1",
+            "screen": lines,
+            "attrs": attrs
+        })
+
+        # Press '?' for help view
+        subprocess.run(['tmux', 'send-keys', '-t', session, '?'], check=True)
+        time.sleep(0.3)
+
+        lines, attrs = capture_screen_with_attrs(session)
+        steps.append({
+            "key": "?",
+            "description": "Options help view",
+            "screen": lines,
+            "attrs": attrs
+        })
 
     finally:
         kill_tmux_session(session)

@@ -7,3 +7,4 @@ description: JavaScript port of NetHack 3.7
 include:
   - teststats
   - spoilers
+  - guidebook

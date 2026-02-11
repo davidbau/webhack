@@ -29,7 +29,7 @@ go learn things the hard way. There is real joy in that.
 
 **Looking for the manual instead?** If you're just looking for game
 commands, item lists, and mechanics without spoilers, you want the
-[official NetHack Guidebook](guidebook/) instead. That's the reference
+[official NetHack Guidebook](../guidebook/) instead. That's the reference
 manual that comes with NetHack. This document is a *strategic* guide —
 it assumes you already know how to play and want to know how to
 *survive*.
@@ -2690,9 +2690,9 @@ drops, then either read a blessed scroll of enchant armor while
 wearing the scales (they transform into scale mail), or wish for
 the mail directly.
 
-**Speed boots** are critical. Being faster than your enemies
-means you get more turns, which means more chances to attack,
-cast spells, or run away.
+**Speed boots** are one of the most powerful items in the game.
+Being faster than your enemies means you get more turns, which
+means more chances to attack, cast spells, or run away.
 
 **Cloak of magic resistance** provides magic resistance in the cloak
 slot and frees up other slots for different resistances. However,
@@ -3096,12 +3096,12 @@ Generations of adventurers have argued about optimal wish order.
 Here's the conventional wisdom, battle-tested by thousands of
 ascensions:
 
-1. **Gray dragon scale mail** (magic resistance + AC — if you don't
-   have magic resistance, this is non-negotiable).
+1. **Gray dragon scale mail** (magic resistance + AC — magic resistance
+   is the most important protection in the game, so this is highly recommended).
 2. **Silver dragon scale mail** (reflection + AC, the second pillar
    of not dying to wands).
-3. **Speed boots** (if you don't have speed, you're letting monsters
-   take turns you shouldn't be giving them).
+3. **Speed boots** (being fast gives you more actions per turn—excellent
+   for both offense and escape).
 4. **Gauntlets of power** (STR 25, +AC, if your role benefits —
    and most roles benefit from punching harder).
 5. **Amulet of life saving** (insurance for the endgame, when
