@@ -203,6 +203,8 @@ while read commit; do
   # Parse test results
   PASS_COUNT=$(grep -c "^✔" "$TEST_OUTPUT" 2>/dev/null || echo 0)
   FAIL_COUNT=$(grep -c "^✖" "$TEST_OUTPUT" 2>/dev/null || echo 0)
+  PASS_COUNT=$(echo "$PASS_COUNT" | tr -d '[:space:]')
+  FAIL_COUNT=$(echo "$FAIL_COUNT" | tr -d '[:space:]')
   TOTAL_COUNT=$((PASS_COUNT + FAIL_COUNT))
 
   if [ "$TOTAL_COUNT" -eq 0 ]; then
