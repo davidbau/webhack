@@ -1729,8 +1729,8 @@ async function handleSet(game) {
     // Group options by category for better readability
     const categories = {
         'Gameplay': ['pickup', 'safe_pet', 'confirm'],
-        'Display': ['showexp', 'color', 'time', 'lit_corridor'],
-        'Interface': ['verbose', 'tombstone', 'rest_on_space', 'number_pad'],
+        'Display': ['showexp', 'color', 'time', 'lit_corridor', 'DECgraphics'],
+        'Interface': ['verbose', 'tombstone', 'rest_on_space', 'number_pad', 'msg_window'],
     };
 
     for (const [category, optNames] of Object.entries(categories)) {
@@ -1745,8 +1745,9 @@ async function handleSet(game) {
         lines.push('');
     }
 
-    lines.push('Note: Some options (autopickup behavior, msg_window) not yet fully implemented.');
-    lines.push('      number_pad changes movement keys (1-9 for directions).');
+    lines.push('Note: number_pad changes movement keys (1-9 for directions).');
+    lines.push('      DECgraphics enables Unicode box-drawing characters.');
+    lines.push('      msg_window shows 3-line message history window.');
 
     await showPager(display, lines.join('\n'), 'Options');
 
