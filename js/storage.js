@@ -534,6 +534,7 @@ export function deleteBones(depth) {
 
 // C ref: flag.h — struct flag fields relevant to JS port
 export const DEFAULT_FLAGS = {
+    name: '',             // C: plname (player name) — remembered across sessions
     pickup: true,         // C: flags.pickup
     pickup_types: '',     // C: flags.pickup_types — empty means all types (backward compat)
     showexp: true,        // C: flags.showexp

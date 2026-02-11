@@ -19,7 +19,7 @@ import { rhack } from './commands.js';
 import { movemon, settrack } from './monmove.js';
 import { simulatePostLevelInit } from './u_init.js';
 import { loadSave, deleteSave, hasSave, saveGame,
-         loadFlags, deserializeRng,
+         loadFlags, saveFlags, deserializeRng,
          restGameState, restLev,
          listSavedData, clearAllData } from './storage.js';
 import { savebones } from './bones.js';
@@ -241,6 +241,15 @@ class NetHackGame {
     async _promptPlayerName() {
         const MAX_NAME_LENGTH = 31; // C ref: global.h PL_NSIZ = 32 (31 chars + null)
 
+        // Check if name is already saved in options (like C NetHack config file)
+        // C ref: options.c — name can be set via OPTIONS=name:playername
+        if (this.flags.name && this.flags.name.trim() !== '') {
+            // Use saved name (skip prompt)
+            this.player.name = this.flags.name.trim().substring(0, MAX_NAME_LENGTH);
+            return;
+        }
+
+        // No saved name - prompt for it
         while (true) {
             const name = await getlin('Who are you? ', this.display);
 
@@ -255,6 +264,11 @@ class NetHackGame {
 
             // C NetHack accepts any non-empty name
             this.player.name = trimmedName;
+
+            // Save name to options for future games (like C NetHack config)
+            this.flags.name = trimmedName;
+            saveFlags(this.flags);
+
             return;
         }
     }
