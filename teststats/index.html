@@ -9,8 +9,8 @@
 </head>
 <body>
     <header>
-        <h1>🎮 Mazes of Menace - Test Dashboard</h1>
-        <p>Tracking test quality across all commits</p>
+        <h1>🏰 Mazes of Menace - Test Dashboard</h1>
+        <p class="tagline">*You consult the Oracle. The test quality is revealed.*</p>
     </header>
 
     <main>
@@ -45,7 +45,7 @@
 
         <!-- Time Series Chart -->
         <section class="chart-section">
-            <h2>Test History Over Time</h2>
+            <h2>⚔️ Test History Over Time — *You scan the dungeon for bugs*</h2>
             <div class="chart-container">
                 <canvas id="timeline-chart"></canvas>
             </div>
@@ -57,7 +57,7 @@
 
         <!-- Category Breakdown -->
         <section class="category-section">
-            <h2>Test Categories</h2>
+            <h2>🎲 Test Categories — *You identify your scrolls*</h2>
             <div class="chart-container">
                 <canvas id="category-chart"></canvas>
             </div>
@@ -65,7 +65,7 @@
 
         <!-- Recent Commits Table -->
         <section class="commits-section">
-            <h2>Recent Commits</h2>
+            <h2>📜 Recent Commits — *The scroll of git log reveals...*</h2>
             <div class="table-controls">
                 <label>
                     <input type="checkbox" id="show-all-commits" checked>
@@ -100,16 +100,15 @@
 
         <!-- Regression Details -->
         <section class="regression-section" id="regression-section" style="display: none;">
-            <h2>⚠️ Regression Details</h2>
+            <h2>⚠️ Regressions — *You feel a dark presence*</h2>
             <div id="regression-list"></div>
         </section>
     </main>
 
     <footer>
-        <p>Generated from <code>.test-history/results.jsonl</code> |
-           Last updated: <span id="last-updated"></span></p>
-        <p><a href="../docs/TESTING.md">Testing Guide</a> |
-           <a href="schema.json">Schema Documentation</a></p>
+        <p>*You hear the Oracle chuckle.* "The tests tell no lies."</p>
+        <p>Generated from <code>results.jsonl</code> | Last updated: <span id="last-updated"></span></p>
+        <p><a href="../TESTING.md">Testing Guide</a> | <a href="schema.json">Schema</a></p>
     </footer>
 
     <script src="dashboard.js"></script>
