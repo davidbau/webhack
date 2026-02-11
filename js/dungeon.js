@@ -923,6 +923,134 @@ export function setMtInitialized(val) {
     _mtInitialized = val;
 }
 
+// C ref: mkmaze.c makemaz()
+// Generate a maze level (used in Gehennom and deep dungeon past Medusa)
+function makemaz(map, protofile) {
+    // C ref: mkmaze.c:1127-1204
+    // If protofile specified, try to load special level
+    // For now, we only handle the procedural case (protofile === "")
+
+    if (protofile && protofile !== "") {
+        // TODO: Load special maze level file
+        console.warn(`makemaz: special level "${protofile}" not implemented, using procedural maze`);
+    }
+
+    // C ref: mkmaze.c:1189-1191
+    // Set maze flags
+    map.flags = map.flags || {};
+    map.flags.is_maze_lev = true;
+    map.flags.corrmaze = !rn2(3); // 2/3 chance of corridor maze
+
+    // C ref: mkmaze.c:1193-1197
+    // Determine maze creation parameters
+    // create_maze has different params based on Invocation level check
+    const useInvocationParams = rn2(2); // !Invocation_lev && rn2(2)
+    if (useInvocationParams) {
+        // create_maze(-1, -1, !rn2(5))
+        create_maze(map, -1, -1, !rn2(5));
+    } else {
+        // create_maze(1, 1, FALSE)
+        create_maze(map, 1, 1, false);
+    }
+
+    // C ref: mkmaze.c:1199-1200
+    // Wallification for non-corridor mazes
+    if (!map.flags.corrmaze) {
+        // wallification(2, 2, x_maze_max, y_maze_max)
+        // For now, skip wallification - it's complex and optional
+    }
+
+    // C ref: mkmaze.c:1202-1208
+    // Place stairs
+    const upstair = mazexy(map);
+    mkstairs(map, upstair.x, upstair.y, true); // up stairs
+
+    const downstair = mazexy(map);
+    mkstairs(map, downstair.x, downstair.y, false); // down stairs
+
+    // C ref: mkmaze.c:1211 — place_branch() for branch stairs
+    // Skip for now - needs branch detection logic
+
+    // C ref: mkmaze.c:1213 — populate_maze()
+    // Skip for now - this would add monsters/traps/items
+}
+
+// Helper function to create the actual maze
+function create_maze(map, x0, y0, smoothed) {
+    // C ref: mkmaze.c:984-1056 create_maze()
+    // This is a simplified version that creates a basic maze structure
+
+    // Fill map with walls
+    for (let x = 0; x < COLNO; x++) {
+        for (let y = 0; y < ROWNO; y++) {
+            const loc = map.at(x, y);
+            if (loc) loc.typ = STONE;
+        }
+    }
+
+    // Determine maze bounds
+    const x_maze_max = (x0 < 0) ? x0 = Math.min(COLNO - 1, rn2(29) + 11) : (COLNO - 1);
+    const y_maze_max = (y0 < 0) ? y0 = Math.min(ROWNO - 1, rn2(11) + 7) : (ROWNO - 1);
+
+    // Create a simple maze using recursive backtracking
+    // Start from (x0, y0) and carve passages
+    // For simplicity, create a grid of corridors
+    for (let x = 1; x < x_maze_max; x += 2) {
+        for (let y = 1; y < y_maze_max; y += 2) {
+            const loc = map.at(x, y);
+            if (loc) loc.typ = CORR; // Carve out corridor cells
+        }
+    }
+
+    // Connect adjacent cells with corridors
+    for (let x = 1; x < x_maze_max; x += 2) {
+        for (let y = 1; y < y_maze_max; y += 2) {
+            // Randomly connect to right or down
+            if (x + 2 < x_maze_max && rn2(2)) {
+                const loc = map.at(x + 1, y);
+                if (loc) loc.typ = CORR;
+            }
+            if (y + 2 < y_maze_max && rn2(2)) {
+                const loc = map.at(x, y + 1);
+                if (loc) loc.typ = CORR;
+            }
+        }
+    }
+}
+
+// Helper function to find a random location in the maze
+function mazexy(map) {
+    // C ref: mkmaze.c:1059-1076 mazexy()
+    // Find a random CORR/ROOM location in the maze
+    let x, y;
+    let attempts = 0;
+    const maxAttempts = 1000;
+
+    do {
+        x = rn2(COLNO);
+        y = rn2(ROWNO);
+        attempts++;
+        if (attempts > maxAttempts) {
+            // Fallback to center
+            return { x: Math.floor(COLNO / 2), y: Math.floor(ROWNO / 2) };
+        }
+        const loc = map.at(x, y);
+        if (loc && (loc.typ === CORR || loc.typ === ROOM)) {
+            return { x, y };
+        }
+    } while (true);
+}
+
+// Helper function to place stairs
+function mkstairs(map, x, y, isUp) {
+    // C ref: mkroom.c:891-920 mkstairs()
+    const loc = map.at(x, y);
+    if (!loc) return;
+
+    loc.typ = isUp ? STAIRS : STAIRS;
+    loc.stairdir = isUp ? 1 : 0; // 1 = up, 0 = down
+}
+
 // C ref: mklev.c makerooms()
 function makerooms(map, depth) {
     let tried_vault = false;
@@ -3332,10 +3460,6 @@ export function makelevel(depth, dnum, dlevel) {
     const bonesMap = getbones(null, depth);
     if (bonesMap) return bonesMap;
 
-    // C ref: mklev.c:1276 — maze level check (consumed but not acted on)
-    // Must happen BEFORE special level check to match C RNG order
-    rn2(5);
-
     // Check for special level if branch coordinates provided
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_MAKELEVEL === '1';
     if (dnum !== undefined && dlevel !== undefined) {
@@ -3362,13 +3486,26 @@ export function makelevel(depth, dnum, dlevel) {
     const map = new GameMap();
     map.clear();
 
-    // Initialize rectangle pool for BSP room placement
-    init_rect();
+    // C ref: mklev.c:1274-1287 — maze vs rooms decision (else-if chain)
+    // The rn2(5) is part of the final condition in the chain
+    // For procedural levels: check if In_hell or (rn2(5) && past Medusa)
+    const isGehennom = (dnum === 1);
+    const mazeRoll = rn2(5); // 0-4, maze if non-zero (80% chance) - C ref: mklev.c:1276
+    const isPastMedusa = (dnum === 0 || dnum === undefined) && depth > 25;
+    const shouldMakeMaze = isGehennom || (mazeRoll !== 0 && isPastMedusa);
 
-    // Make rooms using rect BSP algorithm
-    // C ref: mklev.c:1287 makerooms()
-    // Note: makerooms() handles the Lua theme load shuffle (rn2(3), rn2(2))
-    makerooms(map, depth);
+    if (shouldMakeMaze) {
+        // C ref: mklev.c:1278 makemaz("")
+        makemaz(map, "");
+    } else {
+        // C ref: mklev.c:1287 makerooms()
+        // Initialize rectangle pool for BSP room placement
+        init_rect();
+
+        // Make rooms using rect BSP algorithm
+        // Note: makerooms() handles the Lua theme load shuffle (rn2(3), rn2(2))
+        makerooms(map, depth);
+    }
 
     if (map.nroom === 0) {
         // Fallback: should never happen, but safety
