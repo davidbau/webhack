@@ -7,6 +7,10 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <style>
         /* Elegant book-like appearance matching the guidebooks */
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             background: #f9f7f1;  /* Cream parchment color like guidebooks */
             color: #333;
@@ -49,6 +53,7 @@
             display: flex;
             gap: 0.5em;
             z-index: 10;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
         }
 
         #controls button {
@@ -127,6 +132,10 @@
             border-color: #666;
         }
 
+        body.dark-mode #controls {
+            filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.4));
+        }
+
         body.dark-mode .side-panel {
             color: #888;  /* Lighter text for dark background */
         }
@@ -184,14 +193,20 @@
 
         /* Loading message */
         #loading {
-            color: #888;
-            font-size: 16px;
+            color: #666;
+            font-size: 15px;
             padding: 20px;
             /* Center in the pre-sized container */
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: calc(24 * 16px * 1.2 + 16px - 40px);  /* Match game height minus padding */
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+
+        body.dark-mode #loading {
+            color: #888;
         }
 
         /* Focus indicator */
@@ -315,9 +330,21 @@
                 display: flex;
             }
 
-            /* Hide side panel controls on narrow screens */
-            #controls {
+            /* On narrow screens, hide panel toggle (panels are below anyway) */
+            #panel-toggle {
                 display: none;
+            }
+
+            /* Adjust control position for narrow screens */
+            #controls {
+                bottom: 10px;
+                right: 10px;
+                gap: 0.4em;
+            }
+
+            #controls button {
+                padding: 0.3em 0.6em;
+                font-size: 13px;
             }
         }
     </style>
