@@ -1,0 +1,39 @@
+{
+  "commit": "5f290ec",
+  "parent": "65b556e",
+  "date": "2026-02-11T06:21:57-05:00",
+  "author": "David Bau",
+  "message": "Add comprehensive testing infrastructure with backfill support",
+  "stats": {
+    "total": 1410,
+    "pass": 290,
+    "fail": 1120,
+    "skip": 0,
+    "duration": 2
+  },
+  "categories": {
+    "map": {
+      "total": 12,
+      "pass": 00,
+      "fail": 12
+    },
+    "gameplay": {
+      "total": 25,
+      "pass": 2,
+      "fail": 23
+    },
+    "chargen": {
+      "total": 180,
+      "pass": 180,
+      "fail": 00
+    },
+    "special": {
+      "total": 84,
+      "pass": 84,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
