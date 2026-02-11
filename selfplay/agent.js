@@ -1133,98 +1133,93 @@ export class Agent {
                 this.levelStuckCounter > 100
             );
 
-            if (this.levelStuckCounter > 20 && level.stairsDown.length === 0 && shouldSearchDoors) {
-                // Systematic wall searching for secret doors
+            // Occupancy map secret door search (Campbell & Verbrugge 2017 approach)
+            // Trigger when stuck and no downstairs found
+            const shouldSearchSecretDoors =
+                this.levelStuckCounter > 20 &&           // Stuck for 20+ turns
+                level.stairsDown.length === 0 &&         // No downstairs found yet
+                coverageForSearch < 0.90;                // Not almost fully explored
+
+            if (shouldSearchSecretDoors) {
                 if (!this.secretDoorSearch) {
-                    const candidates = level.getSecretDoorCandidates(px, py);
+                    // Use occupancy map approach: identify large hidden components
+                    const targets = level.getSecretDoorSearchTargets({x: px, y: py}, 5);
 
-                    let finalCandidates;
-                    let searchMode;
-
-                    if (highCoverageMode) {
-                        // High coverage: search ALL walls comprehensively
-                        finalCandidates = candidates;
-                        searchMode = 'COMPREHENSIVE';
-                    } else {
-                        // Normal mode: prioritize walls adjacent to frontier cells
-                        const frontierAdjacentCandidates = candidates.filter(cand => {
-                            for (let dy = -1; dy <= 1; dy++) {
-                                for (let dx = -1; dx <= 1; dx++) {
-                                    const checkX = cand.x + dx;
-                                    const checkY = cand.y + dy;
-                                    const checkCell = level.at(checkX, checkY);
-                                    if (checkCell && checkCell.explored && checkCell.walkable) {
-                                        // Is this a frontier cell?
-                                        const neighbors = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
-                                        for (const [ndx, ndy] of neighbors) {
-                                            const n = level.at(checkX + ndx, checkY + ndy);
-                                            if (n && !n.explored) return true;
-                                        }
-                                    }
-                                }
-                            }
-                            return false;
-                        });
-                        finalCandidates = frontierAdjacentCandidates.length > 0 ? frontierAdjacentCandidates : candidates;
-                        searchMode = 'FRONTIER';
-                    }
-
-                    if (finalCandidates.length > 0) {
-                        // In comprehensive mode, search more thoroughly (25 times vs 20)
-                        const searchesNeeded = highCoverageMode ? 25 : 20;
+                    if (targets.length > 0) {
+                        const componentIds = new Set(targets.map(t => t.componentId));
+                        console.log(`[SECRET DOOR] OCCUPANCY search: ${targets.length} high-value walls from ${componentIds.size} hidden components`);
+                        console.log(`[SECRET DOOR] Coverage: ${(coverageForSearch*100).toFixed(1)}%, Frontier: ${frontierForSearch.length} cells`);
 
                         this.secretDoorSearch = {
-                            wallCandidates: finalCandidates,
-                            currentIndex: 0,
-                            searchesNeeded: searchesNeeded,
-                            searchesDone: 0,
-                            mode: searchMode,
+                            targets: targets,           // Prioritized wall list from occupancy map
+                            currentIndex: 0,            // Which target we're on
+                            searchesNeeded: 20,         // 20 searches = 94% success for SDOOR
+                            searchesDone: 0,            // Searches at current target
                         };
-                        console.log(`[SECRET DOOR] ${searchMode} search: ${finalCandidates.length} walls, ${searchesNeeded} searches each (coverage=${(coverageForSearch*100).toFixed(1)}%)`);
+                    } else {
+                        console.log(`[SECRET DOOR] No hidden components found (map fully explored or no large components)`);
                     }
                 }
 
                 // If we have an active secret door search, continue it
                 if (this.secretDoorSearch) {
                     const search = this.secretDoorSearch;
-                    const candidate = search.wallCandidates[search.currentIndex];
+                    const target = search.targets[search.currentIndex];
 
-                    if (candidate) {
-                        // Move to search position if not there
-                        if (px !== candidate.fromX || py !== candidate.fromY) {
-                            const path = findPath(level, px, py, candidate.fromX, candidate.fromY, { allowUnexplored: false });
+                    if (target) {
+                        // Navigate to wall if not adjacent
+                        const dist = Math.max(Math.abs(px - target.x), Math.abs(py - target.y));
+                        if (dist > 1) {
+                            console.log(`[SECRET DOOR] Moving to search target ${search.currentIndex+1}/${search.targets.length} at (${target.x},${target.y}) [component ${target.componentId}]`);
+                            const path = findPath(level, px, py, target.x, target.y, { allowUnexplored: false });
                             if (path.found) {
-                                return this._followPath(path, 'navigate', `moving to secret door search position (${candidate.fromX},${candidate.fromY})`);
+                                return this._followPath(path, 'navigate', `heading to secret door search target (${target.x},${target.y})`);
+                            } else {
+                                // Can't reach this target - skip to next
+                                console.log(`[SECRET DOOR] Target (${target.x},${target.y}) unreachable, skipping to next`);
+                                search.currentIndex++;
+                                if (search.currentIndex >= search.targets.length) {
+                                    console.log(`[SECRET DOOR] All occupancy targets exhausted, no secret door found`);
+                                    this.secretDoorSearch = null;
+                                }
+                                return this.decide(state); // Try next target
                             }
                         }
 
-                        // Search from this position
-                        if (search.searchesDone < search.searchesNeeded) {
-                            search.searchesDone++;
-                            const cell = level.at(candidate.x, candidate.y);
-                            if (cell) {
-                                cell.searchCount++;
-                                cell.lastSearchTurn = this.turnNumber;
-                            }
-                            const currentCell = level.at(px, py);
-                            if (currentCell) {
-                                currentCell.searchCount++;
-                                currentCell.lastSearchTurn = this.turnNumber;
-                            }
-                            return { type: 'search', key: 's', reason: `systematic secret door search ${search.searchesDone}/${search.searchesNeeded} at wall (${candidate.x},${candidate.y})` };
-                        } else {
-                            // Done with this wall position, move to next
+                        // We're adjacent to the wall - search it!
+                        search.searchesDone++;
+
+                        // Track search count in the wall cell
+                        const wallCell = level.at(target.x, target.y);
+                        if (wallCell) {
+                            wallCell.searchCount = (wallCell.searchCount || 0) + 1;
+                            wallCell.lastSearchTurn = this.turnNumber;
+                        }
+
+                        // Track search count in the player's current position too
+                        if (currentCell) {
+                            currentCell.searchCount = (currentCell.searchCount || 0) + 1;
+                            currentCell.lastSearchTurn = this.turnNumber;
+                        }
+
+                        console.log(`[SECRET DOOR] Searching target ${search.currentIndex+1}/${search.targets.length} at (${target.x},${target.y}) [${search.searchesDone}/${search.searchesNeeded}]`);
+
+                        if (search.searchesDone >= search.searchesNeeded) {
+                            // Done with this target - move to next
+                            console.log(`[SECRET DOOR] Completed ${search.searchesNeeded} searches at (${target.x},${target.y}), moving to next`);
                             search.currentIndex++;
                             search.searchesDone = 0;
 
-                            if (search.currentIndex >= search.wallCandidates.length) {
-                                // Finished all candidates
-                                console.log(`[SECRET DOOR] Completed systematic search of ${search.wallCandidates.length} positions, no secret door found`);
+                            if (search.currentIndex >= search.targets.length) {
+                                console.log(`[SECRET DOOR] All occupancy targets searched (${search.targets.length} walls), no secret door found`);
                                 this.secretDoorSearch = null;
-                            } else {
-                                console.log(`[SECRET DOOR] Moving to next wall position (${search.currentIndex + 1}/${search.wallCandidates.length})`);
                             }
                         }
+
+                        return {type: 'search', key: 's', reason: `occupancy-based secret door search at (${target.x},${target.y})`};
+                    } else {
+                        // No more targets
+                        this.secretDoorSearch = null;
                     }
                 }
             }
