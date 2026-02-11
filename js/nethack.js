@@ -1222,7 +1222,8 @@ class NetHackGame {
             } else {
                 // Get player input with optional count prefix
                 // C ref: cmd.c:4942-4960 parse() -> get_count()
-                this.display.clearRow(0); // clear message line
+                // Note: Don't clear message line here - messages should persist until
+                // a new message is displayed (putstr_message clears it automatically)
 
                 // Read first character
                 const firstCh = await nhgetch();
