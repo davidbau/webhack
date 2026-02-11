@@ -275,15 +275,21 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth, skipL
         rtype = 0; // OROOM
     }
 
-    // C ref: sp_lev.c:1510 — Call litstate_rnd FIRST, before any path checks
-    // C calls litstate_rnd for top-level rooms, but nested rooms skip it HERE
-    // Nested rooms will call litstate_rnd later during room finalization
+    // C ref: sp_lev.c:1530-1572 — Check which placement path to use FIRST
+    // Path 1: "Totally random" — ALL params -1 or vault → uses rnd_rect() + BSP
+    // Path 2: "Some params random" — grid placement with alignment
+    const fullyRandom = (x < 0 && y < 0 && w < 0 && xalign < 0 && yalign < 0);
+    if (DEBUG) console.log(`  fullyRandom=${fullyRandom}`);
+
+    // C ref: sp_lev.c:1510 — Call litstate_rnd FIRST for non-fullyRandom rooms
+    // For fullyRandom rooms, dungeon.js create_room will call litstate_rnd at the right time
+    // (after build_room but before rnd_rect, see dungeon.js:356)
     let lit;
-    if (skipLitstate) {
-        // Nested rooms: keep lit undetermined so litstate_rnd will be called during finalization
+    if (skipLitstate || fullyRandom) {
+        // Nested rooms or fullyRandom rooms: keep lit undetermined so litstate_rnd will be called later
         lit = rlit;  // Keep original value (usually -1 for undetermined)
         if (DEBUG_BUILD) {
-            console.log(`  [RNG ${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'}] create_room_splev skipping litstate_rnd, keeping lit=${lit}`);
+            console.log(`  [RNG ${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'}] create_room_splev skipping litstate_rnd (skipLitstate=${skipLitstate}, fullyRandom=${fullyRandom}), keeping lit=${lit}`);
         }
     } else {
         if (DEBUG_BUILD) {
@@ -296,13 +302,6 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth, skipL
             console.log(`  [RNG ${rngAfter}] create_room_splev litstate_rnd returned ${lit}`);
         }
     }
-
-    // C ref: sp_lev.c:1530-1572 — Check which placement path to use
-    // Path 1: "Totally random" — ALL params -1 or vault → uses rnd_rect() + BSP
-    // Path 2: "Some params random" — grid placement with alignment
-
-    const fullyRandom = (x < 0 && y < 0 && w < 0 && xalign < 0 && yalign < 0);
-    if (DEBUG) console.log(`  fullyRandom=${fullyRandom}`);
 
     if (fullyRandom) {
         // C ref: sp_lev.c:1534 — totally random uses procedural rnd_rect() + BSP
@@ -329,13 +328,19 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth, skipL
 
         // NOTE: MT initialization for room CONTENTS happens AFTER room creation,
         // not before. des.object/des.monster will trigger MT init when needed.
-        // Do NOT call initLuaMT() here - it would happen too early in the sequence.
+        // DO NOT call initLuaMT() here - it would happen too early in the sequence.
+
+        // C ref: sp_lev.c build_room() — for special levels, ALWAYS call rn2(100) before litstate_rnd
+        // This is different from procedural dungeons (mklev.c) which don't have this call
+        // The rn2(100) roll affects room type (chance check), but we're delegating to dungeon.js
+        // create_room, so we just consume the RNG call to stay aligned with C
+        rn2(100);
 
         // Call dungeon.create_room with map - it modifies map directly
         // Returns false if no space available, true on success
-        // Pass `lit` (already resolved) instead of `rlit` to avoid double litstate_rnd call
+        // Pass `rlit` (not pre-resolved) so dungeon.js can call litstate_rnd at the right time
         const success = create_room(levelState.map, x, y, w, h, xalign, yalign,
-                                     rtype, lit, depth, false);
+                                     rtype, rlit, depth, false);
 
         if (!success) {
             return null;
