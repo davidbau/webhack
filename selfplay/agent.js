@@ -89,6 +89,7 @@ export class Agent {
         this.lastSearchPosition = null; // {x, y} of last search position
         this.searchesAtCurrentPosition = 0; // searches at current position
         this.searchExhausted = false; // true when all search approaches exhausted
+        this.searchCooldownUntil = 0; // turn number until which new searches are blocked
 
         // Corridor following state
         // Combat oscillation detection
@@ -231,6 +232,7 @@ export class Agent {
                     this.searchesAtCurrentPosition = 0;
                     this.lastSearchPosition = null;
                     this.searchExhausted = false;
+                    this.searchCooldownUntil = 0;
                 }
             }
 
@@ -1153,7 +1155,8 @@ export class Agent {
                 level.stairsDown.length === 0 &&         // No downstairs found yet
                 coverageForSearch < 0.90;                // Not almost fully explored
 
-            if (shouldSearchSecretDoors) {
+            // Don't start new searches if exhausted or in cooldown period (prevents infinite loops)
+            if (shouldSearchSecretDoors && !this.searchExhausted && this.turnCount >= this.searchCooldownUntil) {
                 if (!this.secretDoorSearch) {
                     // Use occupancy map approach: identify large hidden components
                     const allTargets = level.getSecretDoorSearchTargets({x: px, y: py}, 5);
@@ -1239,6 +1242,7 @@ export class Agent {
                         // Cancel search session to prioritize exploration of newly accessible area
                         this.secretDoorSearch = null;
                         this.searchExhausted = false;
+                        this.searchCooldownUntil = 0; // Allow new searches after finding a door
 
                         // Reset search tracking
                         this.searchSessionTurn = null;
@@ -1367,7 +1371,8 @@ export class Agent {
                 if (frontier.length > 0) {
                     const explorationPath = findExplorationTarget(level, px, py, this.recentPositions, { preferFar: true });
                     if (explorationPath && explorationPath.found) {
-                        this.searchExhausted = false; // Reset for next time
+                        this.searchExhausted = false;
+                        this.searchCooldownUntil = this.turnCount + 50; // Block new searches for 50 turns
                         const dest = explorationPath.path[explorationPath.path.length - 1];
                         return this._followPath(explorationPath, 'explore', `[SEARCH-ESCAPE] breaking out to (${dest.x},${dest.y})`);
                     }
@@ -1375,7 +1380,8 @@ export class Agent {
 
                 // Last resort: random movement
                 console.log(`[SEARCH-ESCAPE] No exploration path found, random walk`);
-                this.searchExhausted = false; // Reset for next time
+                this.searchExhausted = false;
+                this.searchCooldownUntil = this.turnCount + 50; // Block new searches for 50 turns
                 const directions = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
                 const randomDir = directions[Math.floor(Math.random() * directions.length)];
                 return { type: 'random_move', key: randomDir, reason: `search exhausted, random walk to escape loop` };
