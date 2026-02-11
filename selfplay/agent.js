@@ -2573,11 +2573,19 @@ export class Agent {
             }
         }
 
+        // PRIORITY: Desperate door opening when trapped in very small area
+        // If we have very few frontier cells and are very stuck, try opening any door we can find
+        const desperatelyTrapped = (
+            frontier.length < 10 &&           // Very low frontier
+            this.levelStuckCounter > 50 &&    // Very stuck
+            level.stairsDown.length === 0     // No downstairs found
+        );
+
         // PRIORITY: Systematic door opening when stuck with high frontier
         // If we have many unreachable frontier cells, closed doors are likely blocking access
         // OR when we have good coverage but no downstairs (likely behind unexplored door)
         const highCoverageNoDoors = exploredPercent > 0.05 && this.levelStuckCounter > 30 && level.stairsDown.length === 0;
-        if ((frontier.length > 25 && this.levelStuckCounter > 20) || highCoverageNoDoors) {
+        if ((frontier.length > 25 && this.levelStuckCounter > 20) || highCoverageNoDoors || desperatelyTrapped) {
 
             // Find all closed/locked doors in explored areas
             const closedDoors = [];
@@ -2586,9 +2594,9 @@ export class Agent {
                     const cell = level.at(x, y);
                     if (cell && cell.explored && (cell.type === 'door_closed' || cell.type === 'door_locked')) {
                         const doorKey = y * 80 + x;
-                        // For high-coverage case, retry ALL doors (ignore failedTargets)
+                        // For desperate or high-coverage cases, retry ALL doors (ignore failedTargets)
                         // For normal case, skip recently failed doors
-                        if (highCoverageNoDoors || !this.failedTargets.has(doorKey)) {
+                        if (desperatelyTrapped || highCoverageNoDoors || !this.failedTargets.has(doorKey)) {
                             closedDoors.push({ x, y, type: cell.type, dist: Math.max(Math.abs(x - px), Math.abs(y - py)) });
                         }
                     }
@@ -2596,7 +2604,9 @@ export class Agent {
             }
 
             if (closedDoors.length > 0) {
-                console.log(`[DOOR-SYSTEMATIC] Found ${closedDoors.length} closed/locked doors to try`);
+                const mode = desperatelyTrapped ? 'DESPERATE' : 'SYSTEMATIC';
+                console.log(`[DOOR-${mode}] Found ${closedDoors.length} closed/locked doors to try (frontier=${frontier.length}, stuck=${this.levelStuckCounter})`);
+                console.log(`[DOOR-${mode}] Doors: ${closedDoors.map(d => `(${d.x},${d.y})`).join(', ')}`);
                 // Sort by distance, try nearest door first
                 closedDoors.sort((a, b) => a.dist - b.dist);
 
@@ -2628,17 +2638,52 @@ export class Agent {
                             }
                         }
                     } else {
-                        // Not adjacent - navigate TO the door first
-                        const path = findPath(level, px, py, door.x, door.y, { allowUnexplored: false });
-                        if (path.found) {
-                            const action = door.type === 'door_locked' ? 'kicking' : 'opening';
-                            console.log(`[DOOR-SYSTEMATIC] navigating to ${door.type} door at (${door.x},${door.y}) to ${action} it (frontier=${frontier.length})`);
+                        // Not adjacent - navigate to a position adjacent to the door first
+                        // Find cardinal positions adjacent to the door (can't open from diagonal)
+                        const adjacentPositions = [
+                            { x: door.x, y: door.y - 1 },     // north
+                            { x: door.x, y: door.y + 1 },     // south
+                            { x: door.x - 1, y: door.y },     // west
+                            { x: door.x + 1, y: door.y },     // east
+                        ];
 
-                            if (door.type === 'door_locked' && !this.pendingLockedDoor) {
-                                this.pendingLockedDoor = { x: door.x, y: door.y, attempts: 0 };
+                        // Try to find a path to any adjacent position (explored or unexplored in desperate mode)
+                        let foundPath = false;
+                        for (const adjPos of adjacentPositions) {
+                            const adjCell = level.at(adjPos.x, adjPos.y);
+                            const isExplored = adjCell && adjCell.explored;
+                            const isWalkable = adjCell && adjCell.walkable;
+                            const isUnexplored = adjCell && !adjCell.explored;
+
+                            // In desperate mode, also try unexplored cells adjacent to doors
+                            const shouldTry = (isExplored && isWalkable) || (desperatelyTrapped && isUnexplored);
+
+                            if (shouldTry) {
+                                // In desperate mode, allow pathing through unexplored cells to reach the door
+                                const targetType = isUnexplored ? 'unexplored' : 'explored';
+                                const allowUnexplored = desperatelyTrapped;
+                                const path = findPath(level, px, py, adjPos.x, adjPos.y, { allowUnexplored });
+                                if (path.found) {
+                                    const action = door.type === 'door_locked' ? 'kicking' : 'opening';
+                                    console.log(`[DOOR-${mode}] navigating to ${targetType} (${adjPos.x},${adjPos.y}) adjacent to ${door.type} door at (${door.x},${door.y})`);
+
+                                    if (door.type === 'door_locked' && !this.pendingLockedDoor) {
+                                        this.pendingLockedDoor = { x: door.x, y: door.y, attempts: 0 };
+                                    }
+
+                                    return this._followPath(path, 'navigate', `approaching door at (${door.x},${door.y})`);
+                                } else if (this.turnNumber % 10 === 0) {
+                                    console.log(`[DOOR-${mode}] No path from (${px},${py}) to ${targetType} cell (${adjPos.x},${adjPos.y}) near door (${door.x},${door.y})`);
+                                }
                             }
+                        }
 
-                            return this._followPath(path, 'navigate', `approaching door at (${door.x},${door.y})`);
+                        // Debug: why couldn't we navigate to this door?
+                        if (this.turnNumber % 10 === 0) {
+                            console.log(`[DOOR-${mode}] Cannot reach door at (${door.x},${door.y}) - adjacent cells: ${adjacentPositions.map(p => {
+                                const c = level.at(p.x, p.y);
+                                return `(${p.x},${p.y}):${c ? (c.explored ? (c.walkable ? 'OK' : 'blocked') : 'unexplored') : 'OOB'}`;
+                            }).join(' ')}`);
                         }
                     }
                 }
