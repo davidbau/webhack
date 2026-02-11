@@ -333,19 +333,23 @@ export function movemon(map, player, display, fov) {
     let anyMoved;
     do {
         anyMoved = false;
+        let monIndex = 0;
         for (const mon of map.monsters) {
             if (mon.dead) continue;
             if (mon.movement >= NORMAL_SPEED) {
-                if (debugTurn && mon.tame) {
-                    console.log(`[Turn ${player.turns + 1} iter ${iterationCount}] Pet BEFORE: pos=(${mon.mx},${mon.my}), movement=${mon.movement}`);
+                if (debugTurn) {
+                    const monType = mon.tame ? 'Pet' : (mon.data?.name || '?');
+                    console.log(`[Turn ${player.turns + 1} iter ${iterationCount} mon${monIndex}] ${monType} BEFORE: pos=(${mon.mx},${mon.my}), movement=${mon.movement}`);
                 }
                 mon.movement -= NORMAL_SPEED;
                 anyMoved = true;
                 dochug(mon, map, player, display, fov);
-                if (debugTurn && mon.tame) {
-                    console.log(`[Turn ${player.turns + 1} iter ${iterationCount}] Pet AFTER: pos=(${mon.mx},${mon.my}), movement=${mon.movement}`);
+                if (debugTurn) {
+                    const monType = mon.tame ? 'Pet' : (mon.data?.name || '?');
+                    console.log(`[Turn ${player.turns + 1} iter ${iterationCount} mon${monIndex}] ${monType} AFTER: pos=(${mon.mx},${mon.my}), movement=${mon.movement}`);
                 }
             }
+            monIndex++;
         }
         if (anyMoved) iterationCount++;
     } while (anyMoved);
@@ -495,14 +499,21 @@ function dog_move(mon, map, player, display, fov) {
     // C ref: dog_goal iterates fobj (ALL objects on level)
     // C's fobj is LIFO (place_object prepends), so iterate in reverse to match
     if (debugTurn && mon.tame) {
+        console.log(`  dog_goal: omx=${omx}, omy=${omy}, SQSRCHRADIUS=5`);
+        console.log(`  dog_goal: minX=Math.max(1,${omx}-5)=${minX}, maxX=Math.min(79,${omx}+5)=${maxX}`);
         console.log(`  dog_goal: scanning ${map.objects.length} objects, range x=[${minX},${maxX}] y=[${minY},${maxY}]`);
     }
     for (let oi = map.objects.length - 1; oi >= 0; oi--) {
         const obj = map.objects[oi];
         const ox = obj.ox, oy = obj.oy;
+
+        if (debugTurn && mon.tame && ox === 56) {
+            console.log(`    obj[${oi}] at (56,${oy}): ox < minX? ${ox < minX} (${ox} < ${minX}), result=${ox < minX ? 'SKIP' : 'CHECK'}`);
+        }
+
         if (ox < minX || ox > maxX || oy < minY || oy > maxY) {
             if (debugTurn && mon.tame) {
-                console.log(`    obj[${oi}] at (${ox},${oy}): OUT OF RANGE (minX=${minX}, maxX=${maxX}, minY=${minY}, maxY=${maxY})`);
+                console.log(`    obj[${oi}] at (${ox},${oy}): OUT OF RANGE (checks: ${ox}<${minX}=${ox<minX}, ${ox}>${maxX}=${ox>maxX}, ${oy}<${minY}=${oy<minY}, ${oy}>${maxY}=${oy>maxY})`);
             }
             continue;
         }
