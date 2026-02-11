@@ -349,7 +349,17 @@ export class Agent {
             if (adjDoor) {
                 const cell = this.dungeon.currentLevel.at(adjDoor.x, adjDoor.y);
                 if (cell) {
-                    cell.walkable = false; // treat as impassable
+                    cell.type = 'door_locked'; // update door type so we know to kick it
+                    cell.walkable = false; // treat as impassable for now
+                    console.log(`[DOOR] Discovered door at (${adjDoor.x},${adjDoor.y}) is locked`);
+
+                    // Clear justOpenedDoor if we just discovered this door is locked
+                    // (prevents DOOR-FIX from overwriting it to door_open)
+                    if (this.justOpenedDoor &&
+                        this.justOpenedDoor.x === adjDoor.x &&
+                        this.justOpenedDoor.y === adjDoor.y) {
+                        this.justOpenedDoor = null;
+                    }
                 }
             }
             // Abandon committed path through this door

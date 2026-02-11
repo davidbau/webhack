@@ -113,7 +113,11 @@ export class LevelMap {
                 } else {
                     cell.ch = screenCell.ch;
                     cell.color = screenCell.color;
-                    cell.type = screenCell.type;
+                    // Preserve door_locked type (don't overwrite with door_closed from screen)
+                    // Once we've discovered a door is locked, keep that knowledge
+                    if (cell.type !== 'door_locked' || screenCell.type !== 'door_closed') {
+                        cell.type = screenCell.type;
+                    }
                     cell.explored = true;
                     cell.stale = false;
                     cell.lastSeenTurn = turn;
