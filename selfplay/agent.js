@@ -55,6 +55,7 @@ export class Agent {
         this.consecutiveWaits = 0;
         this.stuckCounter = 0;      // detect when agent is stuck (resets on real progress)
         this.levelStuckCounter = 0; // total stuck turns on this level (never resets)
+        this.lastFrontierSize = null; // track frontier for progress detection
         this.lastPosition = null;
         this.searchesAtPosition = 0; // how many times we've searched at current pos
         this.currentPath = null;     // current navigation path
@@ -211,6 +212,7 @@ export class Agent {
                     // Reset level stuck counter on level change
                     this.levelStuckCounter = 0;
                     this.stuckCounter = 0;
+                    this.lastFrontierSize = null;
                     this.committedTarget = null;
                     this.committedPath = null;
                     this.failedTargets.clear();
@@ -499,18 +501,25 @@ export class Agent {
             this.turnsAtSamePosition = 0;
         }
 
+        // Track frontier progress
+        const currentFrontier = level?.getExplorationFrontier ? level.getExplorationFrontier().length : 0;
+        if (!this.lastFrontierSize) this.lastFrontierSize = currentFrontier;
+
         // Track if we're stuck (same position OR oscillating between nearby positions)
         // But don't count resting as stuck - resting is intentional healing
         const wasResting = this.lastAction && this.lastAction.type === 'rest';
+        const frontierProgress = this.lastFrontierSize - currentFrontier;
+        const makingFrontierProgress = frontierProgress > 0;
+
         if (this.lastPosition && this.lastPosition.x === px && this.lastPosition.y === py) {
-            if (!wasResting) {
+            if (!wasResting && !makingFrontierProgress) {
                 this.stuckCounter++;
                 this.levelStuckCounter++;
             }
         } else {
             // Detect short-term oscillation: if we've been in this position in the last 6 turns
             const recentCount = this.recentPositionsList.slice(-6).filter(k => k === posKey).length;
-            if (recentCount >= 2 && !wasResting) {
+            if (recentCount >= 2 && !wasResting && !makingFrontierProgress) {
                 this.stuckCounter++;
                 this.levelStuckCounter++;
             } else {
@@ -519,7 +528,7 @@ export class Agent {
                     const uniquePositions = new Set(this.recentPositionsList.slice(-30));
                     // If we've only been in 3 or fewer positions in last 30 turns, we're stuck
                     // (unless we were intentionally resting)
-                    if (uniquePositions.size <= 3 && !wasResting) {
+                    if (uniquePositions.size <= 3 && !wasResting && !makingFrontierProgress) {
                         this.stuckCounter++;
                         this.levelStuckCounter++;
                     } else {
@@ -533,6 +542,9 @@ export class Agent {
             }
         }
         this.lastPosition = { x: px, y: py };
+
+        // Update frontier tracking
+        this.lastFrontierSize = currentFrontier;
 
         // --- Emergency checks (highest priority) ---
 
