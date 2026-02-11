@@ -77,6 +77,9 @@ export class Agent {
         this.lastCommittedDistance = null; // track distance for progress detection
         this.failedTargets = new Set(); // targets we've failed to reach (blacklisted)
         this.abandonedLevels = new Map(); // depth → turn when abandoned (to prevent immediate re-descent)
+
+        // Deterministic RNG for agent decisions (seeded by game seed + turn)
+        this.rngState = 0; // Will be seeded on first use
         this.consecutiveFailedMoves = 0; // consecutive turns where movement failed
         this.restTurns = 0; // consecutive turns spent resting
         this.lastHP = null; // track HP to detect healing progress
@@ -110,12 +113,44 @@ export class Agent {
     }
 
     /**
+     * Deterministic RNG for agent decisions.
+     * Uses xorshift32 algorithm - fast, simple, deterministic.
+     * Seeded by turn number to ensure consistent behavior per turn.
+     * @returns {number} - Random number in range [0, 1)
+     */
+    _rng() {
+        // Seed RNG based on turn number if not yet seeded
+        if (this.rngState === 0) {
+            this.rngState = (this.turnNumber + 1) ^ 0x9E3779B9;
+        }
+
+        // xorshift32
+        let x = this.rngState;
+        x ^= x << 13;
+        x ^= x >>> 17;
+        x ^= x << 5;
+        this.rngState = x >>> 0; // Keep unsigned 32-bit
+
+        return (this.rngState >>> 0) / 0x100000000; // [0, 1)
+    }
+
+    /**
+     * Reset RNG seed for new turn (called at start of each turn).
+     */
+    _seedRNG() {
+        this.rngState = (this.turnNumber + 1) ^ 0x9E3779B9;
+    }
+
+    /**
      * Run the agent's main loop until the game ends or maxTurns is reached.
      * @returns {Object} - Final stats
      */
     async run() {
         while (this.turnNumber < this.maxTurns) {
             if (this.shouldStop()) break;
+
+            // Seed RNG for deterministic decisions this turn
+            this._seedRNG();
 
             // Perceive
             const grid = await this.adapter.readScreen();
@@ -1010,7 +1045,7 @@ export class Agent {
                 console.log(`[DEBUG] At downstairs but not safe to descend: ${descendDecision.reason}`);
                 // Move in a random direction away from stairs to avoid descending accidentally
                 const directions = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
-                const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                const randomDir = directions[Math.floor(this._rng() * directions.length)];
                 return { type: 'avoid_descend', key: randomDir, reason: `not safe to descend: ${descendDecision.reason}` };
             }
         }
@@ -1385,7 +1420,7 @@ export class Agent {
                 this.searchExhausted = false;
                 this.searchCooldownUntil = this.turnCount + 50; // Block new searches for 50 turns
                 const directions = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
-                const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                const randomDir = directions[Math.floor(this._rng() * directions.length)];
                 return { type: 'random_move', key: randomDir, reason: `search exhausted, random walk to escape loop` };
             }
 
@@ -1406,7 +1441,7 @@ export class Agent {
                     // to try to find a way out or discover new areas
                     if (this.levelStuckCounter > 150) {
                         const directions = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
-                        const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                        const randomDir = directions[Math.floor(this._rng() * directions.length)];
                         return { type: 'random_move', key: randomDir, reason: `can't reach upstairs, random walk (stuck ${this.levelStuckCounter})` };
                     }
                 }
@@ -1432,7 +1467,7 @@ export class Agent {
                         if (this.levelStuckCounter % 30 === 0) {
                             this.failedTargets.clear();
                             const directions = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
-                            const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                            const randomDir = directions[Math.floor(this._rng() * directions.length)];
                             return { type: 'random_move', key: randomDir, reason: `stuck with ${frontier.length} frontier cells, clearing blacklist and random move` };
                         }
                     }
@@ -1471,7 +1506,7 @@ export class Agent {
                         // since we can't retreat upstairs and have probably exhausted reachable areas
                         if (this.dungeon.currentDepth === 1 && this.levelStuckCounter > 200) {
                             const directions = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
-                            const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                            const randomDir = directions[Math.floor(this._rng() * directions.length)];
                             return { type: 'random_move', key: randomDir, reason: `Dlvl 1 stuck >200 turns, random exploration` };
                         }
                     }
@@ -1864,7 +1899,7 @@ export class Agent {
                 const dirs = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
                 // Shuffle directions for variety
                 for (let i = dirs.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
+                    const j = Math.floor(this._rng() * (i + 1));
                     [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
                 }
                 // Try each direction and pick first that looks walkable
@@ -1882,7 +1917,7 @@ export class Agent {
 
             // Try a random direction to unstick
             const dirs = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
-            const randomDir = dirs[Math.floor(Math.random() * dirs.length)];
+            const randomDir = dirs[Math.floor(this._rng() * dirs.length)];
             return { type: 'random_move', key: randomDir, reason: 'stuck, trying random direction' };
         }
 
@@ -1980,7 +2015,7 @@ export class Agent {
         // 11. Last resort: random walk
         this.consecutiveWaits++;
         const dirs = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
-        const randomDir = dirs[Math.floor(Math.random() * dirs.length)];
+        const randomDir = dirs[Math.floor(this._rng() * dirs.length)];
         return { type: 'random_move', key: randomDir, reason: 'fully explored, random walk' };
     }
 
