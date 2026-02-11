@@ -32,3 +32,36 @@
   "regression": false,
   "newTests": 0
 }
+{
+  "commit": "df55068",
+  "parent": "9ca0808",
+  "date": "2026-02-11T15:03:48Z",
+  "author": "David Bau",
+  "message": "Merge branch 'main' of github.com:davidbau/mazesofmenace into main",
+  "stats": {
+    "total": 1361,
+    "pass": 291,
+    "fail": 1070,
+    "skip": 0,
+    "duration": 1
+  },
+  "categories": {
+    "map": {
+      "total": 10,
+      "pass": 00,
+      "fail": 10
+    },
+    "gameplay": {
+      "total": 25,
+      "pass": 2,
+      "fail": 23
+    },
+    "chargen": {
+      "total": 180,
+      "pass": 180,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 1361
+}
