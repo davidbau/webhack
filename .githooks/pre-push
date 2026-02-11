@@ -2,16 +2,13 @@
 # Pre-push hook: Verify tests have been run for HEAD
 #
 # Workflow:
-#   1. test-and-log.sh runs tests → teststats/pending.jsonl ("commit":"HEAD")
-#   2. post-commit hook stamps real hash → git note
-#   3. git push carries the note (via remote.origin.push refspec)
-#   4. This hook just verifies a note exists; runs tests as fallback
+#   1. Run .githooks/test-and-log.sh → writes teststats/pending.jsonl
+#   2. git commit → post-commit hook promotes pending → git note
+#   3. git push → this hook verifies note exists; notes push automatically
 #
 # Install: git config core.hooksPath .githooks
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PENDING_FILE="$PROJECT_ROOT/teststats/pending.jsonl"
 
 # Check if setup has been run
 source "$SCRIPT_DIR/check-setup.sh"
@@ -27,49 +24,13 @@ echo "========================================"
 CURRENT_COMMIT=$(git rev-parse HEAD)
 CURRENT_SHORT=$(git rev-parse --short HEAD)
 
-# If a git note already exists for this commit, we're good
 if git notes --ref=test-results show "$CURRENT_COMMIT" >/dev/null 2>&1; then
   echo "✅ Test note exists for commit $CURRENT_SHORT — push allowed"
   exit 0
 fi
 
-# Check for pending results not yet promoted (e.g. post-commit hook didn't run)
-if [ -f "$PENDING_FILE" ]; then
-  PENDING_COMMIT=$(jq -r '.commit' "$PENDING_FILE" 2>/dev/null)
-  if [ "$PENDING_COMMIT" = "HEAD" ]; then
-    echo "Promoting pending test results to commit $CURRENT_SHORT"
-    PARENT_SHORT=$(git rev-parse --short HEAD^ 2>/dev/null || echo "none")
-    jq --arg commit "$CURRENT_SHORT" --arg parent "$PARENT_SHORT" \
-      '.commit = $commit | .parent = $parent' "$PENDING_FILE" \
-      | git notes --ref=test-results add -f -F - "$CURRENT_COMMIT"
-    rm -f "$PENDING_FILE"
-    echo "✅ Test note created — push allowed"
-    exit 0
-  fi
-fi
-
-# No note and no pending results — run tests as fallback
 echo ""
-echo "No test results found. Running tests..."
-"$SCRIPT_DIR/test-and-log.sh"
-
-exit_code=$?
-if [ $exit_code -ne 0 ]; then
-  echo ""
-  echo "❌ Tests failed or regressed. Push rejected."
-  exit 1
-fi
-
-# Promote the freshly-written pending results
-if [ -f "$PENDING_FILE" ]; then
-  PARENT_SHORT=$(git rev-parse --short HEAD^ 2>/dev/null || echo "none")
-  jq --arg commit "$CURRENT_SHORT" --arg parent "$PARENT_SHORT" \
-    '.commit = $commit | .parent = $parent' "$PENDING_FILE" \
-    | git notes --ref=test-results add -f -F - "$CURRENT_COMMIT"
-  rm -f "$PENDING_FILE"
-  echo "✅ Test note created for commit $CURRENT_SHORT"
-fi
-
-echo ""
-echo "✅ Tests passed — push allowed."
+echo "⚠️  No test note for commit $CURRENT_SHORT."
+echo "   Run:  .githooks/test-and-log.sh && git commit --amend --no-edit"
+echo "   Pushing without test results..."
 exit 0
