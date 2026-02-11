@@ -1222,7 +1222,7 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>The <code>autopickup_exception</code> rules are processed in the order in which they appear in your configuration file, thus allowing a later rule to override an earlier rule.</p>
 <p>Exceptions can be set with the <code>O</code> command, but because they are not included in your configuration file, they won’t be in effect if you save and then restore your game. <code>autopickup_exception</code> rules and not saved with the game.</p>
 <p>Here are some examples:</p>
-<p>autopickup_exception=“&lt;<em>arrow" autopickup_exception="&gt;</em>corpse” autopickup_exception="&gt;* cursed*"</p>
+<p><code>autopickup_exception="&lt;*arrow"</code> <code>autopickup_exception="&gt;*corpse"</code> <code>autopickup_exception="&gt;* cursed*"</code></p>
 <p>The first example above will result in autopickup of any type of arrow. The second example results in the exclusion of any corpse from autopickup. The last example results in the exclusion of items known to be cursed from autopickup.</p>
 </section>
 <section id="changing-key-bindings" class="level3">

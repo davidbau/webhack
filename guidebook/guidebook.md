@@ -4710,9 +4710,9 @@ saved with the game.
 
 Here are some examples:
 
-autopickup_exception="<*arrow"
-autopickup_exception=">*corpse"
-autopickup_exception=">* cursed*"
+`autopickup_exception="<*arrow"`
+`autopickup_exception=">*corpse"`
+`autopickup_exception=">* cursed*"`
 
 The first example above will result in autopickup of any type  of
 arrow.  The second example results in the exclusion of any corpse from
