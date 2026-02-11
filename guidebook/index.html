@@ -198,7 +198,7 @@ Guidebook for NetHack
 <p><code>g[yuhjklbn]</code> Prefix: move until something interesting is found.</p>
 <p><code>G[yuhjklbn]</code> or <code>&lt;Control&gt;+[yuhjklbn]</code> Prefix: similar to <code>g</code>, but forking of corridors is not consid- ered interesting.</p>
 <p>Note: <code>&lt;Control&gt;+&lt;key&gt;</code> means holding the <code>&lt;Control&gt;</code> or <code>&lt;Ctrl&gt;</code> key down like <code>&lt;Shift&gt;</code> while typing and releasing <code>&lt;key&gt;</code>, then releas- ing <code>&lt;Control&gt;</code>. <code>^&lt;key&gt;</code> is used as shorthand elsewhere in the</p>
-<p>Guidebook to mean the same thing. Control characters are case- insensitive so ^x and <code>^X</code> are the same.</p>
+<p>Guidebook to mean the same thing. Control characters are case- insensitive so <code>^x</code> and <code>^X</code> are the same.</p>
 <p><code>M[yuhjklbn]</code> Old versions supported <code>M</code> as a movement prefix which combined the effect of <code>m</code> with <code>&lt;Control&gt;+&lt;direction&gt;</code>. That is no longer supported as a prefix but similar effect can be achieved by using <code>m</code> and G<code>&lt;direction&gt;</code> in combination. m can also be used in com- bination with g<code>&lt;direction&gt;</code>, <code>&lt;Control&gt;+&lt;direction&gt;</code>, or <code>&lt;Shift&gt;+&lt;direction&gt;</code>.</p>
 <p><code>_</code> Travel to a map location via a shortest-path algorithm.</p>
 <p>The shortest path is computed over map locations the hero knows about (e.g. seen or previously traversed). If there is no known path, a guess is made instead. Stops on most of the same condi- tions as the <code>G</code> prefix, but without picking up objects, so implicitly forces the <code>m</code> prefix. For ports with mouse support, the command is also invoked when a mouse-click takes place on a location other than the current position.</p>
@@ -274,7 +274,7 @@ Guidebook for NetHack
 <p><code>x</code> Exchange your wielded weapon with the item in your alternate weapon slot.</p>
 <p>The latter is used as your secondary weapon when engaging in two- weapon combat. Note that if one of these slots is empty, the exchange still takes place.</p>
 <p><code>X</code> Toggle two-weapon combat, if your character can do it. Also available via the “<code>#twoweapon</code>” extended command.</p>
-<p>(In versions prior to 3.6 this keystroke ran the command to switch from normal play to “explore mode”, also known as “discov- ery mode”, which has now been moved to “<code>#exploremode</code>” and M-X.)</p>
+<p>(In versions prior to 3.6 this keystroke ran the command to switch from normal play to “explore mode”, also known as “discov- ery mode”, which has now been moved to “<code>#exploremode</code>” and <code>M-X</code>.)</p>
 <p><code>^X</code> Display basic information about your character.</p>
 <p>Displays name, role, race, gender (unless role name makes that redundant, such as Caveman or Priestess), and alignment, along with your patron deity and his or her opposition. It also shows most of the various items of information from the status line(s) in a less terse form, including several additional things which don’t appear in the normal status display due to space considera- tions.</p>
 <p>In normal play, that’s all that `<code>^X</code>’ displays. In explore mode, the role and status feedback is augmented by the information pro- vided by enlightenment magic.</p>
@@ -317,11 +317,11 @@ Guidebook for NetHack
 <p>Many terminals have an option to swap the <delete> and <backspace> keys, so typing the <del> key might not execute this command. If that happens, you can use the extended command “<code>#terrain</code>” instead.</p>
 <p><code>#</code> Perform an extended command.</p>
 <p>As you can see, the authors of NetHack used up all the letters, so this is a way to introduce the less frequently used commands. What extended commands are available depends on what features the game was compiled with.</p>
-<p>#adjust Adjust inventory letters (most useful when the fixinv option is “on”). Autocompletes. Default key is <code>M-a</code>.</p>
+<p>#adjust Adjust inventory letters (most useful when the fixinv option is “on”). Autocompletes. Default key is `<code>M-a</code>’.</p>
 <p>This command allows you to move an item from one particular inventory slot to another so that it has a letter which is more meaningful for you or that it will appear in a particular loca- tion when inventory listings are displayed. You can move to a currently empty slot, or if the destination is occupied–and won’t merge–the item there will swap slots with the one being moved. “<code>#adjust</code>” can also be used to split a stack of objects; when choosing the item to adjust, enter a count prior to its let- ter.</p>
 <p>Adjusting without a count used to collect all compatible stacks when moving to the destination. That behavior has been changed; to gather compatible stacks, “<code>#adjust</code>” a stack into its own inventory slot. If it has a name assigned, other stacks with the same name or with no name will merge provided that all their other attributes match. If it does not have a name, only other stacks with no name are eligible. In either case, otherwise com- patible stacks with a different name will not be merged. This contrasts with using “<code>#adjust</code>” to move from one slot to a differ- ent slot. In that situation, moving (no count given) a compati- ble stack will merge if either stack has a name when the other doesn’t and give that name to the result, while splitting (count</p>
 <p>given) will ignore the source stack’s name when deciding whether to merge with the destination stack.</p>
-<p>#annotate Allows you to specify one line of text to associate with the cur- rent dungeon level. All levels with annotations are displayed by the “<code>#overview</code>” command. Autocompletes. Default key is <code>M-A</code>, and also `<code>^N</code>’ if <code>number_pad</code> is on.</p>
+<p>#annotate Allows you to specify one line of text to associate with the cur- rent dungeon level. All levels with annotations are displayed by the “<code>#overview</code>” command. Autocompletes. Default key is <code>M-A`', and also</code>^N<code>' if</code>number_pad` is on.</p>
 <p>#apply Apply (use) a tool such as a pick-axe, a key, or a lamp. Default key is <code>a</code>.</p>
 <p>If the tool used acts on items on the floor, using the <code>m</code> prefix skips those items.</p>
 <p>If used on a wand, that wand will be broken, releasing its magic in the process. Confirmation is required.</p>
@@ -330,10 +330,10 @@ Guidebook for NetHack
 <p>#bugreport Bring up a browser window to submit a report to the NetHack Development Team. Can be disabled at the time the program is built; when enabled, CRASHREPORTURL must be set in the system configuration file.</p>
 <p>#call Call (name) a monster, or an object in inventory, on the floor, or in the discoveries list, or add an annotation for the current level (same as “<code>#annotate</code>”). Default key is <code>C</code>.</p>
 <p>#cast Cast a spell. Default key is <code>Z</code>.</p>
-<p>#chat Talk to someone. Default key is <code>M-c</code>.</p>
+<p>#chat Talk to someone. Default key is `<code>M-c</code>’.</p>
 <p>#chronicle Show a list of important game events.</p>
 <p>#close Close a door. Default key is <code>c</code>.</p>
-<p>#conduct List voluntary challenges you have maintained. Autocompletes. Default key is <code>M-C</code>.</p>
+<p>#conduct List voluntary challenges you have maintained. Autocompletes. Default key is `<code>M-C</code>’.</p>
 <p>See the section below entitled “Conduct” for details.</p>
 <p>#debugfuzzer Start the fuzz tester. Debug mode only.</p>
 <p>#dip Dip an object into something. Autocompletes. Default key is `M- d’.</p>
@@ -343,16 +343,16 @@ Guidebook for NetHack
 <p>#droptype Drop specific item types. Default key is <code>D</code>.</p>
 <p>#eat Eat something. Default key is <code>e</code>. The <code>m</code> prefix skips eating items on the floor.</p>
 <p>#engrave Engrave writing on the floor. Default key is <code>E</code>.</p>
-<p>#enhance Advance or check weapon and spell skills. Autocompletes. Default key is <code>M-e</code>.</p>
-<p>#exploremode Switch from normal play to non-scoring explore mode. Default key is <code>M-X</code>.</p>
+<p>#enhance Advance or check weapon and spell skills. Autocompletes. Default key is `<code>M-e</code>’.</p>
+<p>#exploremode Switch from normal play to non-scoring explore mode. Default key is `<code>M-X</code>’.</p>
 <p>Requires confirmation; default response is n (no). To really switch to explore mode, respond with y. You can set the para- noid_confirmation:quit option to require a response of yes instead.</p>
 <p>#fight Prefix key to force fight a direction, even if you see nothing to fight there. Default key is <code>F</code>, or <code>-</code> with <code>number_pad</code></p>
 <p>#fire Fire ammunition from quiver, possibly autowielding a launcher, or hit with a wielded polearm. Default key is <code>f</code>.</p>
-<p>#force Force a lock. Autocompletes. Default key is <code>M-f</code>.</p>
+<p>#force Force a lock. Autocompletes. Default key is `<code>M-f</code>’.</p>
 <p>#genocided List any monster types which have been genocided. In explore mode and debug mode it also shows types which have become extinct.</p>
 <p>The display order is the same as is used by <code>#vanquished</code>. The <code>m</code> prefix brings up a menu of available sorting orders, and doing that for either <code>#genocided</code> or <code>#vanquished</code> changes the order for both.</p>
 <p>If the sorting order is “count high to low” or “count low to high” (which are applicable for <code>#vanquished</code>), that will be ignored for <code>#genocided</code> and alphabetical will be used instead. The menu omits those two choices when used for <code>#genocide</code>.</p>
-<p>Autocompletes. Default key is <code>M-g</code>.</p>
+<p>Autocompletes. Default key is `<code>M-g</code>’.</p>
 <p>#glance Show what type of thing a map symbol corresponds to. Default key is <code>;</code>.</p>
 <p>#help Show the help menu. Default key is <code>?</code>, and also <code>h</code> if num- <code>ber_pad</code> is on.</p>
 <p>#herecmdmenu Show a menu of possible actions directed at your current loca- tion. The menu is limited to a subset of the likeliest actions, not an exhaustive set of all possibilities. Autocompletes.</p>
@@ -360,8 +360,8 @@ Guidebook for NetHack
 <p>#history Show long version and game history. Default key is <code>V</code>.</p>
 <p>#inventory Show your inventory. Default key is <code>i</code>.</p>
 <p>#inventtype Inventory specific item types. Default key is <code>I</code>.</p>
-<p>#invoke Invoke an object’s special powers. Autocompletes. Default key is <code>M-i</code>.</p>
-<p>#jump Jump to another location. Autocompletes. Default key is <code>M-j</code>, and also <code>j</code> if <code>number_pad</code> is on.</p>
+<p>#invoke Invoke an object’s special powers. Autocompletes. Default key is `<code>M-i</code>’.</p>
+<p>#jump Jump to another location. Autocompletes. Default key is `<code>M-j</code>’, and also <code>j</code> if <code>number_pad</code> is on.</p>
 <p>#kick Kick something. Default key is `<code>^D</code>’, and <code>k</code> if <code>number_pad</code> is on.</p>
 <p>#known Show what object types have been discovered. Default key is <code>\</code>.</p>
 <p>The <code>m</code> prefix allows assigning a new value to the sortdiscover- ies option to control the order in which the discoveries are dis- played.</p>
@@ -371,10 +371,10 @@ Guidebook for NetHack
 <p>#lightsources Show mobile light sources. Autocompletes. Debug mode only.</p>
 <p>#look Look at what is here, under you. Default key is <code>:</code>.</p>
 <p>#lookaround Describe what you can see, or remember, of your surroundings.</p>
-<p>#loot Loot a box or bag on the floor beneath you, or the saddle from a steed standing next to you. Autocompletes. Precede with the <code>m</code> prefix to skip containers at your location and go directly to removing a saddle. Default key is <code>M-l</code>, and also <code>l</code> if num- <code>ber_pad</code> is on.</p>
-<p>#monster Use a monster’s special ability (when polymorphed into monster form). Autocompletes. Default key is <code>M-m</code>.</p>
-<p>#name Name a monster, an individual object, or a type of object. Same as “<code>#call</code>”. Autocompletes. Default keys are <code>N</code>, <code>M-n</code>, and `M- N’.</p>
-<p>#offer Offer a sacrifice to the gods. Autocompletes. Default key is <code>M-o</code>.</p>
+<p>#loot Loot a box or bag on the floor beneath you, or the saddle from a steed standing next to you. Autocompletes. Precede with the <code>m</code> prefix to skip containers at your location and go directly to removing a saddle. Default key is `<code>M-l</code>’, and also <code>l</code> if num- <code>ber_pad</code> is on.</p>
+<p>#monster Use a monster’s special ability (when polymorphed into monster form). Autocompletes. Default key is `<code>M-m</code>’.</p>
+<p>#name Name a monster, an individual object, or a type of object. Same as “<code>#call</code>”. Autocompletes. Default keys are <code>N</code>, `<code>M-n</code>‘, and `M- N’.</p>
+<p>#offer Offer a sacrifice to the gods. Autocompletes. Default key is `<code>M-o</code>’.</p>
 <p>You’ll need to find an altar to have any chance at success. Corpses of recently killed monsters are the fodder of choice.</p>
 <p>The <code>m</code> prefix skips offering any items which are on the altar.</p>
 <p>#open Open a door. Default key is <code>o</code>.</p>
@@ -382,14 +382,14 @@ Guidebook for NetHack
 <p>#optionsfull Show advanced game option settings. No default key. Precede with the <code>m</code> prefix to execute the simpler options command. (Mainly useful if you use BINDING=O:optionsfull to switch <code>O</code> from simple options back to traditional advanced options.)</p>
 <p>#overview Display information you’ve discovered about the dungeon. Any visited level with an annotation is included, and many things (altars, thrones, fountains, and so on; extra stairs leading to another dungeon branch) trigger an automatic annotation. If dun- geon overview is chosen during end-of-game disclosure, every vis- ited level will be included regardless of annotations.</p>
 <p>Precede <code>#overview</code> with the <code>m</code> prefix to display the dungeon overview as a menu where you can select any visited level to add or remove an annotation without needing to return to that level. This will also force all visited levels to be displayed rather than just the “interesting” subset.</p>
-<p>Autocompletes. Default keys are `<code>^O</code>’, and <code>M-O</code>.</p>
+<p>Autocompletes. Default keys are <code>^O`', and</code>M-O`’.</p>
 <p>#panic Test the panic routine. Terminates the current game. Autocom- pletes. Debug mode only.</p>
 <p>Asks for confirmation; default is n (no); continue playing. To really panic, respond with y. You can set the paranoid_confirma- tion:quit option to require a response of yes instead.</p>
 <p>#pay Pay your shopping bill. Default key is <code>p</code>.</p>
 <p>#perminv If persistent inventory display is supported and enabled (with the <code>perm_invent</code> option), interact with it instead of with the map. You’ll be prompted for menu scrolling keystrokes such as <code>&gt;</code> and <code>&lt;</code>. Press Return or Escape to resume normal play. Default key is <code>|</code>.</p>
 <p>#pickup Pick up things at the current location. Default key is <code>,</code>. The <code>m</code> prefix forces use of a menu.</p>
 <p>#polyself Polymorph self. Autocompletes. Debug mode only.</p>
-<p>#pray Pray to the gods for help. Autocompletes. Default key is <code>M-p</code>.</p>
+<p>#pray Pray to the gods for help. Autocompletes. Default key is `<code>M-p</code>’.</p>
 <p>Praying too soon after receiving prior help is a bad idea. (Hint: entering the dungeon alive is treated as having received help. You probably shouldn’t start off a new game by praying right away.) Since using this command by accident can cause</p>
 <p>trouble, there is an option to make you confirm your intent before praying. It is enabled by default, and you can reset the <code>paranoid_confirmation</code> option to disable it.</p>
 <p>#prevmsg Show previously displayed game messages. Default key is `<code>^P</code>’.</p>
@@ -405,8 +405,8 @@ Guidebook for NetHack
 <p>#repeat Repeat the previous command. Default key is `<code>^A</code>’.</p>
 <p>#reqmenu Prefix key to modify the behavior or request menu from some com- mands. Prevents autopickup when used with movement commands. Default key is <code>m</code>.</p>
 <p>#retravel Travel to a previously selected travel destination. Default key is <code>C-_</code>. See also <code>#travel</code>.</p>
-<p>#ride Ride (or stop riding) a saddled creature. Autocompletes. Default key is <code>M-R</code>.</p>
-<p>#rub Rub a lamp or a stone. Autocompletes. Default key is <code>M-r</code>.</p>
+<p>#ride Ride (or stop riding) a saddled creature. Autocompletes. Default key is `<code>M-R</code>’.</p>
+<p>#rub Rub a lamp or a stone. Autocompletes. Default key is `<code>M-r</code>’.</p>
 <p>#run Prefix key to run towards a direction. Default key is <code>G</code> when <code>number_pad</code> is off, <code>5</code> when <code>number_pad</code> is set to 1 or 3, other- wise <code>M-5</code> when it is set to 2 or 4.</p>
 <p>#rush Prefix key to rush towards a direction. Default is <code>g</code> when num- <code>ber_pad</code> is off, <code>M-5</code> when <code>number_pad</code> is set to 1 or 3, otherwise <code>5</code> when it is set to 2 or 4.</p>
 <p>#save Save the game and exit the program. Default key is <code>S</code>.</p>
@@ -429,7 +429,7 @@ Guidebook for NetHack
 <p>#showgold Report the gold in your inventory, including gold you know about in containers you’re carrying. If you are inside a shop, report any credit or debt you have in that shop. Default key is <code>$</code>.</p>
 <p>#showspells List and reorder known spells. Default key is <code>+</code>.</p>
 <p>#showtrap Describe an adjacent trap, possibly covered by objects or a mon- ster. To be eligible, the trap must already be discovered. (The “<code>#terrain</code>” command can display your map with all objects and mon- sters temporarily removed, making it possible to see all discov- ered traps.) Default key is <code>^</code>.</p>
-<p>#sit Sit down. Autocompletes. Default key is <code>M-s</code>.</p>
+<p>#sit Sit down. Autocompletes. Default key is `<code>M-s</code>’.</p>
 <p>#stats Show memory usage statistics. Autocompletes. Debug mode only.</p>
 <p>#suspend Suspend the game, switching from NetHack to the terminal it was started from without performing save-and-exit. Can be disabled at the time the program is built. When enabled, mainly useful for tty and curses interfaces on UNIX. Use the shell command <code>fg</code> to return to the game. Default key is `<code>^Z</code>’.</p>
 <p>#swap Swap wielded and secondary weapons. Default key is <code>x</code>.</p>
@@ -445,23 +445,23 @@ Guidebook for NetHack
 <p>#timeout Look at the timeout queue. Autocompletes. Debug mode only.</p>
 <p>#tip Tip over a container (bag or box) to pour out its contents. When there are containers on the floor, the game will prompt to pick one of them or “tip something being carried”. If the latter is chosen, there will be another prompt for which item from inven- tory to tip.</p>
 <p>The <code>m</code> prefix makes the command skip containers on the floor and pick one from inventory, except for the special case of <code>menustyle:traditional</code> with two or more containers present; that situation will start with the floor container menu.</p>
-<p>Autocompletes. Default key is <code>M-T</code>.</p>
+<p>Autocompletes. Default key is `<code>M-T</code>’.</p>
 <p>#travel Travel to a specific location on the map. Default key is <code>_</code>. Using the “request menu” prefix shows a menu of interesting tar- gets in sight without asking to move the cursor. When picking a target with cursor and the autodescribe option is on, the top line will show “(no travel path)” if your character does not know</p>
 <p>of a path to that location. See also <code>#retravel</code>.</p>
-<p>#turn Turn undead away. Autocompletes. Default key is <code>M-t</code>.</p>
+<p>#turn Turn undead away. Autocompletes. Default key is `<code>M-t</code>’.</p>
 <p>#twoweapon Toggle two-weapon combat on or off. Autocompletes. Default key is <code>X</code>, and also <code>M-2</code> if <code>number_pad</code> is off.</p>
 <p>Note that you must use suitable weapons for this type of combat, or it will be automatically turned off.</p>
-<p>#untrap Untrap something (trap, door, or chest). Default key is <code>M-u</code>, and <code>u</code> if <code>number_pad</code> is on.</p>
+<p>#untrap Untrap something (trap, door, or chest). Default key is `<code>M-u</code>’, and <code>u</code> if <code>number_pad</code> is on.</p>
 <p>In some circumstances it can also be used to rescue trapped mon- sters.</p>
 <p>#up Go up a staircase. Default key is <code>&lt;</code>.</p>
 <p>#vanquished List vanquished monsters by type and count.</p>
 <p>Note that the vanquished monsters list includes all monsters killed by traps and each other as well as by you, and omits any which got removed from the game without being killed (perhaps by genocide, or by a mollified shopkeeper dismissing summoned Kops) or were already corpses when placed on the map.</p>
 <p>Using the “request menu” prefix prior to <code>#vanquished</code> brings up a menu of sorting orders available (provided that the vanquished monsters list contains at least two types of monsters). Which- ever ordering is picked gets assigned to the sortvanquished option so is remembered for subsequent <code>#vanquished</code> requests. The “<code>#genocided</code>” command shares this sorting order.</p>
 <p>During end-of-game disclosure, when asked whether to show van- quished monsters answering <code>a</code> will let you choose from the sort menu.</p>
-<p>Autocompletes. Default key is <code>M-V</code>.</p>
+<p>Autocompletes. Default key is `<code>M-V</code>’.</p>
 <p>#version Print compile time options for this version of NetHack.</p>
 <p>The second paragraph lists the user interface(s) that are included. If there are more than one, you can use the windowtype option in your run-time configuration file to select the one you want.</p>
-<p>Autocompletes. Default key is <code>M-v</code>.</p>
+<p>Autocompletes. Default key is `<code>M-v</code>’.</p>
 <p>#versionshort Show the program’s version number, plus the date and time that the running copy was built from sources (not the version’s release date). Default key is <code>v</code>.</p>
 <p>#vision Show vision array. Autocompletes. Debug mode only.</p>
 <p>#wait Rest one move while doing nothing. Default key is <code>.</code>, and also <code></code> if <code>rest_on_space</code> is on.</p>
@@ -469,7 +469,7 @@ Guidebook for NetHack
 <p>#whatdoes Tell what a key does. Default key is <code>&amp;</code>.</p>
 <p>#whatis Show what type of thing a symbol corresponds to. Default key is <code>/</code>.</p>
 <p>#wield Wield a weapon. Default key is <code>w</code>.</p>
-<p>#wipe Wipe off your face. Autocompletes. Default key is <code>M-w</code>.</p>
+<p>#wipe Wipe off your face. Autocompletes. Default key is `<code>M-w</code>’.</p>
 <p>#wizborn Show monster birth, death, genocide, and extinct statistics. Debug mode only.</p>
 <p>#wizbury Bury objects under and around you. Autocompletes. Debug mode only.</p>
 <p>#wizcast Cast any spell. Debug mode only.</p>
@@ -494,35 +494,35 @@ Guidebook for NetHack
 <p>If your keyboard has a meta key (which, when pressed in combina- tion with another key, modifies it by setting the “meta” [8th, or “high”] bit), you can invoke many extended commands by meta-ing the</p>
 <p>first letter of the command.</p>
 <p>On Windows and MS-DOS, the “Alt” key can be used in this fashion. On other systems, if typing “Alt” plus another key transmits a two character sequence consisting of an Escape followed by the other key, you may set the altmeta option to have NetHack combine them into meta+<code>&lt;key&gt;</code>. (This combining action only takes place when NetHack is expecting a command to execute, not when accepting input to name some- thing or to make a wish.)</p>
-<p>Unlike control characters, where ^x and <code>^X</code> denote the same thing, meta characters are case-sensitive: M-x and M-X represent different things. Some commands which can be run via a meta character require that the letter be capitalized because the lower-case equivalent is used for another command, so the three key combination meta+Shift+<letter> is needed.</p>
+<p>Unlike control characters, where <code>^x</code> and <code>^X</code> denote the same thing, meta characters are case-sensitive: <code>M-x</code> and <code>M-X</code> represent different things. Some commands which can be run via a meta character require that the letter be capitalized because the lower-case equivalent is used for another command, so the three key combination meta+Shift+<letter> is needed.</p>
 <p>M-? #? (not supported by all platforms)</p>
 <p>M-2 <code>#twoweapon</code> (unless the <code>number_pad</code> option is enabled)</p>
-<p>M-a <code>#adjust</code></p>
-<p>M-A <code>#annotate</code></p>
-<p>M-c <code>#chat</code></p>
-<p>M-C <code>#conduct</code></p>
-<p>M-d <code>#dip</code></p>
-<p>M-e <code>#enhance</code></p>
-<p>M-f <code>#force</code></p>
-<p>M-g <code>#genocided</code></p>
-<p>M-i <code>#invoke</code></p>
-<p>M-j <code>#jump</code></p>
-<p>M-l <code>#loot</code></p>
-<p>M-m <code>#monster</code></p>
-<p>M-n <code>#name</code></p>
-<p>M-o <code>#offer</code></p>
-<p>M-O <code>#overview</code></p>
-<p>M-p <code>#pray</code></p>
-<p>M-r <code>#rub</code></p>
-<p>M-R <code>#ride</code></p>
-<p>M-s <code>#sit</code></p>
-<p>M-t <code>#turn</code></p>
-<p>M-T <code>#tip</code></p>
-<p>M-u <code>#untrap</code></p>
-<p>M-v <code>#version</code></p>
-<p>M-V <code>#vanquished</code></p>
-<p>M-w <code>#wipe</code></p>
-<p>M-X <code>#exploremode</code></p>
+<p><code>M-a</code> <code>#adjust</code></p>
+<p><code>M-A</code> <code>#annotate</code></p>
+<p><code>M-c</code> <code>#chat</code></p>
+<p><code>M-C</code> <code>#conduct</code></p>
+<p><code>M-d</code> <code>#dip</code></p>
+<p><code>M-e</code> <code>#enhance</code></p>
+<p><code>M-f</code> <code>#force</code></p>
+<p><code>M-g</code> <code>#genocided</code></p>
+<p><code>M-i</code> <code>#invoke</code></p>
+<p><code>M-j</code> <code>#jump</code></p>
+<p><code>M-l</code> <code>#loot</code></p>
+<p><code>M-m</code> <code>#monster</code></p>
+<p><code>M-n</code> <code>#name</code></p>
+<p><code>M-o</code> <code>#offer</code></p>
+<p><code>M-O</code> <code>#overview</code></p>
+<p><code>M-p</code> <code>#pray</code></p>
+<p><code>M-r</code> <code>#rub</code></p>
+<p><code>M-R</code> <code>#ride</code></p>
+<p><code>M-s</code> <code>#sit</code></p>
+<p><code>M-t</code> <code>#turn</code></p>
+<p><code>M-T</code> <code>#tip</code></p>
+<p><code>M-u</code> <code>#untrap</code></p>
+<p><code>M-v</code> <code>#version</code></p>
+<p><code>M-V</code> <code>#vanquished</code></p>
+<p><code>M-w</code> <code>#wipe</code></p>
+<p><code>M-X</code> <code>#exploremode</code></p>
 <p>If the <code>number_pad</code> option is on, some additional letter commands are available:</p>
 <p>h <code>#help</code></p>
 <p>j <code>#jump</code></p>
@@ -850,11 +850,11 @@ OPTIONS=!legacy,autopickup,pickup_types:$&quot;=/!?+</code></pre>
 <p><strong><code>TROUBLEDIR</code></strong> The location that a record of game aborts and self-diagnosed game problems is kept. Defaults to HACKDIR, must be writable.</p>
 <p><strong><code>AUTOCOMPLETE</code></strong> Enable or disable an extended command autocompletion. Autocomple- tion has no effect for the X11 windowport. You can specify multiple autocompletions. To enable autocompletion, list the extended com- mand. Prefix the command with “!” to disable the autocompletion for that command.</p>
 <p>Example:</p>
-<p>AUTOCOMPLETE=zap,!annotate</p>
+<p><code>AUTOCOMPLETE=zap,!annotate</code></p>
 <p><strong><code>AUTOPICKUP_EXCEPTION</code></strong> Set exceptions to the <code>pickup_types</code> option. See the “Configuring Autopickup Exceptions” section.</p>
 <p><strong><code>BINDINGS</code></strong> Change the key bindings of some special keys, menu accelerators, extended commands, or mouse buttons. You can specify multiple bind- ings. Format is key followed by the command, separated by a colon. See the “Changing Key Bindings” section for more information.</p>
 <p>Example:</p>
-<p>BIND=<code>^X</code>:getpos.autodescribe</p>
+<p><code>BIND=</code>^X<code>:getpos.autodescribe</code></p>
 <p><strong><code>CHOOSE</code></strong> Chooses at random one of the comma-separated parameters as an active section name. Lines in other sections are ignored.</p>
 <p>Example:</p>
 <pre><code>OPTIONS=color
@@ -1227,9 +1227,9 @@ OPTIONS=!role:arc bar kni</code></pre>
 </section>
 <section id="changing-key-bindings" class="level3">
 <h3>9.10. Changing Key Bindings</h3>
-<p>It is possible to change the default key bindings of some special commands, menu accelerator keys, and extended commands, by using BIND stanzas in the configuration file. Format is key, followed by the command to bind to, separated by a colon. The key can be a single character (“x”), a control key (“<code>^X</code>”, “C-x”), a meta key (“M-x”), a mouse button, or a three-digit decimal ASCII code.</p>
+<p>It is possible to change the default key bindings of some special commands, menu accelerator keys, and extended commands, by using BIND stanzas in the configuration file. Format is key, followed by the command to bind to, separated by a colon. The key can be a single character (“x”), a control key (“<code>^X</code>”, “C-x”), a meta key (“<code>M-x</code>”), a mouse button, or a three-digit decimal ASCII code.</p>
 <p>For example:</p>
-<p>BIND=<code>^X</code>:getpos.autodescribe BIND=:<code>menu_first_page</code> BIND=v:loot</p>
+<p><code>BIND=</code>^X<code>:getpos.autodescribe</code> <code>BIND=\:</code>menu_first_page`<code></code>BIND=v:loot`</p>
 <p>Extended command keys You can bind multiple keys to the same extended command. Unbind a key by using “nothing” as the extended command to bind to. You can also bind the “<esc>”, “<enter>”, and “<space>” keys.</p>
 <p>Menu accelerator keys The menu control or accelerator keys can also be rebound via OPTIONS lines in the configuration file. You cannot bind object symbols or selection letters into menu accelerators. Some interfaces only sup- port some of the menu accelerators.</p>
 <p>Mouse buttons You can bind “mouse1” or “mouse2” to “nothing”, “therecmdmenu”, “clicklook”, or “mouseaction”.</p>
@@ -1267,13 +1267,13 @@ OPTIONS=!role:arc bar kni</code></pre>
 <section id="configuring-message-types" class="level3">
 <h3>9.11. Configuring Message Types</h3>
 <p>You can change the way the messages are shown in the message area, when the message matches a user-defined pattern.</p>
-<p>In general, the configuration file entries to describe the mes- sage types look like this: MSGTYPE=type “pattern”</p>
+<p>In general, the configuration file entries to describe the mes- sage types look like this: <code>MSGTYPE=type</code> “pattern”</p>
 <p>type - how the message should be shown; pattern - the pattern to match.</p>
 <p>The pattern should be a regular expression.</p>
 <p>Allowed types are:</p>
 <p>show - show message normally; hide - never show the message; stop - wait for user with more-prompt; norep - show the message once, but not again if no other message is shown in between.</p>
 <p>Here’s an example of message types using NetHack’s internal pattern matching facility:</p>
-<p>MSGTYPE=stop “You feel hungry.” MSGTYPE=hide "You displaced *."</p>
+<p><code>MSGTYPE=stop</code> “You feel hungry.” <code>MSGTYPE=hide</code> "You displaced *."</p>
 <p>specifies that whenever a message “You feel hungry” is shown, the user is prompted with more-prompt, and a message matching “You dis- placed <something>.” is not shown at all.</p>
 <p>The order of the defined MSGTYPE lines is important; the last match- ing rule is used. Put the general case first, exceptions below them.</p>
 </section>

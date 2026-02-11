@@ -147,8 +147,17 @@ def convert_guidebook(input_file, output_file):
         # Wrap control character patterns
         # ^<key> pattern (generic placeholder)
         line = re.sub(r'\^<([a-z]+)>', r'`^<\1>`', line)
-        # ^X, ^C etc. (specific keys)
+        # ^X, ^C etc. (uppercase specific keys)
         line = re.sub(r'\^([A-Z])\b', r'`^\1`', line)
+        # ^x, ^c etc. (lowercase specific keys)
+        line = re.sub(r'\^([a-z])\b', r'`^\1`', line)
+
+        # Wrap Meta key combinations (M-x, M-X, etc.)
+        line = re.sub(r'\b(M-[a-zA-Z])\b', r'`\1`', line)
+
+        # Wrap single letter keys in tables (e.g., "h    #help")
+        # Pattern: start of line, single letter, spaces, #command
+        line = re.sub(r'^([a-zA-Z])\s+(#[a-z]+)', r'`\1`    `\2`', line)
 
         # Special case: ``' (backtick character) needs double backticks to escape
         # Convert ``' -> `` ` `` (backtick shown in code)
@@ -187,9 +196,15 @@ def convert_guidebook(input_file, output_file):
         # Wrap special key names (ESC, SPACE, RETURN, etc.)
         line = re.sub(r'\b(ESC|SPACE|RETURN|ENTER|TAB|DELETE|BACKSPACE)\b', r'`\1`', line)
 
-        # Wrap configuration file syntax (OPTIONS=, CHOOSE=, [section])
-        # These are configuration file examples that should be in code blocks
-        if line.startswith('OPTIONS=') or line.startswith('CHOOSE=') or re.match(r'^\[.*\]', line):
+        # Wrap inline configuration examples (e.g., AUTOCOMPLETE=..., BIND=...)
+        # Match WORD= followed by content, wrap in backticks
+        line = re.sub(r'\b(AUTOCOMPLETE|BIND|MSGTYPE)=([^\s]+)', r'`\1=\2`', line)
+
+        # Wrap configuration file syntax (OPTIONS=, CHOOSE=, AUTOCOMPLETE=, BIND=, [section])
+        # These are configuration file examples that should be in code blocks (when at line start)
+        if (line.startswith('OPTIONS=') or line.startswith('CHOOSE=') or
+            line.startswith('AUTOCOMPLETE=') or line.startswith('BIND=') or
+            re.match(r'^\[.*\]', line)):
             line = '    ' + line  # Indent with 4 spaces to make it a code block in markdown
 
         # Wrap environment variable names (HACKDIR, LEVELDIR, etc.)

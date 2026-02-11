@@ -604,7 +604,7 @@ down  like `<Shift>` while typing and releasing `<key>`, then releas-
 ing `<Control>`. `^<key>` is  used  as  shorthand  elsewhere  in  the
 
 Guidebook  to  mean the same thing.  Control characters are case-
-insensitive so ^x and `^X` are the same.
+insensitive so `^x` and `^X` are the same.
 
 `M[yuhjklbn]`
 Old versions supported `M` as a movement  prefix  which  combined
@@ -893,7 +893,7 @@ available via the "`#twoweapon`" extended command.
 
 (In  versions  prior  to  3.6  this  keystroke ran the command to
 switch from normal play to "explore mode", also known as "discov-
-ery mode", which has now been moved to "`#exploremode`" and M-X.)
+ery mode", which has now been moved to "`#exploremode`" and `M-X`.)
 
 `^X`   Display basic information about your character.
 
@@ -1008,7 +1008,7 @@ compiled with.
 
 #adjust
 Adjust inventory letters (most useful when the fixinv  option  is
-"on").  Autocompletes.  Default key is `M-a`.
+"on").  Autocompletes.  Default key is ``M-a`'.
 
 This  command  allows  you  to  move  an item from one particular
 inventory slot to another so that it has a letter which  is  more
@@ -1039,7 +1039,7 @@ to merge with the destination stack.
 #annotate
 Allows you to specify one line of text to associate with the cur-
 rent dungeon level.  All levels with annotations are displayed by
-the "`#overview`" command.  Autocompletes.  Default key  is  `M-A`,
+the "`#overview`" command.  Autocompletes.  Default key  is  ``M-A`',
 and also ``^N`' if `number_pad` is on.
 
 #apply
@@ -1073,7 +1073,7 @@ level (same as "`#annotate`").  Default key is `C`.
 Cast a spell.  Default key is `Z`.
 
 #chat
-Talk to someone.  Default key is `M-c`.
+Talk to someone.  Default key is ``M-c`'.
 
 #chronicle
 Show a list of important game events.
@@ -1083,7 +1083,7 @@ Close a door.  Default key is `c`.
 
 #conduct
 List  voluntary  challenges  you have maintained.  Autocompletes.
-Default key is `M-C`.
+Default key is ``M-C`'.
 
 See the section below entitled "Conduct" for details.
 
@@ -1115,11 +1115,11 @@ Engrave writing on the floor.  Default key is `E`.
 
 #enhance
 Advance   or  check  weapon  and  spell  skills.   Autocompletes.
-Default key is `M-e`.
+Default key is ``M-e`'.
 
 #exploremode
 Switch from normal play to non-scoring explore mode.  Default key
-is `M-X`.
+is ``M-X`'.
 
 Requires  confirmation;  default  response  is n (no).  To really
 switch to explore mode, respond with y.  You can  set  the  para-
@@ -1135,7 +1135,7 @@ Fire ammunition from quiver, possibly autowielding a launcher, or
 hit with a wielded polearm.  Default key is `f`.
 
 #force
-Force a lock.  Autocompletes.  Default key is `M-f`.
+Force a lock.  Autocompletes.  Default key is ``M-f`'.
 
 #genocided
 List any monster types which have  been  genocided.   In  explore
@@ -1152,7 +1152,7 @@ high" (which  are  applicable  for  `#vanquished`),  that  will  be
 ignored  for  `#genocided`  and  alphabetical will be used instead.
 The menu omits those two choices when used for `#genocide`.
 
-Autocompletes.  Default key is `M-g`.
+Autocompletes.  Default key is ``M-g`'.
 
 #glance
 Show what type of thing a map symbol corresponds to.  Default key
@@ -1182,10 +1182,10 @@ Inventory specific item types.  Default key is `I`.
 
 #invoke
 Invoke an object's special powers.  Autocompletes.   Default  key
-is `M-i`.
+is ``M-i`'.
 
 #jump
-Jump  to another location.  Autocompletes.  Default key is `M-j`,
+Jump  to another location.  Autocompletes.  Default key is ``M-j`',
 and also `j` if `number_pad` is on.
 
 #kick
@@ -1221,21 +1221,21 @@ Describe what you can see, or remember, of your surroundings.
 Loot a box or bag on the floor beneath you, or the saddle from  a
 steed standing next to you.  Autocompletes.  Precede with the `m`
 prefix to skip containers at your location  and  go  directly  to
-removing  a  saddle.   Default key is `M-l`, and also `l` if num-
+removing  a  saddle.   Default key is ``M-l`', and also `l` if num-
 `ber_pad` is on.
 
 #monster
 Use a monster's special ability (when  polymorphed  into  monster
-form).  Autocompletes.  Default key is `M-m`.
+form).  Autocompletes.  Default key is ``M-m`'.
 
 #name
 Name  a monster, an individual object, or a type of object.  Same
-as "`#call`".  Autocompletes.  Default keys are `N`, `M-n`, and `M-
+as "`#call`".  Autocompletes.  Default keys are `N`, ``M-n`', and `M-
 N'.
 
 #offer
 Offer  a  sacrifice  to the gods.  Autocompletes.  Default key is
-`M-o`.
+``M-o`'.
 
 You'll need to find an altar  to  have  any  chance  at  success.
 Corpses of recently killed monsters are the fodder of choice.
@@ -1269,7 +1269,7 @@ or remove an annotation without needing to return to that  level.
 This  will  also  force all visited levels to be displayed rather
 than just the "interesting" subset.
 
-Autocompletes.  Default keys are ``^O`', and `M-O`.
+Autocompletes.  Default keys are ``^O`', and ``M-O`'.
 
 #panic
 Test the panic routine.  Terminates the current  game.   Autocom-
@@ -1297,7 +1297,7 @@ Pick up things at the current location.  Default key is `,`.  The
 Polymorph self.  Autocompletes.  Debug mode only.
 
 #pray
-Pray to the gods for help.  Autocompletes.  Default key is `M-p`.
+Pray to the gods for help.  Autocompletes.  Default key is ``M-p`'.
 
 Praying too soon after  receiving  prior  help  is  a  bad  idea.
 (Hint:  entering  the dungeon alive is treated as having received
@@ -1357,10 +1357,10 @@ is `C-_`.  See also `#travel`.
 
 #ride
 Ride  (or  stop  riding)  a  saddled  creature.    Autocompletes.
-Default key is `M-R`.
+Default key is ``M-R`'.
 
 #rub
-Rub a lamp or a stone.  Autocompletes.  Default key is `M-r`.
+Rub a lamp or a stone.  Autocompletes.  Default key is ``M-r`'.
 
 #run
 Prefix  key  to run towards a direction.  Default key is `G` when
@@ -1449,7 +1449,7 @@ sters temporarily removed, making it possible to see all  discov-
 ered traps.)  Default key is `^`.
 
 #sit
-Sit down.  Autocompletes.  Default key is `M-s`.
+Sit down.  Autocompletes.  Default key is ``M-s`'.
 
 #stats
 Show memory usage statistics.  Autocompletes.  Debug mode only.
@@ -1513,7 +1513,7 @@ pick  one  from  inventory,  except  for  the  special  case   of
 `menustyle:traditional`  with  two or more containers present; that
 situation will start with the floor container menu.
 
-Autocompletes.  Default key is `M-T`.
+Autocompletes.  Default key is ``M-T`'.
 
 #travel
 Travel to a specific location on the map.  Default  key  is  `_`.
@@ -1525,7 +1525,7 @@ line will show "(no travel path)" if your character does not know
 of a path to that location.  See also `#retravel`.
 
 #turn
-Turn undead away.  Autocompletes.  Default key is `M-t`.
+Turn undead away.  Autocompletes.  Default key is ``M-t`'.
 
 #twoweapon
 Toggle  two-weapon combat on or off.  Autocompletes.  Default key
@@ -1535,7 +1535,7 @@ Note that you must use suitable weapons for this type of  combat,
 or it will be automatically turned off.
 
 #untrap
-Untrap  something  (trap, door, or chest).  Default key is `M-u`,
+Untrap  something  (trap, door, or chest).  Default key is ``M-u`',
 and `u` if `number_pad` is on.
 
 In some circumstances it can also be used to rescue trapped  mon-
@@ -1564,7 +1564,7 @@ During end-of-game disclosure, when asked whether  to  show  van-
 quished  monsters answering `a` will let you choose from the sort
 menu.
 
-Autocompletes.  Default key is `M-V`.
+Autocompletes.  Default key is ``M-V`'.
 
 #version
 Print compile time options for this version of NetHack.
@@ -1574,7 +1574,7 @@ included.  If there are more than one, you can use the windowtype
 option in your run-time configuration file to select the one  you
 want.
 
-Autocompletes.  Default key is `M-v`.
+Autocompletes.  Default key is ``M-v`'.
 
 #versionshort
 Show  the  program's  version number, plus the date and time that
@@ -1602,7 +1602,7 @@ Show what type of thing a symbol corresponds to.  Default key  is
 Wield a weapon.  Default key is `w`.
 
 #wipe
-Wipe off your face.  Autocompletes.  Default key is `M-w`.
+Wipe off your face.  Autocompletes.  Default key is ``M-w`'.
 
 #wizborn
 Show  monster  birth,  death,  genocide,  and extinct statistics.
@@ -1694,8 +1694,8 @@ meta+`<key>`.   (This  combining action only takes place when NetHack is
 expecting a command to execute, not when accepting input to name some-
 thing or to make a wish.)
 
-Unlike control characters, where ^x and `^X` denote the same thing,
-meta characters are case-sensitive:  M-x and M-X  represent  different
+Unlike control characters, where `^x` and `^X` denote the same thing,
+meta characters are case-sensitive:  `M-x` and `M-X`  represent  different
 things.   Some  commands which can be run via a meta character require
 that the letter be capitalized because the  lower-case  equivalent  is
 used   for   another   command,   so   the   three   key   combination
@@ -1705,57 +1705,57 @@ M-?  #? (not supported by all platforms)
 
 M-2  `#twoweapon` (unless the `number_pad` option is enabled)
 
-M-a  `#adjust`
+`M-a`  `#adjust`
 
-M-A  `#annotate`
+`M-A`  `#annotate`
 
-M-c  `#chat`
+`M-c`  `#chat`
 
-M-C  `#conduct`
+`M-C`  `#conduct`
 
-M-d  `#dip`
+`M-d`  `#dip`
 
-M-e  `#enhance`
+`M-e`  `#enhance`
 
-M-f  `#force`
+`M-f`  `#force`
 
-M-g  `#genocided`
+`M-g`  `#genocided`
 
-M-i  `#invoke`
+`M-i`  `#invoke`
 
-M-j  `#jump`
+`M-j`  `#jump`
 
-M-l  `#loot`
+`M-l`  `#loot`
 
-M-m  `#monster`
+`M-m`  `#monster`
 
-M-n  `#name`
+`M-n`  `#name`
 
-M-o  `#offer`
+`M-o`  `#offer`
 
-M-O  `#overview`
+`M-O`  `#overview`
 
-M-p  `#pray`
+`M-p`  `#pray`
 
-M-r  `#rub`
+`M-r`  `#rub`
 
-M-R  `#ride`
+`M-R`  `#ride`
 
-M-s  `#sit`
+`M-s`  `#sit`
 
-M-t  `#turn`
+`M-t`  `#turn`
 
-M-T  `#tip`
+`M-T`  `#tip`
 
-M-u  `#untrap`
+`M-u`  `#untrap`
 
-M-v  `#version`
+`M-v`  `#version`
 
-M-V  `#vanquished`
+`M-V`  `#vanquished`
 
-M-w  `#wipe`
+`M-w`  `#wipe`
 
-M-X  `#exploremode`
+`M-X`  `#exploremode`
 
 If the `number_pad` option is on, some additional  letter  commands
 are available:
@@ -3185,7 +3185,7 @@ that command.
 
 Example:
 
-AUTOCOMPLETE=zap,!annotate
+`AUTOCOMPLETE=zap,!annotate`
 
 **`AUTOPICKUP_EXCEPTION`**
 Set  exceptions  to  the  `pickup_types` option.  See the "Configuring
@@ -3199,7 +3199,7 @@ See the "Changing Key Bindings" section for more information.
 
 Example:
 
-BIND=`^X`:getpos.autodescribe
+`BIND=`^X`:getpos.autodescribe`
 
 **`CHOOSE`**
 Chooses at random one of the comma-separated parameters as an active
@@ -4726,14 +4726,14 @@ It is possible to change the default key bindings of some special
 commands, menu accelerator keys, and extended commands, by using  BIND
 stanzas  in  the  configuration  file.  Format is key, followed by the
 command to bind to, separated by a colon.  The key  can  be  a  single
-character  ("x"),  a  control key ("`^X`", "C-x"), a meta key ("M-x"), a
+character  ("x"),  a  control key ("`^X`", "C-x"), a meta key ("`M-x`"), a
 mouse button, or a three-digit decimal ASCII code.
 
 For example:
 
-BIND=`^X`:getpos.autodescribe
-BIND=\:`menu_first_page`
-BIND=v:loot
+`BIND=`^X`:getpos.autodescribe`
+`BIND=\:`menu_first_page``
+`BIND=v:loot`
 
 Extended command keys
 You can bind multiple keys to the same extended command.   Unbind  a
@@ -4888,7 +4888,7 @@ You  can  change  the  way  the messages are shown in the message
 area, when the message matches a user-defined pattern.
 
 In general, the configuration file entries to describe  the  mes-
-sage types look like this: MSGTYPE=type "pattern"
+sage types look like this: `MSGTYPE=type` "pattern"
 
 type    - how the message should be shown;
 pattern - the pattern to match.
@@ -4906,8 +4906,8 @@ shown in between.
 Here's an example of message types using NetHack's internal  pattern
 matching facility:
 
-MSGTYPE=stop "You feel hungry."
-MSGTYPE=hide "You displaced *."
+`MSGTYPE=stop` "You feel hungry."
+`MSGTYPE=hide` "You displaced *."
 
 specifies  that  whenever  a message "You feel hungry" is shown, the
 user is prompted with more-prompt, and a message matching "You  dis-
