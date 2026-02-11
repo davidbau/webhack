@@ -130,24 +130,8 @@
             color: #ccc;  /* Light gray for dark mode */
         }
 
-        body.dark-mode .side-panel-header {
-            color: #999;  /* Light gray for dark mode */
-        }
-
-        body.dark-mode .side-panel-close {
-            color: #777;  /* Light gray for dark mode */
-        }
-
-        body.dark-mode .side-panel-close:hover {
-            color: #bbb;  /* Lighter on hover in dark mode */
-        }
-
-        body.dark-mode .vertical-label {
-            color: #aaa;  /* Light gray for dark mode */
-        }
-
-        body.dark-mode .vertical-label:hover {
-            color: #ddd;  /* Lighter on hover in dark mode */
+        body.dark-mode #hover-info {
+            border: 1px solid #444;  /* Gray border in dark mode */
         }
 
         #main {
@@ -225,47 +209,6 @@
             display: none;
         }
 
-        .side-panel-header {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            margin-bottom: 0.5em;
-            color: #666;  /* Dark for light mode */
-            font-size: 11px;
-        }
-
-        .side-panel-close {
-            cursor: pointer;
-            color: #555;  /* Dark for light mode */
-            font-size: 14px;
-        }
-
-        .side-panel-close:hover {
-            color: #222;  /* Darker on hover in light mode */
-        }
-
-        /* Vertical text label (left side only) */
-        .vertical-label {
-            writing-mode: vertical-rl;
-            text-orientation: mixed;
-            cursor: pointer;
-            color: #666;  /* Dark for light mode */
-            font-size: 11px;
-            letter-spacing: 0.15em;
-            padding: 0 8px;
-            display: none;  /* Hidden when panels are visible */
-            align-items: center;
-            user-select: none;
-        }
-
-        .vertical-label.visible {
-            display: flex;
-        }
-
-        .vertical-label:hover {
-            color: #222;  /* Darker on hover in light mode */
-        }
-
         /* Keyboard quick-reference (left panel) */
         #keyref {
             padding-right: 1em;
@@ -325,12 +268,6 @@
             margin-top: 0.3em;
         }
 
-        #hover-hint {
-            color: #888;  /* Muted light on dark background */
-            font-size: 11px;
-            margin-top: 2em;
-        }
-
         /* Responsive: stack vertically on narrow screens */
         @media (max-width: 1100px) {
             #main {
@@ -373,10 +310,6 @@
             #controls {
                 display: none;
             }
-
-            .vertical-label {
-                display: none !important;
-            }
         }
     </style>
 </head>
@@ -389,6 +322,7 @@
             <a href="https://github.com/davidbau/webhack" target="_blank">About This Project</a>
         </nav>
         <div id="controls">
+            <button id="panel-toggle" title="Show/hide side panels">☰</button>
             <button id="font-smaller" title="Decrease font size">A−</button>
             <button id="font-larger" title="Increase font size">A+</button>
             <button id="theme-toggle" title="Toggle dark/light mode">◐</button>
@@ -396,9 +330,6 @@
         <div id="main">
             <!-- Left: keyboard controls -->
             <div id="keyref" class="side-panel">
-                <div class="side-panel-header">
-                    <span class="side-panel-close" id="keyref-close" title="Hide">&times;</span>
-                </div>
                 <table>
                     <tr class="keyref-section"><td colspan="2">Move</td></tr>
                     <tr><td>h j k l</td><td>left/down/up/right</td></tr>
@@ -431,9 +362,6 @@
                 </table>
             </div>
 
-            <!-- Vertical text label for left panel -->
-            <div id="controls-label" class="vertical-label" title="Show panels">CONTROLS</div>
-
             <!-- Center: game terminal -->
             <div id="game">
                 <div id="loading">Loading NetHack JS...</div>
@@ -441,16 +369,12 @@
 
             <!-- Right: hover symbol info -->
             <div id="hover-panel" class="side-panel">
-                <div class="side-panel-header">
-                    <span class="side-panel-close" id="hover-close" title="Hide">&times;</span>
-                </div>
                 <div id="hover-info">
                     <span id="hover-symbol"></span>
                     <span id="hover-name"></span>
                     <span id="hover-desc"></span>
                     <span id="hover-stats"></span>
                 </div>
-                <div id="hover-hint">Hover over the map to identify symbols</div>
             </div>
         </div>
     </div>
@@ -460,35 +384,31 @@
     (function() {
         var keyrefPanel = document.getElementById('keyref');
         var hoverPanel = document.getElementById('hover-panel');
-        var keyrefClose = document.getElementById('keyref-close');
-        var hoverClose = document.getElementById('hover-close');
-        var controlsLabel = document.getElementById('controls-label');
+        var panelToggle = document.getElementById('panel-toggle');
         var storageKey = 'webhack-panels-hidden';
 
-        function hideBoth() {
-            keyrefPanel.classList.add('hidden');
-            hoverPanel.classList.add('hidden');
-            controlsLabel.classList.add('visible');
-            try { localStorage.setItem(storageKey, '1'); } catch(e) {}
+        function togglePanels() {
+            var isHidden = keyrefPanel.classList.contains('hidden');
+            if (isHidden) {
+                keyrefPanel.classList.remove('hidden');
+                hoverPanel.classList.remove('hidden');
+                try { localStorage.removeItem(storageKey); } catch(e) {}
+            } else {
+                keyrefPanel.classList.add('hidden');
+                hoverPanel.classList.add('hidden');
+                try { localStorage.setItem(storageKey, '1'); } catch(e) {}
+            }
         }
 
-        function showBoth() {
-            keyrefPanel.classList.remove('hidden');
-            hoverPanel.classList.remove('hidden');
-            controlsLabel.classList.remove('visible');
-            try { localStorage.removeItem(storageKey); } catch(e) {}
-        }
-
-        // Close buttons hide both panels
-        keyrefClose.addEventListener('click', hideBoth);
-        hoverClose.addEventListener('click', hideBoth);
-
-        // Vertical label shows both panels
-        controlsLabel.addEventListener('click', showBoth);
+        // Panel toggle button
+        panelToggle.addEventListener('click', togglePanels);
 
         // Restore hidden state from localStorage
         try {
-            if (localStorage.getItem(storageKey)) hideBoth();
+            if (localStorage.getItem(storageKey)) {
+                keyrefPanel.classList.add('hidden');
+                hoverPanel.classList.add('hidden');
+            }
         } catch(e) {}
     })();
 
