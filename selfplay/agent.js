@@ -1983,11 +1983,13 @@ export class Agent {
 
         // 8b. If exploration failed but frontier cells exist, they may be behind secret doors
         //     Trigger occupancy-based search when stuck with unreachable frontier
+        //     SECRET DOORS ONLY EXIST ON DLVL 3+ (depth > 2), skip searching on earlier levels
         const unreachableFrontier = level.getExplorationFrontier();
         const coveragePercent = level.exploredCount / (80 * 21);
         const hasUnreachableFrontier = unreachableFrontier.length > 10 && coveragePercent < 0.50;
+        const canHaveSecretDoors = this.dungeon.currentDepth > 2; // Secret doors only on Dlvl 3+
 
-        if (hasUnreachableFrontier && this.levelStuckCounter > 30 && level.stairsDown.length === 0) {
+        if (canHaveSecretDoors && hasUnreachableFrontier && this.levelStuckCounter > 30 && level.stairsDown.length === 0) {
             // Use occupancy map to find likely secret door locations
             const allTargets = level.getSecretDoorSearchTargets({x: px, y: py}, 5);
 
@@ -2523,11 +2525,12 @@ export class Agent {
         }
 
         // PRIORITY: Systematic frontier clearing mode
-        // When we have a moderate number of frontier cells (10-80) but are stuck,
+        // When we have frontier cells (10-300) but are stuck,
         // systematically visit each unvisited frontier cell to ensure thorough exploration
+        // Upper limit prevents trying to clear hundreds of cells in huge open areas
         const shouldSystematicallyClearFrontier = (
             frontier.length >= 10 &&
-            frontier.length <= 80 &&
+            frontier.length <= 300 &&
             this.levelStuckCounter > 20 &&
             level.stairsDown.length === 0
         );

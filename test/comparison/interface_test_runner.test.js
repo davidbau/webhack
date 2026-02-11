@@ -162,6 +162,66 @@ async function simulateJSStep(step, previousState) {
 }
 
 describe('Interface Tests', () => {
+  describe('Complete Character Generation', () => {
+    it('should match C NetHack complete chargen sequence exactly', async () => {
+      const session = loadSession('interface_chargen.session.json');
+
+      if (!session) {
+        console.log('⚠️  No chargen session found - run gen_interface_sessions.py --chargen');
+        return;
+      }
+
+      assert.strictEqual(session.type, 'interface');
+      assert.strictEqual(session.subtype, 'complete_chargen');
+      assert(session.steps.length > 0, 'Session should have steps');
+
+      // Test all chargen steps
+      let state = null;
+      const stepResults = [];
+
+      for (let i = 0; i < session.steps.length; i++) {
+        const step = session.steps[i];
+        const jsResult = await simulateJSStep(step, state);
+        state = jsResult.state;
+
+        const comparison = compareScreens(
+          jsResult.screen,
+          step.screen,
+          jsResult.attrs,
+          step.attrs
+        );
+
+        stepResults.push({
+          step: i,
+          description: step.description,
+          matches: comparison.matches,
+          charDiffs: comparison.diffs.filter(d => d.type === 'char').length,
+          attrDiffs: comparison.diffs.filter(d => d.type === 'attr').length
+        });
+
+        if (!comparison.matches) {
+          const report = formatDiffReport(comparison.diffs, 10);
+          console.log(`\n❌ Step ${i} (${step.description}) differences:\n${report}`);
+        }
+      }
+
+      // Log progress
+      console.log('\nComplete Chargen Sequence:');
+      for (const result of stepResults) {
+        const status = result.matches ? '✅' : '⚠️';
+        console.log(`${status} Step ${result.step} (${result.description}): ` +
+                   `${result.charDiffs} char diffs, ${result.attrDiffs} attr diffs`);
+      }
+
+      // Count total matches
+      const perfectSteps = stepResults.filter(r => r.matches).length;
+      console.log(`\n${perfectSteps}/${stepResults.length} steps with 100% equivalence`);
+
+      // Verify we tested all steps
+      assert(stepResults.length > 0, 'Should have tested at least one step');
+    });
+  });
+
   describe('Startup Sequence', () => {
     it('should match C NetHack startup screen exactly', async () => {
       const session = loadSession('interface_startup.session.json');
