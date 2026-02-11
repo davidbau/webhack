@@ -191,10 +191,20 @@ while read commit; do
   TEST_OUTPUT=$(mktemp)
   START_TIME=$(date +%s)
 
-  if node --test test/comparison/*.test.js 2>&1 > "$TEST_OUTPUT"; then
-    TEST_RESULT="pass"
+  # Run all tests (comparison + unit if available)
+  if [ -d "test/unit" ]; then
+    if node --test test/comparison/*.test.js test/unit/*.js 2>&1 > "$TEST_OUTPUT"; then
+      TEST_RESULT="pass"
+    else
+      TEST_RESULT="completed_with_failures"
+    fi
   else
-    TEST_RESULT="completed_with_failures"
+    # Fallback for older commits without test/unit
+    if node --test test/comparison/*.test.js 2>&1 > "$TEST_OUTPUT"; then
+      TEST_RESULT="pass"
+    else
+      TEST_RESULT="completed_with_failures"
+    fi
   fi
 
   END_TIME=$(date +%s)
@@ -218,7 +228,7 @@ while read commit; do
   echo "Results: $PASS_COUNT pass, $FAIL_COUNT fail (${DURATION}s)"
 
   # Parse category-specific results by analyzing test NAMES
-  # Categories: chargen, gameplay, map, special, inventory, option, c_vs_js, other
+  # Categories: chargen, gameplay, map, special + unit tests
   CHARGEN_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "_chargen_" 2>/dev/null || echo 0)
   CHARGEN_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "_chargen_" 2>/dev/null || echo 0)
   CHARGEN_PASS=$(echo "$CHARGEN_PASS" | tr -d '[:space:]')
@@ -243,22 +253,12 @@ while read commit; do
   SPECIAL_FAIL=$(echo "$SPECIAL_FAIL" | tr -d '[:space:]')
   SPECIAL_TOTAL=$((SPECIAL_PASS + SPECIAL_FAIL))
 
-  INVENTORY_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "_inventory_" 2>/dev/null || echo 0)
-  INVENTORY_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "_inventory_" 2>/dev/null || echo 0)
-  INVENTORY_PASS=$(echo "$INVENTORY_PASS" | tr -d '[:space:]')
-  INVENTORY_FAIL=$(echo "$INVENTORY_FAIL" | tr -d '[:space:]')
-  INVENTORY_TOTAL=$((INVENTORY_PASS + INVENTORY_FAIL))
-
-  OPTION_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "_option_\|_selfplay_\|_pickup_types_" 2>/dev/null || echo 0)
-  OPTION_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "_option_\|_selfplay_\|_pickup_types_" 2>/dev/null || echo 0)
-  OPTION_PASS=$(echo "$OPTION_PASS" | tr -d '[:space:]')
-  OPTION_FAIL=$(echo "$OPTION_FAIL" | tr -d '[:space:]')
-  OPTION_TOTAL=$((OPTION_PASS + OPTION_FAIL))
-
-  # C-vs-JS golden tests (not tied to specific sessions)
-  CVJ_PASS=$(grep "^✔.*golden comparison" "$TEST_OUTPUT" 2>/dev/null | wc -l | tr -d '[:space:]')
-  CVJ_FAIL=$(grep "^✖.*golden comparison" "$TEST_OUTPUT" 2>/dev/null | wc -l | tr -d '[:space:]')
-  CVJ_TOTAL=$((CVJ_PASS + CVJ_FAIL))
+  # Unit tests category
+  UNIT_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "test/unit/" 2>/dev/null || echo 0)
+  UNIT_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "test/unit/" 2>/dev/null || echo 0)
+  UNIT_PASS=$(echo "$UNIT_PASS" | tr -d '[:space:]')
+  UNIT_FAIL=$(echo "$UNIT_FAIL" | tr -d '[:space:]')
+  UNIT_TOTAL=$((UNIT_PASS + UNIT_FAIL))
 
   # Create test note
   TEST_NOTE=$(cat <<EOF
@@ -296,20 +296,10 @@ while read commit; do
       "pass": $SPECIAL_PASS,
       "fail": $SPECIAL_FAIL
     },
-    "inventory": {
-      "total": $INVENTORY_TOTAL,
-      "pass": $INVENTORY_PASS,
-      "fail": $INVENTORY_FAIL
-    },
-    "option": {
-      "total": $OPTION_TOTAL,
-      "pass": $OPTION_PASS,
-      "fail": $OPTION_FAIL
-    },
-    "c_vs_js": {
-      "total": $CVJ_TOTAL,
-      "pass": $CVJ_PASS,
-      "fail": $CVJ_FAIL
+    "unit": {
+      "total": $UNIT_TOTAL,
+      "pass": $UNIT_PASS,
+      "fail": $UNIT_FAIL
     }
   },
   "regression": false,

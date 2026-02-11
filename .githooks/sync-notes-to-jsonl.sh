@@ -7,6 +7,14 @@ set -e
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 OUTPUT_FILE="$REPO_ROOT/teststats/results.jsonl"
 
+# Pull latest test notes from remote (if available)
+echo "Fetching test notes from remote..."
+if git fetch origin refs/notes/test-results:refs/notes/test-results 2>/dev/null; then
+  echo "✅ Fetched latest test notes from remote"
+else
+  echo "ℹ️  No remote notes to fetch (or offline)"
+fi
+
 echo "Rebuilding teststats/results.jsonl from git notes..."
 
 # Create temporary file
@@ -47,4 +55,21 @@ else
 fi
 
 rm -f "$TEMP_FILE"
+
+# Push unpushed test notes to remote (if any)
+if git show-ref refs/notes/test-results >/dev/null 2>&1; then
+  # Check if there are unpushed notes
+  LOCAL_NOTES=$(git rev-parse refs/notes/test-results 2>/dev/null || echo "")
+  REMOTE_NOTES=$(git rev-parse refs/remotes/origin/test-results 2>/dev/null || echo "")
+
+  if [ -n "$LOCAL_NOTES" ] && [ "$LOCAL_NOTES" != "$REMOTE_NOTES" ]; then
+    echo "Pushing test notes to remote..."
+    if git push --no-verify origin refs/notes/test-results 2>/dev/null; then
+      echo "✅ Pushed test notes to remote"
+    else
+      echo "ℹ️  Could not push test notes (offline or no permissions)"
+    fi
+  fi
+fi
+
 exit 0

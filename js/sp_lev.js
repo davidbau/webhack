@@ -84,6 +84,10 @@ export let levelState = {
     ystart: 0,              // Map placement offset Y
     xsize: 0,               // Map fragment width
     ysize: 0,               // Map fragment height
+    // Map-relative coordinate system (C ref: Lua coordinates are relative to map origin)
+    mapCoordMode: false,    // True after des.map() - coordinates are map-relative
+    mapOriginX: 0,          // Map origin X for coordinate conversion
+    mapOriginY: 0,          // Map origin Y for coordinate conversion
     // Room tracking (for nested rooms in special levels)
     currentRoom: null,      // Current room being populated
     roomStack: [],          // Stack of nested rooms
@@ -556,6 +560,9 @@ export function resetLevelState() {
         ystart: 0,
         xsize: 0,
         ysize: 0,
+        mapCoordMode: false,
+        mapOriginX: 0,
+        mapOriginY: 0,
         currentRoom: null,
         roomStack: [],
         roomDepth: 0,
@@ -942,7 +949,8 @@ export function map(data) {
         } else if (halign === 'right') {
             x = 80 - width - 1;
         } else if (halign === 'half-left') {
-            x = Math.floor((80 - width) / 4);
+            // C ref: sp_lev.c uses rounding that gives +1 compared to floor
+            x = Math.floor((80 - width) / 4) + 1;
         } else if (halign === 'half-right') {
             x = Math.floor(3 * (80 - width) / 4);
         }
@@ -984,6 +992,12 @@ export function map(data) {
         wallification(levelState.map);
     }
 
+    // Enable map-relative coordinate mode
+    // C ref: After des.map(), all Lua coordinates are relative to map origin
+    levelState.mapCoordMode = true;
+    levelState.mapOriginX = x;
+    levelState.mapOriginY = y;
+
     // Execute contents callback if provided
     // C ref: Lua des.map() calls the contents function after placing the map
     if (contents && typeof contents === 'function') {
@@ -998,6 +1012,24 @@ export function map(data) {
         };
         contents(mapRegion);
     }
+}
+
+/**
+ * Convert map-relative coordinates to absolute coordinates
+ * C ref: Lua coordinates after des.map() are relative to map origin
+ *
+ * @param {number} x - X coordinate (map-relative if mapCoordMode is true)
+ * @param {number} y - Y coordinate (map-relative if mapCoordMode is true)
+ * @returns {Object} { x: absoluteX, y: absoluteY }
+ */
+function toAbsoluteCoords(x, y) {
+    if (levelState.mapCoordMode && x !== undefined && y !== undefined) {
+        return {
+            x: levelState.mapOriginX + x,
+            y: levelState.mapOriginY + y
+        };
+    }
+    return { x, y };
 }
 
 /**
@@ -1350,8 +1382,9 @@ export function room(opts = {}) {
     const xalign = alignMap[opts.xalign] ?? -1;
     const yalign = alignMap[opts.yalign] ?? -1;
     const type = opts.type ?? 'ordinary';
-    // C ref: Themed rooms default to unlit (0), ordinary rooms default to random (-1)
-    let lit = opts.lit ?? (type === 'themed' ? 0 : -1);  // let: modified by litstate_rnd()
+    // C ref: Both themed and ordinary rooms default to random lighting (-1)
+    // C trace evidence (seed 42): themed rooms call litstate_rnd with rlit=-1
+    let lit = opts.lit ?? -1;  // let: modified by litstate_rnd()
     const DEBUG_LIT = typeof process !== 'undefined' && process.env.DEBUG_BUILD_ROOM === '1';
     if (DEBUG_LIT && type === 'themed') {
         console.log(`  des.room(): type="${type}", opts.lit=${opts.lit}, computed lit=${lit}`);
@@ -1978,6 +2011,24 @@ export function object(name_or_opts, x, y) {
         levelState.map = new GameMap();
     }
 
+    // Handle Lua-style coordinate arrays: des.object("chest", [3,1])
+    // In Lua, tables can be unpacked; in JS we need explicit handling
+    if (Array.isArray(x) && y === undefined) {
+        y = x[1];
+        x = x[0];
+    }
+
+    // Handle coord property in options object: des.object({ id: "chest", coord: [3,1] })
+    if (typeof name_or_opts === 'object' && name_or_opts.coord && x === undefined && y === undefined) {
+        if (Array.isArray(name_or_opts.coord)) {
+            x = name_or_opts.coord[0];
+            y = name_or_opts.coord[1];
+        } else if (typeof name_or_opts.coord === 'object') {
+            x = name_or_opts.coord.x;
+            y = name_or_opts.coord.y;
+        }
+    }
+
     // C ref: nhlua.c nhl_rn2() — Lua object generation calls rn2(1000+) for properties
     // Even though actual object placement is deferred, RNG calls happen immediately
     // C pattern is complex: first object uses 5 calls (1000-1004), second uses 3 (1010,1012,1014 with gaps),
@@ -2024,14 +2075,22 @@ export function object(name_or_opts, x, y) {
         console.log(`[des.object] Skipping Lua RNG (counter is undefined)`);
     }
 
-    // Convert relative coordinates to absolute if inside a nested room
-    // C ref: Lua automatically handles coordinate conversion based on room context
+    // Convert map-relative coordinates to absolute
+    // C ref: Lua coordinates after des.map() are relative to map origin
     let absX = x;
     let absY = y;
-    if (levelState.currentRoom && x !== undefined && y !== undefined) {
+    if (levelState.mapCoordMode && x !== undefined && y !== undefined) {
+        const mapCoords = toAbsoluteCoords(x, y);
+        absX = mapCoords.x;
+        absY = mapCoords.y;
+    }
+
+    // Then convert room-relative coordinates to absolute if inside a nested room
+    // C ref: Lua automatically handles coordinate conversion based on room context
+    if (levelState.currentRoom && absX !== undefined && absY !== undefined) {
         // Coordinates are relative to room interior (excluding walls)
-        absX = levelState.currentRoom.lx + 1 + x;
-        absY = levelState.currentRoom.ly + 1 + y;
+        absX = levelState.currentRoom.lx + 1 + absX;
+        absY = levelState.currentRoom.ly + 1 + absY;
     }
 
     // DEFERRED EXECUTION: Queue object placement for later (after corridors)
@@ -2111,14 +2170,22 @@ export function trap(type_or_opts, x, y) {
         levelState.map = new GameMap();
     }
 
-    // Convert relative coordinates to absolute if inside a nested room
-    // C ref: Lua automatically handles coordinate conversion based on room context
+    // Convert map-relative coordinates to absolute
+    // C ref: Lua coordinates after des.map() are relative to map origin
     let absX = x;
     let absY = y;
-    if (levelState.currentRoom && x !== undefined && y !== undefined) {
+    if (levelState.mapCoordMode && x !== undefined && y !== undefined) {
+        const mapCoords = toAbsoluteCoords(x, y);
+        absX = mapCoords.x;
+        absY = mapCoords.y;
+    }
+
+    // Then convert room-relative coordinates to absolute if inside a nested room
+    // C ref: Lua automatically handles coordinate conversion based on room context
+    if (levelState.currentRoom && absX !== undefined && absY !== undefined) {
         // Coordinates are relative to room interior (excluding walls)
-        absX = levelState.currentRoom.lx + 1 + x;
-        absY = levelState.currentRoom.ly + 1 + y;
+        absX = levelState.currentRoom.lx + 1 + absX;
+        absY = levelState.currentRoom.ly + 1 + absY;
     }
 
     // DEFERRED EXECUTION: Queue trap placement instead of executing immediately
@@ -2350,14 +2417,22 @@ export function monster(opts_or_class, x, y) {
         levelState.luaRngCounter = baseOffset + numRngCalls;
     }
 
-    // Convert relative coordinates to absolute if inside a nested room
-    // C ref: Lua automatically handles coordinate conversion based on room context
+    // Convert map-relative coordinates to absolute
+    // C ref: Lua coordinates after des.map() are relative to map origin
     let absX = x;
     let absY = y;
-    if (levelState.currentRoom && x !== undefined && y !== undefined) {
+    if (levelState.mapCoordMode && x !== undefined && y !== undefined) {
+        const mapCoords = toAbsoluteCoords(x, y);
+        absX = mapCoords.x;
+        absY = mapCoords.y;
+    }
+
+    // Then convert room-relative coordinates to absolute if inside a nested room
+    // C ref: Lua automatically handles coordinate conversion based on room context
+    if (levelState.currentRoom && absX !== undefined && absY !== undefined) {
         // Coordinates are relative to room interior (excluding walls)
-        absX = levelState.currentRoom.lx + 1 + x;
-        absY = levelState.currentRoom.ly + 1 + y;
+        absX = levelState.currentRoom.lx + 1 + absX;
+        absY = levelState.currentRoom.ly + 1 + absY;
     }
 
     // DEFERRED EXECUTION: Queue monster placement for later (after corridors)
@@ -2413,6 +2488,12 @@ export function door(state_or_opts, x, y) {
         doorX = x;
         doorY = y;
     }
+
+    // Convert map-relative coordinates to absolute
+    // C ref: Lua coordinates after des.map() are relative to map origin
+    const absCoords = toAbsoluteCoords(doorX, doorY);
+    doorX = absCoords.x;
+    doorY = absCoords.y;
 
     // Validate coordinates
     if (doorX < 0 || doorX >= COLNO || doorY < 0 || doorY >= ROWNO) {
@@ -2503,6 +2584,12 @@ export function ladder(direction, x, y) {
     if (!levelState.map) {
         levelState.map = new GameMap();
     }
+
+    // Convert map-relative coordinates to absolute
+    // C ref: Lua coordinates after des.map() are relative to map origin
+    const absCoords = toAbsoluteCoords(x, y);
+    x = absCoords.x;
+    y = absCoords.y;
 
     if (x >= 0 && x < 80 && y >= 0 && y < 21) {
         // Place LADDER terrain
@@ -2661,6 +2748,7 @@ function executeDeferredObjects() {
                 if (otyp >= 0 && x >= 0 && x < 80 && y >= 0 && y < 21) {
                     const obj = mksobj(otyp, true, false);
                     if (obj) {
+                        obj.id = name_or_opts;  // Store the original name
                         obj.ox = x;
                         obj.oy = y;
                         levelState.map.objects.push(obj);
@@ -2671,9 +2759,19 @@ function executeDeferredObjects() {
             let objId = name_or_opts.id;
             let coordX, coordY;
 
-            if (name_or_opts.coord) {
-                coordX = name_or_opts.coord.x;
-                coordY = name_or_opts.coord.y;
+            // First, try to use coordinates from the deferred object itself (already unpacked by object())
+            if (x !== undefined && y !== undefined) {
+                coordX = x;
+                coordY = y;
+            } else if (name_or_opts.coord) {
+                // Handle coord property (array or object)
+                if (Array.isArray(name_or_opts.coord)) {
+                    coordX = name_or_opts.coord[0];
+                    coordY = name_or_opts.coord[1];
+                } else {
+                    coordX = name_or_opts.coord.x;
+                    coordY = name_or_opts.coord.y;
+                }
             } else if (name_or_opts.x !== undefined && name_or_opts.y !== undefined) {
                 coordX = name_or_opts.x;
                 coordY = name_or_opts.y;
@@ -2695,6 +2793,14 @@ function executeDeferredObjects() {
                             obj.corpsenm = name_or_opts.montype;
                         }
                         levelState.map.objects.push(obj);
+
+                        // TODO: Execute contents callback if provided
+                        // C ref: Lua des.object() with contents function executes after container creation
+                        // NOTE: Objects created in contents() should go into container inventory, not map.objects
+                        // Requires implementing container inventory system before enabling
+                        // if (name_or_opts.contents && typeof name_or_opts.contents === 'function') {
+                        //     name_or_opts.contents(obj);
+                        // }
                     }
                 }
             } else if (name_or_opts.class) {
@@ -2943,13 +3049,23 @@ export function finalize_level() {
     // Apply random flipping
     flipLevelRandom();
 
+    // Re-wallify after flipping to fix corner types
+    // C ref: sp_lev.c line 913 - fix_wall_spines() after flip_level()
+    if (levelState.map) {
+        wallification(levelState.map);
+    }
+
     // C ref: mklev.c:1533-1539 — level_finalize_topology()
     // bound_digging marks boundary stone as non-diggable before mineralize
     if (levelState.map) {
         bound_digging(levelState.map);
         // Get depth from level state or default to 1
         const depth = levelState.levelDepth || 1;
-        mineralize(levelState.map, depth);
+        // Skip mineralize for maze levels (special levels with custom maps)
+        // C ref: Special levels don't get gold/gems in walls
+        if (!levelState.flags.is_maze_lev) {
+            mineralize(levelState.map, depth);
+        }
     }
 
     // TODO: Add other finalization steps (solidify_map, premapping, etc.)

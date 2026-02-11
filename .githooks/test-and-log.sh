@@ -52,8 +52,14 @@ TEST_OUTPUT=$(mktemp)
 
 cd "$PROJECT_ROOT"
 
-# Run all test suites and capture results
-node --test test/comparison/*.test.js 2>&1 | tee "$TEST_OUTPUT" || true
+# Run all test suites (comparison + unit) and capture results
+# IMPORTANT: Must run ALL tests to get full coverage stats
+if [ -d "test/unit" ]; then
+  node --test test/comparison/*.test.js test/unit/*.js 2>&1 | tee "$TEST_OUTPUT" || true
+else
+  # Fallback for older commits without test/unit
+  node --test test/comparison/*.test.js 2>&1 | tee "$TEST_OUTPUT" || true
+fi
 
 TEST_END=$(date +%s)
 DURATION=$((TEST_END - TEST_START))
@@ -77,13 +83,21 @@ echo "  Duration: ${DURATION}s"
 echo "========================================="
 
 # Parse category-specific results
-# (This is a simplified version - could be enhanced to parse actual test categories)
+# Categories: chargen, gameplay, map, special (comparison tests) + unit tests
+
+# Comparison test categories
 CATEGORY_MAP_PASS=$(grep "seed[0-9]*_map" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✔" 2>/dev/null || echo 0)
 CATEGORY_MAP_FAIL=$(grep "seed[0-9]*_map" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✖" 2>/dev/null || echo 0)
 CATEGORY_GAMEPLAY_PASS=$(grep "gameplay" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✔" 2>/dev/null || echo 0)
 CATEGORY_GAMEPLAY_FAIL=$(grep "gameplay" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✖" 2>/dev/null || echo 0)
 CATEGORY_CHARGEN_PASS=$(grep "chargen" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✔" 2>/dev/null || echo 0)
 CATEGORY_CHARGEN_FAIL=$(grep "chargen" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✖" 2>/dev/null || echo 0)
+CATEGORY_SPECIAL_PASS=$(grep "_special_" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✔" 2>/dev/null || echo 0)
+CATEGORY_SPECIAL_FAIL=$(grep "_special_" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✖" 2>/dev/null || echo 0)
+
+# Unit test categories - parse from test file names in output
+CATEGORY_UNIT_PASS=$(grep "test/unit/" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✔" 2>/dev/null || echo 0)
+CATEGORY_UNIT_FAIL=$(grep "test/unit/" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✖" 2>/dev/null || echo 0)
 
 # Ensure all category variables are valid numbers (strip whitespace and set defaults)
 CATEGORY_MAP_PASS=$(echo "$CATEGORY_MAP_PASS" | tr -d '[:space:]')
@@ -98,6 +112,14 @@ CATEGORY_CHARGEN_PASS=$(echo "$CATEGORY_CHARGEN_PASS" | tr -d '[:space:]')
 CATEGORY_CHARGEN_PASS=${CATEGORY_CHARGEN_PASS:-0}
 CATEGORY_CHARGEN_FAIL=$(echo "$CATEGORY_CHARGEN_FAIL" | tr -d '[:space:]')
 CATEGORY_CHARGEN_FAIL=${CATEGORY_CHARGEN_FAIL:-0}
+CATEGORY_SPECIAL_PASS=$(echo "$CATEGORY_SPECIAL_PASS" | tr -d '[:space:]')
+CATEGORY_SPECIAL_PASS=${CATEGORY_SPECIAL_PASS:-0}
+CATEGORY_SPECIAL_FAIL=$(echo "$CATEGORY_SPECIAL_FAIL" | tr -d '[:space:]')
+CATEGORY_SPECIAL_FAIL=${CATEGORY_SPECIAL_FAIL:-0}
+CATEGORY_UNIT_PASS=$(echo "$CATEGORY_UNIT_PASS" | tr -d '[:space:]')
+CATEGORY_UNIT_PASS=${CATEGORY_UNIT_PASS:-0}
+CATEGORY_UNIT_FAIL=$(echo "$CATEGORY_UNIT_FAIL" | tr -d '[:space:]')
+CATEGORY_UNIT_FAIL=${CATEGORY_UNIT_FAIL:-0}
 
 # Check for regression
 REGRESSION=false
@@ -152,20 +174,30 @@ cat > "$TEST_OUTPUT.json" <<EOF
     "duration": $DURATION
   },
   "categories": {
-    "map": {
-      "total": $((CATEGORY_MAP_PASS + CATEGORY_MAP_FAIL)),
-      "pass": $CATEGORY_MAP_PASS,
-      "fail": $CATEGORY_MAP_FAIL
+    "chargen": {
+      "total": $((CATEGORY_CHARGEN_PASS + CATEGORY_CHARGEN_FAIL)),
+      "pass": $CATEGORY_CHARGEN_PASS,
+      "fail": $CATEGORY_CHARGEN_FAIL
     },
     "gameplay": {
       "total": $((CATEGORY_GAMEPLAY_PASS + CATEGORY_GAMEPLAY_FAIL)),
       "pass": $CATEGORY_GAMEPLAY_PASS,
       "fail": $CATEGORY_GAMEPLAY_FAIL
     },
-    "chargen": {
-      "total": $((CATEGORY_CHARGEN_PASS + CATEGORY_CHARGEN_FAIL)),
-      "pass": $CATEGORY_CHARGEN_PASS,
-      "fail": $CATEGORY_CHARGEN_FAIL
+    "map": {
+      "total": $((CATEGORY_MAP_PASS + CATEGORY_MAP_FAIL)),
+      "pass": $CATEGORY_MAP_PASS,
+      "fail": $CATEGORY_MAP_FAIL
+    },
+    "special": {
+      "total": $((CATEGORY_SPECIAL_PASS + CATEGORY_SPECIAL_FAIL)),
+      "pass": $CATEGORY_SPECIAL_PASS,
+      "fail": $CATEGORY_SPECIAL_FAIL
+    },
+    "unit": {
+      "total": $((CATEGORY_UNIT_PASS + CATEGORY_UNIT_FAIL)),
+      "pass": $CATEGORY_UNIT_PASS,
+      "fail": $CATEGORY_UNIT_FAIL
     }
   },
   "regression": $REGRESSION,

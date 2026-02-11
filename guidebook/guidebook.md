@@ -729,7 +729,7 @@ main melee weapon afterwards.
 
 See also `t` (throw) for more general throwing and shooting.
 
-`i`    List your inventory (everything you're carrying).
+`i`    List your inventory (everything you`re carrying).
 
 `I`    List  selected parts of your inventory, usually be specifying the
 character for a particular set of objects, like `[` for armor  or
@@ -949,7 +949,7 @@ May be preceded by `m` to force a selection menu.
 
 Combines the preceding five type-specific commands into one.
 
-`$`    Report the gold you're carrying, possibly shop credit and/or debt
+`$`    Report the gold you`re carrying, possibly shop credit and/or debt
 too.
 
 `+`    List the spells you know.
@@ -1008,7 +1008,7 @@ compiled with.
 
 #adjust
 Adjust inventory letters (most useful when the fixinv  option  is
-"on").  Autocompletes.  Default key is `M-a'.
+"on").  Autocompletes.  Default key is `M-a`.
 
 This  command  allows  you  to  move  an item from one particular
 inventory slot to another so that it has a letter which  is  more
@@ -1039,7 +1039,7 @@ to merge with the destination stack.
 #annotate
 Allows you to specify one line of text to associate with the cur-
 rent dungeon level.  All levels with annotations are displayed by
-the "`#overview`" command.  Autocompletes.  Default key  is  `M-A',
+the "`#overview`" command.  Autocompletes.  Default key  is  `M-A`,
 and also ``^N`' if `number_pad` is on.
 
 #apply
@@ -1073,7 +1073,7 @@ level (same as "`#annotate`").  Default key is `C`.
 Cast a spell.  Default key is `Z`.
 
 #chat
-Talk to someone.  Default key is `M-c'.
+Talk to someone.  Default key is `M-c`.
 
 #chronicle
 Show a list of important game events.
@@ -1083,7 +1083,7 @@ Close a door.  Default key is `c`.
 
 #conduct
 List  voluntary  challenges  you have maintained.  Autocompletes.
-Default key is `M-C'.
+Default key is `M-C`.
 
 See the section below entitled "Conduct" for details.
 
@@ -1115,11 +1115,11 @@ Engrave writing on the floor.  Default key is `E`.
 
 #enhance
 Advance   or  check  weapon  and  spell  skills.   Autocompletes.
-Default key is `M-e'.
+Default key is `M-e`.
 
 #exploremode
 Switch from normal play to non-scoring explore mode.  Default key
-is `M-X'.
+is `M-X`.
 
 Requires  confirmation;  default  response  is n (no).  To really
 switch to explore mode, respond with y.  You can  set  the  para-
@@ -1135,7 +1135,7 @@ Fire ammunition from quiver, possibly autowielding a launcher, or
 hit with a wielded polearm.  Default key is `f`.
 
 #force
-Force a lock.  Autocompletes.  Default key is `M-f'.
+Force a lock.  Autocompletes.  Default key is `M-f`.
 
 #genocided
 List any monster types which have  been  genocided.   In  explore
@@ -1152,7 +1152,7 @@ high" (which  are  applicable  for  `#vanquished`),  that  will  be
 ignored  for  `#genocided`  and  alphabetical will be used instead.
 The menu omits those two choices when used for `#genocide`.
 
-Autocompletes.  Default key is `M-g'.
+Autocompletes.  Default key is `M-g`.
 
 #glance
 Show what type of thing a map symbol corresponds to.  Default key
@@ -1182,10 +1182,10 @@ Inventory specific item types.  Default key is `I`.
 
 #invoke
 Invoke an object's special powers.  Autocompletes.   Default  key
-is `M-i'.
+is `M-i`.
 
 #jump
-Jump  to another location.  Autocompletes.  Default key is `M-j',
+Jump  to another location.  Autocompletes.  Default key is `M-j`,
 and also `j` if `number_pad` is on.
 
 #kick
@@ -1221,21 +1221,21 @@ Describe what you can see, or remember, of your surroundings.
 Loot a box or bag on the floor beneath you, or the saddle from  a
 steed standing next to you.  Autocompletes.  Precede with the `m`
 prefix to skip containers at your location  and  go  directly  to
-removing  a  saddle.   Default key is `M-l', and also `l` if num-
+removing  a  saddle.   Default key is `M-l`, and also `l` if num-
 `ber_pad` is on.
 
 #monster
 Use a monster's special ability (when  polymorphed  into  monster
-form).  Autocompletes.  Default key is `M-m'.
+form).  Autocompletes.  Default key is `M-m`.
 
 #name
 Name  a monster, an individual object, or a type of object.  Same
-as "`#call`".  Autocompletes.  Default keys are `N`, `M-n', and `M-
+as "`#call`".  Autocompletes.  Default keys are `N`, `M-n`, and `M-
 N'.
 
 #offer
 Offer  a  sacrifice  to the gods.  Autocompletes.  Default key is
-`M-o'.
+`M-o`.
 
 You'll need to find an altar  to  have  any  chance  at  success.
 Corpses of recently killed monsters are the fodder of choice.
@@ -1269,7 +1269,7 @@ or remove an annotation without needing to return to that  level.
 This  will  also  force all visited levels to be displayed rather
 than just the "interesting" subset.
 
-Autocompletes.  Default keys are ``^O`', and `M-O'.
+Autocompletes.  Default keys are ``^O`', and `M-O`.
 
 #panic
 Test the panic routine.  Terminates the current  game.   Autocom-
@@ -1297,7 +1297,7 @@ Pick up things at the current location.  Default key is `,`.  The
 Polymorph self.  Autocompletes.  Debug mode only.
 
 #pray
-Pray to the gods for help.  Autocompletes.  Default key is `M-p'.
+Pray to the gods for help.  Autocompletes.  Default key is `M-p`.
 
 Praying too soon after  receiving  prior  help  is  a  bad  idea.
 (Hint:  entering  the dungeon alive is treated as having received
@@ -1353,23 +1353,23 @@ Default key is `m`.
 
 #retravel
 Travel  to a previously selected travel destination.  Default key
-is `C-_'.  See also `#travel`.
+is `C-_`.  See also `#travel`.
 
 #ride
 Ride  (or  stop  riding)  a  saddled  creature.    Autocompletes.
-Default key is `M-R'.
+Default key is `M-R`.
 
 #rub
-Rub a lamp or a stone.  Autocompletes.  Default key is `M-r'.
+Rub a lamp or a stone.  Autocompletes.  Default key is `M-r`.
 
 #run
 Prefix  key  to run towards a direction.  Default key is `G` when
 `number_pad` is off, `5` when `number_pad` is set to 1 or  3,  other-
-wise `M-5' when it is set to 2 or 4.
+wise `M-5` when it is set to 2 or 4.
 
 #rush
 Prefix key to rush towards a direction.  Default is `g` when num-
-`ber_pad` is off, `M-5' when `number_pad` is set to 1 or 3, otherwise
+`ber_pad` is off, `M-5` when `number_pad` is set to 1 or 3, otherwise
 `5` when it is set to 2 or 4.
 
 #save
@@ -1430,7 +1430,7 @@ slot.
 Do  a  shell escape, switching from NetHack to a subprocess.  Can
 be disabled at the time the  program  is  built.   When  enabled,
 access for specific users can be controlled by the system config-
-uration file.  Use the shell command  `exit'  to  return  to  the
+uration file.  Use the shell command  `exit`  to  return  to  the
 game.  Default key is `!`.
 
 #showgold
@@ -1449,7 +1449,7 @@ sters temporarily removed, making it possible to see all  discov-
 ered traps.)  Default key is `^`.
 
 #sit
-Sit down.  Autocompletes.  Default key is `M-s'.
+Sit down.  Autocompletes.  Default key is `M-s`.
 
 #stats
 Show memory usage statistics.  Autocompletes.  Debug mode only.
@@ -1459,7 +1459,7 @@ Suspend  the  game, switching from NetHack to the terminal it was
 started from without performing save-and-exit.  Can  be  disabled
 at  the  time  the program is built.  When enabled, mainly useful
 for tty and curses interfaces on UNIX.   Use  the  shell  command
-`fg' to return to the game.  Default key is ``^Z`'.
+`fg` to return to the game.  Default key is ``^Z`'.
 
 #swap
 Swap wielded and secondary weapons.  Default key is `x`.
@@ -1487,7 +1487,7 @@ In explore mode, you can choose to view the full map rather  than
 just  its  explored  portion.  In debug mode there are additional
 choices.
 
-Autocompletes.  Default key is `<del>'  or  `<delete>'  (see  Del
+Autocompletes.  Default key is `<del>`  or  `<delete>`  (see  Del
 above).
 
 #therecmdmenu
@@ -1513,7 +1513,7 @@ pick  one  from  inventory,  except  for  the  special  case   of
 `menustyle:traditional`  with  two or more containers present; that
 situation will start with the floor container menu.
 
-Autocompletes.  Default key is `M-T'.
+Autocompletes.  Default key is `M-T`.
 
 #travel
 Travel to a specific location on the map.  Default  key  is  `_`.
@@ -1525,17 +1525,17 @@ line will show "(no travel path)" if your character does not know
 of a path to that location.  See also `#retravel`.
 
 #turn
-Turn undead away.  Autocompletes.  Default key is `M-t'.
+Turn undead away.  Autocompletes.  Default key is `M-t`.
 
 #twoweapon
 Toggle  two-weapon combat on or off.  Autocompletes.  Default key
-is `X`, and also `M-2' if `number_pad` is off.
+is `X`, and also `M-2` if `number_pad` is off.
 
 Note that you must use suitable weapons for this type of  combat,
 or it will be automatically turned off.
 
 #untrap
-Untrap  something  (trap, door, or chest).  Default key is `M-u',
+Untrap  something  (trap, door, or chest).  Default key is `M-u`,
 and `u` if `number_pad` is on.
 
 In some circumstances it can also be used to rescue trapped  mon-
@@ -1564,7 +1564,7 @@ During end-of-game disclosure, when asked whether  to  show  van-
 quished  monsters answering `a` will let you choose from the sort
 menu.
 
-Autocompletes.  Default key is `M-V'.
+Autocompletes.  Default key is `M-V`.
 
 #version
 Print compile time options for this version of NetHack.
@@ -1574,7 +1574,7 @@ included.  If there are more than one, you can use the windowtype
 option in your run-time configuration file to select the one  you
 want.
 
-Autocompletes.  Default key is `M-v'.
+Autocompletes.  Default key is `M-v`.
 
 #versionshort
 Show  the  program's  version number, plus the date and time that
@@ -1602,7 +1602,7 @@ Show what type of thing a symbol corresponds to.  Default key  is
 Wield a weapon.  Default key is `w`.
 
 #wipe
-Wipe off your face.  Autocompletes.  Default key is `M-w'.
+Wipe off your face.  Autocompletes.  Default key is `M-w`.
 
 #wizborn
 Show  monster  birth,  death,  genocide,  and extinct statistics.
@@ -3208,12 +3208,12 @@ section name.  Lines in other sections are ignored.
 Example:
 
     OPTIONS=color
-CHOOSE=char A,char B
-[char A]
+    CHOOSE=char A,char B
+    [char A]
     OPTIONS=role:arc,race:dwa,align:law,gender:fem
-[char B]
+    [char B]
     OPTIONS=role:wiz,race:elf,align:cha,gender:mal
-[] `#end` of CHOOSE
+    [] `#end` of CHOOSE
     OPTIONS=!`rest_on_space`
 
 If [] is present, the preceding section is closed and no new section
@@ -3817,7 +3817,7 @@ one will be automatically chosen.
 On some systems, the default is the player's user name;  on  others,
 there is no default and the player will be prompted.  The former can
 made to behave like the latter by specifying a generic name such  as
-``player''.  Cannot be set with the `O` command.
+``player`'.  Cannot be set with the `O` command.
 
 news
 Read the NetHack news file, if present (default on).  Since the news
@@ -3844,8 +3844,8 @@ settings are:
 For backward compatibility, omitting a value is the same as specify-
 ing  1  and  negating `number_pad` is the same as specifying 0.  (Set-
 tings 2 and 4 are for compatibility with MS-DOS or old PC  Hack;  in
-addition  to the different behavior for `5`, `Alt-5' acts as `G` and
-`Alt-0' acts as `I`.  Setting -1 is to accommodate some QWERTZ  key-
+addition  to the different behavior for `5`, `Alt-5` acts as `G` and
+`Alt-0` acts as `I`.  Setting -1 is to accommodate some QWERTZ  key-
 boards  which  have  the  location of the `y` and `z` keys swapped.)
 When moving by numbers, to enter a count prefix for  those  commands
 which  accept one (such as "12s" to search twelve times), precede it
@@ -3866,7 +3866,7 @@ swim trap".
 Confirm     - for  any prompts which are set to require "yes" rather
 than `y`, also  require  "no"  to  reject  instead  of
 accepting any non-yes response as no; changes pray and
-AutoAll to require "yes" or `no' too;
+AutoAll to require "yes" or `no` too;
 quit        - require "yes" rather than `y` to confirm quitting  the
 game or switching into non-scoring explore mode;
 die         - require  "yes"  rather  than `y` to confirm dying (not
@@ -4203,7 +4203,7 @@ n - order by count, high to low; ties are broken by internal monster
 index;
 z - order by count, low to high; ties broken by internal index.
 
-Can be interactively set via the `m O' command or via using the  `m`
+Can be interactively set via the `m O` command or via using the  `m`
 prefix  before either the `#vanquished` command or the `#genocided` com-
 mand.
 
@@ -4674,7 +4674,7 @@ support on a platform where there is no  regular  expression  library.
 
 While  this  is  not  true of any modern platform, if your NetHack was
 built this way, patterns are instead glob patterns;  regardless,  this
-document  refers  to  both  as `regular expressions.'  This applies to
+document  refers  to  both  as `regular expressions.`  This applies to
 Autopickup exceptions, Message types, Menu colors, and User sounds.
 
 
@@ -5097,7 +5097,7 @@ rule which matches a change in the field's value, the  "up"  or
 * percentage  sets  the  field  attribute  when  the  field value
 matches the percentage.  It is specified as a number between  0
 and  100, followed by `%` (percent sign).  If the percentage is
-prefixed with `<=' or `>=', it also matches when value is below
+prefixed with `<=` or `>=`, it also matches when value is below
 or  above  the percentage.  Use prefix `<` or `>` to match when
 strictly  below  or  above.   (The  numeric  limit  is  relaxed
 slightly  for  those:  >-1%  and <101% are allowed.)  Only four
@@ -5119,7 +5119,7 @@ ence point short of the next level.
 * absolute value sets the attribute when the field value  matches
 that  number.   The  number  must  be  0  or higher, except for
 "armor-class' which allows negative values, and may  optionally
-be  preceded by `=`.  If the number is preceded by `<=' or `>='
+be  preceded by `=`.  If the number is preceded by `<=` or `>=`
 instead, it also matches when value is below or above.  If  the
 prefix is `<` or `>`, only match when strictly above or below.
 

@@ -214,7 +214,7 @@
 <p>Engraving the word “Elbereth” will cause most monsters to not attack you hand-to-hand (but if you attack, you will rub it out); this is often useful to give yourself a breather.</p>
 <p><code>f</code> Fire (shoot or throw) one of the objects placed in your quiver (or quiver sack, or that you have at the ready). You may select ammunition with a previous <code>Q</code> command, or let the computer pick something appropriate if autoquiver is true. If your wielded weapon has the throw-and-return property, your quiver is empty, and autoquiver is false, you will throw that wielded weapon instead of filling the quiver. This will also automatically use a polearm if wielded. If fireassist is true, firing will auto- matically try to wield a launcher (for example, a bow or a sling) matching the ammo in the quiver; this might take multiple turns, and get interrupted by a monster. Remember to swap back to your main melee weapon afterwards.</p>
 <p>See also <code>t</code> (throw) for more general throwing and shooting.</p>
-<p><code>i</code> List your inventory (everything you’re carrying).</p>
+<p><code>i</code> List your inventory (everything you`re carrying).</p>
 <p><code>I</code> List selected parts of your inventory, usually be specifying the character for a particular set of objects, like <code>[</code> for armor or <code>!</code> for potions.</p>
 <p>I* - list all gems in inventory; Iu - list all unpaid items; Ix - list all used up items that are on your shopping bill; IB - list all items known to be blessed; IU - list all items known to be uncursed; IC - list all items known to be cursed; IX - list all items whose bless/curse status is unknown; IP - list items picked up last; I$ - count your money.</p>
 <p><code>o</code> Open a door.</p>
@@ -285,7 +285,7 @@
 <p><code>(</code> Tell what tools you are using.</p>
 <p><code>*</code> Tell what equipment you are using.</p>
 <p>Combines the preceding five type-specific commands into one.</p>
-<p><code>$</code> Report the gold you’re carrying, possibly shop credit and/or debt too.</p>
+<p><code>$</code> Report the gold you`re carrying, possibly shop credit and/or debt too.</p>
 <p><code>+</code> List the spells you know.</p>
 <p>Using this command, you can also rearrange the order in which your spells are listed, either by sorting the entire list or by picking one spell from the menu then picking another to swap places with it. Swapping pairs of spells changes their casting letters, so the change lasts after the current <code>+</code> command fin- ishes. Sorting the whole list is temporary. To make the most recent sort order persist beyond the current <code>+</code> command, choose the sort option again and then pick “reassign casting letters”. (Any spells learned after that will be added to the end of the list rather than be inserted into the sorted ordering.)</p>
 <p><code>\</code> Show what types of objects have been discovered.</p>
@@ -301,11 +301,11 @@
 <p>Many terminals have an option to swap the <delete> and <backspace> keys, so typing the <del> key might not execute this command. If that happens, you can use the extended command “<code>#terrain</code>” instead.</p>
 <p><code>#</code> Perform an extended command.</p>
 <p>As you can see, the authors of NetHack used up all the letters, so this is a way to introduce the less frequently used commands. What extended commands are available depends on what features the game was compiled with.</p>
-<p>#adjust Adjust inventory letters (most useful when the fixinv option is “on”). Autocompletes. Default key is `M-a’.</p>
+<p>#adjust Adjust inventory letters (most useful when the fixinv option is “on”). Autocompletes. Default key is <code>M-a</code>.</p>
 <p>This command allows you to move an item from one particular inventory slot to another so that it has a letter which is more meaningful for you or that it will appear in a particular loca- tion when inventory listings are displayed. You can move to a currently empty slot, or if the destination is occupied–and won’t merge–the item there will swap slots with the one being moved. “<code>#adjust</code>” can also be used to split a stack of objects; when choosing the item to adjust, enter a count prior to its let- ter.</p>
 <p>Adjusting without a count used to collect all compatible stacks when moving to the destination. That behavior has been changed; to gather compatible stacks, “<code>#adjust</code>” a stack into its own inventory slot. If it has a name assigned, other stacks with the same name or with no name will merge provided that all their other attributes match. If it does not have a name, only other stacks with no name are eligible. In either case, otherwise com- patible stacks with a different name will not be merged. This contrasts with using “<code>#adjust</code>” to move from one slot to a differ- ent slot. In that situation, moving (no count given) a compati- ble stack will merge if either stack has a name when the other doesn’t and give that name to the result, while splitting (count</p>
 <p>given) will ignore the source stack’s name when deciding whether to merge with the destination stack.</p>
-<p>#annotate Allows you to specify one line of text to associate with the cur- rent dungeon level. All levels with annotations are displayed by the “<code>#overview</code>” command. Autocompletes. Default key is <code>M-A', and also ``^N</code>’ if <code>number_pad</code> is on.</p>
+<p>#annotate Allows you to specify one line of text to associate with the cur- rent dungeon level. All levels with annotations are displayed by the “<code>#overview</code>” command. Autocompletes. Default key is <code>M-A</code>, and also `<code>^N</code>’ if <code>number_pad</code> is on.</p>
 <p>#apply Apply (use) a tool such as a pick-axe, a key, or a lamp. Default key is <code>a</code>.</p>
 <p>If the tool used acts on items on the floor, using the <code>m</code> prefix skips those items.</p>
 <p>If used on a wand, that wand will be broken, releasing its magic in the process. Confirmation is required.</p>
@@ -314,10 +314,10 @@
 <p>#bugreport Bring up a browser window to submit a report to the NetHack Development Team. Can be disabled at the time the program is built; when enabled, CRASHREPORTURL must be set in the system configuration file.</p>
 <p>#call Call (name) a monster, or an object in inventory, on the floor, or in the discoveries list, or add an annotation for the current level (same as “<code>#annotate</code>”). Default key is <code>C</code>.</p>
 <p>#cast Cast a spell. Default key is <code>Z</code>.</p>
-<p>#chat Talk to someone. Default key is `M-c’.</p>
+<p>#chat Talk to someone. Default key is <code>M-c</code>.</p>
 <p>#chronicle Show a list of important game events.</p>
 <p>#close Close a door. Default key is <code>c</code>.</p>
-<p>#conduct List voluntary challenges you have maintained. Autocompletes. Default key is `M-C’.</p>
+<p>#conduct List voluntary challenges you have maintained. Autocompletes. Default key is <code>M-C</code>.</p>
 <p>See the section below entitled “Conduct” for details.</p>
 <p>#debugfuzzer Start the fuzz tester. Debug mode only.</p>
 <p>#dip Dip an object into something. Autocompletes. Default key is `M- d’.</p>
@@ -327,16 +327,16 @@
 <p>#droptype Drop specific item types. Default key is <code>D</code>.</p>
 <p>#eat Eat something. Default key is <code>e</code>. The <code>m</code> prefix skips eating items on the floor.</p>
 <p>#engrave Engrave writing on the floor. Default key is <code>E</code>.</p>
-<p>#enhance Advance or check weapon and spell skills. Autocompletes. Default key is `M-e’.</p>
-<p>#exploremode Switch from normal play to non-scoring explore mode. Default key is `M-X’.</p>
+<p>#enhance Advance or check weapon and spell skills. Autocompletes. Default key is <code>M-e</code>.</p>
+<p>#exploremode Switch from normal play to non-scoring explore mode. Default key is <code>M-X</code>.</p>
 <p>Requires confirmation; default response is n (no). To really switch to explore mode, respond with y. You can set the para- noid_confirmation:quit option to require a response of yes instead.</p>
 <p>#fight Prefix key to force fight a direction, even if you see nothing to fight there. Default key is <code>F</code>, or <code>-</code> with <code>number_pad</code></p>
 <p>#fire Fire ammunition from quiver, possibly autowielding a launcher, or hit with a wielded polearm. Default key is <code>f</code>.</p>
-<p>#force Force a lock. Autocompletes. Default key is `M-f’.</p>
+<p>#force Force a lock. Autocompletes. Default key is <code>M-f</code>.</p>
 <p>#genocided List any monster types which have been genocided. In explore mode and debug mode it also shows types which have become extinct.</p>
 <p>The display order is the same as is used by <code>#vanquished</code>. The <code>m</code> prefix brings up a menu of available sorting orders, and doing that for either <code>#genocided</code> or <code>#vanquished</code> changes the order for both.</p>
 <p>If the sorting order is “count high to low” or “count low to high” (which are applicable for <code>#vanquished</code>), that will be ignored for <code>#genocided</code> and alphabetical will be used instead. The menu omits those two choices when used for <code>#genocide</code>.</p>
-<p>Autocompletes. Default key is `M-g’.</p>
+<p>Autocompletes. Default key is <code>M-g</code>.</p>
 <p>#glance Show what type of thing a map symbol corresponds to. Default key is <code>;</code>.</p>
 <p>#help Show the help menu. Default key is <code>?</code>, and also <code>h</code> if num- <code>ber_pad</code> is on.</p>
 <p>#herecmdmenu Show a menu of possible actions directed at your current loca- tion. The menu is limited to a subset of the likeliest actions, not an exhaustive set of all possibilities. Autocompletes.</p>
@@ -344,8 +344,8 @@
 <p>#history Show long version and game history. Default key is <code>V</code>.</p>
 <p>#inventory Show your inventory. Default key is <code>i</code>.</p>
 <p>#inventtype Inventory specific item types. Default key is <code>I</code>.</p>
-<p>#invoke Invoke an object’s special powers. Autocompletes. Default key is `M-i’.</p>
-<p>#jump Jump to another location. Autocompletes. Default key is <code>M-j', and also</code>j<code>if</code>number_pad` is on.</p>
+<p>#invoke Invoke an object’s special powers. Autocompletes. Default key is <code>M-i</code>.</p>
+<p>#jump Jump to another location. Autocompletes. Default key is <code>M-j</code>, and also <code>j</code> if <code>number_pad</code> is on.</p>
 <p>#kick Kick something. Default key is `<code>^D</code>’, and <code>k</code> if <code>number_pad</code> is on.</p>
 <p>#known Show what object types have been discovered. Default key is <code>\</code>.</p>
 <p>The <code>m</code> prefix allows assigning a new value to the sortdiscover- ies option to control the order in which the discoveries are dis- played.</p>
@@ -355,10 +355,10 @@
 <p>#lightsources Show mobile light sources. Autocompletes. Debug mode only.</p>
 <p>#look Look at what is here, under you. Default key is <code>:</code>.</p>
 <p>#lookaround Describe what you can see, or remember, of your surroundings.</p>
-<p>#loot Loot a box or bag on the floor beneath you, or the saddle from a steed standing next to you. Autocompletes. Precede with the <code>m</code> prefix to skip containers at your location and go directly to removing a saddle. Default key is <code>M-l', and also</code>l<code>if num-</code>ber_pad` is on.</p>
-<p>#monster Use a monster’s special ability (when polymorphed into monster form). Autocompletes. Default key is `M-m’.</p>
-<p>#name Name a monster, an individual object, or a type of object. Same as “<code>#call</code>”. Autocompletes. Default keys are <code>N</code>, <code>M-n', and</code>M- N’.</p>
-<p>#offer Offer a sacrifice to the gods. Autocompletes. Default key is `M-o’.</p>
+<p>#loot Loot a box or bag on the floor beneath you, or the saddle from a steed standing next to you. Autocompletes. Precede with the <code>m</code> prefix to skip containers at your location and go directly to removing a saddle. Default key is <code>M-l</code>, and also <code>l</code> if num- <code>ber_pad</code> is on.</p>
+<p>#monster Use a monster’s special ability (when polymorphed into monster form). Autocompletes. Default key is <code>M-m</code>.</p>
+<p>#name Name a monster, an individual object, or a type of object. Same as “<code>#call</code>”. Autocompletes. Default keys are <code>N</code>, <code>M-n</code>, and `M- N’.</p>
+<p>#offer Offer a sacrifice to the gods. Autocompletes. Default key is <code>M-o</code>.</p>
 <p>You’ll need to find an altar to have any chance at success. Corpses of recently killed monsters are the fodder of choice.</p>
 <p>The <code>m</code> prefix skips offering any items which are on the altar.</p>
 <p>#open Open a door. Default key is <code>o</code>.</p>
@@ -366,14 +366,14 @@
 <p>#optionsfull Show advanced game option settings. No default key. Precede with the <code>m</code> prefix to execute the simpler options command. (Mainly useful if you use BINDING=O:optionsfull to switch <code>O</code> from simple options back to traditional advanced options.)</p>
 <p>#overview Display information you’ve discovered about the dungeon. Any visited level with an annotation is included, and many things (altars, thrones, fountains, and so on; extra stairs leading to another dungeon branch) trigger an automatic annotation. If dun- geon overview is chosen during end-of-game disclosure, every vis- ited level will be included regardless of annotations.</p>
 <p>Precede <code>#overview</code> with the <code>m</code> prefix to display the dungeon overview as a menu where you can select any visited level to add or remove an annotation without needing to return to that level. This will also force all visited levels to be displayed rather than just the “interesting” subset.</p>
-<p>Autocompletes. Default keys are `<code>^O</code>‘, and `M-O’.</p>
+<p>Autocompletes. Default keys are `<code>^O</code>’, and <code>M-O</code>.</p>
 <p>#panic Test the panic routine. Terminates the current game. Autocom- pletes. Debug mode only.</p>
 <p>Asks for confirmation; default is n (no); continue playing. To really panic, respond with y. You can set the paranoid_confirma- tion:quit option to require a response of yes instead.</p>
 <p>#pay Pay your shopping bill. Default key is <code>p</code>.</p>
 <p>#perminv If persistent inventory display is supported and enabled (with the <code>perm_invent</code> option), interact with it instead of with the map. You’ll be prompted for menu scrolling keystrokes such as <code>&gt;</code> and <code>&lt;</code>. Press Return or Escape to resume normal play. Default key is <code>|</code>.</p>
 <p>#pickup Pick up things at the current location. Default key is <code>,</code>. The <code>m</code> prefix forces use of a menu.</p>
 <p>#polyself Polymorph self. Autocompletes. Debug mode only.</p>
-<p>#pray Pray to the gods for help. Autocompletes. Default key is `M-p’.</p>
+<p>#pray Pray to the gods for help. Autocompletes. Default key is <code>M-p</code>.</p>
 <p>Praying too soon after receiving prior help is a bad idea. (Hint: entering the dungeon alive is treated as having received help. You probably shouldn’t start off a new game by praying right away.) Since using this command by accident can cause</p>
 <p>trouble, there is an option to make you confirm your intent before praying. It is enabled by default, and you can reset the <code>paranoid_confirmation</code> option to disable it.</p>
 <p>#prevmsg Show previously displayed game messages. Default key is `<code>^P</code>’.</p>
@@ -388,11 +388,11 @@
 <p>#remove Remove an accessory (ring, amulet, etc). Default key is <code>R</code>.</p>
 <p>#repeat Repeat the previous command. Default key is `<code>^A</code>’.</p>
 <p>#reqmenu Prefix key to modify the behavior or request menu from some com- mands. Prevents autopickup when used with movement commands. Default key is <code>m</code>.</p>
-<p>#retravel Travel to a previously selected travel destination. Default key is <code>C-_'.  See also</code>#travel`.</p>
-<p>#ride Ride (or stop riding) a saddled creature. Autocompletes. Default key is `M-R’.</p>
-<p>#rub Rub a lamp or a stone. Autocompletes. Default key is `M-r’.</p>
-<p>#run Prefix key to run towards a direction. Default key is <code>G</code> when <code>number_pad</code> is off, <code>5</code> when <code>number_pad</code> is set to 1 or 3, other- wise `M-5’ when it is set to 2 or 4.</p>
-<p>#rush Prefix key to rush towards a direction. Default is <code>g</code> when num- <code>ber_pad</code> is off, <code>M-5' when</code>number_pad<code>is set to 1 or 3, otherwise</code>5` when it is set to 2 or 4.</p>
+<p>#retravel Travel to a previously selected travel destination. Default key is <code>C-_</code>. See also <code>#travel</code>.</p>
+<p>#ride Ride (or stop riding) a saddled creature. Autocompletes. Default key is <code>M-R</code>.</p>
+<p>#rub Rub a lamp or a stone. Autocompletes. Default key is <code>M-r</code>.</p>
+<p>#run Prefix key to run towards a direction. Default key is <code>G</code> when <code>number_pad</code> is off, <code>5</code> when <code>number_pad</code> is set to 1 or 3, other- wise <code>M-5</code> when it is set to 2 or 4.</p>
+<p>#rush Prefix key to rush towards a direction. Default is <code>g</code> when num- <code>ber_pad</code> is off, <code>M-5</code> when <code>number_pad</code> is set to 1 or 3, otherwise <code>5</code> when it is set to 2 or 4.</p>
 <p>#save Save the game and exit the program. Default key is <code>S</code>.</p>
 <p>#saveoptions Save configuration options to the config file. This will over- write the file, removing all comments, so if you have manually edited the config file, don’t use this.</p>
 <p>#search Search for traps and secret doors around you. Default key is <code>s</code>.</p>
@@ -409,13 +409,13 @@
 <p>leashes attached to pets). Will display a menu if there are more than one or if the command is preceded by the <code>m</code> prefix.</p>
 <p>#seeweapon Show the weapon currently wielded. Default key is <code>)</code>.</p>
 <p>If dual-wielding, a separate message about the secondary weapon will be given. Using the <code>m</code> prefix will force a menu and it will include primary weapon, alternate weapon even when not dual- wielding, and also whatever is currently assigned to the quiver slot.</p>
-<p>#shell Do a shell escape, switching from NetHack to a subprocess. Can be disabled at the time the program is built. When enabled, access for specific users can be controlled by the system config- uration file. Use the shell command <code>exit'  to  return  to  the game.  Default key is</code>!`.</p>
+<p>#shell Do a shell escape, switching from NetHack to a subprocess. Can be disabled at the time the program is built. When enabled, access for specific users can be controlled by the system config- uration file. Use the shell command <code>exit</code> to return to the game. Default key is <code>!</code>.</p>
 <p>#showgold Report the gold in your inventory, including gold you know about in containers you’re carrying. If you are inside a shop, report any credit or debt you have in that shop. Default key is <code>$</code>.</p>
 <p>#showspells List and reorder known spells. Default key is <code>+</code>.</p>
 <p>#showtrap Describe an adjacent trap, possibly covered by objects or a mon- ster. To be eligible, the trap must already be discovered. (The “<code>#terrain</code>” command can display your map with all objects and mon- sters temporarily removed, making it possible to see all discov- ered traps.) Default key is <code>^</code>.</p>
-<p>#sit Sit down. Autocompletes. Default key is `M-s’.</p>
+<p>#sit Sit down. Autocompletes. Default key is <code>M-s</code>.</p>
 <p>#stats Show memory usage statistics. Autocompletes. Debug mode only.</p>
-<p>#suspend Suspend the game, switching from NetHack to the terminal it was started from without performing save-and-exit. Can be disabled at the time the program is built. When enabled, mainly useful for tty and curses interfaces on UNIX. Use the shell command <code>fg' to return to the game.  Default key is ``^Z</code>’.</p>
+<p>#suspend Suspend the game, switching from NetHack to the terminal it was started from without performing save-and-exit. Can be disabled at the time the program is built. When enabled, mainly useful for tty and curses interfaces on UNIX. Use the shell command <code>fg</code> to return to the game. Default key is `<code>^Z</code>’.</p>
 <p>#swap Swap wielded and secondary weapons. Default key is <code>x</code>.</p>
 <p>#takeoff Take off one piece of armor. Default key is <code>T</code>.</p>
 <p>#takeoffall Remove all armor. Default key is <code>A</code>.</p>
@@ -423,29 +423,29 @@
 <p>#terrain Show map without obstructions. In normal play you can view the explored portion of the current level’s map without monsters; without monsters and objects; or without monsters, objects, and traps.</p>
 <p>If there are visible clouds of gas in view, they are treated like traps when deciding whether to show them or the floor underneath them.</p>
 <p>In explore mode, you can choose to view the full map rather than just its explored portion. In debug mode there are additional choices.</p>
-<p>Autocompletes. Default key is <code>&lt;del&gt;'  or</code><delete>’ (see Del above).</p>
+<p>Autocompletes. Default key is <code>&lt;del&gt;</code> or <code>&lt;delete&gt;</code> (see Del above).</p>
 <p>#therecmdmenu Show a menu of possible actions directed at a location next to you. The menu is limited to a subset of the likeliest actions, not an exhaustive set of all possibilities. Autocompletes.</p>
 <p>#throw Throw something. Default key is <code>t</code>.</p>
 <p>#timeout Look at the timeout queue. Autocompletes. Debug mode only.</p>
 <p>#tip Tip over a container (bag or box) to pour out its contents. When there are containers on the floor, the game will prompt to pick one of them or “tip something being carried”. If the latter is chosen, there will be another prompt for which item from inven- tory to tip.</p>
 <p>The <code>m</code> prefix makes the command skip containers on the floor and pick one from inventory, except for the special case of <code>menustyle:traditional</code> with two or more containers present; that situation will start with the floor container menu.</p>
-<p>Autocompletes. Default key is `M-T’.</p>
+<p>Autocompletes. Default key is <code>M-T</code>.</p>
 <p>#travel Travel to a specific location on the map. Default key is <code>_</code>. Using the “request menu” prefix shows a menu of interesting tar- gets in sight without asking to move the cursor. When picking a target with cursor and the autodescribe option is on, the top line will show “(no travel path)” if your character does not know</p>
 <p>of a path to that location. See also <code>#retravel</code>.</p>
-<p>#turn Turn undead away. Autocompletes. Default key is `M-t’.</p>
-<p>#twoweapon Toggle two-weapon combat on or off. Autocompletes. Default key is <code>X</code>, and also <code>M-2' if</code>number_pad` is off.</p>
+<p>#turn Turn undead away. Autocompletes. Default key is <code>M-t</code>.</p>
+<p>#twoweapon Toggle two-weapon combat on or off. Autocompletes. Default key is <code>X</code>, and also <code>M-2</code> if <code>number_pad</code> is off.</p>
 <p>Note that you must use suitable weapons for this type of combat, or it will be automatically turned off.</p>
-<p>#untrap Untrap something (trap, door, or chest). Default key is <code>M-u', and</code>u<code>if</code>number_pad` is on.</p>
+<p>#untrap Untrap something (trap, door, or chest). Default key is <code>M-u</code>, and <code>u</code> if <code>number_pad</code> is on.</p>
 <p>In some circumstances it can also be used to rescue trapped mon- sters.</p>
 <p>#up Go up a staircase. Default key is <code>&lt;</code>.</p>
 <p>#vanquished List vanquished monsters by type and count.</p>
 <p>Note that the vanquished monsters list includes all monsters killed by traps and each other as well as by you, and omits any which got removed from the game without being killed (perhaps by genocide, or by a mollified shopkeeper dismissing summoned Kops) or were already corpses when placed on the map.</p>
 <p>Using the “request menu” prefix prior to <code>#vanquished</code> brings up a menu of sorting orders available (provided that the vanquished monsters list contains at least two types of monsters). Which- ever ordering is picked gets assigned to the sortvanquished option so is remembered for subsequent <code>#vanquished</code> requests. The “<code>#genocided</code>” command shares this sorting order.</p>
 <p>During end-of-game disclosure, when asked whether to show van- quished monsters answering <code>a</code> will let you choose from the sort menu.</p>
-<p>Autocompletes. Default key is `M-V’.</p>
+<p>Autocompletes. Default key is <code>M-V</code>.</p>
 <p>#version Print compile time options for this version of NetHack.</p>
 <p>The second paragraph lists the user interface(s) that are included. If there are more than one, you can use the windowtype option in your run-time configuration file to select the one you want.</p>
-<p>Autocompletes. Default key is `M-v’.</p>
+<p>Autocompletes. Default key is <code>M-v</code>.</p>
 <p>#versionshort Show the program’s version number, plus the date and time that the running copy was built from sources (not the version’s release date). Default key is <code>v</code>.</p>
 <p>#vision Show vision array. Autocompletes. Debug mode only.</p>
 <p>#wait Rest one move while doing nothing. Default key is <code>.</code>, and also <code></code> if <code>rest_on_space</code> is on.</p>
@@ -453,7 +453,7 @@
 <p>#whatdoes Tell what a key does. Default key is <code>&amp;</code>.</p>
 <p>#whatis Show what type of thing a symbol corresponds to. Default key is <code>/</code>.</p>
 <p>#wield Wield a weapon. Default key is <code>w</code>.</p>
-<p>#wipe Wipe off your face. Autocompletes. Default key is `M-w’.</p>
+<p>#wipe Wipe off your face. Autocompletes. Default key is <code>M-w</code>.</p>
 <p>#wizborn Show monster birth, death, genocide, and extinct statistics. Debug mode only.</p>
 <p>#wizbury Bury objects under and around you. Autocompletes. Debug mode only.</p>
 <p>#wizcast Cast any spell. Debug mode only.</p>
@@ -764,8 +764,14 @@ OPTIONS=!legacy,autopickup,pickup_types:$&quot;=/!?+</code></pre>
 <p>BIND=<code>^X</code>:getpos.autodescribe</p>
 <p><strong><code>CHOOSE</code></strong> Chooses at random one of the comma-separated parameters as an active section name. Lines in other sections are ignored.</p>
 <p>Example:</p>
-<pre><code>OPTIONS=color</code></pre>
-<p>CHOOSE=char A,char B [char A] OPTIONS=role:arc,race:dwa,align:law,gender:fem [char B] OPTIONS=role:wiz,race:elf,align:cha,gender:mal <a href="#section-1"></a> <code>#end</code> of CHOOSE OPTIONS=!<code>rest_on_space</code></p>
+<pre><code>OPTIONS=color
+CHOOSE=char A,char B
+[char A]
+OPTIONS=role:arc,race:dwa,align:law,gender:fem
+[char B]
+OPTIONS=role:wiz,race:elf,align:cha,gender:mal
+[] `#end` of CHOOSE
+OPTIONS=!`rest_on_space`</code></pre>
 <p>If <a href="#section-1"></a> is present, the preceding section is closed and no new section begins; whatever follows will be common to all sections. Otherwise</p>
 <p>the last section extends to the end of the options file.</p>
 <p><strong><code>MENUCOLOR</code></strong> Highlight menu lines with different colors. See the “Configuring Menu Colors” section.</p>
@@ -911,17 +917,17 @@ OPTIONS=`hilite_pet`,`hilite_pile`</code></pre>
 <p>For backward compatibility, no value needs to be specified (which defaults to “full”), or it can be negated (which defaults to "sin-</p>
 <p>gle").</p>
 <p>name Set your character’s name (defaults to your user name). You can also set your character’s role by appending a dash and one or more letters of the role (that is, by suffixing one of -A -B -C -H -K -M -P -Ra -Ro -S -T -V -W). If -@ is used for the role, then a random one will be automatically chosen.</p>
-<p>On some systems, the default is the player’s user name; on others, there is no default and the player will be prompted. The former can made to behave like the latter by specifying a generic name such as `<code>player''.  Cannot be set with the</code>O` command.</p>
+<p>On some systems, the default is the player’s user name; on others, there is no default and the player will be prompted. The former can made to behave like the latter by specifying a generic name such as `<code>player</code>’. Cannot be set with the <code>O</code> command.</p>
 <p>news Read the NetHack news file, if present (default on). Since the news is shown at the beginning of the game, there’s no point in setting this with the <code>O</code> command.</p>
 <p>nudist Start the character with no armor (default false). Persistent.</p>
 <p>null Send padding nulls to the terminal (default on). Persistent.</p>
 <p><code>number_pad</code> Use digit keys instead of letters to move (default 0 or off). Valid settings are:</p>
 <p>0 - move by letters; “yuhjklbn” 1 - move by numbers; digit <code>5</code> acts as <code>G</code> movement prefix 2 - like 1 but <code>5</code> works as <code>g</code> prefix instead of as <code>G</code> 3 - by numbers using phone key layout; 123 above, 789 below 4 - combines 3 with 2; phone layout plus MS-DOS compatibility -1 - by letters but use <code>z</code> to go northwest, <code>y</code> to zap wands</p>
-<p>For backward compatibility, omitting a value is the same as specify- ing 1 and negating <code>number_pad</code> is the same as specifying 0. (Set- tings 2 and 4 are for compatibility with MS-DOS or old PC Hack; in addition to the different behavior for <code>5</code>, <code>Alt-5' acts as</code>G<code>and</code>Alt-0’ acts as <code>I</code>. Setting -1 is to accommodate some QWERTZ key- boards which have the location of the <code>y</code> and <code>z</code> keys swapped.) When moving by numbers, to enter a count prefix for those commands which accept one (such as “12s” to search twelve times), precede it with the letter <code>n</code> (“n12s”).</p>
+<p>For backward compatibility, omitting a value is the same as specify- ing 1 and negating <code>number_pad</code> is the same as specifying 0. (Set- tings 2 and 4 are for compatibility with MS-DOS or old PC Hack; in addition to the different behavior for <code>5</code>, <code>Alt-5</code> acts as <code>G</code> and <code>Alt-0</code> acts as <code>I</code>. Setting -1 is to accommodate some QWERTZ key- boards which have the location of the <code>y</code> and <code>z</code> keys swapped.) When moving by numbers, to enter a count prefix for those commands which accept one (such as “12s” to search twelve times), precede it with the letter <code>n</code> (“n12s”).</p>
 <p>packorder Specify the order to list object types in (default "")[%?+!=/(*`0_"). The value of this option should be a string con- taining the symbols for the various object types. Any omitted types are filled in at the end from the previous order.</p>
 <p><code>paranoid_confirmation</code> A space separated list of specific situations where alternate</p>
 <p>prompting is desired. The default is “paranoid_confirmation:pray swim trap”.</p>
-<p>Confirm - for any prompts which are set to require “yes” rather than <code>y</code>, also require “no” to reject instead of accepting any non-yes response as no; changes pray and AutoAll to require “yes” or <code>no' too; quit        - require "yes" rather than</code>y<code>to confirm quitting  the game or switching into non-scoring explore mode; die         - require  "yes"  rather  than</code>y<code>to confirm dying (not useful in normal play; applies to explore mode); bones       - require "yes" rather than</code>y<code>to confirm saving  bones data when dying in debug mode; attack      - require  "yes"  rather than</code>y<code>to confirm attacking a peaceful monster; wand-break  - require "yes" rather than</code>y<code>to  confirm  breaking  a wand with the apply command; eating      - require  "yes"  rather  than</code>y<code>to confirm whether to continue eating; Were-change - require "yes" rather than</code>y<code>to confirm changing form due to lycanthropy when hero has polymorph control; pray        - require</code>y<code>to confirm an attempt to pray rather than immediately praying; on by default; (to require  "yes" rather than just</code>y<code>, set Confirm too); trap        - require</code>y<code>to confirm an attempt to move into or onto a known trap, unless doing  so  is  considered  to  be harmless; when enabled, this confirmation is also used for moving into visible gas cloud regions; (to require "yes"  rather than just</code>y<code>, set Confirm too); confir- mation can be skipped by using the</code>m<code>movement  pre- fix; swim        - prevent walking into water or lava; on by default; (to deliberately step onto/into such terrain when this  is set, use the</code>m<code>movement prefix when adjacent); AutoAll     - require  confirmation  when  the</code>A<code>(Autoselect-All) choice is selected in object class filtering menus for menustyle:Full;  (to  require  "yes"  rather than just</code>y<code>, set Confirm too); Remove      - require selection from inventory for</code>R<code>and</code>T` com- mands even when wearing just one applicable item; all - turn on all of the above.</p>
+<p>Confirm - for any prompts which are set to require “yes” rather than <code>y</code>, also require “no” to reject instead of accepting any non-yes response as no; changes pray and AutoAll to require “yes” or <code>no</code> too; quit - require “yes” rather than <code>y</code> to confirm quitting the game or switching into non-scoring explore mode; die - require “yes” rather than <code>y</code> to confirm dying (not useful in normal play; applies to explore mode); bones - require “yes” rather than <code>y</code> to confirm saving bones data when dying in debug mode; attack - require “yes” rather than <code>y</code> to confirm attacking a peaceful monster; wand-break - require “yes” rather than <code>y</code> to confirm breaking a wand with the apply command; eating - require “yes” rather than <code>y</code> to confirm whether to continue eating; Were-change - require “yes” rather than <code>y</code> to confirm changing form due to lycanthropy when hero has polymorph control; pray - require <code>y</code> to confirm an attempt to pray rather than immediately praying; on by default; (to require “yes” rather than just <code>y</code>, set Confirm too); trap - require <code>y</code> to confirm an attempt to move into or onto a known trap, unless doing so is considered to be harmless; when enabled, this confirmation is also used for moving into visible gas cloud regions; (to require “yes” rather than just <code>y</code>, set Confirm too); confir- mation can be skipped by using the <code>m</code> movement pre- fix; swim - prevent walking into water or lava; on by default; (to deliberately step onto/into such terrain when this is set, use the <code>m</code> movement prefix when adjacent); AutoAll - require confirmation when the <code>A</code> (Autoselect-All) choice is selected in object class filtering menus for menustyle:Full; (to require “yes” rather than just <code>y</code>, set Confirm too); Remove - require selection from inventory for <code>R</code> and <code>T</code> com- mands even when wearing just one applicable item; all - turn on all of the above.</p>
 <p>By default, the pray, swim, and trap choices are enabled, the others disabled. To disable them without setting any of the other choices, use paranoid_confirmation:none. To keep them enabled while setting any of the others, you can include them in the new list, such as paranoid_confirmation:attack pray swim Remove or you can precede the first entry in the list with a plus sign, paranoid_confirma- tion:+attack Remove. To remove an entry that has been previously set without removing others, precede the first entry in the list with a minus sign, paranoid_confirmation:-swim. To both add some new entries and remove some old ones, you can use multiple para- <code>noid_confirmation</code> option settings, or you can use the <code>+</code> form and list entries to be added by their name and entries to be removed by</p>
 <p><code>!</code> and name. The positive (no <code>!</code>) and negative (with <code>!</code>) entries can be intermixed.</p>
 <p>pauper Start the character with no possessions (default false). Persis- tent.</p>
@@ -981,7 +987,7 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>sortvanquished Controls the sorting behavior for the output of the <code>#vanquished</code> com- mand and also for the <code>#genocided</code> command. Persistent.</p>
 <p>The possible values are:</p>
 <p>t - traditional–order by monster level; ties are broken by internal monster index; default; d - order by monster difficulty rating; ties broken by internal index; a - order alphabetically, first any unique monsters then all the others; c - order by monster class, by low to high level within each class; n - order by count, high to low; ties are broken by internal monster index; z - order by count, low to high; ties broken by internal index.</p>
-<p>Can be interactively set via the <code>m O' command or via using the</code>m<code>prefix  before either the</code>#vanquished<code>command or the</code>#genocided` com- mand.</p>
+<p>Can be interactively set via the <code>m O</code> command or via using the <code>m</code> prefix before either the <code>#vanquished</code> command or the <code>#genocided</code> com- mand.</p>
 <p>sounds Allow sounds to be emitted from an integrated sound library (default on).</p>
 <p>sparkle Display a sparkly effect when a monster (including yourself) is hit by an attack to which it is resistant (default on). Persistent.</p>
 <p><code>spot_monsters</code> Show a message when hero notices a monster (default is off).</p>
@@ -1084,7 +1090,7 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>videoshades Set the intensity level of the three gray scales available (default dark normal light, PC NetHack only). If the game display is diffi- cult to read, try adjusting these scales; if this does not correct the problem, try !color. Cannot be set with the <code>O</code> command.</p>
 <h3 id="regular-expressions">9.8. Regular Expressions</h3>
 <p>Regular expressions are normally POSIX extended regular expres- sions. It is possible to compile NetHack without regular expression support on a platform where there is no regular expression library.</p>
-<p>While this is not true of any modern platform, if your NetHack was built this way, patterns are instead glob patterns; regardless, this document refers to both as `regular expressions.’ This applies to Autopickup exceptions, Message types, Menu colors, and User sounds.</p>
+<p>While this is not true of any modern platform, if your NetHack was built this way, patterns are instead glob patterns; regardless, this document refers to both as <code>regular expressions.</code> This applies to Autopickup exceptions, Message types, Menu colors, and User sounds.</p>
 <h3 id="configuring-autopickup-exceptions">9.9. Configuring Autopickup Exceptions</h3>
 <p>You can further refine the behavior of the autopickup option beyond what is available through the <code>pickup_types</code> option.</p>
 <p>By placing <code>autopickup_exception</code> lines in your configuration file, you can define patterns to be checked when the game is about to autopickup something.</p>
@@ -1187,11 +1193,11 @@ OPTIONS=!role:arc bar kni</code></pre>
 <li><p>“always” will set the default attributes for that field.</p></li>
 <li><p>“up”, “down” set the field attributes for when the field value changes upwards or downwards. This attribute times out after statushilites turns.</p></li>
 <li><p>“changed” sets the field attribute for when the field value changes. This attribute times out after statushilites turns. (If a field has both a “changed” rule and an “up” or “down” rule which matches a change in the field’s value, the “up” or “down” one takes precedence.)</p></li>
-<li><p>percentage sets the field attribute when the field value matches the percentage. It is specified as a number between 0 and 100, followed by <code>%</code> (percent sign). If the percentage is prefixed with <code>&lt;=' or</code>&gt;=’, it also matches when value is below or above the percentage. Use prefix <code>&lt;</code> or <code>&gt;</code> to match when strictly below or above. (The numeric limit is relaxed slightly for those: &gt;-1% and &lt;101% are allowed.) Only four fields support percentage rules. Percentages for “hitpoints” and “power” are straightforward; they’re based on the corre- sponding maximum field. Percentage highlight rules are also allowed for “experience level” and “experience points” (valid when the showexp option is enabled). For those, the percentage is based on the progress from the start of the current experi- ence level to the start of the next level. So if level 2 starts at 20 points and level 3 starts at 40 points, having 30</p></li>
+<li><p>percentage sets the field attribute when the field value matches the percentage. It is specified as a number between 0 and 100, followed by <code>%</code> (percent sign). If the percentage is prefixed with <code>&lt;=</code> or <code>&gt;=</code>, it also matches when value is below or above the percentage. Use prefix <code>&lt;</code> or <code>&gt;</code> to match when strictly below or above. (The numeric limit is relaxed slightly for those: &gt;-1% and &lt;101% are allowed.) Only four fields support percentage rules. Percentages for “hitpoints” and “power” are straightforward; they’re based on the corre- sponding maximum field. Percentage highlight rules are also allowed for “experience level” and “experience points” (valid when the showexp option is enabled). For those, the percentage is based on the progress from the start of the current experi- ence level to the start of the next level. So if level 2 starts at 20 points and level 3 starts at 40 points, having 30</p></li>
 </ul>
 <p>points is 50% and 35 points is 75%. 100% is unattainable for experience because you’ll gain a level and the calculations will be reset for that new level, but a rule for =100% is allowed and matches the special case of being exactly 1 experi- ence point short of the next level.</p>
 <ul>
-<li><p>absolute value sets the attribute when the field value matches that number. The number must be 0 or higher, except for "armor-class’ which allows negative values, and may optionally be preceded by <code>=</code>. If the number is preceded by <code>&lt;=' or</code>&gt;=’ instead, it also matches when value is below or above. If the prefix is <code>&lt;</code> or <code>&gt;</code>, only match when strictly above or below.</p></li>
+<li><p>absolute value sets the attribute when the field value matches that number. The number must be 0 or higher, except for "armor-class’ which allows negative values, and may optionally be preceded by <code>=</code>. If the number is preceded by <code>&lt;=</code> or <code>&gt;=</code> instead, it also matches when value is below or above. If the prefix is <code>&lt;</code> or <code>&gt;</code>, only match when strictly above or below.</p></li>
 <li><p>criticalhp only applies to the hitpoints field and only when current hit points are below a threshold (which varies by maxi- mum hit points and experience level). When the threshold is met, a criticalhp rule takes precedence over all other hit- points rules.</p></li>
 <li><p>text match sets the attribute when the field value matches the text. Text matches can only be used for “alignment”, “carry- ing-capacity”, “hunger”, “dungeon-level”, and “title”. For title, only the role’s rank title is tested; the character’s name is ignored.</p></li>
 </ul>

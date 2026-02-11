@@ -154,10 +154,10 @@ def convert_guidebook(input_file, output_file):
         # Convert ``' -> `` ` `` (backtick shown in code)
         line = re.sub(r"``'", r'`` ` ``', line)
 
-        # Convert ASCII quotes around single chars to proper backticks
-        # e.g., `m' -> `m` or `?' -> `?` or any `X' -> `X`
-        # Match any single character between backtick and apostrophe
-        line = re.sub(r"`(.)'", r'`\1`', line)
+        # Convert ASCII quotes around keys/commands to proper backticks
+        # e.g., `m' -> `m` or `M-a' -> `M-a` or `?' -> `?`
+        # Match any content between backtick and apostrophe (non-greedy)
+        line = re.sub(r"`([^'`]+?)'", r'`\1`', line)
 
         # Wrap movement key patterns (vi keys)
         # [yuhjklbn], [YUHJKLBN], m[yuhjklbn], etc.
@@ -187,9 +187,9 @@ def convert_guidebook(input_file, output_file):
         # Wrap special key names (ESC, SPACE, RETURN, etc.)
         line = re.sub(r'\b(ESC|SPACE|RETURN|ENTER|TAB|DELETE|BACKSPACE)\b', r'`\1`', line)
 
-        # Wrap configuration example lines (OPTIONS=...)
+        # Wrap configuration file syntax (OPTIONS=, CHOOSE=, [section])
         # These are configuration file examples that should be in code blocks
-        if line.startswith('OPTIONS='):
+        if line.startswith('OPTIONS=') or line.startswith('CHOOSE=') or re.match(r'^\[.*\]', line):
             line = '    ' + line  # Indent with 4 spaces to make it a code block in markdown
 
         # Wrap environment variable names (HACKDIR, LEVELDIR, etc.)

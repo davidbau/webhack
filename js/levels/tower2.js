@@ -38,23 +38,23 @@ export function generate() {
     des.ladder("down", 3,7);
     des.door("locked",10,4);
     des.door("locked",9,7);
-    des.monster("&",place[10]);
-    des.monster("&",place[1]);
-    des.monster("hell hound pup",place[2]);
-    des.monster("hell hound pup",place[3]);
-    des.monster("winter wolf",place[4]);
-    des.object({ id: "chest", coord: place[5],
+    des.monster("&",place[0]);
+    des.monster("&",place[0]);
+    des.monster("hell hound pup",place[0]);
+    des.monster("hell hound pup",place[0]);
+    des.monster("winter wolf",place[0]);
+    des.object({ id: "chest", coord: place[0],
                  contents: function() {
                     des.object("amulet of life saving");
                  }
     });
-    des.object({ id: "chest", coord: place[6],
+    des.object({ id: "chest", coord: place[0],
                  contents: function() {
                     des.object("amulet of strangulation");
                  }
     });
-    des.object("water walking boots",place[7]);
-    des.object("crystal plate mail",place[8]);
+    des.object("water walking boots",place[0]);
+    des.object("crystal plate mail",place[0]);
 
     let spbooks = [
        "spellbook of invisibility",
@@ -66,7 +66,7 @@ export function generate() {
        "spellbook of polymorph"
     ]
     shuffle(spbooks);
-    des.object(spbooks[1],place[9]);
+    des.object(spbooks[0],place[0]);
 
     // Walls in the tower are non diggable
     des.non_diggable(selection.area(0,0,14,10));
