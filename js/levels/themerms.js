@@ -139,7 +139,7 @@ export const themeroom_fills = [
 
    {
       name: "Garden",
-      eligible: function(rm) { return rm.lit === true; },
+      eligible: function(rm) { return rm.rlit === true; },
       contents: function(rm) {
          const s = selection.room();
          const npts = (s.numpoints() / 6);
@@ -229,7 +229,7 @@ export const themeroom_fills = [
 
    {
       name: "Light source",
-      eligible: function(rm) { return rm.lit === false; },
+      eligible: function(rm) { return rm.rlit === false; },
       contents: function(rm) {
          des.object({ id: "oil lamp", lit: true });
       }
