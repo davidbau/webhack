@@ -13,7 +13,7 @@
  */
 
 import * as des from '../sp_lev.js';
-import { selection, percent, shuffle, levelState } from '../sp_lev.js';
+import { selection, percent, shuffle, levelState, nh as nhGlobal } from '../sp_lev.js';
 import { rn2, rnd, d, getRngLog } from '../rng.js';
 
 // Module-level state for postprocessing callbacks
@@ -22,13 +22,15 @@ let postprocess = [];
 // Module-level depth tracking (set by themerooms_generate)
 let _levelDepth = 1;
 
-// Stub NetHack global functions (Lua nh.* replacements)
+// NetHack global functions (Lua nh.* replacements)
+// Use the global nh from sp_lev.js, but override level_difficulty to use our local depth tracking
 const nh = {
+    ...nhGlobal,  // Import debug_themerm and other functions from sp_lev.js
     level_difficulty: () => _levelDepth,
     rn2: (n) => rn2(n),
     start_timer_at: (x, y, type, time) => { /* TODO: implement timer system */ },
     impossible: (msg) => { console.warn('[themerms impossible]:', msg); },
-    debug_themerm: (fill) => { return (typeof process !== 'undefined' && process.env.DEBUG_THEMERM) || null; }
+    // debug_themerm is inherited from nhGlobal (sp_lev.js)
 };
 
 // Stub other globals
@@ -43,6 +45,9 @@ export function reset_state() {
     postprocess = [];
     _initialized = false;
     themeroom_failed = false;
+    // CRITICAL: Reset debug mode flags between levels
+    debug_rm_idx = null;
+    debug_fill_idx = null;
 }
 
 // Themeroom failure flag (set when room creation fails in themed rooms)

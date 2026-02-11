@@ -2447,6 +2447,39 @@ export const nh = {
      * Stub: always returns false (no genocide in basic game)
      */
     is_genocided: (monClass) => false,
+
+    /**
+     * nh.debug_themerm(is_fill)
+     * Returns the value of THEMERM or THEMERMFILL environment variable for debug mode.
+     * This is used to force selection of a specific themed room or fill during testing.
+     *
+     * C ref: nhlua.c:993 nhl_get_debug_themerm_name()
+     *
+     * Behavior:
+     * - if is_fill is false, checks THEMERM env var (room selector)
+     * - if is_fill is true, checks THEMERMFILL env var (fill selector)
+     * - Returns null if not set or empty (normal reservoir sampling mode)
+     * - Returns the env var value if set (debug mode - skips reservoir sampling)
+     *
+     * Note: In C, this only works in wizard mode. We don't enforce that restriction
+     * in JS since our test harness may replay sessions that were generated in wizard mode.
+     */
+    debug_themerm: (is_fill) => {
+        // Check if we're running in Node.js environment
+        if (typeof process === 'undefined' || !process.env) {
+            return null;
+        }
+
+        const varName = is_fill ? 'THEMERMFILL' : 'THEMERM';
+        const value = process.env[varName];
+
+        // Return null if not set or empty (matching C behavior)
+        if (!value || value === '') {
+            return null;
+        }
+
+        return value;
+    },
 };
 
 /**
