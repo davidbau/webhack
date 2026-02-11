@@ -56,6 +56,9 @@ export class Agent {
         this.stuckCounter = 0;      // detect when agent is stuck (resets on real progress)
         this.levelStuckCounter = 0; // total stuck turns on this level (never resets)
         this.lastFrontierSize = null; // track frontier for progress detection
+        this.visitedFrontierCells = new Set(); // frontier cells we've explored (for systematic clearing)
+        this.lastFleePosition = null; // track position we're fleeing from
+        this.fleeLoopCounter = 0; // consecutive turns fleeing from same position
         this.lastPosition = null;
         this.searchesAtPosition = 0; // how many times we've searched at current pos
         this.currentPath = null;     // current navigation path
@@ -259,6 +262,7 @@ export class Agent {
                     this.levelStuckCounter = 0;
                     this.stuckCounter = 0;
                     this.lastFrontierSize = null;
+                    this.visitedFrontierCells.clear();
                     this.committedTarget = null;
                     this.committedPath = null;
                     this.failedTargets.clear();
@@ -1000,6 +1004,28 @@ export class Agent {
                 // Don't fight, don't flee - just let normal exploration handle it
                 // Fall through to exploration logic
             } else if (!engagement.shouldEngage && engagement.shouldFlee) {
+                // Detect flee loops: if we've been fleeing from the same position for 20+ turns, fight instead
+                const currentPosKey = py * 80 + px;
+                if (this.lastFleePosition === currentPosKey) {
+                    this.fleeLoopCounter++;
+                } else {
+                    this.lastFleePosition = currentPosKey;
+                    this.fleeLoopCounter = 1;
+                }
+
+                // If stuck in a flee loop (20+ consecutive turns), fight the monster instead
+                if (this.fleeLoopCounter >= 20) {
+                    console.log(`[FLEE-LOOP] Stuck fleeing for ${this.fleeLoopCounter} turns - fighting instead`);
+                    const dx = adjacentMonster.x - px;
+                    const dy = adjacentMonster.y - py;
+                    const key = DIR_KEYS[`${dx},${dy}`];
+                    if (key) {
+                        this.fleeLoopCounter = 0; // Reset counter
+                        this.lastFleePosition = null;
+                        return { type: 'attack', key, reason: `breaking flee loop by fighting ${adjacentMonster.ch}` };
+                    }
+                }
+
                 // Dangerous monster - try to flee
                 const nearbyMonsters = findMonsters(this.screen);
                 const fleeDir = this._fleeFrom(px, py, nearbyMonsters, level);
@@ -1031,6 +1057,9 @@ export class Agent {
                 this.oscillationHoldTurns = 0;
                 this.oscillationHoldAttempted = false;
             }
+            // Reset flee loop tracking
+            this.lastFleePosition = null;
+            this.fleeLoopCounter = 0;
         }
 
         // 4. Pick up items at current position
@@ -2481,6 +2510,67 @@ export class Agent {
         // to allow reconsidering distant targets that may have been prematurely blacklisted
         if (isStuckExploring && this.turnNumber % 50 === 0) {
             this.failedTargets.clear();
+        }
+
+        // PRIORITY: Systematic frontier clearing mode
+        // When we have a moderate number of frontier cells (10-80) but are stuck,
+        // systematically visit each unvisited frontier cell to ensure thorough exploration
+        const shouldSystematicallyClearFrontier = (
+            frontier.length >= 10 &&
+            frontier.length <= 80 &&
+            this.levelStuckCounter > 20 &&
+            level.stairsDown.length === 0
+        );
+
+        if (shouldSystematicallyClearFrontier) {
+            // Find unvisited frontier cells
+            const unvisitedFrontier = frontier.filter(cell => {
+                const cellKey = cell.y * 80 + cell.x;
+                return !this.visitedFrontierCells.has(cellKey) && !this.failedTargets.has(cellKey);
+            });
+
+            if (unvisitedFrontier.length > 0) {
+                // Pick the nearest unvisited frontier cell
+                let nearestCell = null;
+                let nearestDist = Infinity;
+
+                for (const cell of unvisitedFrontier) {
+                    const dist = Math.max(Math.abs(cell.x - px), Math.abs(cell.y - py));
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearestCell = cell;
+                    }
+                }
+
+                if (nearestCell) {
+                    const path = findPath(level, px, py, nearestCell.x, nearestCell.y);
+                    if (path.found) {
+                        console.log(`[SYSTEMATIC-FRONTIER] Targeting unvisited frontier cell (${nearestCell.x},${nearestCell.y}) - ${unvisitedFrontier.length}/${frontier.length} unvisited`);
+
+                        // Mark this cell as visited (we're committing to visit it)
+                        const cellKey = nearestCell.y * 80 + nearestCell.x;
+                        this.visitedFrontierCells.add(cellKey);
+
+                        // Commit to this target
+                        this.committedTarget = { x: nearestCell.x, y: nearestCell.y };
+                        this.committedPath = path;
+                        this.consecutiveWaits = 0;
+                        this.targetStuckCount = 0;
+                        this.lastCommittedDistance = nearestDist;
+
+                        return this._followPath(path, 'explore', `systematic frontier clearing to (${nearestCell.x},${nearestCell.y})`);
+                    } else {
+                        // Can't reach this cell - mark as failed
+                        const cellKey = nearestCell.y * 80 + nearestCell.x;
+                        this.failedTargets.add(cellKey);
+                        this.visitedFrontierCells.add(cellKey);  // Also mark as visited to avoid retrying
+                    }
+                }
+            } else {
+                // All frontier cells have been visited - clear the set and try again
+                console.log(`[SYSTEMATIC-FRONTIER] All ${frontier.length} frontier cells visited, resetting for another pass`);
+                this.visitedFrontierCells.clear();
+            }
         }
 
         // PRIORITY: Systematic door opening when stuck with high frontier
