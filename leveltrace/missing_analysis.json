@@ -40,11 +40,15 @@
     "Wiz-goal",
     "Wiz-loca",
     "Wiz-strt",
+    "air",
     "asmodeus",
+    "astral",
     "baalz",
     "castle",
+    "earth",
     "fakewiz1",
     "fakewiz2",
+    "fire",
     "hellfill",
     "juiblex",
     "knox",
@@ -138,11 +142,7 @@
   ],
   "quest_levels_no_trace": [],
   "definitely_missing": [
-    "air",
-    "astral",
-    "dungeon",
-    "earth",
-    "fire"
+    "dungeon"
   ],
   "wrappers": [
     "bigroom",

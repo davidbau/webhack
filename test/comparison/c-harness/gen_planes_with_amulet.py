@@ -60,6 +60,10 @@ def wizard_wish_amulet(session, verbose=False):
             break
         time.sleep(0.2)
 
+    # Clear any remaining prompt text by sending Escape
+    tmux_send_special(session, 'Escape', 0.3)
+    time.sleep(0.5)
+
     if verbose:
         print("  [wish] Amulet of Yendor obtained")
 
@@ -73,22 +77,64 @@ def wizard_teleport_to_plane(session, plane_name, verbose=False):
     # Send Ctrl+V (wizard level teleport)
     tmux_send_special(session, 'C-v', 0.5)
 
-    # Wait for prompt
+    # Wait for "To what level" prompt
+    prompt_seen = False
     for attempt in range(30):
         try:
             content = tmux_capture(session)
         except subprocess.CalledProcessError:
             break
+        if verbose and attempt == 0:
+            print(f"  [debug] Screen after Ctrl+V (first 10 lines):")
+            for i, line in enumerate(content.split('\n')[:10]):
+                print(f"    [{i}] {line.rstrip()}")
         if '--More--' in content:
             tmux_send_special(session, 'Space', 0.3)
             continue
         if 'To what level' in content:
+            prompt_seen = True
+            if verbose:
+                print(f"  [teleport] Got 'To what level' prompt")
             break
         time.sleep(0.2)
+
+    if not prompt_seen:
+        if verbose:
+            print(f"  [teleport] WARNING: Never saw 'To what level' prompt")
+            print(f"  [debug] Final screen content (last 5 lines):")
+            try:
+                content = tmux_capture(session)
+                lines = content.split('\n')
+                for line in lines[-5:]:
+                    if line.strip():
+                        print(f"    {line.rstrip()}")
+            except:
+                pass
+        return False
 
     # Type ? and Enter to open menu
     tmux_send(session, '?', 0.3)
     tmux_send_special(session, 'Enter', 0.8)
+
+    # Wait for menu to appear (look for letter options)
+    menu_seen = False
+    for attempt in range(10):
+        time.sleep(0.3)
+        try:
+            content = tmux_capture(session)
+        except subprocess.CalledProcessError:
+            break
+        # Look for menu format (lines with letter - levelname)
+        if re.search(r'[a-zA-Z]\s+-\s+', content):
+            menu_seen = True
+            if verbose:
+                print(f"  [teleport] Menu appeared")
+            break
+
+    if not menu_seen:
+        if verbose:
+            print(f"  [teleport] WARNING: Menu didn't appear after typing ?")
+        return False
 
     # Scan menu pages to find the plane
     target_key = None
@@ -99,15 +145,21 @@ def wizard_teleport_to_plane(session, plane_name, verbose=False):
         except subprocess.CalledProcessError:
             break
 
-        # Look for plane name
+        if verbose and page == 0:
+            print(f"  [menu] Searching for '{plane_name}' in menu:")
+            for i, line in enumerate(content.split('\n')[:15]):
+                if line.strip():
+                    print(f"    [{i}] {line.strip()[:70]}")
+
+        # Look for plane name (case insensitive, more flexible matching)
         for line in content.split('\n'):
             line_clean = line.strip()
-            import re
-            m = re.match(r'^([a-zA-Z])\s+-\s+[*]?\s*' + re.escape(plane_name) + r':', line_clean)
+            # Use search instead of match to allow map characters before menu text
+            m = re.search(r'([a-zA-Z])\s+-\s+[*]?\s*' + re.escape(plane_name) + r':', line_clean, re.IGNORECASE)
             if m:
                 target_key = m.group(1)
                 if verbose:
-                    print(f"  [menu] Found {plane_name} → key {target_key}")
+                    print(f"  [menu] Found '{plane_name}' → key '{target_key}' in: {line_clean[:60]}")
                 break
 
         if target_key:
@@ -227,14 +279,26 @@ def main():
             # Wish for Amulet of Yendor
             wizard_wish_amulet(session_name, verbose)
 
-            # Teleport to each plane
+            # First teleport to Water (which we know works)
+            print(f"  Teleporting to water (entry plane)...")
+            success = wizard_teleport_to_plane(session_name, 'water', verbose)
+            if not success:
+                print(f"  ERROR: Failed to teleport to water - cannot access other planes")
+                quit_game(session_name)
+                continue
+
+            # Now we're ON an elemental plane, capture all 5 planes from here
             for plane_name in planes:
                 print(f"  Teleporting to {plane_name}...")
 
-                success = wizard_teleport_to_plane(session_name, plane_name, verbose)
-                if not success:
-                    print(f"  WARNING: Failed to teleport to {plane_name}")
-                    continue
+                # If we're already on this plane, just capture it
+                if plane_name == 'water':
+                    print(f"  Already on {plane_name}, capturing...")
+                else:
+                    success = wizard_teleport_to_plane(session_name, plane_name, verbose)
+                    if not success:
+                        print(f"  WARNING: Failed to teleport to {plane_name}")
+                        continue
 
                 # Clean previous dumpmap
                 if os.path.exists(dumpmap_file):
