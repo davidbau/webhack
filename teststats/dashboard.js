@@ -65,8 +65,10 @@ function updateForCommit(index) {
     // Update scrubber info
     const scrubberInfo = document.getElementById('scrubber-info');
     if (scrubberInfo) {
-        const date = new Date(commit.date).toLocaleDateString();
-        scrubberInfo.textContent = `Commit ${index + 1} of ${testData.length} • ${date}`;
+        const dateObj = new Date(commit.date);
+        const date = dateObj.toLocaleDateString();
+        const time = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        scrubberInfo.textContent = `Commit ${index + 1} of ${testData.length} • ${date} ${time}`;
     }
 
     // Update summary cards (instant, no animation)
@@ -212,6 +214,17 @@ function renderTimelineChart() {
                 mode: 'index',
                 intersect: false
             },
+            onHover: (event, elements, chart) => {
+                // Update stats immediately on hover
+                const canvasPosition = Chart.helpers.getRelativePosition(event, chart);
+                const dataX = chart.scales.x.getValueForPixel(canvasPosition.x);
+                if (dataX >= 0 && dataX < testData.length) {
+                    const index = Math.round(dataX);
+                    if (index !== currentIndex) {
+                        updateForCommit(index);
+                    }
+                }
+            },
             onClick: (event, elements, chart) => {
                 const canvasPosition = Chart.helpers.getRelativePosition(event, chart);
                 const dataX = chart.scales.x.getValueForPixel(canvasPosition.x);
@@ -243,8 +256,10 @@ function renderTimelineChart() {
                         title: function(context) {
                             const idx = context[0].dataIndex;
                             const commit = testData[idx];
-                            const date = new Date(commit.date).toLocaleDateString();
-                            return `${commit.commit} (${date})`;
+                            const dateObj = new Date(commit.date);
+                            const date = dateObj.toLocaleDateString();
+                            const time = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            return `${commit.commit} (${date} ${time})`;
                         },
                         afterTitle: function(context) {
                             const idx = context[0].dataIndex;
@@ -346,7 +361,9 @@ function renderCommitsTable() {
             row.classList.add('improvement-row');
         }
 
-        const date = new Date(commit.date).toLocaleDateString();
+        const dateObj = new Date(commit.date);
+        const date = dateObj.toLocaleDateString();
+        const time = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const passPercent = ((commit.stats.pass / commit.stats.total) * 100).toFixed(1);
 
         let delta = '';
@@ -366,7 +383,7 @@ function renderCommitsTable() {
 
         row.innerHTML = `
             <td><span class="commit-hash">${commit.commit}</span></td>
-            <td>${date}</td>
+            <td>${date}<br><span style="font-size: 0.9em; color: #888;">${time}</span></td>
             <td>${commit.author}</td>
             <td>${commit.message}</td>
             <td>${commit.stats.total}</td>
