@@ -3493,13 +3493,17 @@ export function makelevel(depth, dnum, dlevel) {
         console.log(`makelevel depth=${depth} dnum=${dnum} isGehennom=${isGehennom} isPastMedusa=${isPastMedusa}`);
     }
 
-    // Only call rn2(5) if we need to check the maze condition (not in Gehennom, potentially past Medusa)
+    // C ref: Short-circuit OR evaluation
+    // If In_hell(): make maze WITHOUT calling rn2(5)
+    // If NOT In_hell(): ALWAYS call rn2(5), then check medusa+depth conditions
     let shouldMakeMaze = isGehennom;
-    if (!isGehennom && isPastMedusa) {
-        // C ref: rn2(5) && u.uz.dnum == medusa_level.dnum && depth(&u.uz) > depth(&medusa_level)
+    if (!isGehennom) {
+        // Not in Gehennom - ALWAYS call rn2(5) for RNG alignment
         if (DEBUG) console.log(`Calling rn2(5) for maze check`);
         const mazeRoll = rn2(5); // 0-4, maze if non-zero (80% chance)
-        shouldMakeMaze = (mazeRoll !== 0);
+        // Make maze if: rn2(5) != 0 AND (in medusa dungeon AND past medusa level)
+        const inMedusaDungeon = (dnum === 0 || dnum === undefined); // Main dungeon
+        shouldMakeMaze = (mazeRoll !== 0) && isPastMedusa && inMedusaDungeon;
     }
 
     if (shouldMakeMaze) {

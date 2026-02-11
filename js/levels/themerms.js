@@ -1047,11 +1047,17 @@ export function themerooms_generate(map, depth) {
 // called before any rooms are generated
 let _mtInitCount = 0;
 export function pre_themerooms_generate() {
+   const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
+
    // C ref: MT initialization happens lazily on first Lua RNG call (des.object/des.monster),
    // NOT here in pre_themerooms_generate(). Removing MT init from here to match C timing.
    // Theme selection happens BEFORE MT init in C (calls 260-261 vs 263-292 in seed 4).
    _mtInitCount++;
    console.log(`pre_themerooms_generate called (count=${_mtInitCount})`);
+
+   if (DEBUG) {
+       console.log(`\n[pre_themerooms_generate] luaRngCounter: ${levelState ? levelState.luaRngCounter : 'no levelState'}`);
+   }
 
    // NOTE: MT init removed - now handled lazily in sp_lev.js des.object/des.monster
 

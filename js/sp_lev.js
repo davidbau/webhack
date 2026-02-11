@@ -111,17 +111,24 @@ let Sokoban = false;
  * @param {number} depth - Current dungeon depth (for level_difficulty)
  */
 export function setLevelContext(map, depth) {
+    const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
+
     levelState.map = map;
     levelState.depth = depth || 1;
     levelState.roomStack = [];
     levelState.roomDepth = 0;
     levelState.currentRoom = null;
-    // Lua RNG counter is NOT set for themed rooms - they use regular RNG
-    // Only special levels (Oracle, etc.) set luaRngCounter explicitly
-    // C ref: Themed rooms use nhl_rn2/nhl_random without the MT19937 pattern
-    levelState.luaRngCounter = undefined;
+    // Lua RNG counter for themed rooms: Initialize to 0 so MT init happens on first des.object/des.monster
+    // C ref: Themed rooms DO use nhl_rn2() for Lua operations (seen in RNG traces)
+    // Special levels (Oracle, etc.) also set luaRngCounter = 0 explicitly before calling initLuaMT()
+    const oldCounter = levelState.luaRngCounter;
+    levelState.luaRngCounter = 0;  // Changed from undefined - themed rooms need Lua RNG!
     // Callback for room creation failure (set by themed room generator)
     levelState.roomFailureCallback = null;
+
+    if (DEBUG) {
+        console.log(`\n[setLevelContext] depth=${depth}, luaRngCounter: ${oldCounter} → 0`);
+    }
 }
 
 /**
@@ -129,12 +136,19 @@ export function setLevelContext(map, depth) {
  * Always call this to prevent state leakage between levels.
  */
 export function clearLevelContext() {
+    const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
+
+    if (DEBUG) {
+        console.log(`\n[clearLevelContext] luaRngCounter: ${levelState.luaRngCounter} → 0, MT reset`);
+    }
+
     levelState.map = null;
     levelState.depth = 1;
     levelState.roomStack = [];
     levelState.roomDepth = 0;
     levelState.currentRoom = null;
-    levelState.luaRngCounter = undefined; // Clear Lua RNG state
+    levelState.luaRngCounter = 0; // Reset to 0 for next themed room generation
+    setMtInitialized(false); // Reset MT init flag - each themed room gets its own MT init
 }
 
 /**
@@ -159,6 +173,15 @@ export function setCurrentRoom(room) {
  * This is called lazily on the first Lua RNG use (des.object/des.monster) to match C behavior.
  */
 export function initLuaMT() {
+    const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
+
+    if (DEBUG) {
+        const stack = new Error().stack.split('\n').slice(2, 6).join('\n');
+        console.log(`\n=== initLuaMT() called ===`);
+        console.log(`luaRngCounter BEFORE init: ${levelState ? levelState.luaRngCounter : 'no levelState'}`);
+        console.log(`Call stack:\n${stack}`);
+    }
+
     for (let i = 1000; i <= 1004; i++) rn2(i);
     rn2(1010);
     rn2(1012);
@@ -170,6 +193,11 @@ export function initLuaMT() {
     // C ref: seed 4 trace shows first object after MT uses same gap pattern
     if (levelState && levelState.luaRngCounter !== undefined) {
         levelState.luaRngCounter = 37;  // Offset after 1036, continuing the sequence
+        if (DEBUG) {
+            console.log(`luaRngCounter AFTER init: ${levelState.luaRngCounter}`);
+        }
+    } else if (DEBUG) {
+        console.log(`luaRngCounter NOT updated (was undefined or no levelState)`);
     }
 }
 
@@ -1271,6 +1299,17 @@ export function room(opts = {}) {
                 }
                 return; // Can't place room without a rect
             }
+
+            // Lazy MT initialization for themed rooms
+            // C ref: MT init happens AFTER rnd_rect() but BEFORE create_room()
+            // This is the first des.* API call that needs Lua RNG for object/monster placement
+            const DEBUG_LUA_RNG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
+            if (levelState && levelState.luaRngCounter !== undefined && levelState.luaRngCounter === 0) {
+                if (DEBUG_LUA_RNG) {
+                    console.log(`\n[des.room] Triggering lazy MT init after rnd_rect (luaRngCounter=0)`);
+                }
+                initLuaMT();
+            }
         }
 
         // C ref: sp_lev.c:1598-1619 — Convert grid coordinates to absolute map coordinates
@@ -1578,25 +1617,45 @@ export function object(name_or_opts, x, y) {
     // C pattern is complex: first object uses 5 calls (1000-1004), second uses 3 (1010,1012,1014 with gaps),
     // rest use 4-5 each. Without exact Lua code, approximate with 4 calls average
     // TODO: Implement exact C Lua pattern once we understand the state machine
+    const DEBUG_LUA_RNG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
+
+    if (DEBUG_LUA_RNG) {
+        console.log(`\n[des.object] luaRngCounter check: ${levelState ? levelState.luaRngCounter : 'no levelState'}`);
+    }
+
     if (levelState && levelState.luaRngCounter !== undefined) {
-        const DEBUG_LUA_RNG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
+        // Lazy MT initialization on first Lua RNG use
+        // C ref: MT init happens when Lua's math.random() is first called from themed room code
+        if (levelState.luaRngCounter === 0) {
+            if (DEBUG_LUA_RNG) {
+                console.log(`\n[des.object] Triggering lazy MT init (luaRngCounter=0)`);
+            }
+            initLuaMT();
+            // luaRngCounter is now 37 after MT init
+        }
+
         const baseOffset = levelState.luaRngCounter;
 
         if (DEBUG_LUA_RNG) {
-            const stack = new Error().stack;
+            const stack = new Error().stack.split('\n').slice(2, 6).join('\n');
             console.log(`\n=== Lua RNG triggered for des.object() ===`);
-            console.log(`Counter: ${baseOffset}, Stack:\n${stack}`);
+            console.log(`Counter: ${baseOffset}, object: ${JSON.stringify(name_or_opts).slice(0, 80)}`);
+            console.log(`Call stack:\n${stack}`);
         }
 
-        // MT initialization is handled separately for special levels
-        // For themed rooms, we use Lua RNG (nhl_rn2) without MT init
-        // For special levels (Oracle, etc.), they call initLuaMT() explicitly
-
+        // Generate Lua RNG pattern for object properties
+        // C ref: nhlua.c nhl_rn2() with varying offsets
         const numRngCalls = 4;
         for (let i = 0; i < numRngCalls; i++) {
             rn2(1000 + baseOffset + i);
         }
         levelState.luaRngCounter = baseOffset + numRngCalls;
+
+        if (DEBUG_LUA_RNG) {
+            console.log(`Counter after: ${levelState.luaRngCounter}`);
+        }
+    } else if (DEBUG_LUA_RNG) {
+        console.log(`[des.object] Skipping Lua RNG (counter is undefined)`);
     }
 
     // DEFERRED EXECUTION: Queue object placement for later (after corridors)
@@ -1859,15 +1918,26 @@ export function monster(opts_or_class, x, y) {
         levelState.map = new GameMap();
     }
 
+    const DEBUG_LUA_RNG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
+
     // C ref: nhlua.c nhl_rn2() — Lua monster generation calls rn2(1000+) for properties
     // Similar to des.object(), RNG calls happen immediately even though placement is deferred
     if (levelState && levelState.luaRngCounter !== undefined) {
-        // MT initialization is handled separately for special levels
-        // For themed rooms, we use Lua RNG (nhl_rn2) without MT init
-        // For special levels (Oracle, etc.), they call initLuaMT() explicitly
+        // Lazy MT initialization on first Lua RNG use
+        if (levelState.luaRngCounter === 0) {
+            if (DEBUG_LUA_RNG) {
+                console.log(`\n[des.monster] Triggering lazy MT init (luaRngCounter=0)`);
+            }
+            initLuaMT();
+        }
 
         const numRngCalls = 4;  // Approximate - actual pattern varies
         const baseOffset = levelState.luaRngCounter;
+
+        if (DEBUG_LUA_RNG) {
+            console.log(`\n[des.monster] luaRngCounter: ${baseOffset} → ${baseOffset + numRngCalls}`);
+        }
+
         for (let i = 0; i < numRngCalls; i++) {
             rn2(1000 + baseOffset + i);
         }
