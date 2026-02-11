@@ -178,6 +178,7 @@ export class Display {
         // Message history
         this.messages = [];
         this.topMessage = '';
+        this.messageNeedsMore = false; // C ref: TOPLINE_NEED_MORE - true if message not acknowledged by keypress
 
         // Game flags (updated by game, used for display options)
         this.flags = {};
@@ -278,16 +279,19 @@ export class Display {
             return;
         }
 
-        // C ref: win/tty/topl.c:264-267 — Concatenate messages if they fit
+        // C ref: win/tty/topl.c:262-267 — Concatenate messages if they fit
+        // ONLY if no keypress happened between messages (toplin == TOPLINE_NEED_MORE)
         // If there's a current message and both messages fit on one line, combine them
         const notDied = !msg.startsWith('You die');
-        if (this.topMessage && notDied) {
+        // Only concatenate if messageNeedsMore is true (no keypress since last message)
+        if (this.topMessage && this.messageNeedsMore && notDied) {
             const combined = this.topMessage + '  ' + msg;
             // Room for combined message + --More-- (8 chars)
             if (combined.length + 3 < this.cols - 8) {
                 this.clearRow(MESSAGE_ROW);
                 this.putstr(0, MESSAGE_ROW, combined, CLR_WHITE);
                 this.topMessage = combined;
+                // Keep messageNeedsMore true for potential further concatenation
                 return;
             }
         }
@@ -316,6 +320,10 @@ export class Display {
                 this.putstr(0, MESSAGE_ROW + 1, wrapped.substring(0, this.cols), CLR_WHITE);
             }
         }
+
+        // Mark message as needing acknowledgement (for concatenation logic)
+        // C ref: toplin = TOPLINE_NEED_MORE after displaying message
+        this.messageNeedsMore = true;
     }
 
     // Render message window (last 3 messages)

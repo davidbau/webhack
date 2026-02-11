@@ -121,6 +121,12 @@ export function pushInput(ch) {
 // This is the JS equivalent of C's nhgetch()
 // C ref: winprocs.h win_nhgetch
 export function nhgetch() {
+    // Clear message acknowledgement flag when user presses a key
+    // C ref: win/tty/topl.c - toplin gets set to TOPLINE_EMPTY after keypress
+    if (window.gameDisplay) {
+        window.gameDisplay.messageNeedsMore = false;
+    }
+
     if (inputQueue.length > 0) {
         return Promise.resolve(inputQueue.shift());
     }
