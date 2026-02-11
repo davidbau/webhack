@@ -1382,8 +1382,9 @@ export function room(opts = {}) {
     const xalign = alignMap[opts.xalign] ?? -1;
     const yalign = alignMap[opts.yalign] ?? -1;
     const type = opts.type ?? 'ordinary';
-    // C ref: Themed rooms default to unlit (0), ordinary rooms default to random (-1)
-    let lit = opts.lit ?? (type === 'themed' ? 0 : -1);  // let: modified by litstate_rnd()
+    // C ref: Both themed and ordinary rooms default to random lighting (-1)
+    // C trace evidence (seed 42): themed rooms call litstate_rnd with rlit=-1
+    let lit = opts.lit ?? -1;  // let: modified by litstate_rnd()
     const DEBUG_LIT = typeof process !== 'undefined' && process.env.DEBUG_BUILD_ROOM === '1';
     if (DEBUG_LIT && type === 'themed') {
         console.log(`  des.room(): type="${type}", opts.lit=${opts.lit}, computed lit=${lit}`);
