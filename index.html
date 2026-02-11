@@ -85,6 +85,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            width: 100%;
         }
 
         /* ============================================================
@@ -97,6 +98,8 @@
             padding: var(--spacing-sm) 0;
             font-size: var(--font-size-sm);
             justify-content: center;
+            width: 100%;
+            order: -2;  /* Ensure nav appears first */
         }
 
         #nav a {
@@ -127,6 +130,7 @@
             gap: var(--spacing-sm);
             z-index: 10;
             filter: drop-shadow(0 2px 8px var(--color-shadow));
+            order: -1;  /* Ensure controls appear after nav */
         }
 
         #controls button {
@@ -233,6 +237,9 @@
             flex-wrap: wrap;
             gap: 0 16px;
             align-items: flex-start;
+            width: 100%;
+            justify-content: center;
+            order: 0;  /* Ensure main appears after nav and controls */
         }
 
         /* ============================================================

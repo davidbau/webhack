@@ -1,6 +1,6 @@
 # A Guide to the Mazes of Menace
 
-*Guidebook for NetHack*
+<p style="text-align: center; font-style: italic; margin: 1.5em 0;">Guidebook for NetHack</p>
 
 > Original version - Eric S. Raymond
 >
@@ -199,29 +199,29 @@ games.  Figure 1 is a sample of what a NetHack screen might look like.
 The way the screen looks for you depends on your platform.
 
 ```
-+---------------------------------------------------------------+
-|The bat bites!                                                 |
-|                                                               |
-|    ------                                                     |
-|    |....|    ----------                                       |
-|    |.<..|####...@...$.|                                       |
-|    |....-#   |...B....+                                       |
-|    |....|    |.d......|                                       |
-|    ------    -------|--                                       |
-|                                                               |
-|                                                               |
-|                                                               |
-|Player the Rambler   St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15 Neutral |
-|Dlvl:1 $:993 HP:9(12) Pw:3(3) AC:10 Exp:1/19 T:752 Hungry Conf |
-+---------------------------Figure-1----------------------------+
+        +---------------------------------------------------------------+
+        |The bat bites!                                                 |
+        |                                                               |
+        |    ------                                                     |
+        |    |....|    ----------                                       |
+        |    |.<..|####...@...$.|                                       |
+        |    |....-#   |...B....+                                       |
+        |    |....|    |.d......|                                       |
+        |    ------    -------|--                                       |
+        |                                                               |
+        |                                                               |
+        |                                                               |
+        |Player the Rambler   St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15 Neutral |
+        |Dlvl:1 $:993 HP:9(12) Pw:3(3) AC:10 Exp:1/19 T:752 Hungry Conf |
+        +---------------------------Figure-1----------------------------+
 ```
 
 ```
-+---------------------------------------------------------------+
-|Player the Rambler   St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15         |
-|Neutral $:993 HP:9(12) Pw:3(3) AC:10 Exp:1/19 Hungry           |
-|Dlvl:1 T:752                                  Conf             |
-+---------------------------Figure-2----------------------------+
+        +---------------------------------------------------------------+
+        |Player the Rambler   St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15         |
+        |Neutral $:993 HP:9(12) Pw:3(3) AC:10 Exp:1/19 Hungry           |
+        |Dlvl:1 T:752                                  Conf             |
+        +---------------------------Figure-2----------------------------+
 ```
 
 
@@ -548,14 +548,14 @@ instead.   Only  these  one-step  movement  commands cause you to
 
 fight monsters; the others (below) are "safe."
 ```
-+----------------------------------------------------------------+
-|          y  k  u                             7  8  9           |
-|           \ | /                               \ | /            |
-|          h- . -l                             4- . -6           |
-|           / | \                               / | \            |
-|          b  j  n                             1  2  3           |
-|      (`number_pad` off)                    (`number_pad` on)       |
-+---------------------------Figure-3-----------------------------+
+          +----------------------------------------------------------------+
+          |          y  k  u                             7  8  9           |
+          |           \ | /                               \ | /            |
+          |          h- . -l                             4- . -6           |
+          |           / | \                               / | \            |
+          |          b  j  n                             1  2  3           |
+          |      (`number_pad` off)                    (`number_pad` on)       |
+          +---------------------------Figure-3-----------------------------+
 ```
 
 `[YUHJKLBN]`

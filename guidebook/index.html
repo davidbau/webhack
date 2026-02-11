@@ -21,20 +21,26 @@
   <div id="search-index"></div>
 </aside>
 <main id="guide-content">
-<h1 id="a-guide-to-the-mazes-of-menace">A Guide to the Mazes of Menace</h1>
-<p><em>Guidebook for NetHack</em></p>
+<section id="a-guide-to-the-mazes-of-menace" class="level1">
+<h1>A Guide to the Mazes of Menace</h1>
+<p style="text-align: center; font-style: italic; margin: 1.5em 0;">
+Guidebook for NetHack
+</p>
 <blockquote>
 <p>Original version - Eric S. Raymond</p>
 <p>(Edited and expanded for NetHack 3.7.0 by Mike Stephenson and others)</p>
 <p><span class="nobr">December 11, 2025</span></p>
 </blockquote>
 <hr />
-<h2 id="introduction">1. Introduction</h2>
+<section id="introduction" class="level2">
+<h2>1. Introduction</h2>
 <p>Recently, you have begun to find yourself unfulfilled and distant in your daily occupation. Strange dreams of prospecting, stealing, crusading, and combat have haunted you in your sleep for many months, but you aren’t sure of the reason. You wonder whether you have in fact been having those dreams all your life, and somehow managed to forget about them until now. Some nights you awaken suddenly and cry out, terrified at the vivid recollection of the strange and powerful creatures that seem to be lurking behind every corner of the dungeon in your dream. Could these details haunting your dreams be real? As each night passes, you feel the desire to enter the mysterious caverns near the ruins grow stronger. Each morning, however, you quickly put the idea out of your head as you recall the tales of those who entered the caverns before you and did not return. Eventually you can resist the yearning to seek out the fantastic place in your dreams no longer. After all, when other adventurers came back this way after spending time in the caverns, they usually seemed better off than when they passed through the first time. And who was to say that all of those who did not return had not just kept going?</p>
 <p>Asking around, you hear about a bauble, called the Amulet of Yen- dor by some, which, if you can find it, will bring you great wealth. One legend you were told even mentioned that the one who finds the amulet will be granted immortality by the gods. The amulet is rumored to be somewhere beyond the Valley of Gehennom, deep within the Mazes of Menace. Upon hearing the legends, you immediately realize that there is some profound and undiscovered reason that you are to descend into the caverns and seek out that amulet of which they spoke. Even if the rumors of the amulet’s powers are untrue, you decide that you should at least be able to sell the tales of your adventures to the local minstrels for a tidy sum, especially if you encounter any of the terrifying and magical creatures of your dreams along the way. You spend one last night fortifying yourself at the local inn, becoming more and more depressed as you watch the odds of your success being posted on the inn’s walls getting lower and lower.</p>
 <p>In the morning you awake, collect your belongings, and set off for the dungeon. After several days of uneventful travel, you see the</p>
 <p>ancient ruins that mark the entrance to the Mazes of Menace. It is late at night, so you make camp at the entrance and spend the night sleeping under the open skies. In the morning, you gather your gear, eat what may be your last meal outside, and enter the dungeon….</p>
-<h2 id="what-is-going-on-here">2. What is going on here?</h2>
+</section>
+<section id="what-is-going-on-here" class="level2">
+<h2>2. What is going on here?</h2>
 <p>You have just begun a game of NetHack. Your goal is to grab as much treasure as you can, retrieve the Amulet of Yendor, and escape the Mazes of Menace alive.</p>
 <p>Your abilities and strengths for dealing with the hazards of adventure will vary with your background and training:</p>
 <p>Archeologists understand dungeons pretty well; this enables them to move quickly and sneak up on the local nasties. They start equipped with the tools for a proper scientific expedition, and are able to read ancient languages.</p>
@@ -56,7 +62,9 @@
 <p>Gnomes are smaller than but generally similar to dwarves. Gnomes are known to be expert miners, and it is known that a secret under- ground mine complex built by this race exists within the Mazes of Men- ace, filled with both riches and danger.</p>
 <p>Humans are by far the most common race of the surface world, and are thus the norm to which other races are often compared. Although they have no special abilities, they can succeed in any role.</p>
 <p>Orcs are a cruel and barbaric race that hate every living thing (including other orcs). Above all others, Orcs hate Elves with a pas- sion unequalled, and will go out of their way to kill one at any opportunity. The armor and weapons fashioned by the Orcs are typi- cally of inferior quality.</p>
-<h2 id="what-do-all-those-things-on-the-screen-mean">3. What do all those things on the screen mean?</h2>
+</section>
+<section id="what-do-all-those-things-on-the-screen-mean" class="level2">
+<h2>3. What do all those things on the screen mean?</h2>
 <p>On the screen is kept a map of where you have been and what you have seen on the current dungeon level; as you explore more of the level, it appears on the screen in front of you.</p>
 <p>When NetHack’s ancestor rogue first appeared, its screen orienta- tion was almost unique among computer fantasy games. Since then, screen orientation has become the norm rather than the exception; NetHack continues this fine tradition. Unlike text adventure games</p>
 <p>that accept commands in pseudo-English sentences and explain the results in words, NetHack commands are all one or two keystrokes and the results are displayed graphically on the screen. A minimum screen size of 24 lines by 80 columns is recommended; if the screen is larger, only a 21x80 section will be used for the map.</p>
@@ -64,27 +72,28 @@
 <p>NetHack generates a new dungeon every time you play it; even the authors still find it an entertaining and exciting game despite having won several times.</p>
 <p>NetHack offers a variety of display options. The options avail- able to you will vary from port to port, depending on the capabilities of your hardware and software, and whether various compile-time options were enabled when your executable was created. The three pos- sible display options are: a monochrome character interface, a color character interface, and a graphical interface using small pictures called tiles. The two character interfaces allow fonts with other characters to be substituted, but the default assignments use standard ASCII characters to represent everything. There is no difference between the various display options with respect to game play. Because we cannot reproduce the tiles or colors in the Guidebook, and because it is common to all ports, we will use the default ASCII char- acters from the monochrome character display when referring to things you might see on the screen during your game.</p>
 <p>In order to understand what is going on in NetHack, first you must understand what NetHack is doing with the screen. The NetHack screen replaces the “You see …” descriptions of text adventure games. Figure 1 is a sample of what a NetHack screen might look like. The way the screen looks for you depends on your platform.</p>
-<pre><code>+---------------------------------------------------------------+
-|The bat bites!                                                 |
-|                                                               |
-|    ------                                                     |
-|    |....|    ----------                                       |
-|    |.&lt;..|####...@...$.|                                       |
-|    |....-#   |...B....+                                       |
-|    |....|    |.d......|                                       |
-|    ------    -------|--                                       |
-|                                                               |
-|                                                               |
-|                                                               |
-|Player the Rambler   St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15 Neutral |
-|Dlvl:1 $:993 HP:9(12) Pw:3(3) AC:10 Exp:1/19 T:752 Hungry Conf |
-+---------------------------Figure-1----------------------------+</code></pre>
-<pre><code>+---------------------------------------------------------------+
-|Player the Rambler   St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15         |
-|Neutral $:993 HP:9(12) Pw:3(3) AC:10 Exp:1/19 Hungry           |
-|Dlvl:1 T:752                                  Conf             |
-+---------------------------Figure-2----------------------------+</code></pre>
-<h3 id="the-status-lines-bottom">3.1. The status lines (bottom)</h3>
+<pre><code>        +---------------------------------------------------------------+
+        |The bat bites!                                                 |
+        |                                                               |
+        |    ------                                                     |
+        |    |....|    ----------                                       |
+        |    |.&lt;..|####...@...$.|                                       |
+        |    |....-#   |...B....+                                       |
+        |    |....|    |.d......|                                       |
+        |    ------    -------|--                                       |
+        |                                                               |
+        |                                                               |
+        |                                                               |
+        |Player the Rambler   St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15 Neutral |
+        |Dlvl:1 $:993 HP:9(12) Pw:3(3) AC:10 Exp:1/19 T:752 Hungry Conf |
+        +---------------------------Figure-1----------------------------+</code></pre>
+<pre><code>        +---------------------------------------------------------------+
+        |Player the Rambler   St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15         |
+        |Neutral $:993 HP:9(12) Pw:3(3) AC:10 Exp:1/19 Hungry           |
+        |Dlvl:1 T:752                                  Conf             |
+        +---------------------------Figure-2----------------------------+</code></pre>
+<section id="the-status-lines-bottom" class="level3">
+<h3>3.1. The status lines (bottom)</h3>
 <p>The bottom two (or three) lines of the screen contain several cryptic pieces of information describing your current status. Figure 1 shows the traditional two-line status area below the map. Figure 2 shows just the status area, when the <code>statuslines:3</code> option has been set (not all interfaces support this option). If any status line becomes wider than the screen, you might not see all of it due to truncation. When the numbers grow bigger and multiple conditions are present, the two-line format will run out of room on the second line, but sta- tuslines:2 is the default because a basic 24-line terminal isn’t tall enough for the third line.</p>
 <p>Here are explanations of what the various status items mean:</p>
 <p>Title Your character’s name and professional ranking (based on role and experience level, see below).</p>
@@ -110,10 +119,14 @@
 <p>Movement modifiers: Lev (levitating), Fly (flying), Ride (rid- ing).</p>
 <p>Other conditions and modifiers exist, but there isn’t enough room to display them with the other status fields.</p>
 <p>The <code>#attributes</code> command (default key <code>^X</code>) will show all current status information in unabbreviated format. It also shows other information which might be included on the status lines if those had more room.</p>
-<h3 id="the-message-line-top">3.2. The message line (top)</h3>
+</section>
+<section id="the-message-line-top" class="level3">
+<h3>3.2. The message line (top)</h3>
 <p>The top line of the screen is reserved for messages that describe things that are impossible to represent visually. If you see a “–More–” on the top line, this means that NetHack has another mes- sage to display on the screen, but it wants to make certain that you’ve read the one that is there first. To read the next message, just press the space bar.</p>
 <p>To change how and what messages are shown on the message line, see “Configuring Message Types” and the verbose option.</p>
-<h3 id="the-map-rest-of-the-screen">3.3. The map (rest of the screen)</h3>
+</section>
+<section id="the-map-rest-of-the-screen" class="level3">
+<h3>3.3. The map (rest of the screen)</h3>
 <p>The rest of the screen is the map of the level as you have explored it so far. Each symbol on the screen represents something. You can set various graphics options to change some of the symbols the game uses; otherwise, the game will use default symbols. Here is a list of what the default symbols mean:</p>
 <p><code>-</code> The horizontal or corner walls of a room, or an open east/west door.</p>
 <p><code>|</code> The vertical walls of a room, or an open north/south door, or a grave.</p>
@@ -149,7 +162,10 @@
 <p><code>I</code> Rather than a specific type of monster, this marks the last known location of an invisible or otherwise unseen monster. Note that the monster could have moved. The <code>s</code>, <code>F</code>, and <code>m</code> commands may be useful here.</p>
 <p>1-5 The digits 1 through 5 may be displayed, marking unseen monsters sensed via the Warning attribute. Less dangerous monsters are indicated by lower values, more dangerous by higher values.</p>
 <p>You need not memorize all these symbols; you can ask the game what any symbol represents with the <code>/</code> command (see the next section for more info).</p>
-<h2 id="commands">4. Commands</h2>
+</section>
+</section>
+<section id="commands" class="level2">
+<h2>4. Commands</h2>
 <p>Commands can be initiated by typing one or two characters to which the command is bound to, or typing the command name in the extended commands entry. Some commands, like “search”, do not require that any more information be collected by NetHack. Other commands might require additional information, for example a direction, or an object to be used. For those commands that require additional infor- mation, NetHack will present you with either a menu of choices or with a command line prompt requesting information. Which you are presented with will depend chiefly on how you have set the <code>menustyle</code> option.</p>
 <p>For example, a common question, in the form “What do you want to use? [a-zA-Z ?*]”, asks you to choose an object you are carrying. Here, “a-zA-Z” are the inventory letters of your possible choices. Typing <code>?</code> gives you an inventory list of these items, so you can see what each letter refers to. In this example, there is also a <code>*</code> indicating that you may choose an object not on the list, if you wanted to use something unexpected. Typing a <code>*</code> lists your entire inventory, so you can see the inventory letters of every object you’re carrying. Finally, if you change your mind and decide you don’t want to do this command after all, you can press the <code>ESC</code> key to abort the command.</p>
 <p>You can put a number before some commands to repeat them that many times; for example, “10s” will search ten times. If you have the <code>number_pad</code> option set, you must type <code>n</code> to prefix a count, so the example above would be typed “n10s” instead. Commands for which counts make no sense ignore them. In addition, movement commands can be prefixed for greater control (see below). To cancel a count or a prefix, press the <code>ESC</code> key.</p>
@@ -164,14 +180,14 @@
 <p><code>&gt;</code> Go down to the next level (if you are on a staircase or ladder).</p>
 <p><code>[yuhjklbn]</code> Go one step in the direction indicated (see Figure 3). If you sense or remember a monster there, you will fight the monster instead. Only these one-step movement commands cause you to</p>
 <p>fight monsters; the others (below) are “safe.”</p>
-<pre><code>+----------------------------------------------------------------+
-|          y  k  u                             7  8  9           |
-|           \ | /                               \ | /            |
-|          h- . -l                             4- . -6           |
-|           / | \                               / | \            |
-|          b  j  n                             1  2  3           |
-|      (`number_pad` off)                    (`number_pad` on)       |
-+---------------------------Figure-3-----------------------------+</code></pre>
+<pre><code>          +----------------------------------------------------------------+
+          |          y  k  u                             7  8  9           |
+          |           \ | /                               \ | /            |
+          |          h- . -l                             4- . -6           |
+          |           / | \                               / | \            |
+          |          b  j  n                             1  2  3           |
+          |      (`number_pad` off)                    (`number_pad` on)       |
+          +---------------------------Figure-3-----------------------------+</code></pre>
 <p><code>[YUHJKLBN]</code> Go in that direction until you hit a wall or run into something.</p>
 <p><code>m[yuhjklbn]</code> Prefix: move without picking up objects or fighting (even if you remember a monster there).</p>
 <p>A few non-movement commands use the <code>m</code> prefix to request operat- ing via menu (to temporarily override the <code>menustyle:traditional</code> option). Primarily useful for <code>,</code> (pickup) when there is only one class of objects present (where there won’t be any “what kinds of objects?” prompt, so no opportunity to answer <code>m</code> at that prompt).</p>
@@ -514,10 +530,13 @@
 <p>l <code>#loot</code></p>
 <p>N <code>#name</code></p>
 <p>u <code>#untrap</code></p>
-<h2 id="rooms-and-corridors">5. Rooms and corridors</h2>
+</section>
+<section id="rooms-and-corridors" class="level2">
+<h2>5. Rooms and corridors</h2>
 <p>Rooms and corridors in the dungeon are either lit or dark. Any lit areas within your line of sight will be displayed; dark areas are only displayed if they are within one space of you. Walls and corri- dors remain on the map as you explore them.</p>
 <p>Secret corridors are hidden and appear to be solid rock. You can find them with the <code>s</code> (search) command when adjacent to them. Multi- ple search attempts may be needed. When searching is successful, secret corridors become ordinary open corridor locations. Mapping magic reveals secret corridors, so converts them into ordinary corri- dors and shows them as such.</p>
-<h3 id="doorways">5.1. Doorways</h3>
+<section id="doorways" class="level3">
+<h3>5.1. Doorways</h3>
 <p>Doorways connect rooms and corridors. Some doorways have no doors; you can walk right through. Others have doors in them, which may be open, closed, or locked. To open a closed door, use the <code>o</code> (open) command; to close it again, use the <code>c</code> (close) command. By default the autoopen option is enabled, so simply attempting to walk onto a closed door’s location will attempt to open it without needing <code>o</code>. Opening via autoopen will not work if you are confused or stunned or suffer from the fumbling attribute.</p>
 <p>Open doors cannot be entered diagonally; you must approach them straight on, horizontally or vertically. Doorways without doors are not restricted in this fashion except on one particular level (described by “<code>#overview</code>” as “a primitive area”).</p>
 <p>Unlocking magic exists but usually won’t be available early on. You can get through a locked door without magic by first using an unlocking tool with the <code>a</code> (apply) command, and then opening it. By default the autounlock option is also enabled, so if you attempt to open (via <code>o</code> or autoopen) a locked door while carrying an unlocking tool, you’ll be asked whether to use it on the door’s lock. Alterna- tively, you can break a closed door (whether locked or not) down by kicking it via the `<code>^D</code>’ (kick) command. Kicking down a door destroys it and makes a lot of noise which might wake sleeping monsters.</p>
@@ -525,25 +544,32 @@
 <p>Closed doors can be useful for shutting out monsters. Most mon- sters cannot open closed doors, although a few don’t need to (for example, ghosts can walk through doors and fog clouds can flow under them). Some monsters who can open doors can also use unlocking tools.</p>
 <p>And some (giants) can smash doors.</p>
 <p>Secret doors are hidden and appear to be ordinary wall (from inside a room) or solid rock (from outside). You can find them with the <code>s</code> (search) command but it might take multiple tries (possibly many tries if your luck is poor). Once found they are in all ways equivalent to normal doors. Mapping magic does not reveal secret doors.</p>
-<h3 id="traps">5.2. Traps (<code>^</code>)</h3>
+</section>
+<section id="traps" class="level3">
+<h3>5.2. Traps (<code>^</code>)</h3>
 <p>There are traps throughout the dungeon to snare the unwary intruder. For example, you may suddenly fall into a pit and be stuck for a few turns trying to climb out (see below). A trap usually won’t appear on your map until you trigger it by moving onto it, you see someone else trigger it, or you discover it with the <code>s</code> (search) com- mand (multiple attempts are often needed; if your luck is poor, many attempts might be needed). Wands of secret door detection and spell of detect unseen also reveal traps within a modest radius but only if the trap is also within line-of-sight (whether you can see at the time or not). There is also other magic which can reveal traps.</p>
 <p>Monsters can fall prey to traps, too, which can potentially be used as a defensive strategy. Unfortunately traps can be harmful to your pet(s) as well. Monsters, including pets, usually will avoid moving onto a trap which is shown on your map if they have encountered that type of trap before.</p>
 <p>Some traps such as pits, bear traps, and webs hold you in one place. You can escape by simply trying to move to an adjacent spot and repeat as needed; eventually you will get free.</p>
 <p>Other traps can send you to different locations. Teleporters send you elsewhere on the same dungeon level. Level teleporters send you to a random dungeon level, the destination chosen from a few lev- els lower all the way to the top. These traps choose a new destina- tion each time they’re activated. Trap doors and holes also send you to another level, but one which is always below the current level. Usually that will be the next level down but it can be farther. Unlike (level) teleporters, the destination level of a particular trap door or hole is persistent, so falling into one will bring you to the same level each time–though not necessarily the same spot on the level. Magic portals behave similarly, but with some additional vari- ation. Some portals are two-way and their remote destination is always the same: another portal which can take you back. Others are one-way and send you to a specific destination level but not necessar- ily to a specific location there.</p>
 <p>There is a special multi-level branch of the dungeon with pre- mapped levels based on the classic computer game “Sokoban.” In that game, you operate as a warehouse worker who pushes crates around obstacles to position them at designated locations. In NetHack, the goal is to push boulders into pits or holes until those traps have all been nullified, giving access to whatever is beyond them. In the</p>
 <p>Sokoban game, you can only move in the four cardinal compass direc- tions, and a crate in its final destination blocks further access to that spot. In the Sokoban levels of NetHack, you can move diagonally (unless that would let you pass between two neighboring boulders) but you can only push boulders in the four cardinal directions, and a boulder which fills a pit or hole removes both the boulder and the trap so opens up normal access to that spot. With careful foresight, it is possible to complete all of the levels according to the tradi- tional rules of Sokoban. (Hint: to solve Sokoban puzzles, you often need to move things away from their eventual destinations in order to open up more room to maneuver.) Since NetHack does not support an undo capability, some allowances are permitted in case you get stuck. For example, each level has at least one extra boulder. Also, it is possible to drop everything in order to be able to squeeze into the same location as a boulder (and then presumably move past it), or to destroy a boulder with magic or tools, or to create new boulders with a scroll of earth. However, doing such things will lower your luck without any specific message given about that. See the Conduct sec- tion for information about getting feedback for your actions in Sokoban.</p>
-<h3 id="stairs-and-ladders">5.3. Stairs and ladders (<code>&lt;</code>, <code>&gt;</code>)</h3>
+</section>
+<section id="stairs-and-ladders" class="level3">
+<h3>5.3. Stairs and ladders (<code>&lt;</code>, <code>&gt;</code>)</h3>
 <p>In general, each level in the dungeon will have a staircase going up (<code>&lt;</code>) to the previous level and another going down (<code>&gt;</code>) to the next level. There are some exceptions though. For instance, fairly early in the dungeon you will find a level with two down staircases, one continuing into the dungeon and the other branching into an area known as the Gnomish Mines. Those mines eventually hit a dead end, so after exploring them (if you choose to do so), you’ll need to climb back up to the main dungeon.</p>
 <p>When you traverse a set of stairs, or trigger a trap which sends you to another level, the level you’re leaving will be deactivated and stored in a file on disk. If you’re moving to a previously visited level, it will be loaded from its file on disk and reactivated. If you’re moving to a level which has not yet been visited, it will be created (from scratch for most random levels, from a template for some “special” levels, or loaded from the remains of an earlier game for a “bones” level as briefly described below). Monsters are only active on the current level; those on other levels are essentially placed into stasis.</p>
 <p>Ordinarily when you climb a set of stairs, you will arrive on the corresponding staircase at your destination. However, pets (see below) and some other monsters will follow along if they’re close enough when you travel up or down stairs, and occasionally one of these creatures will displace you during the climb. When that occurs, the pet or other monster will arrive on the staircase and you will end up nearby.</p>
 <p>Ladders serve the same purpose as staircases, and the two types of inter-level connections are nearly indistinguishable during game play.</p>
-<h3 id="shops-and-shopping">5.4. Shops and shopping</h3>
+</section>
+<section id="shops-and-shopping" class="level3">
+<h3>5.4. Shops and shopping</h3>
 <p>Occasionally you will run across a room with a shopkeeper near the door and many items lying on the floor. You can buy items by picking them up and then using the <code>p</code> command. You can inquire about the price of an item prior to picking it up by using the “<code>#chat</code>” com- mand while standing on it. Using an item prior to paying for it will incur a charge, and the shopkeeper won’t allow you to leave the shop until you have paid any debt you owe.</p>
 <p>You can sell items to a shopkeeper by dropping them to the floor while inside a shop. You will either be offered an amount of gold and asked whether you’re willing to sell, or you’ll be told that the shop- keeper isn’t interested (generally, your item needs to be compatible with the type of merchandise carried by the shop).</p>
 <p>If you drop something in a shop by accident, the shopkeeper will usually claim ownership without offering any compensation. You’ll have to buy it back if you want to reclaim it.</p>
 <p>Shopkeepers sometime run out of money. When that happens, you’ll be offered credit instead of gold when you try to sell something. Credit can be used to pay for purchases, but it is only good in the shop where it was obtained; other shopkeepers won’t honor it. (If you happen to find a “credit card” in the dungeon, don’t bother trying to use it in shops; shopkeepers will not accept it.)</p>
 <p>The <code>$</code> command, which reports the amount of gold you are carry- ing, will also show current shop debt or credit, if any. The “Iu” command lists unpaid items (those which still belong to the shop) if you are carrying any. The “Ix” command shows an inventory-like dis- play of any unpaid items which have been used up, along with other shop fees, if any.</p>
-<h4 id="shop-idiosyncrasies">5.4.1. Shop idiosyncrasies</h4>
+<section id="shop-idiosyncrasies" class="level4">
+<h4>5.4.1. Shop idiosyncrasies</h4>
 <p>Several aspects of shop behavior might be unexpected.</p>
 <ul>
 <li><p>The price of a given item can vary due to a variety of factors.</p></li>
@@ -552,7 +578,10 @@
 <li><p>If a shop is “closed for inventory,” it will not open of its own accord.</p></li>
 <li><p>Shops do not get restocked with new items, regardless of inventory depletion.</p></li>
 </ul>
-<h3 id="movement-feedback">5.5. Movement feedback</h3>
+</section>
+</section>
+<section id="movement-feedback" class="level3">
+<h3>5.5. Movement feedback</h3>
 <p>Moving around the map usually provides no feedback–other than drawing the hero at the new location–unless you step on an object or pile of objects, or on a trap, or attempt to move onto a spot where a monster is located. There are several options which can be used to augment the normal feedback.</p>
 <p>The <code>pile_limit</code> option controls how many objects can be in a pile–sharing the same map location–for the game to state “there are objects here” instead of listing them. The default is 5. Setting it to 1 would always give that message instead of listing any objects. Setting it to 0 is a special case which will always list all objects no matter how big a pile is. Note that the number refers to the count of separate stacks of objects present rather than the sum of the quan- tities of those stacks (so 7 arrows or 25 gold pieces will each count as 1 rather than as 7 and 25, respectively, and total to 2 when both are at the same location).</p>
 <p>The “nopickup” command prefix (default <code>m</code>) can be used before a movement direction to step on objects without attempting auto-pickup and without giving feedback about them.</p>
@@ -562,34 +591,51 @@
 <p>The “nopickup” command prefix (default <code>m</code>) is also the move- without-attacking prefix and can be used to try to step onto a visible monster’s spot without the move being considered an attack (see the Fighting subsection of Monsters below). The “fight” command prefix (default <code>F</code>; also <code>-</code> if <code>number_pad</code> is on) can be used to force an attack, when guessing where an unseen monster is or when deliberately</p>
 <p>attacking a peaceful or tame creature.</p>
 <p>The <code>run_mode</code> option controls how frequently the map gets redrawn when moving more than one step in a single command (so when rushing, running, or traveling).</p>
-<h3 id="rogue-level">5.6. Rogue level</h3>
+</section>
+<section id="rogue-level" class="level3">
+<h3>5.6. Rogue level</h3>
 <p>One dungeon level (occurring in mid to late teens of the main dungeon) is a tribute to the ancestor game hack’s inspiration rogue.</p>
 <p>It is usually displayed differently from other levels: possibly in characters instead of tiles, or without line-drawing symbols if already in characters; also, gold is shown as <code>*</code> rather than $ and stairs are shown as <code>%</code> rather than &lt; and &gt;. There are some minor dif- ferences in actual game play: doorways lack doors; a scroll, wand, or spell of light used in a room lights up the whole room rather than within a radius around your character. And monsters represented by lower-case letters aren’t randomly generated on the rogue level.</p>
 <p>The slight strangeness of this level is a feature, not a bug….</p>
-<h2 id="monsters">6. Monsters</h2>
+</section>
+</section>
+<section id="monsters" class="level2">
+<h2>6. Monsters</h2>
 <p>Monsters you cannot see are not displayed on the screen. Beware! You may suddenly come upon one in a dark place. Some magic items can help you locate them before they locate you (which some monsters can do very well).</p>
 <p>The commands <code>/</code> and <code>;</code> may be used to obtain information about those monsters who are displayed on the screen. The command “<code>#name</code>” (by default bound to <code>C</code>), allows you to assign a name to a monster, which may be useful to help distinguish one from another when multiple monsters are present. Assigning a name which is just a space will remove any prior name.</p>
 <p>The extended command “<code>#chat</code>” can be used to interact with an adjacent monster. There is no actual dialog (in other words, you don’t get to choose what you’ll say), but chatting with some monsters such as a shopkeeper or the Oracle of Delphi can produce useful results.</p>
-<h3 id="fighting">6.1. Fighting</h3>
+<section id="fighting" class="level3">
+<h3>6.1. Fighting</h3>
 <p>If you see a monster and you wish to fight it, just attempt to walk into it. Many monsters you find will mind their own business unless you attack them. Some of them are very dangerous when angered. Remember: discretion is the better part of valor.</p>
 <p>In most circumstances, if you attempt to attack a peaceful mon- ster by moving into its location, you’ll be asked to confirm your intent. By default an answer of <code>y</code> acknowledges that intent, which can be error prone if you’re using <code>y</code> to move. You can set the para- noid_confirmation:attack option to require a response of “yes”</p>
 <p>instead.</p>
 <p>If you can’t see a monster (if it is invisible, or if you are blinded), the symbol <code>I</code> will be shown when you learn of its presence. If you attempt to walk into it, you will try to fight it just like a monster that you can see; of course, if the monster has moved, you will attack empty air. If you guess that the monster has moved and you don’t wish to fight, you can use the <code>m</code> command to move without fighting; likewise, if you don’t remember a monster but want to try fighting anyway, you can use the <code>F</code> command.</p>
-<h3 id="your-pet">6.2. Your pet</h3>
+</section>
+<section id="your-pet" class="level3">
+<h3>6.2. Your pet</h3>
 <p>You start the game with a little dog (<code>d</code>), kitten (<code>f</code>), or pony (<code>u</code>), which follows you about the dungeon and fights monsters with you. Like you, your pet needs food to survive. Dogs and cats usually feed themselves on fresh carrion and other meats; horses need vegetar- ian food which is harder to come by. If you’re worried about your pet or want to train it, you can feed it, too, by throwing it food. A properly trained pet can be very useful under certain circumstances.</p>
 <p>Your pet also gains experience from killing monsters, and can grow over time, gaining hit points and doing more damage. Initially, your pet may even be better at killing things than you, which makes pets useful for low-level characters.</p>
 <p>Your pet will follow you up and down staircases if it is next to you when you move. Otherwise your pet will be stranded and may become wild. Similarly, when you trigger certain types of traps which alter your location (for instance, a trap door which drops you to a lower dungeon level), any adjacent pet will accompany you and any non-adja- cent pet will be left behind. Your pet may trigger such traps itself; you will not be carried along with it even if adjacent at the time.</p>
-<h3 id="steeds">6.3. Steeds</h3>
+</section>
+<section id="steeds" class="level3">
+<h3>6.3. Steeds</h3>
 <p>Some types of creatures in the dungeon can actually be ridden if you have the right equipment and skill. Convincing a wild beast to let you saddle it up is difficult to say the least. Many a dungeoneer has had to resort to magic and wizardry in order to forge the alliance. Once you do have the beast under your control however, you can easily climb in and out of the saddle with the “<code>#ride</code>” command. Lead the beast around the dungeon when riding, in the same manner as you would move yourself. It is the beast that you will see displayed on the map.</p>
 <p>Riding skill is managed by the “<code>#enhance</code>” command. See the sec- tion on Weapon proficiency for more information about that.</p>
 <p>Use the <code>a</code> (apply) command and pick a saddle in your inventory to attempt to put that saddle on an adjacent creature. If successful, it will be transferred to that creature’s inventory.</p>
 <p>Use the “<code>#loot</code>” command while adjacent to a saddled creature to try to remove the saddle from that creature. If successful, it will be transferred to your inventory.</p>
-<h3 id="bones-levels">6.4. Bones levels</h3>
+</section>
+<section id="bones-levels" class="level3">
+<h3>6.4. Bones levels</h3>
 <p>You may encounter the shades and corpses of other adventurers (or even former incarnations of yourself!) and their personal effects. Ghosts are hard to kill, but easy to avoid, since they’re slow and do little damage. You can plunder the deceased adventurer’s possessions; however, they are likely to be cursed. Beware of whatever killed the former player; it is probably still lurking around, gloating over its last victory.</p>
-<h3 id="persistence-of-monsters">6.5. Persistence of Monsters</h3>
+</section>
+<section id="persistence-of-monsters" class="level3">
+<h3>6.5. Persistence of Monsters</h3>
 <p>Monsters (a generic reference which also includes humans and pets) are only shown while they can be seen or otherwise sensed. Mov- ing to a location where you can’t see or sense a monster any more will result in it disappearing from your map, similarly if it is the one who moved rather than you.</p>
 <p>However, if you encounter a monster which you can’t see or sense–perhaps it is invisible and has just tapped you on the noggin– a special “remembered, unseen monster” marker will be displayed at the location where you think it is. That will persist until you have proven that there is no monster there, even if the unseen monster moves to another location or you move to a spot where the marker’s location ordinarily wouldn’t be seen any more.</p>
-<h2 id="objects">7. Objects</h2>
+</section>
+</section>
+<section id="objects" class="level2">
+<h2>7. Objects</h2>
 <p>When you find something in the dungeon, it is common to want to pick it up. In NetHack, this is accomplished by using the <code>,</code> com- mand. If autopickup option is on, you will automatically pick up the object by walking over, unless you move with the <code>m</code> prefix.</p>
 <p>If you’re carrying too many items, NetHack will tell you so and you won’t be able to pick up anything more. Otherwise, it will add the object(s) to your pack and tell you what you just picked up.</p>
 <p>As you add items to your inventory, you also add the weight of that object to your load. The amount that you can carry depends on your strength and your constitution. The stronger and sturdier you are, the less the additional load will affect you. There comes a point, though, when the weight of all of that stuff you are carrying around with you through the dungeon will encumber you. Your reactions will get slower and you’ll burn calories faster, requiring food more frequently to cope with it. Eventually, you’ll be so overloaded that you’ll either have to discard some of what you’re carrying or collapse under its weight.</p>
@@ -598,14 +644,17 @@
 <p>When you pick up an object, it is assigned an inventory letter. Many commands that operate on objects must ask you to find out which object you want to use. When NetHack asks you to choose a particular object you are carrying, you are usually presented with a list of inventory letters to choose from (see Commands, above).</p>
 <p>Some objects, such as weapons, are easily differentiated. Oth- ers, like scrolls and potions, are given descriptions which vary according to type. During a game, any two objects with the same description are the same type. However, the descriptions will vary from game to game.</p>
 <p>When you use one of these objects, if its effect is obvious, NetHack will remember what it is for you. If its effect isn’t extremely obvious, you will be asked what you want to call this type of object so you will recognize it later. You can also use the “<code>#name</code>” command, for the same purpose at any time, to name all objects of a particular type or just an individual object. When you use “<code>#name</code>” on an object which has already been named, specifying a space as the value will remove the prior name instead of assigning a new one.</p>
-<h3 id="curses-and-blessings">7.1. Curses and Blessings</h3>
+<section id="curses-and-blessings" class="level3">
+<h3>7.1. Curses and Blessings</h3>
 <p>Any object that you find may be cursed, even if the object is otherwise helpful. The most common effect of a curse is being stuck with (and to) the item. Cursed weapons weld themselves to your hand when wielded, so you cannot unwield them. Any cursed item you wear is not removable by ordinary means. In addition, cursed arms and armor usually, but not always, bear negative enchantments that make them less effective in combat. Other cursed objects may act poorly or detrimentally in other ways.</p>
 <p>Objects can also be blessed instead. Blessed items usually work better or more beneficially than normal uncursed items. For example, a blessed weapon will do slightly more damage against demons.</p>
 <p>Objects which are neither cursed nor blessed are referred to as uncursed. They could just as easily have been described as unblessed, but the uncursed designation is what you will see within the game. A “glass half full versus glass half empty” situation; make of that what you will.</p>
 <p>There are magical means of bestowing or removing curses upon objects, so even if you are stuck with one, you can still have the curse lifted and the item removed. Priests and Priestesses have an innate sensitivity to this property in any object, so they can more easily avoid cursed objects than other character roles. Dropping objects onto an altar will reveal their bless or curse state provided that you can see them land.</p>
 <p>An item with unknown status will be reported in your inventory with no prefix. An item which you know the state of will be distin- guished in your inventory by the presence of the word cursed, uncursed, or blessed in the description of the item. In some cases uncursed will be omitted as being redundant when enough other informa- tion is displayed. The <code>implicit_uncursed</code> option can be used to con- trol this; toggle it off to have uncursed be displayed even when that can be deduced from other attributes.</p>
 <p>Sometimes the bless or curse state of objects is referred to as their “BUC” attribute, for Blessed, Uncursed, or Cursed state, or “BUCX” for Blessed, Uncursed, Cursed, or unknown. (The term beatitude is occasionally used as well.)</p>
-<h3 id="weapons">7.2. Weapons (<code>)</code>)</h3>
+</section>
+<section id="weapons" class="level3">
+<h3>7.2. Weapons (<code>)</code>)</h3>
 <p>Given a chance, most monsters in the Mazes of Menace will gratu- itously try to kill you. You need weapons for self-defense (killing them first). Without a weapon, you do only 1-2 hit points of damage (plus bonuses, if any). Monk characters are an exception; they nor- mally do more damage with bare (or gloved) hands than they do with weapons.</p>
 <p>There are wielded weapons, like maces and swords, and thrown weapons, like arrows and spears. To hit monsters with a weapon, you must wield it and attack them, or throw it at them. You can simply elect to throw a spear. To shoot an arrow, you should first wield a bow, then throw the arrow. Crossbows shoot crossbow bolts. Slings hurl rocks and (other) stones (like gems).</p>
 <p>Enchanted weapons have a “plus” (or “to hit enhancement” which can be either positive or negative) that adds to your chance to hit and the damage you do to a monster. The only way to determine a weapon’s enchantment is to have it magically identified somehow. Most weapons are subject to some type of damage like rust. Such “erosion” damage can be repaired.</p>
@@ -615,23 +664,31 @@
 <p>There might be times when you’d rather not wield any weapon at all. To accomplish that, wield <code>-</code>, or else use the <code>A</code> command which allows you to unwield the current weapon in addition to taking off other worn items.</p>
 <p>Those of you in the audience who are AD&amp;D players, be aware that each weapon which existed in AD&amp;D does roughly the same damage to mon- sters in NetHack. Some of the more obscure weapons (such as the aklys, lucern hammer, and bec-de-corbin) are defined in an appendix to Unearthed Arcana, an AD&amp;D supplement.</p>
 <p>The commands to use weapons are <code>w</code> (wield), <code>t</code> (throw), <code>f</code> (fire), <code>Q</code> (quiver), <code>x</code> (exchange), <code>X</code> (twoweapon), and “<code>#enhance</code>” (see below).</p>
-<h4 id="throwing-and-shooting">7.2.1. Throwing and shooting</h4>
+<section id="throwing-and-shooting" class="level4">
+<h4>7.2.1. Throwing and shooting</h4>
 <p>You can throw just about anything via the <code>t</code> command. It will prompt for the item to throw; picking <code>?</code> will list things in your inventory which are considered likely to be thrown, or picking <code>*</code> will list your entire inventory. After you’ve chosen what to throw, you will be prompted for a direction rather than for a specific tar- get. The distance something can be thrown depends mainly on the type of object and your strength. Arrows can be thrown by hand, but can be thrown much farther and will be more likely to hit when thrown while you are wielding a bow.</p>
 <p>Some weapons will return when thrown. A boomerang–provided it fails to hit anything–is an obvious example. If an aklys (thonged club) is thrown while it is wielded, it will return even when it hits something. A sufficiently strong hero can throw the warhammer Mjoll- nir; when thrown by a Valkyrie it will return too. However, aklyses and Mjollnir occasionally fail to return. Returning thrown objects occasionally fail to be caught, sometimes even hitting the thrower, but when caught they become re-wielded.</p>
 <p>You can simplify the throwing operation by using the <code>Q</code> command to select your preferred “missile”, then using the <code>f</code> command to throw it. You’ll be prompted for a direction as above, but you don’t have to specify which item to throw each time you use <code>f</code>. There is also an option, autoquiver, which has NetHack choose another item to automatically fill your quiver (or quiver sack, or have at the ready) when the inventory slot used for <code>Q</code> runs out. If your quiver is empty, autoquiver is false, and you are wielding a weapon which returns when thrown, you will throw that weapon instead of filling the quiver. The fire command also has extra assistance, if fireassist is on it will try to wield a launcher matching the ammo in the quiver.</p>
 <p>Some characters have the ability to throw or shoot a volley of multiple items (from the same stack) in a single action. Knowing how to load several rounds of ammunition at once–or hold several missiles in your hand–and still hit a target is not an easy task. Rangers are among those who are adept at this task, as are those with a high level of proficiency in the relevant weapon skill (in bow skill if you’re wielding one to shoot arrows, in crossbow skill if you’re wielding one to shoot bolts, or in sling skill if you’re wielding one to shoot stones). The number of items that the character has a chance to fire varies from turn to turn. You can explicitly limit the number of shots by using a numeric prefix before the <code>t</code> or <code>f</code> command. For example, “2f” (or “n2f” if using <code>number_pad</code> mode) would ensure that at most 2 arrows are shot even if you could have fired 3. If you specify a larger number than would have been shot (“4f” in this example), you’ll just end up shooting the same number (3, here) as if no limit had been specified. Once the volley is in motion, all of the items will travel in the same direction; if the first ones kill a monster, the others can still continue beyond that spot.</p>
-<h4 id="weapon-proficiency">7.2.2. Weapon proficiency</h4>
+</section>
+<section id="weapon-proficiency" class="level4">
+<h4>7.2.2. Weapon proficiency</h4>
 <p>You will have varying degrees of skill in the weapons available. Weapon proficiency, or weapon skills, affect how well you can use par- ticular types of weapons, and you’ll be able to improve your skills as you progress through a game, depending on your role, your experience level, and use of the weapons.</p>
 <p>For the purposes of proficiency, weapons have been divided up into various groups such as daggers, broadswords, and polearms. Each role has a limit on what level of proficiency a character can achieve for each group. For instance, wizards can become highly skilled in daggers or staves but not in swords or bows.</p>
 <p>The “<code>#enhance</code>” extended command is used to review current weapons proficiency (also spell proficiency) and to choose which skill(s) to improve when you’ve used one or more skills enough to become eligible to do so. The skill rankings are “none” (sometimes also referred to as “restricted”, because you won’t be able to advance), “unskilled”, “basic”, “skilled”, and “expert”. Restricted skills simply will not appear in the list shown by “<code>#enhance</code>”. (Divine intervention might unrestrict a particular skill, in which case it will start at unskilled and be limited to basic.) Some characters can enhance their barehanded combat or martial arts skill beyond expert to “master” or “grand master”.</p>
 <p>Use of a weapon in which you’re restricted or unskilled will incur a modest penalty in the chance to hit a monster and also in the amount of damage done when you do hit; at basic level, there is no penalty or bonus; at skilled level, you receive a modest bonus in the chance to hit and amount of damage done; at expert level, the bonus is higher. A successful hit has a chance to boost your training towards the next skill level (unless you’ve already reached the limit for this skill). Once such training reaches the threshold for that next level, you’ll be told that you feel more confident in your skills. At that</p>
 <p>point you can use “<code>#enhance</code>” to increase one or more skills. Such skills are not increased automatically because there is a limit to your total overall skills, so you need to actively choose which skills to enhance and which to ignore.</p>
-<h4 id="two-weapon-combat">7.2.3. Two-Weapon combat</h4>
+</section>
+<section id="two-weapon-combat" class="level4">
+<h4>7.2.3. Two-Weapon combat</h4>
 <p>Some characters can use two weapons at once. Setting things up to do so can seem cumbersome but becomes second nature with use. To wield two weapons, you need to use the “<code>#twoweapon</code>” command. But first you need to have a weapon in each hand. (Note that your two weapons are not fully equal; the one in the hand you normally wield with is considered primary and the other one is considered secondary. The most noticeable difference is after you stop–or before you begin, for that matter–wielding two weapons at once. The primary is your wielded weapon and the secondary is just an item in your inventory that’s been designated as alternate weapon.)</p>
 <p>If your primary weapon is wielded but your off hand is empty or has the wrong weapon, use the sequence <code>x</code>, <code>w</code>, <code>x</code> to first swap your primary into your off hand, wield whatever you want as secondary weapon, then swap them both back into the intended hands. If your secondary or alternate weapon is correct but your primary one is not, simply use <code>w</code> to wield the primary. Lastly, if neither hand holds the correct weapon, use <code>w</code>, <code>x</code>, <code>w</code> to first wield the intended sec- ondary, swap it to off hand, and then wield the primary.</p>
 <p>The whole process can be simplified via use of the pushweapon option. When it is enabled, then using <code>w</code> to wield something causes the currently wielded weapon to become your alternate weapon. So the sequence <code>w</code>, <code>w</code> can be used to first wield the weapon you intend to be secondary, and then wield the one you want as primary which will push the first into secondary position.</p>
 <p>When in two-weapon combat mode, using the <code>X</code> command toggles back to single-weapon mode. Throwing or dropping either of the weap- ons or having one of them be stolen or destroyed will also make you revert to single-weapon combat.</p>
-<h3 id="armor">7.3. Armor (<code>[</code>)</h3>
+</section>
+</section>
+<section id="armor" class="level3">
+<h3>7.3. Armor (<code>[</code>)</h3>
 <p>Lots of unfriendly things lurk about; you need armor to protect yourself from their blows. Some types of armor offer better protec- tion than others. Your armor class is a measure of this protection. Armor class (AC) is measured as in AD&amp;D, with 10 being the equivalent of no armor, and lower numbers meaning better armor. Each suit of armor which exists in AD&amp;D gives the same protection in NetHack.</p>
 <p>Here is a list of the armor class values provided by suits of armor: Dragon scale mail 1 Plate mail, Crystal plate mail 3 Bronze plate mail, Splint mail,</p>
 <p>Banded mail, Dwarvish mithril-coat 4 Chain mail, Elven mithril-coat 5 Scale mail, Orcish chain mail 6 Ring mail, Studded leather armor, Dragon scales 7 Leather armor, Orcish ring mail 8 Leather jacket 9 none 10</p>
@@ -640,36 +697,48 @@
 <p>Many types of armor are subject to some kind of damage like rust. Such damage can be repaired. Some types of armor may inhibit spell casting.</p>
 <p>The nudist option can be set (prior to game start) to attempt to play the entire game without wearing any armor (a self-imposed chal- lenge which is extremely difficult to accomplish).</p>
 <p>The commands to use armor are <code>W</code> (wear) and <code>T</code> (take off). The <code>A</code> command can be used to take off armor as well as other worn items. Also, <code>P</code> (put on) and <code>R</code> (remove) which are normally for accessories can be used for armor, but pieces of armor won’t be shown as likely candidates in a prompt for choosing what to put on or remove.</p>
-<h3 id="food">7.4. Food (<code>%</code>)</h3>
+</section>
+<section id="food" class="level3">
+<h3>7.4. Food (<code>%</code>)</h3>
 <p>Food is necessary to survive. If you go too long without eating you will faint, and eventually die of starvation. Some types of food will spoil, and become unhealthy to eat, if not protected. Food stored in ice boxes or tins (“cans”) will usually stay fresh, but ice boxes are heavy, and tins take a while to open.</p>
 <p>When you kill monsters, they usually leave corpses which are also “food.” Many, but not all, of these are edible; some also give you special powers when you eat them. A good rule of thumb is “you are what you eat.”</p>
 <p>Some character roles and some monsters are vegetarian. Vegetar- ian monsters will typically never eat animal corpses, while vegetarian players can, but with some rather unpleasant side-effects.</p>
 <p>You can name one food item after something you like to eat with the fruit option.</p>
 <p>The command to eat food is <code>e</code>.</p>
-<h3 id="scrolls">7.5. Scrolls (<code>?</code>)</h3>
+</section>
+<section id="scrolls" class="level3">
+<h3>7.5. Scrolls (<code>?</code>)</h3>
 <p>Scrolls are labeled with various titles, probably chosen by ancient wizards for their amusement value (for example “READ ME,” or “THANX MAUD” backwards). Scrolls disappear after you read them (except for blank ones, without magic spells on them).</p>
 <p>One of the most useful of these is the scroll of identify, which can be used to determine what another object is, whether it is cursed or blessed, and how many uses it has left. Some objects of subtle enchantment are difficult to identify without these.</p>
 <p>A scroll whose label is known can be read even when the hero is blind. If a scroll has been discovered, it will be listed in inven- tory by type rather than by label, but the label is known in that sit- uation even though it isn’t shown.</p>
 <p>Many scrolls produce a different effect from usual if they are blessed or cursed, or read while the hero is confused.</p>
 <p>A mail daemon may run up and deliver mail to you as a scroll of mail (on versions compiled with this feature). To use this feature on versions where NetHack mail delivery is triggered by electronic mail appearing in your system mailbox, you must let NetHack know where to look for new mail by setting the “MAIL” environment variable to the file name of your mailbox. You may also want to set the “MAILREADER” environment variable to the file name of your favorite reader, so NetHack can shell to it when you read the scroll. On versions of NetHack where mail is randomly generated internal to the game, these environment variables are ignored. You can disable the mail daemon by turning off the mail option.</p>
 <p>The command to read a scroll is <code>r</code>.</p>
-<h3 id="potions">7.6. Potions (<code>!</code>)</h3>
+</section>
+<section id="potions" class="level3">
+<h3>7.6. Potions (<code>!</code>)</h3>
 <p>Potions are distinguished by the color of the liquid inside the flask. They disappear after you quaff them.</p>
 <p>Clear potions are potions of water. Sometimes these are blessed or cursed, resulting in holy or unholy water. Holy water is the bane of the undead, so potions of holy water are good things to throw (<code>t</code>) at them. It is also sometimes very useful to dip (“<code>#dip</code>”) an object into a potion.</p>
 <p>The command to drink a potion is <code>q</code> (quaff).</p>
-<h3 id="wands">7.7. Wands (<code>/</code>)</h3>
+</section>
+<section id="wands" class="level3">
+<h3>7.7. Wands (<code>/</code>)</h3>
 <p>Wands usually have multiple magical charges. Some types of wands require a direction in which to zap them. You can also zap them at yourself (just give a <code>.</code> or <code>s</code> for the direction). Be warned, how- ever, for this is often unwise. Other types of wands don’t require a direction. The number of charges in a wand is random and decreases by one whenever you use it.</p>
 <p>When the number of charges left in a wand becomes zero, attempts to use the wand will usually result in nothing happening. Occasion- ally, however, it may be possible to squeeze the last few mana points from an otherwise spent wand, destroying it in the process. A wand may be recharged by using suitable magic, but doing so runs the risk of causing it to explode. The chance for such an explosion starts out very small and increases each time the wand is recharged.</p>
 <p>In a truly desperate situation, when your back is up against the wall, you might decide to go for broke and break your wand. This is not for the faint of heart. Doing so will almost certainly cause a catastrophic release of magical energies.</p>
 <p>When you have fully identified a particular wand, inventory dis- play will include additional information in parentheses: the number of times it has been recharged followed by a colon and then by its cur- rent number of charges. A current charge count of -1 is a special case indicating that the wand has been cancelled.</p>
 <p>The command to use a wand is <code>z</code> (zap). To break one, use the <code>a</code> (apply) command.</p>
-<h3 id="rings">7.8. Rings (<code>=</code>)</h3>
+</section>
+<section id="rings" class="level3">
+<h3>7.8. Rings (<code>=</code>)</h3>
 <p>Rings are very useful items, since they are relatively permanent magic, unlike the usually fleeting effects of potions, scrolls, and wands.</p>
 <p>Putting on a ring activates its magic. You can wear at most two rings at any time, one on the ring finger of each hand.</p>
 <p>Most worn rings also cause you to grow hungry more rapidly, the rate varying with the type of ring.</p>
 <p>When wearing gloves, rings are worn underneath. If the gloves are cursed, rings cannot be put on and any already being worn cannot be removed. When worn gloves aren’t cursed, you don’t have to manu- ally take them off before putting on or removing a ring and then re- wear them after. That’s done implicitly to avoid unnecessary tedium.</p>
 <p>The commands to use rings are <code>P</code> (put on) and <code>R</code> (remove). <code>A</code>, <code>W</code>, and <code>T</code> can also be used; see Amulets.</p>
-<h3 id="spellbooks">7.9. Spellbooks (<code>+</code>)</h3>
+</section>
+<section id="spellbooks" class="level3">
+<h3>7.9. Spellbooks (<code>+</code>)</h3>
 <p>Spellbooks are tomes of mighty magic. When studied with the <code>r</code> (read) command, they transfer to the reader the knowledge of a spell (and therefore eventually become unreadable)–unless the attempt back- fires. Reading a cursed spellbook or one with mystic runes beyond your ken can be harmful to your health!</p>
 <p>A spell (even when learned) can also backfire when you cast it. If you attempt to cast a spell well above your experience level, or if you have little skill with the appropriate spell type, or cast it at a time when your luck is particularly bad, you can end up wasting both the energy and the time required in casting.</p>
 <p>Casting a spell calls forth magical energies and focuses them with your naked mind. Some of the magical energy released comes from within you. Casting temporarily drains your magical power, which will slowly be recovered, and causes you to need additional food. Casting of spells also requires practice. With practice, your skill in each category of spell casting will improve. Over time, however, your mem- ory of each spell will dim, and you will need to relearn it.</p>
@@ -677,37 +746,54 @@
 <p>Just as weapons are divided into groups in which a character can become proficient (to varying degrees), spells are similarly grouped. Successfully casting a spell exercises its skill group; using the “<code>#enhance</code>” command to advance a sufficiently exercised skill will affect all spells within the group. Advanced skill may increase the potency of spells, reduce their risk of failure during casting attempts, and improve the accuracy of the estimate for how much longer they will be retained in your memory. Skill slots are shared with weapons skills. (See also the section on “Weapon proficiency”.)</p>
 <p>Casting a spell also requires flexible movement, and wearing var- ious types of armor may interfere with that.</p>
 <p>The command to read a spellbook is the same as for scrolls, <code>r</code> (read). The <code>+</code> command lists each spell you know along with its level, skill category, chance of failure when casting, and an estimate of how strongly it is remembered. The <code>Z</code> (cast) command casts a spell.</p>
-<h3 id="tools">7.10. Tools (<code>(</code>)</h3>
+</section>
+<section id="tools" class="level3">
+<h3>7.10. Tools (<code>(</code>)</h3>
 <p>Tools are miscellaneous objects with various purposes. Some tools have a limited number of uses, akin to wand charges. For exam- ple, lamps burn out after a while. Other tools are containers, which objects can be placed into or taken out of.</p>
 <p>Some tools (such as a blindfold) can be worn and can be put on and removed like other accessories (rings, amulets); see Amulets. Other tools (such as pick-axe) can be wielded as weapons in addition to being applied for their usual purpose, and in some cases (again, pick-axe) become wielded as a weapon even when applied.</p>
 <p>The blind option can be set (prior to game start) to attempt to play the entire game without being able to see (a self-imposed chal- lenge which is very difficult to accomplish).</p>
 <p>The command to use a tool is <code>a</code> (apply).</p>
-<h4 id="containers">7.10.1. Containers</h4>
+<section id="containers" class="level4">
+<h4>7.10.1. Containers</h4>
 <p>You may encounter bags, boxes, and chests in your travels. A tool of this sort can be opened with the “<code>#loot</code>” extended command when you are standing on top of it (that is, on the same floor spot), or with the <code>a</code> (apply) command when you are carrying it. However, chests are often locked, and are in any case unwieldy objects. You must set one down before unlocking it by using a key or lock-picking tool with the <code>a</code> (apply) command, by kicking it with the `<code>^D</code>’ com- mand, or by using a weapon to force the lock with the “<code>#force</code>” extended command.</p>
 <p>Some chests are trapped, causing nasty things to happen when you unlock or open them. You can check for and try to deactivate traps with the “<code>#untrap</code>” extended command.</p>
 <p>When the contents of a container are known, that container will be described as something like “a sack containing 3 items”. In this example, the 3 refers to number of stacks of compatible items, not to the total number of individual items. So a sack holding 2 sky blue potions, 7 arrows, and 350 gold pieces would be described as having 3 items rather than 10 or 359. And you would need to have 3 unused inventory slots available in order to take everything out (for the case where the items you remove don’t combine into bigger stacks with things you’re already carrying).</p>
 <p>If a chest or large box is described as “broken”, that means that it can’t be locked rather than that it no longer functions as a con- tainer.</p>
 <p>The apply and loot commands allow you to take out and/or put in an arbitrary number of items in a single operation. If you want to take everything out of a container, you can use the “<code>#tip</code>” command to pour the contents onto the floor. This may be your only way to get things out if your hands are stuck to a cursed two-handed weapon. When your hands aren’t stuck, you have the potential to pour the con- tents into another container. (As of this writing, the other con- tainer must be carried rather than on the floor.)</p>
-<h3 id="amulets">7.11. Amulets (<code>"</code>)</h3>
+</section>
+</section>
+<section id="amulets" class="level3">
+<h3>7.11. Amulets (<code>"</code>)</h3>
 <p>Amulets are very similar to rings, and often more powerful. Like rings, amulets have various magical properties, some beneficial, some harmful, which are activated by putting them on.</p>
 <p>Only one amulet may be worn at a time, around your neck. Like wearing rings, wearing an amulet affects your metabolism, causing you to grow hungry more rapidly.</p>
 <p>The commands to use amulets are the same as for rings, <code>P</code> (put on) and <code>R</code> (remove). <code>A</code> can be used to remove various worn items including amulets. Also, <code>W</code> (wear) and <code>T</code> (take off) which are nor- mally for armor can be used for amulets and other accessories (rings and eyewear), but accessories won’t be shown as likely candidates in a prompt for choosing what to wear or take off.</p>
-<h3 id="gems">7.12. Gems (<code>*</code>)</h3>
+</section>
+<section id="gems" class="level3">
+<h3>7.12. Gems (<code>*</code>)</h3>
 <p>Some gems are valuable, and can be sold for a lot of gold. They are also a far more efficient way of carrying your riches. Valuable gems increase your score if you bring them with you when you exit.</p>
 <p>Other small rocks are also categorized as gems, but they are much less valuable. All rocks, however, can be used as projectile weapons (if you have a sling). In the most desperate of cases, you can still throw them by hand.</p>
-<h3 id="large-rocks">7.13. Large rocks (<code>`</code>)</h3>
+</section>
+<section id="large-rocks" class="level3">
+<h3>7.13. Large rocks (<code>`</code>)</h3>
 <p>Statues and boulders are not particularly useful, and are gener- ally heavy. It is rumored that some statues are not what they seem.</p>
 <p>Boulders occasionally block your path. You can push one forward (by attempting to walk onto its spot) when nothing blocks its path, or you can smash it into a pile of small rocks with breaking magic or a pick-axe. It is possible to move onto a boulder’s location if certain conditions are met; ordinarily one of those conditions is that pushing it any further be blocked. Using the move-without-picking-up prefix (default key <code>m</code>) prior to the direction of movement will attempt to move to a boulder’s location without pushing it in addition to the prefix’s usual action of suppressing auto-pickup at the destination.</p>
 <p>Very large humanoids (giants and their ilk) have been known to pick up boulders and use them as missile weapons.</p>
 <p>Unlike boulders, statues can’t be pushed, but don’t need to be because they don’t block movement. They can be smashed into rocks though.</p>
 <p>For some configurations of the program, statues are no longer shown as <code>`</code> but by the letter representing the monster they depict instead.</p>
-<h3 id="gold">7.14. Gold (<code>$</code>)</h3>
+</section>
+<section id="gold" class="level3">
+<h3>7.14. Gold (<code>$</code>)</h3>
 <p>Gold adds to your score, and you can buy things in shops with it. There are a number of monsters in the dungeon that may be influenced by the amount of gold you are carrying (shopkeepers aside).</p>
 <p>Gold pieces are the only type of object where bless/curse state does not apply. They’re always uncursed but never described as uncursed even if you turn off the <code>implicit_uncursed</code> option. You can set the goldX option if you prefer to have gold pieces be treated as bless/curse state unknown rather than as known to be uncursed. Only matters when you’re using an object selection prompt that can filter by “BUCX” state.</p>
-<h3 id="persistence-of-objects">7.15. Persistence of Objects</h3>
+</section>
+<section id="persistence-of-objects" class="level3">
+<h3>7.15. Persistence of Objects</h3>
 <p>Normally, if you have seen an object at a particular map location and move to another location where you can’t directly see that object any more, it will continue to be displayed on your map. That remains the case even if it is not actually there any more–perhaps a monster has picked it up or it has rotted away–until you can see or feel that location again. One notable exception is that if the object gets cov- ered by the “remembered, unseen monster” marker. When that marker is later removed after you’ve verified that no monster is there, you will have forgotten that there was any object there regardless of whether the unseen monster actually took the object. If the object is still there, then once you see or feel that location again you will re-dis- cover the object and resume remembering it.</p>
 <p>The situation is the same for a pile of objects, except that only the top item of the pile is displayed. The <code>hilite_pile</code> option can be enabled in order to show an item differently when it is the top one of a pile.</p>
-<h2 id="conduct">8. Conduct</h2>
+</section>
+</section>
+<section id="conduct" class="level2">
+<h2>8. Conduct</h2>
 <p>As if winning NetHack were not difficult enough, certain players seek to challenge themselves by imposing restrictions on the way they play the game. The game automatically tracks some of these chal- lenges, which can be checked at any time with the <code>#conduct</code> command or at the end of the game. When you perform an action which breaks a challenge, it will no longer be listed. This gives players extra “bragging rights” for winning the game with these challenges. Note that it is perfectly acceptable to win the game without resorting to these restrictions and that it is unusual for players to adhere to challenges the first time they win the game.</p>
 <p>Several of the challenges are related to eating behavior. The most difficult of these is the foodless challenge. Although creatures can survive long periods of time without food, there is a physiologi- cal need for water; thus there is no restriction on drinking bever- ages, even if they provide some minor food benefits. Calling upon your god for help with starvation does not violate any food challenges either.</p>
 <p>A strict vegan diet is one which avoids any food derived from animals. The primary source of nutrition is fruits and vegetables. The corpses and tins of blobs (<code>b</code>), jellies (<code>j</code>), and fungi (<code>F</code>) are also considered to be vegetable matter. Certain human food is prepared without animal products; namely, lembas wafers, cram rations, food rations (gunyoki), K-rations, and C-rations. Metal or another normally indigestible material eaten while polymorphed into a creature that can digest it is also considered vegan food. Note however that eating such items still counts against foodless conduct.</p>
@@ -720,7 +806,8 @@
 <p>An illiterate character does not read or write. This includes reading a scroll, spellbook, fortune cookie message, or t-shirt; writ- ing a scroll; or making an engraving of anything other than a single “X” (the traditional signature of an illiterate person). Reading an engraving, or any item that is absolutely necessary to win the game, is not counted against this conduct. The identity of scrolls and spellbooks (and knowledge of spells) in your starting inventory is assumed to be learned from your teachers prior to the start of the game and isn’t counted.</p>
 <p>There is a side-branch to the main dungeon called “Sokoban,” briefly described in the earlier section about Traps. As mentioned there, the goal is to push boulders into pits and/or holes to plug those in order to both get the boulders out of the way and be able to go past the traps. There are some special “rules” that are active when in that branch of the dungeon. Some rules can’t be bypassed, such as being unable to push a boulder diagonally. Other rules can, such as not smashing boulders with magic or tools, but doing so causes you to receive a luck penalty. No message about that is given at the time, but it is tracked as a conduct. The <code>#conduct</code> command and end of game disclosure will report whether you have abided by the special rules of Sokoban, and if not, how many times you violated them, pro- viding you with a way to discover which actions incur bad luck so that you can be better informed about whether or not to avoid repeating those actions in the future. (Note: the Sokoban conduct will only be displayed if you have entered the Sokoban branch of the dungeon during the current game. Once that has happened, it becomes part of dis- closed conduct even if you haven’t done anything interesting there. Ending the game with “never broke the Sokoban rules” conduct is most meaningful if you also manage to perform the “obtained the Sokoban prize” achievement (see Achievements below).)</p>
 <p>There are several other challenges tracked by the game. It is possible to eliminate one or more species of monsters by genocide; playing without this feature is considered a challenge. When the game offers you an opportunity to genocide monsters, you may respond with the monster type “none” if you want to decline. You can change the form of an item into another item of the same type (“polypiling”) or the form of your own body into another creature (“polyself”) by wand, spell, or potion of polymorph; avoiding these effects are each consid- ered challenges. Polymorphing monsters, including pets, does not break either of these challenges. Finally, you may sometimes receive wishes; a game without an attempt to wish for any items is a chal- lenge, as is a game without wishing for an artifact (even if the arti- fact immediately disappears). When the game offers you an opportunity to make a wish for an item, you may choose “nothing” if you want to decline.</p>
-<h3 id="achievements">8.1. Achievements</h3>
+<section id="achievements" class="level3">
+<h3>8.1. Achievements</h3>
 <p>End of game disclosure will also display various achievements representing progress toward ultimate ascension, if any have been attained. They aren’t directly related to conduct but are grouped with it because they fall into the same category of “bragging rights” and to limit the number of questions during disclosure. Listed here roughly in order of difficulty and not necessarily in the order in which you might accomplish them.</p>
 <p>Rank - Attained rank title Rank. Shop - Entered a shop. Temple - Entered a temple. Mines - Entered the Gnomish Mines. Town - Entered Mine Town. Oracle - Consulted the Oracle of Delphi. Novel - Read a passage from a Discworld Novel. Sokoban - Entered Sokoban. Big Room - Entered the Big Room. Soko-Prize - Explored to the top of Sokoban and found a special item there. Mines’ End - Explored to the bottom of the Gnomish Mines and found a special item there. Medusa - Defeated Medusa. Tune - Discovered the tune that can be used to open and close the drawbridge on the Castle level. Bell - Acquired the Bell of Opening. Gehennom - Entered Gehennom. Candle - Acquired the Candelabrum of Invocation. Book - Acquired the Book of the Dead. Invocation - Gained access to the bottommost level of Gehennom. Amulet - Acquired the fabled Amulet of Yendor. Endgame - Reached the Elemental Planes. Astral - Reached the Astral Plane level. Blind - Blind from birth. Deaf - Deaf from birth. Nudist - Never wore any armor. Pauper - Started out with no possessions. Ascended - Delivered the Amulet to its final destination.</p>
 <p>Notes:</p>
@@ -731,11 +818,17 @@
 <p>The Medusa achievement is recorded if she dies for any reason, even if you are not directly responsible, and only if she dies.</p>
 <p>The 5-note tune can be learned via trial and error with a musical instrument played closely enough–but not too close!–to the Castle level’s drawbridge or can be given to you via prayer boon.</p>
 <p>Blind, Deaf, Nudist, and Pauper are also conducts, and they can only be enabled by setting the correspondingly named option in NETHACKOPTIONS or run-time configuration file prior to game start. In the case of Blind and Deaf, the option also enforces the conduct. They aren’t really significant accomplishments unless/until you make substantial progress into the dungeon.</p>
-<h2 id="options">9. Options</h2>
+</section>
+</section>
+<section id="options" class="level2">
+<h2>9. Options</h2>
 <p>Due to variations in personal tastes and conceptions of how NetHack should do things, there are options you can set to change how NetHack behaves.</p>
-<h3 id="setting-the-options">9.1. Setting the options</h3>
+<section id="setting-the-options" class="level3">
+<h3>9.1. Setting the options</h3>
 <p>Options may be set in a number of ways. Within the game, the <code>O</code> command allows you to view all options and change most of them. You can also set options automatically by placing them in a configuration file, or in the NETHACKOPTIONS environment variable. Some versions of NetHack also have front-end programs that allow you to set options before starting the game or a global configuration for system adminis- trators.</p>
-<h3 id="using-a-configuration-file">9.2. Using a configuration file</h3>
+</section>
+<section id="using-a-configuration-file" class="level3">
+<h3>9.2. Using a configuration file</h3>
 <p>The default name of the configuration file varies on different operating systems.</p>
 <p>On UNIX, Linux, and macOS it is “.nethackrc” in the user’s home directory. The file may not exist, but it is a normal ASCII text file and can be created with any text editor.</p>
 <p>On Windows, the name is “.nethackrc” located in the folder "%USERPROFILE%". The file may not exist, but it is a normal ASCII text file can can be created with any text editor. After run- ning NetHack for the first time, you should find a default template</p>
@@ -781,26 +874,43 @@ OPTIONS=!`rest_on_space`</code></pre>
 <p><strong><code>SOUNDDIR</code></strong> Define the directory that contains the sound files. See the “Con- figuring User Sounds” section.</p>
 <p><strong><code>SYMBOLS</code></strong> Override one or more symbols in the symbol set used for all dungeon levels except for the special rogue level. See the “Modifying NetHack Symbols” section.</p>
 <p>Example:</p>
-<h1 id="replace-small-punctuation-tick-marks-with-digits">replace small punctuation (tick marks) with digits</h1>
+</section>
+</section>
+</section>
+<section id="replace-small-punctuation-tick-marks-with-digits" class="level1">
+<h1>replace small punctuation (tick marks) with digits</h1>
 <p>SYMBOLS=S_golem:7</p>
 <p><strong><code>WIZKIT</code></strong> Debug mode only: extra items to add to initial inventory. Value is the name of a text file containing a list of item names, one per line, up to a maximum of 128 lines. Each line is processed by the function that handles wishing.</p>
 <p>Example:</p>
 <p>WIZKIT=~/wizkit.txt</p>
 <p>Here is an example of configuration file contents:</p>
-<h1 id="set-your-characters-role-race-gender-and-alignment.">Set your character’s role, race, gender, and alignment.</h1>
+</section>
+<section id="set-your-characters-role-race-gender-and-alignment." class="level1">
+<h1>Set your character’s role, race, gender, and alignment.</h1>
 <pre><code>OPTIONS=role:Valkyrie, race:Human, gender:female, align:lawful</code></pre>
-<h1 id="section"></h1>
-<h1 id="turn-on-autopickup-set-automatically-picked-up-object-types">Turn on autopickup, set automatically picked up object types</h1>
+</section>
+<section id="section" class="level1">
+<h1></h1>
+</section>
+<section id="turn-on-autopickup-set-automatically-picked-up-object-types" class="level1">
+<h1>Turn on autopickup, set automatically picked up object types</h1>
 <pre><code>OPTIONS=autopickup,pickup_types:$&quot;=/!?+</code></pre>
-<h1 id="section-1"></h1>
-<h1 id="map-customization">Map customization</h1>
+</section>
+<section id="section-1" class="level1">
+<h1></h1>
+</section>
+<section id="map-customization" class="level1">
+<h1>Map customization</h1>
 <pre><code>OPTIONS=color           # Display things in color if possible
 OPTIONS=`lit_corridor`    # Show lit corridors differently
 OPTIONS=`hilite_pet`,`hilite_pile`</code></pre>
-<h1 id="replace-small-punctuation-tick-marks-with-digits-1">Replace small punctuation (tick marks) with digits</h1>
+</section>
+<section id="replace-small-punctuation-tick-marks-with-digits-1" class="level1">
+<h1>Replace small punctuation (tick marks) with digits</h1>
 <pre><code>OPTIONS=boulder:0</code></pre>
 <p>SYMBOLS=S_golem:7 # # No startup splash screen. Windows GUI only. OPTIONS=!<code>splash_screen</code></p>
-<h3 id="using-the-nethackoptions-environment-variable">9.3. Using the NETHACKOPTIONS environment variable</h3>
+<section id="using-the-nethackoptions-environment-variable" class="level3">
+<h3>9.3. Using the NETHACKOPTIONS environment variable</h3>
 <p>The NETHACKOPTIONS variable is a comma-separated list of initial values for the various options. Some can only be turned on or off. You turn one of these on by adding the name of the option to the list, and turn it off by typing a <code>!</code> or “no” before the name. Others take a character string as a value. You can set string options by typing the option name, a colon or equals sign, and then the value of the string. The value is terminated by the next comma or the end of string.</p>
 <p>For example, to set up an environment variable so that color is on, legacy is off, character name is set to “Blue Meanie”, and named fruit is set to “lime”, you would enter the command</p>
 <p>% setenv NETHACKOPTIONS “color,!leg,name:Blue Meanie,fruit:lime”</p>
@@ -810,7 +920,9 @@ OPTIONS=`hilite_pet`,`hilite_pile`</code></pre>
 <p>The NETHACKOPTIONS value is effectively the same as a single OPTIONS directive in a configuration file. The “OPTIONS=” prefix is implied and comma separated options are processed from right to left. Other types of configuration directives such as BIND or MSGTYPE are not allowed.</p>
 <p>Instead of a comma-separated list of options, NETHACKOPTIONS can be set to the full name of a configuration file you want to use. If that full name doesn’t start with a slash, precede it with <code>@</code> (at- sign) to let NetHack know that the rest is intended as a file name.</p>
 <p>If it does start with <code>/</code>, the at-sign is optional.</p>
-<h3 id="customization-options">9.4. Customization options</h3>
+</section>
+<section id="customization-options" class="level3">
+<h3>9.4. Customization options</h3>
 <p>Here are explanations of what the various options do. Character strings that are too long may be truncated. Some of the options listed may be inactive in your dungeon.</p>
 <p>Some options are persistent, and are saved and reloaded along with the game. Changing a persistent option in the configuration file applies only to new games.</p>
 <p>accessiblemsg Add location or direction information to messages (default is off).</p>
@@ -1018,7 +1130,9 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>When used, it should be the first option set since its value might enable or disable the availability of various other options. For multiple lines in a configuration file, that would be the first non- comment line. For a comma-separated list in NETHACKOPTIONS or an OPTIONS line in a configuration file, that would be the rightmost option in the list.</p>
 <p>wizweight Augment object descriptions with their objects’ weight (default off). Debug mode only.</p>
 <p>zerocomp When writing out a save file, perform zero-comp compression of the contents. Not all ports support zero-comp compression. It has no effect on reading an existing save file.</p>
-<h3 id="window-port-customization-options">9.5. Window Port Customization options</h3>
+</section>
+<section id="window-port-customization-options" class="level3">
+<h3>9.5. Window Port Customization options</h3>
 <p>Here are explanations of the various options that are used to customize and change the characteristics of the windowtype that you have chosen. Character strings that are too long may be truncated. Not all window ports will adjust for all settings listed here. You can safely add any of these options to your configuration file, and if the window port is capable of adjusting to suit your preferences, it will attempt to do so. If it can’t it will silently ignore it. You can find out if an option is supported by the window port that you are currently using by checking to see if it shows up in the Options list. Some options are dynamic and can be specified during the game with the <code>O</code> command.</p>
 <p><code>align_message</code> Where to align or place the message window (top, bottom, left, or right)</p>
 <p><code>align_status</code> Where to align or place the status window (top, bottom, left, or right).</p>
@@ -1070,12 +1184,16 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>OPTION=windowcolors:style foreground/background</p>
 <p>where style is one of “menu”, “message”, “status”, or “text”, and foreground and background are colors, either numeric (hash sign fol- lowed by three pairs of hexadecimal digits, <code>#rrggbb</code>), one of the named colors (black, red, green, brown, blue, magenta, cyan, orange, bright-green, yellow, bright-blue, bright-magenta, bright-cyan, white, gray, purple, silver, maroon, fuchsia, lime, olive, navy, teal, aqua), or (for Windows only) one of Windows UI colors (true- black, activeborder, activecaption, appworkspace, background, btn- face, btnshadow, btntext, captiontext, graytext, greytext, high- light, highlighttext, inactiveborder, inactivecaption, menu, menu- text, scrollbar, window, windowframe, windowtext).</p>
 <p>wraptext If NetHack can, it should wrap long lines of text if they don’t fit in the visible area of the window.</p>
-<h3 id="crash-report-options">9.6. Crash Report Options</h3>
+</section>
+<section id="crash-report-options" class="level3">
+<h3>9.6. Crash Report Options</h3>
 <p>Please note that NetHack does not send any information off your computer unless you manually click submit on a form.</p>
 <p>OPTION=crash_email:<code>email_address</code></p>
 <p>OPTION=crash_name:<code>your_name</code> These options are used only to save you some typing on the crash report and <code>#bugreport</code> forms.</p>
 <p>OPTION=crash_urlmax:bytes This option is used to limit the length of the URLs generated and is only needed if your browser cannot handle arbitrarily long URLs.</p>
-<h3 id="platform-specific-customization-options">9.7. Platform-specific Customization options</h3>
+</section>
+<section id="platform-specific-customization-options" class="level3">
+<h3>9.7. Platform-specific Customization options</h3>
 <p>Here are explanations of options that are used by specific plat- forms or ports to customize and change the port behavior.</p>
 <p>altkeyhandling Select an alternate way to handle keystrokes (Win32 tty NetHack only). The name of the handling type is one of “default”, “ray”, “340”.</p>
 <p>altmeta On systems where this option is available, it can be set to tell NetHack to convert a two character sequence beginning with <code>ESC</code> into a meta-shifted version of the second character (default off).</p>
@@ -1088,10 +1206,14 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p><code>video_width</code> Set the VGA mode resolution width (MS-DOS only, with video:vesa)</p>
 <p>videocolors Set the color palette for PC systems using NO_TERMS (default 4-2-6-1-5-3-15-12-10-14-9-13-11, (PC NetHack only). The order of colors is red, green, brown, blue, magenta, cyan, bright.white, bright.red, bright.green, yellow, bright.blue, bright.magenta, and bright.cyan. Cannot be set with the <code>O</code> command.</p>
 <p>videoshades Set the intensity level of the three gray scales available (default dark normal light, PC NetHack only). If the game display is diffi- cult to read, try adjusting these scales; if this does not correct the problem, try !color. Cannot be set with the <code>O</code> command.</p>
-<h3 id="regular-expressions">9.8. Regular Expressions</h3>
+</section>
+<section id="regular-expressions" class="level3">
+<h3>9.8. Regular Expressions</h3>
 <p>Regular expressions are normally POSIX extended regular expres- sions. It is possible to compile NetHack without regular expression support on a platform where there is no regular expression library.</p>
 <p>While this is not true of any modern platform, if your NetHack was built this way, patterns are instead glob patterns; regardless, this document refers to both as <code>regular expressions.</code> This applies to Autopickup exceptions, Message types, Menu colors, and User sounds.</p>
-<h3 id="configuring-autopickup-exceptions">9.9. Configuring Autopickup Exceptions</h3>
+</section>
+<section id="configuring-autopickup-exceptions" class="level3">
+<h3>9.9. Configuring Autopickup Exceptions</h3>
 <p>You can further refine the behavior of the autopickup option beyond what is available through the <code>pickup_types</code> option.</p>
 <p>By placing <code>autopickup_exception</code> lines in your configuration file, you can define patterns to be checked when the game is about to autopickup something.</p>
 <p><code>autopickup_exception</code> Sets an exception to the <code>pickup_types</code> option. The autopickup_excep- tion option should be followed by a regular expression to be used as a pattern to match against the singular form of the description of an object at your location.</p>
@@ -1102,7 +1224,9 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>Here are some examples:</p>
 <p>autopickup_exception=“&lt;<em>arrow" autopickup_exception="&gt;</em>corpse” autopickup_exception="&gt;* cursed*"</p>
 <p>The first example above will result in autopickup of any type of arrow. The second example results in the exclusion of any corpse from autopickup. The last example results in the exclusion of items known to be cursed from autopickup.</p>
-<h3 id="changing-key-bindings">9.10. Changing Key Bindings</h3>
+</section>
+<section id="changing-key-bindings" class="level3">
+<h3>9.10. Changing Key Bindings</h3>
 <p>It is possible to change the default key bindings of some special commands, menu accelerator keys, and extended commands, by using BIND stanzas in the configuration file. Format is key, followed by the command to bind to, separated by a colon. The key can be a single character (“x”), a control key (“<code>^X</code>”, “C-x”), a meta key (“M-x”), a mouse button, or a three-digit decimal ASCII code.</p>
 <p>For example:</p>
 <p>BIND=<code>^X</code>:getpos.autodescribe BIND=:<code>menu_first_page</code> BIND=v:loot</p>
@@ -1139,7 +1263,9 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>getpos.valid When asked for a location, the key to go to show valid target loca- tions. Default is <code>$</code>.</p>
 <p>getpos.valid.next When asked for a location, the key to go to next closest valid loca- tion. Default is <code>z</code>.</p>
 <p>getpos.valid.prev When asked for a location, the key to go to previous closest valid location. Default is <code>Z</code>.</p>
-<h3 id="configuring-message-types">9.11. Configuring Message Types</h3>
+</section>
+<section id="configuring-message-types" class="level3">
+<h3>9.11. Configuring Message Types</h3>
 <p>You can change the way the messages are shown in the message area, when the message matches a user-defined pattern.</p>
 <p>In general, the configuration file entries to describe the mes- sage types look like this: MSGTYPE=type “pattern”</p>
 <p>type - how the message should be shown; pattern - the pattern to match.</p>
@@ -1150,7 +1276,9 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>MSGTYPE=stop “You feel hungry.” MSGTYPE=hide "You displaced *."</p>
 <p>specifies that whenever a message “You feel hungry” is shown, the user is prompted with more-prompt, and a message matching “You dis- placed <something>.” is not shown at all.</p>
 <p>The order of the defined MSGTYPE lines is important; the last match- ing rule is used. Put the general case first, exceptions below them.</p>
-<h3 id="configuring-menu-colors">9.12. Configuring Menu Colors</h3>
+</section>
+<section id="configuring-menu-colors" class="level3">
+<h3>9.12. Configuring Menu Colors</h3>
 <p>Some platforms allow you to define colors used in menu lines when the line matches a user-defined pattern. At this time the tty, curses, win32tty and win32gui interfaces support this.</p>
 <p>In general, the configuration file entries to describe the menu color mappings look like this:</p>
 <p>MENUCOLOR=“pattern”=color&amp;attribute</p>
@@ -1162,7 +1290,9 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>MENUCOLOR="* blessed <em>“=green MENUCOLOR=”</em> cursed <em>“=red MENUCOLOR=”</em> cursed *(being worn)"=red&amp;underline</p>
 <p>specifies that any menu line with " blessed " contained in it will be shown in green color, lines with " cursed " will be shown in red, and lines with " cursed " followed by “(being worn)” on the same line will be shown in red color and underlined. You can have multi- ple MENUCOLOR entries in your configuration file, and the last MENU- COLOR line that matches a menu line will be used for the line.</p>
 <p>Note that if you intend to have one or more color specifications match " uncursed “, you will probably want to turn the <code>implicit_uncursed</code> option off so that all items known to be uncursed are actually displayed with the”uncursed" description.</p>
-<h3 id="configuring-user-sounds">9.13. Configuring User Sounds</h3>
+</section>
+<section id="configuring-user-sounds" class="level3">
+<h3>9.13. Configuring User Sounds</h3>
 <p>Some platforms allow you to define sound files to be played when a message that matches a user-defined pattern is delivered to the mes- sage window. At this time the Qt port and the win32tty and win32gui ports support the use of user sounds.</p>
 <p>The following configuration file entries are relevant to mapping user sounds to messages:</p>
 <p><strong><code>SOUNDDIR</code></strong> The directory that houses the sound files to be played.</p>
@@ -1171,7 +1301,9 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>The pattern should be a regular expression.</p>
 <p>For example:</p>
 <p>SOUNDDIR=C: SOUND=MESG “This door is locked” “lock.wav” 100 SOUND=MESG hide “^You miss the” “swing.wav” 75</p>
-<h3 id="configuring-status-hilites">9.14. Configuring Status Hilites</h3>
+</section>
+<section id="configuring-status-hilites" class="level3">
+<h3>9.14. Configuring Status Hilites</h3>
 <p>Your copy of NetHack may have been compiled with support for “Status Hilites”. If so, you can customize your game display by set- ting thresholds to change the color or appearance of fields in the status display.</p>
 <p>The format for defining status colors is:</p>
 <p>OPTION=hilite_status:field-name/behavior/color&amp;attributes</p>
@@ -1205,7 +1337,9 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>The whole feature can be disabled by setting option statushilites to 0.</p>
 <p>Example hilites:</p>
 <p>OPTION=hilite_status: gold/up/yellow/down/brown OPTION=hilite_status: characteristics/up/green/down/red OPTION=hilite_status: hitpoints/100%/gray&amp;normal OPTION=hilite_status: hitpoints/&lt;100%/green&amp;normal OPTION=hilite_status: hitpoints/&lt;66%/yellow&amp;normal OPTION=hilite_status: hitpoints/&lt;50%/orange&amp;normal OPTION=hilite_status: hitpoints/&lt;33%/red&amp;bold OPTION=hilite_status: hitpoints/&lt;15%/red&amp;inverse OPTION=hilite_status: condition/major/orange&amp;inverse OPTION=hilite_status: condition/lev+fly/red&amp;inverse</p>
-<h3 id="modifying-nethack-symbols">9.15. Modifying NetHack Symbols</h3>
+</section>
+<section id="modifying-nethack-symbols" class="level3">
+<h3>9.15. Modifying NetHack Symbols</h3>
 <p>NetHack can load entire symbol sets from the symbol file.</p>
 <p>The options that are used to select a particular symbol set from the symbol file are:</p>
 <p>symset Set the name of the symbol set that you want to load.</p>
@@ -1229,7 +1363,9 @@ OPTIONS=!role:arc bar kni</code></pre>
 <li><p>S_rock is misleadingly named; rocks and stones use S_gem. Statues and boulders are the rock being referred to, but since version</p></li>
 </ul>
 <p>3.6.0, statues are displayed as the monster they depict. So S_rock is only used for boulders and not used at all if overridden by the more specific S_boulder.</p>
-<h3 id="customizing-map-glyph-representations-using-unicode">9.16. Customizing Map Glyph Representations Using Unicode</h3>
+</section>
+<section id="customizing-map-glyph-representations-using-unicode" class="level3">
+<h3>9.16. Customizing Map Glyph Representations Using Unicode</h3>
 <p>If your platform or terminal supports the display of UTF-8 char- acter sequences, you can customize your game display by assigning Uni- code codepoint values and red-green-blue colors to glyph representa- tions. The customizations can be specified for use with a symset that has a UTF8 handler within the symbols file such as the enhanced1 set, or individually within your nethack.rc file.</p>
 <p>The format for defining a glyph representation is:</p>
 <pre><code>OPTIONS=glyph:glyphid/U+nnnn/R-G-B</code></pre>
@@ -1237,7 +1373,9 @@ OPTIONS=!role:arc bar kni</code></pre>
 <pre><code>OPTIONS=glyph:G_pool/U+224B/0-0-160</code></pre>
 <p>The list of acceptable glyphid’s can be produced by nethack –dumpg- lyphids. Individual NetHack glyphs can be specified using the G_ pre- fix, or you can use an S_ symbol for a glyphid and store the custom representation for all NetHack glyphs that would map to that particu- lar symbol.</p>
 <p>You will need to select a symset with a UTF8 handler to enable the display of the customizations, such as the Enhanced symset.</p>
-<h3 id="configuring-nethack-for-play-by-the-blind">9.17. Configuring NetHack for Play by the Blind</h3>
+</section>
+<section id="configuring-nethack-for-play-by-the-blind" class="level3">
+<h3>9.17. Configuring NetHack for Play by the Blind</h3>
 <p>NetHack can be set up to use only standard ASCII characters for making maps of the dungeons. This makes even the MS-DOS versions of NetHack (which use special line-drawing characters by default) com- pletely accessible to the blind who use speech and/or Braille access technologies. Players will require a good working knowledge of their screen-reader’s review features, and will have to know how to navigate horizontally and vertically character by character. They will also find the search capabilities of their screen-readers to be quite valu- able. Be certain to examine this Guidebook before playing so you have an idea what the screen layout is like. You’ll also need to be able to locate the PC cursor. It is always where your character is located. Merely searching for an @-sign will not always find your character since there are other humanoids represented by the same sign. Your screen-reader should also have a function which gives you the row and column of your review cursor and the PC cursor. These co-ordinates are often useful in giving players a better sense of the overall loca- tion of items on the screen.</p>
 <p>NetHack can also be compiled with support for sending the game messages to an external program, such as a text-to-speech synthesizer. If the “<code>#version</code>” extended command shows “external program as a mes- sage handler”, your NetHack has been compiled with the capability. When compiling NetHack from source on Linux and other POSIX systems, define MSGHANDLER to enable it. To use the capability, set the envi- ronment variable NETHACK_MSGHANDLER to an executable, which will be executed with the game message as the program’s only parameter.</p>
 <p>The most crucial settings to make the game more accessible are:</p>
@@ -1257,7 +1395,9 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p><code>whatis_moveskip</code> When targeting with cursor and using fast-move, skip the same glyphs instead of moving 8 units at a time.</p>
 <p><code>nostatus_updates</code> Prevent updates to the status lines at the bottom of the screen, if your screen-reader reads those lines. The same information can be seen via the “<code>#attributes</code>” command.</p>
 <p>showdamage Give a message of damage taken and how many hit points are left.</p>
-<h3 id="global-configuration-for-system-administrators">9.18. Global Configuration for System Administrators</h3>
+</section>
+<section id="global-configuration-for-system-administrators" class="level3">
+<h3>9.18. Global Configuration for System Administrators</h3>
 <p>If NetHack is compiled with the SYSCF option, a system adminis- trator should set up a global configuration; this is a file in the same format as the traditional per-user configuration file (see above). This file should be named sysconf and placed in the same directory as the other NetHack support files. The options recognized in this file are listed below. Any option not set uses a compiled-in default (which may not be appropriate for your system).</p>
 <p>WIZARDS = A space-separated list of user names who are allowed to play in debug mode (commonly referred to as wizard mode). A value of a single asterisk (*) allows anyone to start a game in debug mode.</p>
 <p>SHELLERS = A list of users who are allowed to use the shell escape command (!). The syntax is the same as WIZARDS.</p>
@@ -1283,17 +1423,25 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>LIVELOG = A bit-mask of types of events that should be written to the livelog file if one is present. The sample sysconf file accom- panying the program contains a comment which lists the meaning of the various bits used. Intended for server systems supporting simultaneous play by multiple players (to be clear, each one running</p>
 <p>a separate single player game), for displaying their game progress to observers. Only relevant if the program was built with LIVELOG enabled. When available, it should be left commented out on single player installations because over time the file could grow to be extremely large unless it is actively maintained.</p>
 <p>CRASHREPORTURL = If set to https://www.nethack.org/links/cr-37BETA.html and support is compiled in, brings up a browser window pre-populated with the information needed to report a problem if the game panics or ends up in an internally inconsistent state, or if the <code>#bugreport</code> command is invoked.</p>
-<h2 id="scoring">10. Scoring</h2>
+</section>
+<section id="scoring" class="level2">
+<h2>10. Scoring</h2>
 <p>NetHack maintains a list of the top scores or scorers on your machine, depending on how it is set up. In the latter case, each account on the machine can post only one non-winning score on this list. If you score higher than someone else on this list, or better your previous score, you will be inserted in the proper place under your current name. How many scores are kept can also be set up when NetHack is compiled.</p>
 <p>Your score is chiefly based upon how much experience you gained, how much loot you accumulated, how deep you explored, and how the game ended. If you quit the game, you escape with all of your gold intact. If, however, you get killed in the Mazes of Menace, the guild will only hear about 90% of your gold when your corpse is discovered (adventurers have been known to collect finder’s fees). So, consider whether you want to take one last hit at that monster and possibly live, or quit and stop with whatever you have. If you quit, you keep all your gold, but if you swing and live, you might find more.</p>
 <p>If you just want to see what the current top players/games list is, you can type nethack -s all on most versions.</p>
-<h2 id="explore-mode">11. Explore mode</h2>
+</section>
+<section id="explore-mode" class="level2">
+<h2>11. Explore mode</h2>
 <p>NetHack is an intricate and difficult game. Novices might falter in fear, aware of their ignorance of the means to survive. Well, fear not. Your dungeon comes equipped with an “explore” or “discovery” mode that enables you to keep old save files and cheat death, at the paltry cost of not getting on the high score list.</p>
 <p>There are two ways of enabling explore mode. One is to start the game with the -X command-line switch or with the playmode:explore option. The other is to issue the “<code>#exploremode</code>” extended command while already playing the game. Starting a new game in explore mode provides your character with a wand of wishing in initial inventory; switching during play does not. The other benefits of explore mode are left for the trepid reader to discover.</p>
-<h3 id="debug-mode">11.1. Debug mode</h3>
+<section id="debug-mode" class="level3">
+<h3>11.1. Debug mode</h3>
 <p>Debug mode, also known as wizard mode, is undocumented aside from this brief description and the various “debug mode only” commands listed among the command descriptions. It is intended for tracking down problems within the program rather than to provide god-like pow- ers to your character, and players who attempt debugging are expected to figure out how to use it themselves. It is initiated by starting the game with the -D command-line switch or with the playmode:debug option.</p>
 <p>For some systems, the player must be logged in under a particular user name to be allowed to use debug mode; for others, the hero must be given a particular character name (but may be any role; there’s no connection between “wizard mode” and the Wizard role). Attempting to start a game in debug mode when not allowed or not available will result in falling back to explore mode instead.</p>
-<h2 id="credits">12. Credits</h2>
+</section>
+</section>
+<section id="credits" class="level2">
+<h2>12. Credits</h2>
 <p>The original hack game was modeled on the Berkeley UNIX rogue game. Large portions of this document were shamelessly cribbed from A Guide to the Dungeons of Doom, by Michael C. Toy and Kenneth C. R. C. Arnold. Small portions were adapted from Further Exploration of the Dungeons of Doom, by Ken Arromdee.</p>
 <p>NetHack is the product of literally scores of people’s work. Main events in the course of the game development are described below:</p>
 <p>Jay Fenlason wrote the original Hack, with help from Kenny Wood- land, Mike Thome, and Jon Payne.</p>
@@ -1354,13 +1502,19 @@ OPTIONS=!role:arc bar kni</code></pre>
 <p>NetHack 3.6.6 was released on March 8, 2020 containing a security fix and some bug fixes.</p>
 <p>NetHack 3.6.7 was released on February 16, 2023 containing a security fix and some bug fixes.</p>
 <p>The official NetHack web site is maintained by Ken Lorber at https://www.nethack.org/.</p>
-<h3 id="special-thanks">12.1. Special Thanks</h3>
+<section id="special-thanks" class="level3">
+<h3>12.1. Special Thanks</h3>
 <p>On behalf of the NetHack community, thank you very much once again to M. Drew Streib and Pasi Kallinen for providing a public NetHack server at nethack.alt.org. Thanks to Keith Simpson and Andy Thomson for hardfought.org. Thanks to all those unnamed dungeoneers who invest their time and effort into annual NetHack tournaments such as Junethack, The November NetHack Tournament, and in days past, devnull.net (gone for now, but not forgotten).</p>
-<h3 id="dungeoneers">12.2. Dungeoneers</h3>
+</section>
+<section id="dungeoneers" class="level3">
+<h3>12.2. Dungeoneers</h3>
 <p>From time to time, some depraved individual out there in netland sends a particularly intriguing modification to help out with the game. The NetHack Development Team sometimes makes note of the names of the worst of these miscreants in this, the list of Dungeoneers:</p>
 <p>Adam Aronow J. Ali Harlow Mikko Juola Alex Kompel Janet Walz Nathan Eady Alex Smith Janne Salmijarvi Norm Meluch Andreas Dorn Jean-Christophe Collet Olaf Seibert Andy Church Jeff Bailey Pasi Kallinen Andy Swanson Jochen Erwied Pat Rankin Andy Thomson John Kallen Patric Mueller</p>
 <p>Ari Huttunen John Rupley Paul Winner Bart House John S. Bien Pierre Martineau Benson I. Margulies Johnny Lee Ralf Brown Bill Dyer Jon W{tte Ray Chason Boudewijn Waijers Jonathan Handler Richard Addison Bruce Cox Joshua Delahunty Richard Beigel Bruce Holloway Karl Garrison Richard P. Hughey Bruce Mewborne Keizo Yamamoto Rob Menke Carl Schelin Keith Simpson Robin Bandy Chris Russo Ken Arnold Robin Johnson David Cohrs Ken Arromdee Roderick Schertler David Damerell Ken Lorber Roland McGrath David Gentzel Ken Washikita Ron Van Iwaarden David Hairston Kevin Darcy Ronnen Miller Dean Luick Kevin Hugo Ross Brown Del Lamb Kevin Sitze Sascha Wostmann Derek S. Ray Kevin Smolkowski Scott Bigham Deron Meranda Kevin Sweet Scott R. Turner Dion Nicolaas Lars Huttar Sean Hunt Dylan O’Donnell Leon Arnott Stephen Spackman Eric Backus M. Drew Streib Stefan Thielscher Eric Hendrickson Malcolm Ryan Stephen White Eric R. Smith Mark Gooderum Steve Creps Eric S. Raymond Mark Modrall Steve Linhart Erik Andersen Marvin Bressler Steve VanDevender Fredrik Ljungdahl Matthew Day Teemu Suikki Frederick Roeber Merlyn LeRoy Tim Lennan Gil Neiger Michael Allison Timo Hakulinen Greg Laskin Michael Feir Tom Almy Greg Olson Michael Hamel Tom West Gregg Wonderly Michael Sokolov Warren Cheung Hao-yang Wang Mike Engber Warwick Allison Helge Hafting Mike Gallop Yitzhak Sapir Irina Rempt-Drijfhout Mike Passaretti Izchak Miller Mike Stephenson</p>
 <p>Brand and product names are trademarks or registered trademarks of their respective holders.</p>
+</section>
+</section>
+</section>
 </main>
 <script>
 (function() {
