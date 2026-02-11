@@ -674,7 +674,7 @@ Dm  - use a menu to pick which object(s) to drop.
 D%u - drop only unpaid food.
 
 The  last example shows a combination.  There are four categories
-of object filtering: class (`!' for potions, `?` for scrolls, and
+of object filtering: class (`!` for potions, `?` for scrolls, and
 so on), shop status (`u` for unpaid, in other words, owned by the
 shop), bless/curse state (`B`, `U`, `C`, and `X` as shown above),
 and novelty (`P`, recently picked up items; controlled by picking
@@ -683,9 +683,9 @@ up or dropping things rather than by any time factor).
 If you specify more than one value in a category  (such  as  "!?"
 for  potions  and  scrolls  or "BU" for blessed and uncursed), an
 inventory object will meet the criteria if it matches any of  the
-specified values (so "!?" means `!' or `?`).  If you specify more
+specified values (so "!?" means `!` or `?`).  If you specify more
 than one category, an inventory object must meet each of the cat-
-egory criteria (so "%u" means class `%' and unpaid `u`).  Lastly,
+egory criteria (so "%u" means class `%` and unpaid `u`).  Lastly,
 you may  specify  multiple  values  within  multiple  categories:
 "!?BU"  will select all potions and scrolls which are known to be
 blessed or uncursed.  (In versions prior to 3.6, filter  combina-
@@ -732,8 +732,8 @@ See also `t` (throw) for more general throwing and shooting.
 `i`    List your inventory (everything you're carrying).
 
 `I`    List  selected parts of your inventory, usually be specifying the
-character for a particular set of objects, like `[' for armor  or
-`!' for potions.
+character for a particular set of objects, like `[` for armor  or
+`!` for potions.
 
 I* - list all gems in inventory;
 Iu - list all unpaid items;
@@ -978,10 +978,10 @@ the  `perm_invent`  option),  interact  with it instead of with the
 map.
 
 Allows scrolling with  the  `menu_first_page`,  `menu_previous_page`,
-`menu_next_page`,  and  `menu_last_page`  keys (`^', `<', `>', `|' by
+`menu_next_page`,  and  `menu_last_page`  keys (`^`, `<`, `>`, `|` by
 
 default).   Some  interfaces  also  support  `menu_shift_left`  and
-`menu_shift_right`  keys  (`{' and `}' by default).  Use the Return
+`menu_shift_right`  keys  (`{` and `}` by default).  Use the Return
 (aka Enter) or Escape key to resume play.
 
 `!`    Escape to a shell.  See "`#shell`" below for more details.
@@ -1098,7 +1098,7 @@ The  `m` prefix skips dipping into a fountain or pool if there is
 one at your location.
 
 #down
-Go down a staircase.  Default key is `>'.
+Go down a staircase.  Default key is `>`.
 
 #drop
 Drop an item.  Default key is `d`.
@@ -1286,8 +1286,8 @@ Pay your shopping bill.  Default key is `p`.
 If  persistent  inventory  display is supported and enabled (with
 the `perm_invent` option), interact with it  instead  of  with  the
 map.   You'll  be  prompted for menu scrolling keystrokes such as
-`>' and `<'.  Press Return  or  Escape  to  resume  normal  play.
-Default key is `|'.
+`>` and `<`.  Press Return  or  Escape  to  resume  normal  play.
+Default key is `|`.
 
 #pickup
 Pick up things at the current location.  Default key is `,`.  The
@@ -1390,26 +1390,26 @@ Show all equipment in use.  Default key is `*`.
 Will display in-use items in a menu even when there is only one.
 
 #seeamulet
-Show the amulet currently worn.  Default key is `"'.
+Show the amulet currently worn.  Default key is `"`.
 
 Using the `m` prefix will force the display of a worn amulet in a
 menu rather than with just a message.
 
 #seearmor
-Show the armor currently worn.  Default key is `['.
+Show the armor currently worn.  Default key is `[`.
 
 Will  display  worn armor in a menu even when there is only thing
 worn.
 
 #seerings
-Show the ring(s) currently worn.  Default key is `='.
+Show the ring(s) currently worn.  Default key is `=`.
 
 Will display worn rings in a menu if there are two (or  there  is
 just  one and is a meat ring rather than a "real" ring).  Use the
 `m` prefix to force a menu for one ring.
 
 #seetools
-Show the tools currently in use.  Default key is `('.
+Show the tools currently in use.  Default key is `(`.
 
 Will display the result in a message if there is one tool in  use
 (worn blindfold or towel or lenses, lit lamp(s) and/or candle(s),
@@ -1418,7 +1418,7 @@ leashes attached to pets).  Will display a menu if there are more
 than one or if the command is preceded by the `m` prefix.
 
 #seeweapon
-Show the weapon currently wielded.  Default key is `)'.
+Show the weapon currently wielded.  Default key is `)`.
 
 If  dual-wielding,  a separate message about the secondary weapon
 will be given.  Using the `m` prefix will force  a  menu  and  it
@@ -1431,12 +1431,12 @@ Do  a  shell escape, switching from NetHack to a subprocess.  Can
 be disabled at the time the  program  is  built.   When  enabled,
 access for specific users can be controlled by the system config-
 uration file.  Use the shell command  `exit'  to  return  to  the
-game.  Default key is `!'.
+game.  Default key is `!`.
 
 #showgold
 Report  the gold in your inventory, including gold you know about
 in containers you're carrying.  If you are inside a shop,  report
-any credit or debt you have in that shop.  Default key is `$'.
+any credit or debt you have in that shop.  Default key is `$`.
 
 #showspells
 List and reorder known spells.  Default key is `+`.
@@ -1446,7 +1446,7 @@ Describe  an adjacent trap, possibly covered by objects or a mon-
 ster.  To be eligible, the trap must already be discovered.  (The
 "`#terrain`" command can display your map with all objects and mon-
 sters temporarily removed, making it possible to see all  discov-
-ered traps.)  Default key is `^'.
+ered traps.)  Default key is `^`.
 
 #sit
 Sit down.  Autocompletes.  Default key is `M-s'.
@@ -1516,7 +1516,7 @@ situation will start with the floor container menu.
 Autocompletes.  Default key is `M-T'.
 
 #travel
-Travel to a specific location on the map.  Default  key  is  `_'.
+Travel to a specific location on the map.  Default  key  is  `_`.
 Using  the "request menu" prefix shows a menu of interesting tar-
 gets in sight without asking to move the cursor.  When picking  a
 target  with  cursor  and  the autodescribe option is on, the top
@@ -1542,7 +1542,7 @@ In some circumstances it can also be used to rescue trapped  mon-
 sters.
 
 #up
-Go up a staircase.  Default key is `<'.
+Go up a staircase.  Default key is `<`.
 
 #vanquished
 List vanquished monsters by type and count.
@@ -1586,13 +1586,13 @@ Show vision array.  Autocompletes.  Debug mode only.
 
 #wait
 Rest  one move while doing nothing.  Default key is `.`, and also
-` ' if `rest_on_space` is on.
+` ` if `rest_on_space` is on.
 
 #wear
 Wear a piece of armor.  Default key is `W`.
 
 #whatdoes
-Tell what a key does.  Default key is `&'.
+Tell what a key does.  Default key is `&`.
 
 #whatis
 Show what type of thing a symbol corresponds to.  Default key  is
@@ -1839,7 +1839,7 @@ equivalent  to  normal  doors.   Mapping  magic does not reveal secret
 doors.
 
 
-### 5.2. Traps (`^')
+### 5.2. Traps (`^`)
 
 There are traps  throughout  the  dungeon  to  snare  the  unwary
 intruder.   For example, you may suddenly fall into a pit and be stuck
@@ -1907,10 +1907,10 @@ tion  for  information  about  getting  feedback  for  your actions in
 Sokoban.
 
 
-### 5.3. Stairs and ladders (`<', `>')
+### 5.3. Stairs and ladders (`<`, `>`)
 
 In general, each level in the dungeon will have a staircase going
-up  (`<')  to  the  previous level and another going down (`>') to the
+up  (`<`)  to  the  previous level and another going down (`>`) to the
 next level.  There are some exceptions though.  For  instance,  fairly
 early  in  the dungeon you will find a level with two down staircases,
 one continuing into the dungeon and the other branching into  an  area
@@ -1969,7 +1969,7 @@ shop where it was obtained; other shopkeepers won't honor it.  (If you
 happen to find a "credit card" in the dungeon, don't bother trying  to
 use it in shops; shopkeepers will not accept it.)
 
-The  `$' command, which reports the amount of gold you are carry-
+The  `$` command, which reports the amount of gold you are carry-
 ing, will also show current shop debt or credit,  if  any.   The  "Iu"
 command  lists  unpaid items (those which still belong to the shop) if
 you are carrying any.  The "Ix" command shows an  inventory-like  dis-
@@ -2292,7 +2292,7 @@ their  "BUC"  attribute,  for  Blessed,  Uncursed, or Cursed state, or
 is occasionally used as well.)
 
 
-### 7.2. Weapons (`)')
+### 7.2. Weapons (`)`)
 
 Given  a chance, most monsters in the Mazes of Menace will gratu-
 itously try to kill you.  You need weapons for  self-defense  (killing
@@ -2484,7 +2484,7 @@ ons or having one of them be stolen or destroyed will  also  make  you
 revert to single-weapon combat.
 
 
-### 7.3. Armor (`[')
+### 7.3. Armor (`[`)
 
 Lots  of  unfriendly things lurk about; you need armor to protect
 yourself from their blows.  Some types of armor offer  better  protec-
@@ -2542,7 +2542,7 @@ can  be  used  for armor, but pieces of armor won't be shown as likely
 candidates in a prompt for choosing what to put on or remove.
 
 
-### 7.4. Food (`%')
+### 7.4. Food (`%`)
 
 Food is necessary to survive.  If you go too long without  eating
 you  will faint, and eventually die of starvation.  Some types of food
@@ -2600,7 +2600,7 @@ turning off the mail option.
 The command to read a scroll is `r`.
 
 
-### 7.6. Potions (`!')
+### 7.6. Potions (`!`)
 
 Potions are distinguished by the color of the liquid  inside  the
 flask.  They disappear after you quaff them.
@@ -2646,7 +2646,7 @@ The  command  to  use a wand is `z` (zap).  To break one, use the
 `a` (apply) command.
 
 
-### 7.8. Rings (`=')
+### 7.8. Rings (`=`)
 
 Rings are very useful items, since they are relatively  permanent
 magic,  unlike  the  usually fleeting effects of potions, scrolls, and
@@ -2716,7 +2716,7 @@ of  how  strongly  it  is  remembered.  The `Z` (cast) command casts a
 spell.
 
 
-### 7.10. Tools (`(')
+### 7.10. Tools (`(`)
 
 Tools are miscellaneous  objects  with  various  purposes.   Some
 tools  have a limited number of uses, akin to wand charges.  For exam-
@@ -2776,7 +2776,7 @@ tents  into  another  container.   (As of this writing, the other con-
 tainer must be carried rather than on the floor.)
 
 
-### 7.11. Amulets (`"')
+### 7.11. Amulets (`"`)
 
 Amulets are very similar to rings, and often more powerful.  Like
 rings,  amulets have various magical properties, some beneficial, some
@@ -2833,7 +2833,7 @@ shown  as  `` ` ``  but by the letter representing the monster they depict
 instead.
 
 
-### 7.14. Gold (`$')
+### 7.14. Gold (`$`)
 
 Gold adds to your score, and you can buy things in shops with it.
 There  are  a number of monsters in the dungeon that may be influenced
@@ -3119,8 +3119,8 @@ On MS-DOS, it is "defaults.nh" in the same folder as nethack.exe.
 Any  line  in the configuration file starting with `#` is treated
 as a comment and ignored.  Empty lines are ignored.
 
-Any line beginning with `[' and ending in `]' is a section marker
-(the  closing  `]' can be followed by whitespace and then an arbitrary
+Any line beginning with `[` and ending in `]` is a section marker
+(the  closing  `]` can be followed by whitespace and then an arbitrary
 comment beginning with `#`).  The text between the square brackets  is
 the  section  name.   Section  markers  are  only valid after a CHOOSE
 directive and their names are case-insensitive.  Lines after a section
@@ -3139,7 +3139,7 @@ Here is a list of allowed directives:
 OPTIONS
 There are two types of options, boolean and compound options.  Bool-
 ean options toggle a setting on or off, while compound options  take
-more  diverse  values.   Prefix a boolean option with "no" or `!' to
+more  diverse  values.   Prefix a boolean option with "no" or `!` to
 turn it off.  For compound options, the option name  and  value  are
 separated  by  a colon.  Some options are persistent, and apply only
 to new games.  You can specify multiple OPTIONS directives, and mul-
@@ -3284,7 +3284,7 @@ OPTIONS=!`splash_screen`
 The NETHACKOPTIONS variable is a comma-separated list of  initial
 values  for  the  various options.  Some can only be turned on or off.
 You turn one of these on by adding the name of the option to the list,
-and  turn it off by typing a `!' or "no" before the name.  Others take
+and  turn it off by typing a `!` or "no" before the name.  Others take
 a character string as a value.  You can set string options  by  typing
 the  option  name,  a  colon or equals sign, and then the value of the
 string.  The value is terminated by the  next  comma  or  the  end  of
@@ -3296,7 +3296,7 @@ fruit is set to "lime", you would enter the command
 
 % setenv NETHACKOPTIONS "color,\!leg,name:Blue Meanie,fruit:lime"
 
-in  csh  (note  the  need to escape the `!' since it's special to that
+in  csh  (note  the  need to escape the `!` since it's special to that
 shell), or the pair of commands
 
 $ NETHACKOPTIONS="color,!leg,name:Blue Meanie,fruit:lime"
@@ -3403,7 +3403,7 @@ None      - none  of  the  above;  can't  be combined with the other
 choices.
 
 Omitting the value is treated as if autounlock:apply-key.  Preceding
-autounlock with `!' or "no" is treated as autounlock:none.
+autounlock with `!` or "no" is treated as autounlock:none.
 
 Applying  a  key  might  set  off a trap if the door or container is
 trapped.  Successfully kicking a door will  break  it  and  wake  up
@@ -3694,7 +3694,7 @@ Key to deselect all items in a menu.  Default `-`.
 Key to deselect all items on this page of a menu.  Default `\`.
 
 `menu_first_page`
-Key to jump to the first page in a menu.  Default `^'.
+Key to jump to the first page in a menu.  Default `^`.
 
 `menu_headings`
 Controls  how  the headings in a menu are highlighted.  Takes a text
@@ -3706,13 +3706,13 @@ all ports can actually display all types.
 Key to invert all items in a menu.  Default `@`.
 
 `menu_invert_page`
-Key to invert all items on this page of a menu.  Default `~'.
+Key to invert all items on this page of a menu.  Default `~`.
 
 `menu_last_page`
-Key to jump to the last page in a menu.  Default `|'.
+Key to jump to the last page in a menu.  Default `|`.
 
 `menu_next_page`
-Key to go to the next menu page.  Default `>'.
+Key to go to the next menu page.  Default `>`.
 
 `menu_objsyms`
 Inventory and other object menus are normally  separated  by  object
@@ -3744,7 +3744,7 @@ Do not clear the screen before drawing menus, and align menus to the
 right edge of the screen. Only for the tty port.  (default on)
 
 `menu_previous_page`
-Key to go to the previous menu page.  Default `<'.
+Key to go to the previous menu page.  Default `<`.
 
 `menu_search`
 Key to search for some text and toggle selection state  of  matching
@@ -3759,12 +3759,12 @@ Key to select all items on this page of a menu.  Default `,`.
 `menu_shift_left`
 Key to scroll a menu--one which has been scrolled right--back to the
 left.  Implemented for `perm_invent` only by curses and X11.   Default
-`{'.
+`{`.
 
 `menu_shift_right`
 Key  to  scroll  a  menu which has text beyond the right edge to the
 right.  Implemented for `perm_invent` only by curses and X11.  Default
-`}'.
+`}`.
 
 `mon_movement`
 Show  a  message  when  hero  notices a monster movement (default is
@@ -3915,7 +3915,7 @@ new entries and remove some old ones, you  can  use  multiple  para-
 `noid_confirmation`  option  settings, or you can use the `+` form and
 list entries to be added by their name and entries to be removed  by
 
-`!' and name.  The positive (no `!') and negative (with `!') entries
+`!` and name.  The positive (no `!`) and negative (with `!`) entries
 can be intermixed.
 
 pauper
@@ -4064,7 +4064,7 @@ This  option can also be used to limit selection when role is chosen
 randomly.  Use a space-separated list of  roles  and  either  negate
 each  one  or  negate the option itself instead.  Negation is accom-
 plished in the same manner as with boolean options, by prefixing the
-option or its value(s) with `!' or "no".
+option or its value(s) with `!` or "no".
 Examples:
 
 OPTIONS=role:!arc !bar !kni
@@ -4268,7 +4268,7 @@ travel
 Allow the travel command via mouse click (default on).  Turning this
 option off will prevent the game from attempting unintended moves if
 you make inadvertent mouse clicks  on  the  map  window.   Does  not
-affect traveling via the `_' ("`#travel`") command.  Persistent.
+affect traveling via the `_` ("`#travel`") command.  Persistent.
 
 tutorial
 Play a tutorial level at the start of the game.  Setting this option
@@ -4770,7 +4770,7 @@ click.  You will be asked to pick a  location.   Use  movement  key-
 strokes  to  move  the  cursor  around  the  map, then type the get-
 pos.pick.once key (default `,`) or the getpos.pick key (default `.`)
 to  finish as if performing a left or right click.  Only useful when
-using the `#therecmdmenu` command.  Default is `_'.
+using the `#therecmdmenu` command.  Default is `_`.
 
 getdir.self
 When asked for a direction, the key to target yourself.  Default  is
@@ -4822,7 +4822,7 @@ Default is `O`.
 getpos.menu
 When  asked  for  a  location, and using one of the next or previous
 keys to cycle  through  targets,  toggle  showing  a  menu  instead.
-Default is `!'.
+Default is `!`.
 
 getpos.moveskip
 When  asked  for  a location, and using the shifted movement keys or
@@ -4833,7 +4833,7 @@ getpos.filter
 When  asked for a location, change the filtering mode when using one
 of the next or previous keys  to  cycle  through  targets.   Toggles
 between  no  filtering,  in  view  only,  and in the same area only.
-Default is `"'.
+Default is `"`.
 
 getpos.pick
 When asked for a location, the key to choose the location, and  pos-
@@ -4871,7 +4871,7 @@ plored location.  Default is `X`.
 
 getpos.valid
 When asked for a location, the key to go to show valid target  loca-
-tions.  Default is `$'.
+tions.  Default is `$`.
 
 getpos.valid.next
 When asked for a location, the key to go to next closest valid loca-
@@ -5037,7 +5037,7 @@ Allowed attributes are none, bold, dim, underline, italic, blink,
 and inverse.  "Normal" is a synonym for "none";  they  should  not  be
 used in combination with any of the other attributes.
 
-To  specify  both  a  color  and an attribute, use `&' to combine
+To  specify  both  a  color  and an attribute, use `&` to combine
 them.  To specify multiple attributes, use `+` to combine those.   For
 example: "magenta&inverse+dim".
 
@@ -5096,9 +5096,9 @@ rule which matches a change in the field's value, the  "up"  or
 
 * percentage  sets  the  field  attribute  when  the  field value
 matches the percentage.  It is specified as a number between  0
-and  100, followed by `%' (percent sign).  If the percentage is
+and  100, followed by `%` (percent sign).  If the percentage is
 prefixed with `<=' or `>=', it also matches when value is below
-or  above  the percentage.  Use prefix `<' or `>' to match when
+or  above  the percentage.  Use prefix `<` or `>` to match when
 strictly  below  or  above.   (The  numeric  limit  is  relaxed
 slightly  for  those:  >-1%  and <101% are allowed.)  Only four
 fields support percentage rules.  Percentages  for  "hitpoints"
@@ -5119,9 +5119,9 @@ ence point short of the next level.
 * absolute value sets the attribute when the field value  matches
 that  number.   The  number  must  be  0  or higher, except for
 "armor-class' which allows negative values, and may  optionally
-be  preceded by `='.  If the number is preceded by `<=' or `>='
+be  preceded by `=`.  If the number is preceded by `<=' or `>='
 instead, it also matches when value is below or above.  If  the
-prefix is `<' or `>', only match when strictly above or below.
+prefix is `<` or `>`, only match when strictly above or below.
 
 * criticalhp  only  applies  to the hitpoints field and only when
 current hit points are below a threshold (which varies by maxi-
@@ -5582,7 +5582,7 @@ Not  defining  this  will  prevent dumplog from being created.  Only
 available if your game is compiled with DUMPLOG.  Allows the follow-
 ing placeholders:
 
-%% - literal `%'
+%% - literal `%`
 %v - version (eg. "3.7.0-0")
 %u - game UID
 %t - game start time, UNIX timestamp format

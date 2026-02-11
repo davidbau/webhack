@@ -155,9 +155,9 @@ def convert_guidebook(input_file, output_file):
         line = re.sub(r"``'", r'`` ` ``', line)
 
         # Convert ASCII quotes around single chars to proper backticks
-        # e.g., `m' -> `m` or `?' -> `?` or `*' -> `*`
-        # Include all common key symbols: letters, numbers, punctuation
-        line = re.sub(r"`([a-zA-Z0-9#@+\-\.,\\'?*;:/])'", r'`\1`', line)
+        # e.g., `m' -> `m` or `?' -> `?` or any `X' -> `X`
+        # Match any single character between backtick and apostrophe
+        line = re.sub(r"`(.)'", r'`\1`', line)
 
         # Wrap movement key patterns (vi keys)
         # [yuhjklbn], [YUHJKLBN], m[yuhjklbn], etc.
