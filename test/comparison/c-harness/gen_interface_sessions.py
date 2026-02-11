@@ -333,9 +333,127 @@ def capture_options_menu():
         "steps": steps
     }
 
+def capture_complete_chargen():
+    """Capture complete character generation sequence through to game start."""
+    session = tmux_session_name()
+    start_tmux_session(session)
+
+    steps = []
+
+    try:
+        # Set up environment and run NetHack
+        nethack_dir = os.path.dirname(NETHACK_BINARY)
+
+        # Clear screen first
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'clear', 'Enter'], check=True)
+        time.sleep(0.2)
+
+        # Start NetHack with proper environment
+        cmd = (
+            f'NETHACKDIR={nethack_dir} '
+            f'TERM=xterm-256color '
+            f'{NETHACK_BINARY}'
+        )
+        subprocess.run(['tmux', 'send-keys', '-t', session, cmd, 'Enter'], check=True)
+
+        # Wait for NetHack to fully initialize
+        time.sleep(2.5)
+
+        # Step 0: Initial screen (random character prompt + copyright)
+        lines, attrs = capture_screen_with_attrs(session)
+        steps.append({
+            "key": "startup",
+            "description": "Initial screen on game launch",
+            "screen": lines,
+            "attrs": attrs
+        })
+
+        # Step 1: Press 'n' to decline random character
+        tmux_send(session, 'n', delay=0.5)
+        lines, attrs = capture_screen_with_attrs(session)
+        steps.append({
+            "key": "n",
+            "description": "Decline random character",
+            "screen": lines,
+            "attrs": attrs
+        })
+
+        # Step 2: Role selection menu
+        steps.append({
+            "key": "role_menu",
+            "description": "Role selection menu",
+            "screen": lines,
+            "attrs": attrs
+        })
+
+        # Step 3: Select archeologist (a)
+        tmux_send(session, 'a', delay=0.5)
+        lines, attrs = capture_screen_with_attrs(session)
+        steps.append({
+            "key": "a",
+            "description": "Select Archeologist role",
+            "screen": lines,
+            "attrs": attrs
+        })
+
+        # Step 4: Select human race (h)
+        tmux_send(session, 'h', delay=0.5)
+        lines, attrs = capture_screen_with_attrs(session)
+        steps.append({
+            "key": "h",
+            "description": "Select human race",
+            "screen": lines,
+            "attrs": attrs
+        })
+
+        # Step 5: Select gender (m for male)
+        # (Gender menu appears for Archeologist)
+        tmux_send(session, 'm', delay=0.5)
+        lines, attrs = capture_screen_with_attrs(session)
+        steps.append({
+            "key": "m",
+            "description": "Select male gender",
+            "screen": lines,
+            "attrs": attrs
+        })
+
+        # Step 6: Select alignment (n for neutral)
+        # (Archeologist can be lawful or neutral)
+        tmux_send(session, 'n', delay=0.5)
+        lines, attrs = capture_screen_with_attrs(session)
+        steps.append({
+            "key": "n",
+            "description": "Select neutral alignment",
+            "screen": lines,
+            "attrs": attrs
+        })
+
+        # Step 7: Confirm character (y)
+        # Should show confirmation screen
+        if any('confirm' in line.lower() or 'archeologist' in line.lower() for line in lines):
+            tmux_send(session, 'y', delay=0.5)
+            lines, attrs = capture_screen_with_attrs(session)
+            steps.append({
+                "key": "y",
+                "description": "Confirm character",
+                "screen": lines,
+                "attrs": attrs
+            })
+
+    finally:
+        kill_tmux_session(session)
+
+    return {
+        "version": 2,
+        "type": "interface",
+        "subtype": "complete_chargen",
+        "description": "Complete character generation from startup to game start",
+        "steps": steps
+    }
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: gen_interface_sessions.py [--startup|--options]")
+        print("Usage: gen_interface_sessions.py [--startup|--options|--chargen]")
         sys.exit(1)
 
     os.makedirs(SESSIONS_DIR, exist_ok=True)
@@ -346,6 +464,9 @@ def main():
     elif sys.argv[1] == '--options':
         data = capture_options_menu()
         outfile = os.path.join(SESSIONS_DIR, 'interface_options.session.json')
+    elif sys.argv[1] == '--chargen':
+        data = capture_complete_chargen()
+        outfile = os.path.join(SESSIONS_DIR, 'interface_chargen.session.json')
     else:
         print(f"Unknown option: {sys.argv[1]}")
         sys.exit(1)
