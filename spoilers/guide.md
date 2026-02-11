@@ -2692,8 +2692,7 @@ the mail directly.
 
 **Speed boots** are one of the most powerful items in the game.
 Being faster than your enemies means you get more turns, which
-means more chances to attack, cast spells, or run away. Many
-ascensions happen without them, but they make everything easier.
+means more chances to attack, cast spells, or run away.
 
 **Cloak of magic resistance** provides magic resistance in the cloak
 slot and frees up other slots for different resistances. However,
@@ -3101,8 +3100,8 @@ ascensions:
    is the most important protection in the game, so this is highly recommended).
 2. **Silver dragon scale mail** (reflection + AC, the second pillar
    of not dying to wands).
-3. **Speed boots** (being fast gives you more actions per turn—extremely
-   helpful for both offense and escape, though not required).
+3. **Speed boots** (being fast gives you more actions per turn—excellent
+   for both offense and escape).
 4. **Gauntlets of power** (STR 25, +AC, if your role benefits —
    and most roles benefit from punching harder).
 5. **Amulet of life saving** (insurance for the endgame, when
