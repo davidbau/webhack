@@ -163,6 +163,10 @@ function initLuaMT() {
     rn2(1012);
     for (let i = 1014; i <= 1036; i++) rn2(i);
     setMtInitialized(true);
+    // Advance luaRngCounter to account for MT init calls (1000-1036 = 37 calls)
+    if (levelState && levelState.luaRngCounter !== undefined) {
+        levelState.luaRngCounter = 37;
+    }
 }
 
 /**
