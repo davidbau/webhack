@@ -1095,8 +1095,13 @@ export class Agent {
             const frontierForSearch = level.getExplorationFrontier();
             const genuinelyTrapped = frontierForSearch.length === 0 && this.levelStuckCounter > 50;
 
-            // High coverage mode: searched 50%+ of level, downstairs must be behind secret door
-            const highCoverageMode = coverageForSearch > 0.50 && this.turnNumber > 200;
+            // High coverage mode: explored decent amount but very stuck
+            // If 15%+ explored and 500+ turns OR 25%+ explored and 300+ turns,
+            // switch to comprehensive search (downstairs likely behind non-frontier-adjacent secret door)
+            const highCoverageMode = (
+                (coverageForSearch > 0.15 && this.turnNumber > 500) ||
+                (coverageForSearch > 0.25 && this.turnNumber > 300)
+            );
 
             const shouldSearchDoors = highCoverageMode || (
                 (frontierForSearch.length < 40 && coverageForSearch > 0.10) ||
@@ -2139,9 +2144,10 @@ export class Agent {
         const frontier = level.getExplorationFrontier();
         const exploredPercent = level.exploredCount / (80 * 21);
         const isStuckExploring = (
-            frontier.length > 15 &&         // Has frontier to explore
-            this.levelStuckCounter > 30 &&  // Been stuck for a while
-            exploredPercent < 0.40          // Low coverage - agent is oscillating
+            frontier.length > 10 &&                      // Has frontier to explore
+            (this.levelStuckCounter > 20 ||              // Been stuck, OR
+             (this.turnNumber > 150 && exploredPercent < 0.25)) &&  // Taking too long with low coverage
+            exploredPercent < 0.60                       // Not yet thoroughly explored
         );
 
         // When stuck exploring (moving but not progressing), clear blacklist
