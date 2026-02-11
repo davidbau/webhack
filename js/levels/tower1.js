@@ -39,9 +39,9 @@ export function generate() {
     des.ladder("down", 11,5);
     // The lord && his court
     des.monster("Vlad the Impaler", 6, 5);
+    des.monster("V",niches[0]);
     des.monster("V",niches[1]);
     des.monster("V",niches[2]);
-    des.monster("V",niches[3]);
     // The brides; they weren't named in Bram Stoker's original _Dracula_
     // && when appearing in umpteen subsequent books && movies there is
     // no consensus for their names.  According to the Wikipedia entry for
@@ -54,9 +54,9 @@ export function generate() {
     if ((! Vgenod)) {
        Vnames: [ "Madame", "Marquise", "Countess" ];
     }
-    des.monster({ id: "vampire lady", coord: niches[4], name: Vnames[1], waiting: 1 });
-    des.monster({ id: "vampire lady", coord: niches[5], name: Vnames[2], waiting: 1 });
-    des.monster({ id: "vampire lady", coord: niches[6], name: Vnames[3], waiting: 1 });
+    des.monster({ id: "vampire lady", coord: niches[3], name: Vnames[1], waiting: 1 });
+    des.monster({ id: "vampire lady", coord: niches[4], name: Vnames[2], waiting: 1 });
+    des.monster({ id: "vampire lady", coord: niches[5], name: Vnames[3], waiting: 1 });
     // The doors
     des.door("closed",8,3);
     des.door("closed",10,3);
@@ -68,16 +68,16 @@ export function generate() {
     // treasures
     des.object("chest", 7,5);
 
-    des.object("chest",niches[6]);
+    des.object("chest",niches[5]);
+    des.object("chest",niches[0]);
     des.object("chest",niches[1]);
     des.object("chest",niches[2]);
-    des.object("chest",niches[3]);
-    des.object({ id: "chest", coord: niches[4],
+    des.object({ id: "chest", coord: niches[3],
                  contents: function() {
                     des.object({ id: "wax candle", quantity: 4 + rn2(5) });
                  }
     });
-    des.object({ id: "chest", coord: niches[5],
+    des.object({ id: "chest", coord: niches[4],
                  contents: function() {
                     des.object({ id: "tallow candle", quantity: 4 + rn2(5) });
                  }

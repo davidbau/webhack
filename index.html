@@ -3,13 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Play NetHack in your browser - A classic roguelike dungeon crawler adventure. Explore the Mazes of Menace and retrieve the Amulet of Yendor.">
+    <meta name="theme-color" content="#f9f7f1">
     <title>NetHack JS -- Mazes of Menace</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="NetHack JS -- Mazes of Menace">
+    <meta property="og:description" content="Play NetHack in your browser - A classic roguelike dungeon crawler adventure.">
+    <meta property="og:site_name" content="NetHack JS">
     <style>
-        /* Faithful terminal appearance */
+        /* Elegant book-like appearance matching the guidebooks */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Respect user's motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto;
+            }
+
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
         body {
-            background: #111;
-            color: #aaa;
+            background: #f9f7f1;  /* Cream parchment color like guidebooks */
+            color: #333;
             font-family: "DejaVu Sans Mono", "Courier New", "Lucida Console", monospace;
             margin: 0;
             padding: 0;
@@ -27,18 +52,133 @@
 
         #nav {
             display: flex;
+            flex-wrap: wrap;
             gap: 1.5em;
             padding: 0.5em 0;
             font-size: 13px;
+            justify-content: center;
         }
 
         #nav a {
-            color: #aaa;
+            color: #4a2020;  /* Brown to match spoilers */
             text-decoration: none;
         }
 
         #nav a:hover {
-            color: #c3c3c3;
+            color: #6b2c2c;
+            text-decoration: underline;
+        }
+
+        #nav a:focus-visible {
+            outline: 2px solid #6b2c2c;
+            outline-offset: 3px;
+            border-radius: 2px;
+        }
+
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 0.5em;
+            z-index: 10;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+        }
+
+        #controls button {
+            background: #f9f7f1;  /* Beige paper background */
+            border: 2px solid #6b2c2c;
+            color: #6b2c2c;
+            padding: 0.4em 0.8em;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        #controls button:hover {
+            background: #6b2c2c;
+            color: #fff;
+        }
+
+        #controls button:active {
+            transform: scale(0.95);
+        }
+
+        /* Panel toggle button state indication */
+        #panel-toggle.panels-hidden {
+            opacity: 0.6;
+        }
+
+        #panel-toggle.panels-hidden:hover {
+            opacity: 1;
+        }
+
+        /* Light mode - ensure side panels are readable */
+        .side-panel {
+            color: #333;  /* Dark text for light background */
+        }
+
+        #hover-panel {
+            padding-left: 1em;
+        }
+
+        #hover-info {
+            visibility: hidden;
+            background: #000;  /* Black background when visible */
+            padding: 0.8em;
+            border-radius: 4px;
+        }
+
+        #hover-info.visible {
+            visibility: visible;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background: #111;
+            color: #aaa;
+        }
+
+        body.dark-mode #nav a {
+            color: #888;
+        }
+
+        body.dark-mode #nav a:hover {
+            color: #aaa;
+        }
+
+        body.dark-mode #controls button {
+            background: #222;
+            border-color: #555;
+            color: #888;
+        }
+
+        body.dark-mode #controls button:hover {
+            background: #333;
+            color: #aaa;
+            border-color: #666;
+        }
+
+        body.dark-mode #controls {
+            filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.4));
+        }
+
+        body.dark-mode .side-panel {
+            color: #888;  /* Lighter text for dark background */
+        }
+
+        body.dark-mode #keyref td:first-child {
+            color: #d4d4d4;  /* Light gray for dark mode */
+        }
+
+        body.dark-mode #keyref .keyref-section td {
+            color: #ccc;  /* Light gray for dark mode */
+        }
+
+        body.dark-mode #hover-info {
+            border: 1px solid #444;  /* Gray border in dark mode */
         }
 
         #main {
@@ -49,16 +189,21 @@
         }
 
         #game {
-            /* Terminal container */
+            /* Terminal container - classic terminal on elegant background */
             background: #000;
-            border: 2px solid #333;
-            padding: 4px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            border: 3px solid #2a2a2a;
+            padding: 6px;
+            box-shadow:
+                0 4px 12px rgba(0, 0, 0, 0.15),
+                0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
             flex-shrink: 0;
             /* Pre-size to prevent layout shift when game loads */
             /* Terminal is 80 cols × 24 rows at 16px font, 1.2 line-height, 8px padding */
             min-width: calc(80ch + 16px);  /* 80 chars + padding */
             min-height: calc(24 * 16px * 1.2 + 16px);  /* 24 rows × line-height + padding = 477px */
+            max-width: 100%;
+            overflow: auto;
         }
 
         #terminal {
@@ -79,95 +224,44 @@
 
         /* Loading message */
         #loading {
-            color: #aaa;
-            font-size: 16px;
+            color: #666;
+            font-size: 15px;
             padding: 20px;
             /* Center in the pre-sized container */
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: calc(24 * 16px * 1.2 + 16px - 40px);  /* Match game height minus padding */
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+
+        body.dark-mode #loading {
+            color: #888;
         }
 
         /* Focus indicator */
         #game:focus-within {
-            border-color: #555;
+            border-color: #6b2c2c;  /* Brown accent when focused */
+            box-shadow:
+                0 4px 12px rgba(0, 0, 0, 0.15),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                0 0 0 2px rgba(107, 44, 44, 0.2);
         }
 
         /* --- Side panels --- */
         .side-panel {
             font-size: 12px;
-            color: #888;
             line-height: 1.3;
             width: 180px;
             flex-shrink: 0;
-            transition: transform 0.3s ease, opacity 0.3s ease, width 0.3s ease;
             position: relative;
             z-index: 1;
             overflow: hidden;
         }
 
         .side-panel.hidden {
-            width: 0;
-            opacity: 0;
-            pointer-events: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        #keyref.hidden {
-            transform: translateX(-180px);
-            padding-right: 0;
-        }
-
-        #hover-panel.hidden {
-            transform: translateX(180px);
-            padding-left: 0;
-        }
-
-        .side-panel-header {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            margin-bottom: 0.5em;
-            color: #999;
-            font-size: 11px;
-        }
-
-        .side-panel-close {
-            cursor: pointer;
-            color: #777;
-            font-size: 14px;
-        }
-
-        .side-panel-close:hover {
-            color: #bbb;
-        }
-
-        /* Vertical text labels */
-        .vertical-label {
-            writing-mode: vertical-rl;
-            text-orientation: mixed;
-            cursor: pointer;
-            color: #aaa;
-            font-size: 11px;
-            letter-spacing: 0.15em;
-            padding: 0 8px;
-            display: flex;
-            align-items: center;
-            user-select: none;
-            transition: color 0.2s ease, opacity 0.3s ease;
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .vertical-label.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .vertical-label:hover {
-            color: #ddd;
+            display: none;
         }
 
         /* Keyboard quick-reference (left panel) */
@@ -185,13 +279,13 @@
         }
 
         #keyref td:first-child {
-            color: #d4d4d4;
+            color: #444;  /* Dark for light mode */
             text-align: right;
             padding-right: 0.8em;
         }
 
         #keyref .keyref-section td {
-            color: #ccc;
+            color: #555;  /* Dark for light mode */
             font-size: 10px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -199,46 +293,34 @@
             text-align: left;
         }
 
-        /* Hover info panel (right panel) */
-        #hover-panel {
-            padding-left: 1em;
-        }
-
-        #hover-info {
-            visibility: hidden;
-        }
+        /* Hover info panel (right panel) - styling set above with dark background */
 
         #hover-symbol {
             font-size: 28px;
             line-height: 1;
             display: block;
             margin-bottom: 0.3em;
+            color: #fff;  /* Always light on dark background */
         }
 
         #hover-name {
-            color: #ddd;
+            color: #ddd;  /* Light on dark background */
             font-size: 14px;
             display: block;
             margin-bottom: 0.2em;
         }
 
         #hover-desc {
-            color: #ccc;
+            color: #ccc;  /* Light on dark background */
             font-size: 11px;
             display: block;
         }
 
         #hover-stats {
-            color: #888;
+            color: #aaa;  /* Light on dark background */
             font-size: 10px;
             display: block;
             margin-top: 0.3em;
-        }
-
-        #hover-hint {
-            color: #666;
-            font-size: 11px;
-            margin-top: 2em;
         }
 
         /* Responsive: stack vertically on narrow screens */
@@ -278,6 +360,41 @@
             #keyref tr {
                 display: flex;
             }
+
+            /* On narrow screens, hide panel toggle (panels are below anyway) */
+            #panel-toggle {
+                display: none;
+            }
+
+            /* Adjust control position for narrow screens */
+            #controls {
+                bottom: 10px;
+                right: 10px;
+                gap: 0.4em;
+            }
+
+            #controls button {
+                padding: 0.3em 0.6em;
+                font-size: 13px;
+            }
+        }
+
+        /* Very narrow screens (phones) */
+        @media (max-width: 600px) {
+            #nav {
+                font-size: 12px;
+                gap: 1em;
+                padding: 0.75em 0.5em;
+            }
+
+            #page {
+                padding: 0 0.5em;
+            }
+
+            #controls {
+                bottom: 8px;
+                right: 8px;
+            }
         }
     </style>
 </head>
@@ -285,16 +402,19 @@
     <div id="page">
         <nav id="nav">
             <a href="https://en.wikipedia.org/wiki/NetHack" target="_blank">About NetHack</a>
-            <a href="https://nethackwiki.com/wiki/Guidebook" target="_blank">How to Play</a>
+            <a href="guidebook/" target="nh-guidebook">How to Play</a>
+            <a href="spoilers/" target="nh-spoilers">Spoilers</a>
             <a href="https://github.com/davidbau/webhack" target="_blank">About This Project</a>
-            <a href="spoilers/" target="_blank">A Traveler's Guide</a>
         </nav>
+        <div id="controls">
+            <button id="panel-toggle" title="Show/hide side panels" aria-label="Toggle side panels" tabindex="-1">☰</button>
+            <button id="font-smaller" title="Decrease font size" aria-label="Decrease font size" tabindex="-1">A−</button>
+            <button id="font-larger" title="Increase font size" aria-label="Increase font size" tabindex="-1">A+</button>
+            <button id="theme-toggle" title="Toggle dark/light mode" aria-label="Toggle dark/light mode" tabindex="-1">◐</button>
+        </div>
         <div id="main">
             <!-- Left: keyboard controls -->
             <div id="keyref" class="side-panel">
-                <div class="side-panel-header">
-                    <span class="side-panel-close" id="keyref-close" title="Hide">&times;</span>
-                </div>
                 <table>
                     <tr class="keyref-section"><td colspan="2">Move</td></tr>
                     <tr><td>h j k l</td><td>left/down/up/right</td></tr>
@@ -327,72 +447,188 @@
                 </table>
             </div>
 
-            <!-- Vertical text label for left panel -->
-            <div id="controls-label" class="vertical-label" title="Show/hide controls">CONTROLS</div>
-
             <!-- Center: game terminal -->
             <div id="game">
                 <div id="loading">Loading NetHack JS...</div>
             </div>
 
-            <!-- Vertical text label for right panel -->
-            <div id="explore-label" class="vertical-label" title="Show/hide explore">EXPLORE</div>
-
             <!-- Right: hover symbol info -->
             <div id="hover-panel" class="side-panel">
-                <div class="side-panel-header">
-                    <span class="side-panel-close" id="hover-close" title="Hide">&times;</span>
-                </div>
                 <div id="hover-info">
                     <span id="hover-symbol"></span>
                     <span id="hover-name"></span>
                     <span id="hover-desc"></span>
                     <span id="hover-stats"></span>
                 </div>
-                <div id="hover-hint">Hover over the map to identify symbols</div>
             </div>
         </div>
     </div>
 
     <script>
-    // Side panel toggle logic: slide panels in/out with vertical label controls
+    // Side panel toggle logic
     (function() {
         var keyrefPanel = document.getElementById('keyref');
         var hoverPanel = document.getElementById('hover-panel');
-        var keyrefClose = document.getElementById('keyref-close');
-        var hoverClose = document.getElementById('hover-close');
-        var controlsLabel = document.getElementById('controls-label');
-        var exploreLabel = document.getElementById('explore-label');
+        var panelToggle = document.getElementById('panel-toggle');
         var storageKey = 'webhack-panels-hidden';
 
-        function hideBoth() {
-            keyrefPanel.classList.add('hidden');
-            hoverPanel.classList.add('hidden');
-            controlsLabel.classList.add('visible');
-            exploreLabel.classList.add('visible');
-            try { localStorage.setItem(storageKey, '1'); } catch(e) {}
+        function updateToggleButton() {
+            var isHidden = keyrefPanel.classList.contains('hidden');
+            if (isHidden) {
+                panelToggle.classList.add('panels-hidden');
+                panelToggle.title = 'Show side panels';
+            } else {
+                panelToggle.classList.remove('panels-hidden');
+                panelToggle.title = 'Hide side panels';
+            }
         }
 
-        function showBoth() {
-            keyrefPanel.classList.remove('hidden');
-            hoverPanel.classList.remove('hidden');
-            controlsLabel.classList.remove('visible');
-            exploreLabel.classList.remove('visible');
-            try { localStorage.removeItem(storageKey); } catch(e) {}
+        function togglePanels() {
+            var isHidden = keyrefPanel.classList.contains('hidden');
+            if (isHidden) {
+                keyrefPanel.classList.remove('hidden');
+                hoverPanel.classList.remove('hidden');
+                try { localStorage.removeItem(storageKey); } catch(e) {}
+            } else {
+                keyrefPanel.classList.add('hidden');
+                hoverPanel.classList.add('hidden');
+                try { localStorage.setItem(storageKey, '1'); } catch(e) {}
+            }
+            updateToggleButton();
         }
 
-        // Close buttons hide both panels
-        keyrefClose.addEventListener('click', hideBoth);
-        hoverClose.addEventListener('click', hideBoth);
-
-        // Vertical labels show both panels
-        controlsLabel.addEventListener('click', showBoth);
-        exploreLabel.addEventListener('click', showBoth);
+        // Panel toggle button
+        panelToggle.addEventListener('click', togglePanels);
 
         // Restore hidden state from localStorage
         try {
-            if (localStorage.getItem(storageKey)) hideBoth();
+            if (localStorage.getItem(storageKey)) {
+                keyrefPanel.classList.add('hidden');
+                hoverPanel.classList.add('hidden');
+            }
         } catch(e) {}
+
+        // Update button state on load
+        updateToggleButton();
+    })();
+
+    // Theme toggle and font size controls
+    (function() {
+        const themeToggle = document.getElementById('theme-toggle');
+        const fontSmaller = document.getElementById('font-smaller');
+        const fontLarger = document.getElementById('font-larger');
+        const gameDiv = document.getElementById('game');
+
+        // Load saved theme
+        let savedTheme = 'light';
+        try {
+            savedTheme = localStorage.getItem('nh-theme') || 'light';
+        } catch(e) {}
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+
+        // Load and apply saved font size
+        let savedFontSize = '16';
+        try {
+            savedFontSize = localStorage.getItem('nh-font-size') || '16';
+        } catch(e) {}
+
+        function applyFontSize(size) {
+            // Apply to game div - will cascade to terminal when it's created
+            gameDiv.style.fontSize = size + 'px';
+            // Also try to apply to terminal if it exists
+            const terminal = document.getElementById('terminal');
+            if (terminal) {
+                terminal.style.fontSize = size + 'px';
+            }
+        }
+
+        applyFontSize(savedFontSize);
+
+        // Theme toggle
+        themeToggle.addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            try {
+                localStorage.setItem('nh-theme', isDark ? 'dark' : 'light');
+            } catch(e) {}
+        });
+
+        // Font size controls
+        fontSmaller.addEventListener('click', function() {
+            let size = 16;
+            try {
+                size = parseInt(localStorage.getItem('nh-font-size')) || 16;
+            } catch(e) {}
+            size = Math.max(12, size - 2);
+            applyFontSize(size);
+            try {
+                localStorage.setItem('nh-font-size', size);
+            } catch(e) {}
+        });
+
+        fontLarger.addEventListener('click', function() {
+            let size = 16;
+            try {
+                size = parseInt(localStorage.getItem('nh-font-size')) || 16;
+            } catch(e) {}
+            size = Math.min(24, size + 2);
+            applyFontSize(size);
+            try {
+                localStorage.setItem('nh-font-size', size);
+            } catch(e) {}
+        });
+    })();
+
+    // Watch hover-info visibility to show/hide background
+    (function() {
+        const hoverInfo = document.getElementById('hover-info');
+        if (!hoverInfo) return;
+
+        // Use MutationObserver to watch for visibility changes
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    const isVisible = hoverInfo.style.visibility === 'visible' ||
+                                    window.getComputedStyle(hoverInfo).visibility === 'visible';
+                    if (isVisible) {
+                        hoverInfo.classList.add('visible');
+                    } else {
+                        hoverInfo.classList.remove('visible');
+                    }
+                }
+            });
+        });
+
+        observer.observe(hoverInfo, {
+            attributes: true,
+            attributeFilter: ['style']
+        });
+    })();
+
+    // Watch for terminal creation and apply font size
+    (function() {
+        const gameDiv = document.getElementById('game');
+        let savedFontSize = null;
+        try {
+            savedFontSize = localStorage.getItem('nh-font-size');
+        } catch(e) {}
+        if (!savedFontSize || !gameDiv) return;
+
+        const observer = new MutationObserver(function(mutations) {
+            const terminal = document.getElementById('terminal');
+            if (terminal && !terminal.dataset.fontApplied) {
+                terminal.style.fontSize = savedFontSize + 'px';
+                terminal.dataset.fontApplied = 'true';
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(gameDiv, {
+            childList: true,
+            subtree: true
+        });
     })();
     </script>
 

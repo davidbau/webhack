@@ -327,17 +327,27 @@ function dog_invent(mon, edog, udist, map, turnCount) {
 // C ref: mon.c movemon() — multi-pass loop until no monster can move
 // Called from gameLoop after hero action, BEFORE mcalcmove.
 export function movemon(map, player, display, fov) {
+    const debugTurn = (player.turns + 1) >= 21 && (player.turns + 1) <= 23;
+    let iterationCount = 0;
+
     let anyMoved;
     do {
         anyMoved = false;
         for (const mon of map.monsters) {
             if (mon.dead) continue;
             if (mon.movement >= NORMAL_SPEED) {
+                if (debugTurn && mon.tame) {
+                    console.log(`[Turn ${player.turns + 1} iter ${iterationCount}] Pet BEFORE: pos=(${mon.mx},${mon.my}), movement=${mon.movement}`);
+                }
                 mon.movement -= NORMAL_SPEED;
                 anyMoved = true;
                 dochug(mon, map, player, display, fov);
+                if (debugTurn && mon.tame) {
+                    console.log(`[Turn ${player.turns + 1} iter ${iterationCount}] Pet AFTER: pos=(${mon.mx},${mon.my}), movement=${mon.movement}`);
+                }
             }
         }
+        if (anyMoved) iterationCount++;
     } while (anyMoved);
 
     // Remove dead monsters
@@ -394,6 +404,12 @@ function dochug(mon, map, player, display, fov) {
     if (!phase3Cond && mon.mcansee === false) phase3Cond = !rn2(4);
     if (!phase3Cond) phase3Cond = !!(mon.peaceful);
 
+    // DEBUG: Log phase3Cond for turns 21-22
+    const debugTurnChug = (player.turns + 1 >= 21 && player.turns + 1 <= 22);
+    if (debugTurnChug && mon.tame) {
+        console.log(`[Turn ${player.turns + 1} dochug] phase3Cond=${phase3Cond}, nearby=${nearby}, meating=${mon.meating || 0}`);
+    }
+
     if (phase3Cond) {
         // C ref: monmove.c:1743-1748 — meating check (inside m_move)
         // If monster is still eating, decrement meating and skip movement
@@ -435,6 +451,12 @@ function dog_move(mon, map, player, display, fov) {
     // JS player.turns is incremented after movemon(), so add 1 to match C.
     const turnCount = (player.turns || 0) + 1;
 
+    // DEBUG: Enable logging for turns 21-22
+    const debugTurn = (turnCount >= 21 && turnCount <= 22);
+    if (debugTurn && mon.tame) {
+        console.log(`  [dog_move] player.turns=${player.turns}, turnCount=${turnCount}`);
+    }
+
     // C ref: dogmove.c:1024-1029 — dog_invent before dog_goal
     if (edog) {
         const invResult = dog_invent(mon, edog, udist, map, turnCount);
@@ -453,6 +475,11 @@ function dog_move(mon, map, player, display, fov) {
     const minY = Math.max(0, omy - SQSRCHRADIUS);
     const maxY = Math.min(ROWNO - 1, omy + SQSRCHRADIUS);
 
+    // DEBUG: Verify omx/omy match mon.mx/mon.my
+    if (debugTurn && mon.tame && (omx !== mon.mx || omy !== mon.my)) {
+        console.log(`  WARNING: omx/omy (${omx},${omy}) != mon.mx/my (${mon.mx},${mon.my})!`);
+    }
+
     // C ref: in_masters_sight = couldsee(omx, omy)
     const inMastersSight = couldsee(map, player, omx, omy);
 
@@ -467,11 +494,22 @@ function dog_move(mon, map, player, display, fov) {
 
     // C ref: dog_goal iterates fobj (ALL objects on level)
     // C's fobj is LIFO (place_object prepends), so iterate in reverse to match
+    if (debugTurn && mon.tame) {
+        console.log(`  dog_goal: scanning ${map.objects.length} objects, range x=[${minX},${maxX}] y=[${minY},${maxY}]`);
+    }
     for (let oi = map.objects.length - 1; oi >= 0; oi--) {
         const obj = map.objects[oi];
         const ox = obj.ox, oy = obj.oy;
-        if (ox < minX || ox > maxX || oy < minY || oy > maxY) continue;
+        if (ox < minX || ox > maxX || oy < minY || oy > maxY) {
+            if (debugTurn && mon.tame) {
+                console.log(`    obj[${oi}] at (${ox},${oy}): OUT OF RANGE (minX=${minX}, maxX=${maxX}, minY=${minY}, maxY=${maxY})`);
+            }
+            continue;
+        }
 
+        if (debugTurn && mon.tame) {
+            console.log(`    obj[${oi}] at (${ox},${oy}): IN RANGE, calling dogfood`);
+        }
         const otyp = dogfood(mon, obj, turnCount);
 
         // C ref: dogmove.c:526 — skip inferior goals
@@ -548,6 +586,13 @@ function dog_move(mon, map, player, display, fov) {
 
     // C ref: dogmove.c:610-611 — confused pets don't approach or flee
     if (mon.confused) appr = 0;
+
+    // DEBUG: Track appr calculation for turns 21-22
+    if (debugTurn && mon.tame) {
+        console.log(`[Turn ${turnCount} dog_move] Pet at (${omx},${omy}), player at (${player.x},${player.y})`);
+        console.log(`  udist=${udist}, appr=${appr}, gx=${gx}, gy=${gy}, gtyp=${gtyp}`);
+        console.log(`  inMastersSight=${inMastersSight}, whappr=${whappr}`);
+    }
 
     // C ref: dogmove.c:603-637 — redirect goal when pet can't see master
     if (gx === player.x && gy === player.y && !inMastersSight) {
@@ -684,6 +729,11 @@ function dog_move(mon, map, player, display, fov) {
         const ndist = dist2(nx, ny, gx, gy);
         const j = (ndist - nidist) * appr;
 
+        // DEBUG: Log position evaluation for turns 21-22
+        if (debugTurn && mon.tame && i < 5) {
+            console.log(`  pos[${i}] (${nx},${ny}): ndist=${ndist}, j=${j}, nidist=${nidist}`);
+        }
+
         if ((j === 0 && !rn2(++chcnt)) || j < 0
             || (j > 0 && !whappr
                 && ((omx === nix && omy === niy && !rn2(3)) || !rn2(12)))) {
@@ -697,6 +747,11 @@ function dog_move(mon, map, player, display, fov) {
 
     // Move the dog
     // C ref: dogmove.c:1282-1327 — newdogpos label
+    // DEBUG: Show final decision for turns 21-22
+    if (debugTurn && mon.tame) {
+        console.log(`  FINAL: (${nix},${niy}), moved=${nix !== omx || niy !== omy}, chcnt=${chcnt}`);
+    }
+
     if (nix !== omx || niy !== omy) {
         // Update track history (shift old positions, add current)
         // C ref: dogmove.c:1319 — mon_track_add(mtmp, omx, omy)

@@ -49,14 +49,14 @@ export function generate() {
     des.monster();
     des.monster();
     des.monster();
-    des.object("long sword",place[4]);
-    des.trap({ coord: place[4] });
-    des.object("lock pick",place[1]);
-    des.trap({ coord: place[1] });
-    des.object("elven cloak",place[2]);
-    des.trap({ coord: place[2] });
-    des.object("blindfold",place[3]);
-    des.trap({ coord: place[3] });
+    des.object("long sword",place[0]);
+    des.trap({ coord: place[0] });
+    des.object("lock pick",place[0]);
+    des.trap({ coord: place[0] });
+    des.object("elven cloak",place[0]);
+    des.trap({ coord: place[0] });
+    des.object("blindfold",place[0]);
+    des.trap({ coord: place[0] });
     // Walls in the tower are non diggable
     des.non_diggable(selection.area(0,0,18,12));
 

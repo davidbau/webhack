@@ -154,9 +154,10 @@ def convert_guidebook(input_file, output_file):
         # Convert ``' -> `` ` `` (backtick shown in code)
         line = re.sub(r"``'", r'`` ` ``', line)
 
-        # Convert ASCII quotes around single chars to proper backticks
-        # e.g., `m' -> `m` or `x' -> `x` or `,' -> `,` or `\' -> `\`
-        line = re.sub(r"`([a-zA-Z0-9#@+\-\.,\\'])'", r'`\1`', line)
+        # Convert ASCII quotes around keys/commands to proper backticks
+        # e.g., `m' -> `m` or `M-a' -> `M-a` or `?' -> `?`
+        # Match any content between backtick and apostrophe (non-greedy)
+        line = re.sub(r"`([^'`]+?)'", r'`\1`', line)
 
         # Wrap movement key patterns (vi keys)
         # [yuhjklbn], [YUHJKLBN], m[yuhjklbn], etc.
@@ -182,6 +183,20 @@ def convert_guidebook(input_file, output_file):
         # Then handle standalone options
         line = re.sub(r'\b([a-z]+_[a-z_]+)(\s|[,.\)]|$)', r'`\1`\2', line)
         line = re.sub(r'\b([a-z]+style)(\s|[,.\)]|$)', r'`\1`\2', line)  # *style options
+
+        # Wrap special key names (ESC, SPACE, RETURN, etc.)
+        line = re.sub(r'\b(ESC|SPACE|RETURN|ENTER|TAB|DELETE|BACKSPACE)\b', r'`\1`', line)
+
+        # Wrap configuration file syntax (OPTIONS=, CHOOSE=, [section])
+        # These are configuration file examples that should be in code blocks
+        if line.startswith('OPTIONS=') or line.startswith('CHOOSE=') or re.match(r'^\[.*\]', line):
+            line = '    ' + line  # Indent with 4 spaces to make it a code block in markdown
+
+        # Wrap environment variable names (HACKDIR, LEVELDIR, etc.)
+        # These are definition terms, wrap in inline code
+        line_stripped = line.rstrip('\n')
+        if re.match(r'^([A-Z_]+)$', line_stripped) and len(line_stripped) > 2:
+            line = '**`' + line_stripped + '`**\n'  # Bold code for visibility
 
         # Wrap single symbols in common phrases
         # Pattern: "as X" or "shown as X" where X is a single non-alphanumeric char
