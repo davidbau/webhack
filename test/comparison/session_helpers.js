@@ -881,6 +881,9 @@ export class HeadlessDisplay {
                 this.grid[r][c] = ' ';
             }
         }
+        this.topMessage = null; // Track current message for concatenation
+        this.messages = []; // Message history
+        this.flags = { msg_window: false }; // Default flags
     }
 
     setCell(col, row, ch) {
@@ -908,8 +911,30 @@ export class HeadlessDisplay {
     }
 
     putstr_message(msg) {
+        // Add to message history
+        if (msg.trim()) {
+            this.messages.push(msg);
+            if (this.messages.length > 20) {
+                this.messages.shift();
+            }
+        }
+
+        // C ref: win/tty/topl.c:264-267 — Concatenate messages if they fit
+        const notDied = !msg.startsWith('You die');
+        if (this.topMessage && notDied) {
+            const combined = this.topMessage + '  ' + msg;
+            // Room for combined message + --More-- (8 chars)
+            if (combined.length + 3 < this.cols - 8) {
+                this.clearRow(0);
+                this.putstr(0, 0, combined.substring(0, this.cols));
+                this.topMessage = combined;
+                return;
+            }
+        }
+
         this.clearRow(0);
         this.putstr(0, 0, msg.substring(0, this.cols));
+        this.topMessage = msg;
     }
 
     // Matches Display.renderChargenMenu() — always clears screen, applies offset

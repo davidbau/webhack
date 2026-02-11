@@ -481,6 +481,12 @@ class NetHackGame {
                 if (result.action === 'filter') { await this._showFilterMenu(); isFirstMenu = true; continue; }
                 if (result.action === 'selected') {
                     roleIdx = result.value;
+                    // Validate role index
+                    if (roleIdx < 0 || roleIdx >= roles.length) {
+                        console.error(`Invalid roleIdx: ${roleIdx}, roles.length: ${roles.length}`);
+                        roleIdx = -1;
+                        continue;
+                    }
                     // Force gender if needed
                     if (roles[roleIdx].forceGender === 'female') {
                         gender = FEMALE;
@@ -506,6 +512,12 @@ class NetHackGame {
                     if (result.action === 'filter') { await this._showFilterMenu(); roleIdx = -1; raceIdx = -1; gender = -1; align = -128; isFirstMenu = true; continue; }
                     if (result.action === 'selected') {
                         raceIdx = result.value;
+                        // Validate race index
+                        if (raceIdx < 0 || raceIdx >= races.length) {
+                            console.error(`Invalid raceIdx: ${raceIdx}, races.length: ${races.length}`);
+                            raceIdx = -1;
+                            continue;
+                        }
                     }
                 }
             }
@@ -524,6 +536,12 @@ class NetHackGame {
                     if (result.action === 'filter') { await this._showFilterMenu(); roleIdx = -1; raceIdx = -1; gender = -1; align = -128; isFirstMenu = true; continue; }
                     if (result.action === 'selected') {
                         gender = result.value;
+                        // Validate gender (0=MALE, 1=FEMALE)
+                        if (gender < 0 || gender > 1) {
+                            console.error(`Invalid gender: ${gender}`);
+                            gender = -1;
+                            continue;
+                        }
                     }
                 }
             }
@@ -543,6 +561,12 @@ class NetHackGame {
                     if (result.action === 'filter') { await this._showFilterMenu(); roleIdx = -1; raceIdx = -1; gender = -1; align = -128; isFirstMenu = true; continue; }
                     if (result.action === 'selected') {
                         align = result.value;
+                        // Validate alignment (0=LAWFUL, 1=NEUTRAL, 2=CHAOTIC)
+                        if (align < 0 || align > 2) {
+                            console.error(`Invalid alignment: ${align}`);
+                            align = -128;
+                            continue;
+                        }
                     }
                 }
             }

@@ -276,6 +276,20 @@ export class Display {
             return;
         }
 
+        // C ref: win/tty/topl.c:264-267 — Concatenate messages if they fit
+        // If there's a current message and both messages fit on one line, combine them
+        const notDied = !msg.startsWith('You die');
+        if (this.topMessage && notDied) {
+            const combined = this.topMessage + '  ' + msg;
+            // Room for combined message + --More-- (8 chars)
+            if (combined.length + 3 < this.cols - 8) {
+                this.clearRow(MESSAGE_ROW);
+                this.putstr(0, MESSAGE_ROW, combined, CLR_WHITE);
+                this.topMessage = combined;
+                return;
+            }
+        }
+
         // Otherwise, use traditional single-line message display
         this.clearRow(MESSAGE_ROW);
 

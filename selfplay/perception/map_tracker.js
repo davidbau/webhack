@@ -4,6 +4,13 @@
 // Updated each turn from screen_parser output. Handles partial observability
 // (fog of war in corridors, lit rooms, dark rooms).
 
+import {
+    buildOccupancyGrid,
+    gaussianBlur,
+    findHiddenComponents,
+    scoreSearchCandidates
+} from './occupancy_map.js';
+
 const MAP_COLS = 80;
 const MAP_ROWS = 21;
 
@@ -674,6 +681,42 @@ export class LevelMap {
         }
 
         return { direction: null, priority: 0 };
+    }
+
+    /**
+     * Get prioritized secret door search targets using occupancy maps.
+     * Returns top N wall positions adjacent to large unexplored components.
+     *
+     * This implements the occupancy map approach from Campbell & Verbrugge 2017,
+     * which is 2x more efficient than greedy "search all walls" approach.
+     *
+     * @param {Object} playerPos - {x, y} current player position
+     * @param {number} maxTargets - Maximum number of targets to return (default 5)
+     * @returns {Array} Sorted array of {x, y, score, componentId}
+     */
+    getSecretDoorSearchTargets(playerPos, maxTargets = 5) {
+        // Step 1: Build occupancy grid (1.0 = unexplored, 0.0 = explored)
+        const occupancyGrid = buildOccupancyGrid(this);
+
+        // Step 2: Apply Gaussian blur diffusion (sigma=2.0)
+        // High values after blur indicate clusters of unexplored space
+        const blurredGrid = gaussianBlur(occupancyGrid, 2.0);
+
+        // Step 3: Find hidden components (large unexplored regions ≥50 cells)
+        // These are likely behind secret doors
+        const components = findHiddenComponents(blurredGrid, 50);
+
+        // If no large components, return empty (everything explored or no big hidden areas)
+        if (components.length === 0) {
+            return [];
+        }
+
+        // Step 4: Score and rank wall candidates adjacent to components
+        // Prioritizes: (1) close to player, (2) not previously searched
+        const candidates = scoreSearchCandidates(components, playerPos, this);
+
+        // Return top N candidates
+        return candidates.slice(0, maxTargets);
     }
 }
 

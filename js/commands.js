@@ -601,6 +601,7 @@ async function handleMovement(dir, player, map, display, game) {
 
     // Check for stairs
     // C ref: do.c:738 flags.verbose gates "There is a staircase..."
+    // Messages will be concatenated if both fit (see display.putstr_message)
     if (game.flags.verbose && loc.typ === STAIRS) {
         if (loc.flags === 1) {
             display.putstr_message('There is a staircase up here.');
