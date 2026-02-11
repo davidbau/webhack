@@ -2718,6 +2718,14 @@ function executeDeferredObjects() {
                             obj.corpsenm = name_or_opts.montype;
                         }
                         levelState.map.objects.push(obj);
+
+                        // TODO: Execute contents callback if provided
+                        // C ref: Lua des.object() with contents function executes after container creation
+                        // NOTE: Objects created in contents() should go into container inventory, not map.objects
+                        // Requires implementing container inventory system before enabling
+                        // if (name_or_opts.contents && typeof name_or_opts.contents === 'function') {
+                        //     name_or_opts.contents(obj);
+                        // }
                     }
                 }
             } else if (name_or_opts.class) {
