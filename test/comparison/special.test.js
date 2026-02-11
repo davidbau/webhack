@@ -14,21 +14,19 @@ const __dirname = dirname(__filename);
 const SESSIONS_DIR = join(__dirname, 'sessions');
 const MAPS_DIR = join(__dirname, 'maps');
 
-// Discover only special level sessions
-const specialSessions = [];
+// Discover special level sessions by filename pattern (zero parsing!)
+const specialFiles = [];
 for (const [dir, label] of [[SESSIONS_DIR, 'sessions'], [MAPS_DIR, 'maps']]) {
     if (!existsSync(dir)) continue;
-    for (const f of readdirSync(dir).filter(f => f.endsWith('.session.json')).sort()) {
-        const path = join(dir, f);
-        const session = JSON.parse(readFileSync(path, 'utf-8'));
-        if (session.type === 'special') {
-            specialSessions.push({ file: f, dir, session });
-        }
+    // All special sessions have '_special_' in their filename
+    for (const f of readdirSync(dir).filter(f => f.includes('_special_') && f.endsWith('.session.json')).sort()) {
+        specialFiles.push({ file: f, dir });
     }
 }
 
 // Run tests for each special level session
-for (const { file, dir, session } of specialSessions) {
+for (const { file, dir } of specialFiles) {
+    const session = JSON.parse(readFileSync(join(dir, file), 'utf-8'));
     describe(`${file}`, () => {
         runSpecialLevelSession(file, session);
     });

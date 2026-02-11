@@ -14,22 +14,22 @@ const __dirname = dirname(__filename);
 const SESSIONS_DIR = join(__dirname, 'sessions');
 const MAPS_DIR = join(__dirname, 'maps');
 
-// Discover option_test and selfplay sessions
-const otherSessions = [];
+// Discover option_test and selfplay sessions by filename pattern (zero parsing!)
+const otherFiles = [];
 for (const [dir, label] of [[SESSIONS_DIR, 'sessions'], [MAPS_DIR, 'maps']]) {
     if (!existsSync(dir)) continue;
-    for (const f of readdirSync(dir).filter(f => f.endsWith('.session.json')).sort()) {
-        const path = join(dir, f);
-        const session = JSON.parse(readFileSync(path, 'utf-8'));
-        // Capture option_test and selfplay sessions explicitly
-        if (session.type === 'option_test' || session.type === 'selfplay') {
-            otherSessions.push({ file: f, dir, session, type: session.type });
-        }
+    // option_test sessions have '_option_' in filename, selfplay have '_selfplay_'
+    for (const f of readdirSync(dir).filter(f =>
+        (f.includes('_option_') || f.includes('_selfplay_')) &&
+        f.endsWith('.session.json')
+    ).sort()) {
+        otherFiles.push({ file: f, dir });
     }
 }
 
-// Run tests for each other session (typically option_test and selfplay use gameplay test logic)
-for (const { file, dir, session, type } of otherSessions) {
+// Run tests for each other session (option_test and selfplay use gameplay test logic)
+for (const { file, dir } of otherFiles) {
+    const session = JSON.parse(readFileSync(join(dir, file), 'utf-8'));
     describe(`${file}`, () => {
         runGameplaySession(file, session);
     });

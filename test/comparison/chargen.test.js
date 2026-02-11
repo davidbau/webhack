@@ -14,21 +14,19 @@ const __dirname = dirname(__filename);
 const SESSIONS_DIR = join(__dirname, 'sessions');
 const MAPS_DIR = join(__dirname, 'maps');
 
-// Discover only chargen sessions
-const chargenSessions = [];
+// Discover chargen session files by filename pattern (zero parsing during discovery!)
+const chargenFiles = [];
 for (const [dir, label] of [[SESSIONS_DIR, 'sessions'], [MAPS_DIR, 'maps']]) {
     if (!existsSync(dir)) continue;
-    for (const f of readdirSync(dir).filter(f => f.endsWith('.session.json')).sort()) {
-        const path = join(dir, f);
-        const session = JSON.parse(readFileSync(path, 'utf-8'));
-        if (session.type === 'chargen') {
-            chargenSessions.push({ file: f, dir, session });
-        }
+    // All chargen sessions have '_chargen_' in their filename
+    for (const f of readdirSync(dir).filter(f => f.includes('_chargen_') && f.endsWith('.session.json')).sort()) {
+        chargenFiles.push({ file: f, dir });
     }
 }
 
-// Run tests for each chargen session
-for (const { file, dir, session } of chargenSessions) {
+// Run tests for each chargen session (parse one file at a time, not all upfront)
+for (const { file, dir } of chargenFiles) {
+    const session = JSON.parse(readFileSync(join(dir, file), 'utf-8'));
     describe(`${file}`, () => {
         runChargenSession(file, session);
     });

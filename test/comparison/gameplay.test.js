@@ -14,22 +14,19 @@ const __dirname = dirname(__filename);
 const SESSIONS_DIR = join(__dirname, 'sessions');
 const MAPS_DIR = join(__dirname, 'maps');
 
-// Discover gameplay sessions (explicit type "gameplay" OR no type field, which defaults to gameplay)
-const gameplaySessions = [];
+// Discover gameplay sessions by filename pattern (zero parsing!)
+const gameplayFiles = [];
 for (const [dir, label] of [[SESSIONS_DIR, 'sessions'], [MAPS_DIR, 'maps']]) {
     if (!existsSync(dir)) continue;
-    for (const f of readdirSync(dir).filter(f => f.endsWith('.session.json')).sort()) {
-        const path = join(dir, f);
-        const session = JSON.parse(readFileSync(path, 'utf-8'));
-        const type = session.type || 'gameplay';  // Default to gameplay if no type field
-        if (type === 'gameplay') {
-            gameplaySessions.push({ file: f, dir, session });
-        }
+    // All gameplay sessions have '_gameplay.session.json' in their filename
+    for (const f of readdirSync(dir).filter(f => f.includes('_gameplay.session.json')).sort()) {
+        gameplayFiles.push({ file: f, dir });
     }
 }
 
 // Run tests for each gameplay session
-for (const { file, dir, session } of gameplaySessions) {
+for (const { file, dir } of gameplayFiles) {
+    const session = JSON.parse(readFileSync(join(dir, file), 'utf-8'));
     describe(`${file}`, () => {
         runGameplaySession(file, session);
     });

@@ -14,21 +14,19 @@ const __dirname = dirname(__filename);
 const SESSIONS_DIR = join(__dirname, 'sessions');
 const MAPS_DIR = join(__dirname, 'maps');
 
-// Discover only map sessions
-const mapSessions = [];
+// Discover map sessions by filename pattern (zero parsing!)
+const mapFiles = [];
 for (const [dir, label] of [[SESSIONS_DIR, 'sessions'], [MAPS_DIR, 'maps']]) {
     if (!existsSync(dir)) continue;
-    for (const f of readdirSync(dir).filter(f => f.endsWith('.session.json')).sort()) {
-        const path = join(dir, f);
-        const session = JSON.parse(readFileSync(path, 'utf-8'));
-        if (session.type === 'map') {
-            mapSessions.push({ file: f, dir, session });
-        }
+    // All map sessions have '_map.session.json' in their filename
+    for (const f of readdirSync(dir).filter(f => f.includes('_map.session.json')).sort()) {
+        mapFiles.push({ file: f, dir });
     }
 }
 
 // Run tests for each map session
-for (const { file, dir, session } of mapSessions) {
+for (const { file, dir } of mapFiles) {
+    const session = JSON.parse(readFileSync(join(dir, file), 'utf-8'));
     describe(`${file}`, () => {
         runMapSession(file, session);
     });
