@@ -48,7 +48,7 @@ import {
 } from './objects.js';
 import { RUMORS_FILE_TEXT } from './rumor_data.js';
 import { getSpecialLevel } from './special_levels.js';
-import { setLevelContext, clearLevelContext } from './sp_lev.js';
+import { setLevelContext, clearLevelContext, initLuaMT } from './sp_lev.js';
 import { themerooms_generate as themermsGenerate, reset_state as resetThemermsState } from './levels/themerms.js';
 
 /**
@@ -64,6 +64,12 @@ function themerooms_generate(map, depth) {
     try {
         // Bridge: Point sp_lev's levelState.map at our procedural map
         setLevelContext(map, depth);
+
+        // C ref: MT init happens after first rnd_rect() and setLevelContext(), before themed rooms
+        // Initialize MT on first themed room generation (luaRngCounter=0 means not yet initialized)
+        if (!_mtInitialized) {
+            initLuaMT();
+        }
 
         // Call ported themerms (uses des.* API internally)
         const result = themermsGenerate(map, depth);
@@ -1061,6 +1067,7 @@ function makerooms(map, depth) {
     let themeroom_tries = 0;
 
     // C ref: mklev.c:365-380 — load Lua themes on first call only
+    // These rn2() calls simulate Lua theme loading
     if (!_themesLoaded) {
         _themesLoaded = true;
         rn2(3); rn2(2);
@@ -1069,7 +1076,7 @@ function makerooms(map, depth) {
     // Make rooms until satisfied (no more rects available)
     // C ref: mklev.c:393-417
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_THEMEROOMS === '1';
-    const DEBUG_POOL = typeof process !== 'undefined' && process.env.DEBUG_RECT_POOL === '1';
+    const DEBUG_POOL = typeof process !== 'undefined' && process.env.DEBUG_POOL === '1';
 
     let loop_count = 0;
     while (map.nroom < (MAXNROFROOMS - 1) && rnd_rect()) {

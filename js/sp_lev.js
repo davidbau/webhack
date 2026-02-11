@@ -118,16 +118,21 @@ export function setLevelContext(map, depth) {
     levelState.roomStack = [];
     levelState.roomDepth = 0;
     levelState.currentRoom = null;
-    // Lua RNG counter for themed rooms: Initialize to 0 so MT init happens on first des.object/des.monster
-    // C ref: Themed rooms DO use nhl_rn2() for Lua operations (seen in RNG traces)
-    // Special levels (Oracle, etc.) also set luaRngCounter = 0 explicitly before calling initLuaMT()
+
+    // Lua RNG counter for themed rooms: Initialize to 0 ONLY on first call (undefined)
+    // Once MT is initialized, preserve luaRngCounter across all themed rooms in this level
+    // C ref: MT is initialized ONCE per level, not per themed room
     const oldCounter = levelState.luaRngCounter;
-    levelState.luaRngCounter = 0;  // Changed from undefined - themed rooms need Lua RNG!
+    if (levelState.luaRngCounter === undefined) {
+        levelState.luaRngCounter = 0;  // First call - will trigger MT init on first Lua RNG usage
+    }
+    // else: keep existing luaRngCounter value (MT already initialized)
+
     // Callback for room creation failure (set by themed room generator)
     levelState.roomFailureCallback = null;
 
     if (DEBUG) {
-        console.log(`\n[setLevelContext] depth=${depth}, luaRngCounter: ${oldCounter} → 0`);
+        console.log(`\n[setLevelContext] depth=${depth}, luaRngCounter: ${oldCounter} → ${levelState.luaRngCounter}`);
     }
 }
 
@@ -139,7 +144,7 @@ export function clearLevelContext() {
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
 
     if (DEBUG) {
-        console.log(`\n[clearLevelContext] luaRngCounter: ${levelState.luaRngCounter} → 0, MT reset`);
+        console.log(`\n[clearLevelContext] Clearing map context (keeping luaRngCounter=${levelState.luaRngCounter}, MT initialized)`);
     }
 
     levelState.map = null;
@@ -147,8 +152,9 @@ export function clearLevelContext() {
     levelState.roomStack = [];
     levelState.roomDepth = 0;
     levelState.currentRoom = null;
-    levelState.luaRngCounter = 0; // Reset to 0 for next themed room generation
-    setMtInitialized(false); // Reset MT init flag - each themed room gets its own MT init
+    // NOTE: Do NOT reset luaRngCounter or MT init flag!
+    // MT is initialized ONCE per level generation, not per themed room.
+    // luaRngCounter persists across all themed rooms in a single level.
 }
 
 /**
@@ -172,8 +178,19 @@ export function setCurrentRoom(room) {
  *
  * This is called lazily on the first Lua RNG use (des.object/des.monster) to match C behavior.
  */
+// Internal flag to prevent double MT initialization
+let _mtInitializedLocal = false;
+
 export function initLuaMT() {
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
+
+    // Check if already initialized (prevent double init)
+    if (_mtInitializedLocal) {
+        if (DEBUG) {
+            console.log(`initLuaMT: already initialized, skipping`);
+        }
+        return;
+    }
 
     if (DEBUG) {
         const stack = new Error().stack.split('\n').slice(2, 6).join('\n');
@@ -186,7 +203,7 @@ export function initLuaMT() {
     rn2(1010);
     rn2(1012);
     for (let i = 1014; i <= 1036; i++) rn2(i);
-    setMtInitialized(true);
+    _mtInitializedLocal = true;
     // Advance luaRngCounter to account for MT init calls (30 RNG calls total)
     // MT init pattern: 1000-1004(5), 1010(1), 1012(1), 1014-1036(23) = 30 calls
     // BUT counter should be 37 because offsets continue: next calls use 1037+
@@ -220,9 +237,13 @@ export function initLuaMT() {
  * @param {number} depth - Current dungeon depth (for litstate_rnd)
  * @returns {Object|null} Room object {lx, ly, hx, hy, rtype, rlit} or null on failure
  */
-function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth) {
+function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth, skipLitstate = false, forceRandomize = false) {
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_ROOMS === '1';
-    if (DEBUG) console.log(`create_room_splev: x=${x}, y=${y}, w=${w}, h=${h}, xalign=${xalign}, yalign=${yalign}`);
+    const DEBUG_BUILD = typeof process !== 'undefined' && process.env.DEBUG_BUILD_ROOM === '1';
+    if (DEBUG || DEBUG_BUILD) {
+        const rngBefore = typeof getRngCallCount === 'function' ? getRngCallCount() : '?';
+        console.log(`[RNG ${rngBefore}] create_room_splev: x=${x}, y=${y}, w=${w}, h=${h}, xalign=${xalign}, yalign=${yalign}, skipLitstate=${skipLitstate}, forceRandomize=${forceRandomize}`);
+    }
 
     // C ref: sp_lev.c:1498 — -1 means OROOM (ordinary room)
     if (rtype === -1) {
@@ -230,8 +251,26 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth) {
     }
 
     // C ref: sp_lev.c:1510 — Call litstate_rnd FIRST, before any path checks
-    // C always calls litstate_rnd at the start of create_room, regardless of which path is taken
-    const lit = litstate_rnd(rlit, depth);
+    // C calls litstate_rnd for top-level rooms, but nested rooms skip it HERE
+    // Nested rooms will call litstate_rnd later during room finalization
+    let lit;
+    if (skipLitstate) {
+        // Nested rooms: keep lit undetermined so litstate_rnd will be called during finalization
+        lit = rlit;  // Keep original value (usually -1 for undetermined)
+        if (DEBUG_BUILD) {
+            console.log(`  [RNG ${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'}] create_room_splev skipping litstate_rnd, keeping lit=${lit}`);
+        }
+    } else {
+        if (DEBUG_BUILD) {
+            const rngBefore = typeof getRngCallCount === 'function' ? getRngCallCount() : '?';
+            console.log(`  [RNG ${rngBefore}] create_room_splev calling litstate_rnd(${rlit}, ${depth})`);
+        }
+        lit = litstate_rnd(rlit, depth);
+        if (DEBUG_BUILD) {
+            const rngAfter = typeof getRngCallCount === 'function' ? getRngCallCount() : '?';
+            console.log(`  [RNG ${rngAfter}] create_room_splev litstate_rnd returned ${lit}`);
+        }
+    }
 
     // C ref: sp_lev.c:1530-1572 — Check which placement path to use
     // Path 1: "Totally random" — ALL params -1 or vault → uses rnd_rect() + BSP
@@ -293,9 +332,12 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth) {
         let yaltmp = yalign;
 
     // C ref: sp_lev.c:1587-1590 — Position is RANDOM (x < 0 && y < 0)
-    if (xtmp < 0 && ytmp < 0) {
+    // For nested rooms with forceRandomize, ALWAYS randomize position regardless of input
+    if (forceRandomize || (xtmp < 0 && ytmp < 0)) {
+        if (DEBUG_BUILD) console.log(`  [RNG ${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'}] create_room_splev calling rnd(5) for x, rnd(5) for y ${forceRandomize ? '(forced)' : ''}`);
         xtmp = rnd(5);  // Grid position 1-5
         ytmp = rnd(5);
+        if (DEBUG_BUILD) console.log(`  [RNG ${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'}] create_room_splev got xtmp=${xtmp}, ytmp=${ytmp}`);
     }
 
     // C ref: sp_lev.c:1592-1594 — Size is RANDOM (w < 0 || h < 0)
@@ -305,13 +347,19 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth) {
     }
 
     // C ref: sp_lev.c:1596-1597 — Horizontal alignment is RANDOM
-    if (xaltmp === -1) {
+    // For nested rooms with forceRandomize, ALWAYS randomize alignment regardless of input
+    if (forceRandomize || xaltmp === -1) {
+        if (DEBUG_BUILD) console.log(`  [RNG ${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'}] create_room_splev calling rnd(3) for xalign ${forceRandomize ? '(forced)' : ''}`);
         xaltmp = rnd(3);  // 1=left, 2=center, 3=right
+        if (DEBUG_BUILD) console.log(`  [RNG ${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'}] create_room_splev got xaltmp=${xaltmp}`);
     }
 
     // C ref: sp_lev.c:1598-1599 — Vertical alignment is RANDOM
-    if (yaltmp === -1) {
+    // For nested rooms with forceRandomize, ALWAYS randomize alignment regardless of input
+    if (forceRandomize || yaltmp === -1) {
+        if (DEBUG_BUILD) console.log(`  [RNG ${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'}] create_room_splev calling rnd(3) for yalign ${forceRandomize ? '(forced)' : ''}`);
         yaltmp = rnd(3);  // 1=top, 2=center, 3=bottom
+        if (DEBUG_BUILD) console.log(`  [RNG ${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'}] create_room_splev got yaltmp=${yaltmp}`);
     }
 
         // C ref: sp_lev.c:1601-1622 — Calculate absolute coordinates from grid position
@@ -1253,18 +1301,25 @@ export function room(opts = {}) {
     // For special levels, we create rooms differently than procedural dungeons
     // Special levels use fixed coordinates, not BSP rectangle selection
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_ROOMS === '1';
-
-    // C ref: sp_lev.c:2803 build_room() — build_room() ALWAYS calls rn2(100) for chance check
-    // This applies to ALL rooms created via des.room(), not just fixed-position rooms
     const DEBUG_BUILD = typeof process !== 'undefined' && process.env.DEBUG_BUILD_ROOM === '1';
-    if (DEBUG_BUILD) {
-        const before = getRngCallCount();
-        console.log(`\n=== [RNG ${before}] des.room() build_room chance check ===`);
-        console.log(`  chance=${chance}, requestedRtype=${requestedRtype}, type="${type}"`);
-    }
-    let rtype = (!chance || rn2(100) < chance) ? requestedRtype : 0; // 0 = OROOM
-    if (DEBUG_BUILD) {
-        console.log(`  [RNG ${getRngCallCount()}] rn2(100) done, rtype=${rtype}`);
+
+    // C ref: sp_lev.c — build_room() RNG ordering differs for top-level vs nested rooms
+    // Top-level rooms (depth 0): build_room rn2(100) → litstate_rnd → create_room
+    // Nested rooms (depth > 0): create_room → build_room rn2(100)
+    // We'll call build_room's rn2(100) at the appropriate time based on depth
+    let rtype; // Will be set at the right time depending on nesting level
+
+    // For top-level rooms, call build_room's rn2(100) FIRST
+    if (levelState.roomDepth === 0) {
+        if (DEBUG_BUILD) {
+            const before = getRngCallCount();
+            console.log(`\n=== [RNG ${before}] des.room() build_room chance check (TOP-LEVEL) ===`);
+            console.log(`  chance=${chance}, requestedRtype=${requestedRtype}, type="${type}"`);
+        }
+        rtype = (!chance || rn2(100) < chance) ? requestedRtype : 0; // 0 = OROOM
+        if (DEBUG_BUILD) {
+            console.log(`  [RNG ${getRngCallCount()}] rn2(100) done, rtype=${rtype}`);
+        }
     }
 
     // Calculate actual room position and size
@@ -1272,8 +1327,38 @@ export function room(opts = {}) {
     // If -1, would need random placement (not implemented yet)
     let roomX, roomY, roomW, roomH;
 
-    if (x >= 0 && y >= 0 && w > 0 && h > 0) {
-        // Fixed position special level room
+    if (x >= 0 && y >= 0 && w > 0 && h > 0 && levelState.roomDepth > 0) {
+        // Nested room with fixed coordinates
+        // C's create_room makes dimension RNG calls even for fixed-coord nested rooms
+        // Nested rooms skip litstate_rnd (lighting already determined by parent)
+        if (DEBUG) {
+            console.log(`des.room(): NESTED room with fixed coords, using create_room_splev: x=${x}, y=${y}, w=${w}, h=${h}`);
+        }
+
+        const roomCalc = create_room_splev(x, y, w, h, xalign, yalign,
+                                           rtype, lit, levelState.depth || 1, true, true); // skipLitstate=true, forceRandomize=true for nested
+
+        if (!roomCalc) {
+            if (DEBUG) {
+                console.log(`des.room(): create_room_splev failed for nested room`);
+            }
+            return false;
+        }
+
+        // Extract coordinates from calculated room
+        roomX = roomCalc.lx;
+        roomY = roomCalc.ly;
+        roomW = roomCalc.hx - roomCalc.lx + 1;
+        roomH = roomCalc.hy - roomCalc.ly + 1;
+        lit = roomCalc.rlit;
+
+        if (DEBUG) {
+            console.log(`des.room(): nested room via create_room_splev at (${roomX},${roomY}) size ${roomW}x${roomH}`);
+        }
+
+        // Skip to nested room build_room call and room creation below
+    } else if (x >= 0 && y >= 0 && w > 0 && h > 0) {
+        // Top-level fixed position room - use direct coordinate conversion
 
         if (DEBUG) {
             console.log(`des.room(): FIXED position x=${x}, y=${y}, w=${w}, h=${h}, xalign=${xalign}, yalign=${yalign}, rtype=${rtype}, lit=${lit}, depth=${levelState.roomDepth}`);
@@ -1373,7 +1458,8 @@ export function room(opts = {}) {
         }
     } else {
         // Random placement - use sp_lev.c's create_room algorithm
-        // Random-placement rooms do NOT call build_room's rn2(100) chance check
+        // C ref: sp_lev.c:1530-1649 — create_room handles dimension/position randomization
+        // via rnd(5), rnd(5), rnd(3), rnd(3) calls
 
         if (DEBUG) {
             console.log(`des.room(): RANDOM placement x=${x}, y=${y}, w=${w}, h=${h}, xalign=${xalign}, yalign=${yalign}, rtype=${rtype}, lit=${lit}`);
@@ -1397,6 +1483,22 @@ export function room(opts = {}) {
         if (roomCalc._alreadyAdded) {
             if (DEBUG) {
                 console.log(`des.room(): room already added by create_room (fully random), executing contents callback`);
+            }
+
+            // For nested rooms on the fully-random path, call build_room's rn2(100) now
+            // (after create_room dimensions were calculated)
+            if (levelState.roomDepth > 0) {
+                if (DEBUG_BUILD) {
+                    const before = getRngCallCount();
+                    console.log(`\n=== [RNG ${before}] des.room() build_room chance check (NESTED fully-random, depth=${levelState.roomDepth}) ===`);
+                    console.log(`  chance=${chance}, requestedRtype=${requestedRtype}, type="${type}"`);
+                }
+                rtype = (!chance || rn2(100) < chance) ? requestedRtype : 0; // 0 = OROOM
+                if (DEBUG_BUILD) {
+                    console.log(`  [RNG ${getRngCallCount()}] rn2(100) done, rtype=${rtype}`);
+                }
+                // Update room type if chance roll changed it
+                roomCalc.rtype = rtype;
             }
 
             // Room is already in map, just execute contents callback if needed
@@ -1437,16 +1539,40 @@ export function room(opts = {}) {
         // Room needs to be added to map.rooms[] and tiles marked
     }
 
+    // For nested rooms, call build_room's rn2(100) AFTER dimensions are calculated
+    if (levelState.roomDepth > 0) {
+        if (DEBUG_BUILD) {
+            const before = getRngCallCount();
+            console.log(`\n=== [RNG ${before}] des.room() build_room chance check (NESTED, depth=${levelState.roomDepth}) ===`);
+            console.log(`  chance=${chance}, requestedRtype=${requestedRtype}, type="${type}"`);
+        }
+        rtype = (!chance || rn2(100) < chance) ? requestedRtype : 0; // 0 = OROOM
+        if (DEBUG_BUILD) {
+            console.log(`  [RNG ${getRngCallCount()}] rn2(100) done, rtype=${rtype}`);
+        }
+    }
+
     // Create room entry in map.rooms array
     const OROOM_LOCAL = 0;
     const THEMEROOM_LOCAL = 1;
+    // C ref: mkroom.c — Always call litstate_rnd for room finalization
+    // Even if lit was already determined, C calls litstate_rnd again
+    // This is because litstate_rnd returns immediately (without RNG) if litstate >= 0
+    if (DEBUG_BUILD) {
+        console.log(`  [RNG ${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'}] Room finalization: calling litstate_rnd(${lit}, ${levelState.depth || 1})`);
+    }
+    const finalLit = litstate_rnd(lit, levelState.depth || 1);
+    if (DEBUG_BUILD) {
+        console.log(`  [RNG ${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'}] Room finalization: litstate_rnd returned ${finalLit}`);
+    }
+
     const room = {
         lx: roomX,
         ly: roomY,
         hx: roomX + roomW - 1,
         hy: roomY + roomH - 1,
         rtype: rtype,
-        rlit: lit >= 0 ? lit : (rn2(2) === 1 ? 1 : 0),
+        rlit: finalLit,
         irregular: false,
         // C ref: mklev.c - OROOM and THEMEROOM get needfill=FILL_NORMAL by default
         needfill: (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL) ? FILL_NORMAL : undefined,
