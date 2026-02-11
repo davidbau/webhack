@@ -35,7 +35,7 @@ import {
 import {
     BOULDER, SCROLL_CLASS, FOOD_CLASS, WEAPON_CLASS, ARMOR_CLASS,
     POTION_CLASS, RING_CLASS, WAND_CLASS, TOOL_CLASS, AMULET_CLASS,
-    GEM_CLASS, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS, VENOM_CLASS,
+    GEM_CLASS, SPBOOK_CLASS, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS, VENOM_CLASS,
     SCR_EARTH, objectData
 } from './objects.js';
 import { mons } from './monsters.js';
@@ -1948,6 +1948,7 @@ function objectClassToType(classChar) {
         case '/': return WAND_CLASS;
         case '=': return RING_CLASS;
         case '!': return POTION_CLASS;
+        case '+': return SPBOOK_CLASS;
         case '[': return ARMOR_CLASS;
         case ')': return WEAPON_CLASS;
         case '(': return TOOL_CLASS;
@@ -2048,11 +2049,21 @@ export function object(name_or_opts, x, y) {
 
     // Create the object now (triggers next_ident and other creation RNG)
     if (typeof name_or_opts === 'string') {
-        const otyp = objectNameToType(name_or_opts);
-        if (otyp >= 0) {
-            obj = mksobj(otyp, true, false);
-            if (obj) {
-                obj.id = name_or_opts;  // Store original name
+        // Single-character strings are object class codes (!, ?, +, etc.)
+        // C ref: sp_lev.c spo_object() handles single chars as class selection
+        if (name_or_opts.length === 1) {
+            const objClass = objectClassToType(name_or_opts);
+            if (objClass >= 0) {
+                obj = mkobj(objClass, false);  // Random object from class
+            }
+        } else {
+            // Multi-character strings are object names
+            const otyp = objectNameToType(name_or_opts);
+            if (otyp >= 0) {
+                obj = mksobj(otyp, true, false);
+                if (obj) {
+                    obj.id = name_or_opts;  // Store original name
+                }
             }
         }
     } else if (name_or_opts && typeof name_or_opts === 'object' && name_or_opts.id) {
