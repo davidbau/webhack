@@ -6,7 +6,8 @@
 import {
     COLNO, ROWNO, STONE, VWALL, HWALL, STAIRS, VAULT,
     IS_WALL, IS_DOOR, ACCESSIBLE, SDOOR, SCORR, IRONBARS,
-    CORR, ROOM, DOOR, isok, TERMINAL_COLS, TERMINAL_ROWS
+    CORR, ROOM, DOOR, isok, TERMINAL_COLS, TERMINAL_ROWS,
+    D_ISOPEN, D_CLOSED, D_LOCKED, D_NODOOR
 } from '../../js/config.js';
 import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1 } from '../../js/rng.js';
 import { initLevelGeneration, makelevel, setGameSeed, wallification, simulateDungeonInit } from '../../js/dungeon.js';
@@ -1007,5 +1008,49 @@ export class HeadlessDisplay {
                 this.putstr(0, row, msg.substring(0, this.cols - 3) + '...');
             }
         }
+    }
+
+    // Door orientation helper
+    // C ref: display.c glyph_at() - door orientation affects symbol choice
+    _isDoorHorizontal(gameMap, x, y) {
+        if (!gameMap || x < 0 || y < 0) return false;
+
+        // Check for walls to east and west (makes door horizontal)
+        const hasWallEast = x + 1 < COLNO && IS_WALL(gameMap.at(x + 1, y)?.typ || 0);
+        const hasWallWest = x - 1 >= 0 && IS_WALL(gameMap.at(x - 1, y)?.typ || 0);
+
+        // If walls E/W, door is horizontal; otherwise vertical
+        return hasWallEast || hasWallWest;
+    }
+
+    // Terrain symbol rendering for testing
+    // C ref: defsym.h PCHAR definitions
+    terrainSymbol(loc, gameMap = null, x = -1, y = -1) {
+        const typ = loc.typ;
+        const useDEC = this.flags.DECgraphics || false;
+
+        // Handle door states
+        if (typ === DOOR) {
+            if (loc.flags & D_ISOPEN) {
+                // C ref: defsym.h:13-14 - Open doors use different symbols for vertical vs horizontal
+                // S_vodoor (vertical open door): '-'  (walls N/S)
+                // S_hodoor (horizontal open door): '|' (walls E/W)
+                const isHorizontalDoor = this._isDoorHorizontal(gameMap, x, y);
+                return useDEC
+                    ? { ch: '\u00b7', color: 1 }  // Middle dot for both in DECgraphics
+                    : { ch: isHorizontalDoor ? '|' : '-', color: 1 };  // CLR_BROWN = 1
+            } else if (loc.flags & D_CLOSED || loc.flags & D_LOCKED) {
+                return { ch: '+', color: 1 };  // CLR_BROWN
+            } else {
+                // Doorway: MIDDLE DOT for DEC, '.' for ASCII
+                return useDEC
+                    ? { ch: '\u00b7', color: 7 }  // CLR_GRAY = 7
+                    : { ch: '.', color: 7 };
+            }
+        }
+
+        // For other terrain types, return basic symbol
+        // (Tests that need more terrain types should extend this)
+        return { ch: '?', color: 7 };
     }
 }

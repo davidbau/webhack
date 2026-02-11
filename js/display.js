@@ -370,7 +370,7 @@ export class Display {
                     const loc = gameMap.at(x, y);
                     if (loc && loc.seenv) {
                         // Show remembered (dimmed)
-                        const sym = this.terrainSymbol(loc);
+                        const sym = this.terrainSymbol(loc, gameMap, x, y);
                         this.setCell(col, row, sym.ch, CLR_BLACK);
                         const desc = this._terrainDesc(loc);
                         this.cellInfo[row][col] = { name: desc, desc: '(remembered)', color: CLR_BLACK };
@@ -430,7 +430,7 @@ export class Display {
                 }
 
                 // Show terrain
-                const sym = this.terrainSymbol(loc);
+                const sym = this.terrainSymbol(loc, gameMap, x, y);
                 this.setCell(col, row, sym.ch, sym.color);
                 const desc = this._terrainDesc(loc);
                 this.cellInfo[row][col] = { name: desc, desc: '', color: sym.color };
@@ -440,7 +440,7 @@ export class Display {
 
     // Get the display symbol for a terrain type
     // C ref: defsym.h PCHAR definitions, display.c back_to_glyph()
-    terrainSymbol(loc) {
+    terrainSymbol(loc, gameMap = null, x = -1, y = -1) {
         const typ = loc.typ;
         const useDEC = this.flags.DECgraphics || false;
 
@@ -451,10 +451,13 @@ export class Display {
         // Handle door states
         if (typ === DOOR) {
             if (loc.flags & D_ISOPEN) {
-                // Open door: MIDDLE DOT for DEC, '-' for ASCII
+                // C ref: defsym.h:13-14 - Open doors use different symbols for vertical vs horizontal
+                // S_vodoor (vertical open door): '-'  (walls N/S)
+                // S_hodoor (horizontal open door): '|' (walls E/W)
+                const isHorizontalDoor = this._isDoorHorizontal(gameMap, x, y);
                 return useDEC
-                    ? { ch: '\u00b7', color: CLR_BROWN }
-                    : { ch: '-', color: CLR_BROWN };
+                    ? { ch: '\u00b7', color: CLR_BROWN }  // Middle dot for both in DECgraphics
+                    : { ch: isHorizontalDoor ? '|' : '-', color: CLR_BROWN };
             } else if (loc.flags & D_CLOSED || loc.flags & D_LOCKED) {
                 return { ch: '+', color: CLR_BROWN };
             } else {
@@ -693,6 +696,19 @@ export class Display {
     }
 
     // --- Hover info helpers ---
+
+    // Determine if a door is horizontal (walls E/W) or vertical (walls N/S)
+    // C ref: display.c glyph_at() - door orientation affects symbol choice
+    _isDoorHorizontal(gameMap, x, y) {
+        if (!gameMap || x < 0 || y < 0) return false;
+
+        // Check for walls to east and west (makes door horizontal)
+        const hasWallEast = x + 1 < COLNO && IS_WALL(gameMap.at(x + 1, y)?.typ || 0);
+        const hasWallWest = x - 1 >= 0 && IS_WALL(gameMap.at(x - 1, y)?.typ || 0);
+
+        // If walls E/W, door is horizontal; otherwise vertical
+        return hasWallEast || hasWallWest;
+    }
 
     // Get terrain description for a map location
     _terrainDesc(loc) {
