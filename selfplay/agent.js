@@ -1094,22 +1094,42 @@ export class Agent {
             const coverageForSearch = level.exploredCount / (80 * 21);
             const frontierForSearch = level.getExplorationFrontier();
             const genuinelyTrapped = frontierForSearch.length === 0 && this.levelStuckCounter > 50;
-            if (this.levelStuckCounter > 30 && level.stairsDown.length === 0 && (coverageForSearch > 0.20 || genuinelyTrapped)) {
+            if (this.levelStuckCounter > 20 && level.stairsDown.length === 0 && frontierForSearch.length < 20 && (coverageForSearch > 0.15 || genuinelyTrapped)) {
                 // Systematic wall searching for secret doors
                 if (!this.secretDoorSearch) {
-                    // Check if we're in a dead-end situation
-                    if (level.isDeadEnd(px, py)) {
-                        // Get wall candidates to search
-                        const candidates = level.getSecretDoorCandidates(px, py);
-                        if (candidates.length > 0) {
-                            this.secretDoorSearch = {
-                                wallCandidates: candidates,
-                                currentIndex: 0,
-                                searchesNeeded: 20, // NetHack wiki recommendation
-                                searchesDone: 0,
-                            };
-                            console.log(`[SECRET DOOR] Starting systematic search of ${candidates.length} wall positions`);
+                    // Remove dead-end restriction - search near frontier cells
+                    const candidates = level.getSecretDoorCandidates(px, py);
+
+                    // Prioritize walls adjacent to frontier cells
+                    const frontierAdjacentCandidates = candidates.filter(cand => {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                const checkX = cand.x + dx;
+                                const checkY = cand.y + dy;
+                                const checkCell = level.at(checkX, checkY);
+                                if (checkCell && checkCell.explored && checkCell.walkable) {
+                                    // Is this a frontier cell?
+                                    const neighbors = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+                                    for (const [ndx, ndy] of neighbors) {
+                                        const n = level.at(checkX + ndx, checkY + ndy);
+                                        if (n && !n.explored) return true;
+                                    }
+                                }
+                            }
                         }
+                        return false;
+                    });
+
+                    const finalCandidates = frontierAdjacentCandidates.length > 0 ? frontierAdjacentCandidates : candidates;
+
+                    if (finalCandidates.length > 0) {
+                        this.secretDoorSearch = {
+                            wallCandidates: finalCandidates,
+                            currentIndex: 0,
+                            searchesNeeded: 20, // NetHack wiki recommendation
+                            searchesDone: 0,
+                        };
+                        console.log(`[SECRET DOOR] Starting systematic search of ${finalCandidates.length} wall positions (${frontierAdjacentCandidates.length} frontier-adjacent)`);
                     }
                 }
 
