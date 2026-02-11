@@ -25,13 +25,13 @@ let _levelDepth = 1;
 
 // NetHack global functions (Lua nh.* replacements)
 // Use the global nh from sp_lev.js, but override level_difficulty to use our local depth tracking
+// Note: Use getter to avoid circular dependency issues at module load time
 const nh = {
-    ...nhGlobal,  // Import debug_themerm and other functions from sp_lev.js
+    get debug_themerm() { return nhGlobal.debug_themerm; },
     level_difficulty: () => _levelDepth,
     rn2: (n) => rn2(n),
     start_timer_at: (x, y, type, time) => { /* TODO: implement timer system */ },
     impossible: (msg) => { console.warn('[themerms impossible]:', msg); },
-    // debug_themerm is inherited from nhGlobal (sp_lev.js)
 };
 
 // Stub other globals
