@@ -13,8 +13,8 @@
  */
 
 import * as des from '../sp_lev.js';
-import { selection, percent, shuffle, levelState, nh as nhGlobal } from '../sp_lev.js';
-import { rn2, rnd, d, getRngLog } from '../rng.js';
+import { selection, percent, shuffle, levelState, nh as nhGlobal, initLuaMT } from '../sp_lev.js';
+import { rn2, rnd, d, getRngLog, getRngCallCount } from '../rng.js';
 import { setMtInitialized } from '../dungeon.js';
 
 // Module-level state for postprocessing callbacks
@@ -947,6 +947,17 @@ function lookup_by_name(name, checkfills) {
 export function themerooms_generate(map, depth) {
    _levelDepth = depth; // Update module-level depth for nh.level_difficulty()
 
+   // C ref: MT initialization happens at the START of EACH Lua execution (themerooms_generate),
+   // before any themed room logic runs. In C, entering Lua code triggers MT init on first
+   // nhl_rn2 call. We match this by calling initLuaMT() at the start of each themed room generation.
+   // The MT flag is reset between themed rooms by clearLevelContext().
+   const DEBUG_LUA = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
+   if (DEBUG_LUA) {
+       const rngCount = getRngCallCount();
+       console.log(`\n[RNG ${rngCount}] themerooms_generate: calling initLuaMT()`);
+   }
+   initLuaMT();
+
    // C ref: mklev.c:404 — reset failure flag before calling Lua themerooms_generate
    themeroom_failed = false;
 
@@ -982,6 +993,10 @@ export function themerooms_generate(map, depth) {
       themerooms[actualrm].contents();
       return true;
    }
+   // C ref: Reservoir sampling uses Lua's math.random (invisible xoshiro256** RNG),
+   // not NetHack's RNG. The frequency-based selection is not logged.
+   // MT init already happened at function start above.
+
    let pick = null;
    let total_frequency = 0;
    const themerooms_count = themerooms.length;
@@ -1001,7 +1016,9 @@ export function themerooms_generate(map, depth) {
          }
          total_frequency = total_frequency + this_frequency;
          // avoid rn2(0) if a room has freq 0
-         if (this_frequency > 0 && rn2(total_frequency) < this_frequency) {
+         // C ref: Lua reservoir sampling uses math.random (invisible xoshiro256** RNG)
+         // We use Math.random() to match this behavior and avoid polluting NetHack's RNG log
+         if (this_frequency > 0 && Math.random() * total_frequency < this_frequency) {
             pick = i;
          }
       }

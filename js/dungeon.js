@@ -65,11 +65,10 @@ function themerooms_generate(map, depth) {
         // Bridge: Point sp_lev's levelState.map at our procedural map
         setLevelContext(map, depth);
 
-        // C ref: MT init happens after first rnd_rect() and setLevelContext(), before themed rooms
-        // Initialize MT on first themed room generation (luaRngCounter=0 means not yet initialized)
-        if (!_mtInitialized) {
-            initLuaMT();
-        }
+        // NOTE: MT initialization happens LAZILY during themed room generation,
+        // NOT here. In C, MT init is triggered by the first nhl_rn2 call during
+        // themed room selection (reservoir sampling). We'll init MT in the same
+        // place - see themerms.js reservoir sampling loop.
 
         // Call ported themerms (uses des.* API internally)
         const result = themermsGenerate(map, depth);

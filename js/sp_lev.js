@@ -144,7 +144,7 @@ export function clearLevelContext() {
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
 
     if (DEBUG) {
-        console.log(`\n[clearLevelContext] Clearing map context (keeping luaRngCounter=${levelState.luaRngCounter}, MT initialized)`);
+        console.log(`\n[clearLevelContext] Clearing map context, resetting MT flag (keeping luaRngCounter=${levelState.luaRngCounter})`);
     }
 
     levelState.map = null;
@@ -152,9 +152,10 @@ export function clearLevelContext() {
     levelState.roomStack = [];
     levelState.roomDepth = 0;
     levelState.currentRoom = null;
-    // NOTE: Do NOT reset luaRngCounter or MT init flag!
-    // MT is initialized ONCE per level generation, not per themed room.
-    // luaRngCounter persists across all themed rooms in a single level.
+
+    // C ref: Each themed room gets fresh MT init. Reset flag between rooms.
+    // luaRngCounter continues to increment across all themed rooms.
+    resetMtInitFlag();
 }
 
 /**
@@ -181,22 +182,35 @@ export function setCurrentRoom(room) {
 // Internal flag to prevent double MT initialization
 let _mtInitializedLocal = false;
 
+let _mtCallCount = 0;
+
+// Reset MT initialization flag (called between themed room generations)
+export function resetMtInitFlag() {
+    _mtInitializedLocal = false;
+}
+
 export function initLuaMT() {
+    _mtCallCount++;
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
 
-    // Check if already initialized (prevent double init)
+    if (DEBUG) {
+        const rngCount = typeof getRngCallCount === 'function' ? getRngCallCount() : '?';
+        const stack = new Error().stack.split('\n').slice(2, 4).join('\n');
+        console.log(`\n[RNG ${rngCount}] [initLuaMT call #${_mtCallCount}] flag=${_mtInitializedLocal}`);
+        console.log(`Stack:\n${stack}`);
+    }
+
+    // Check if already initialized (prevent double init within same themed room)
     if (_mtInitializedLocal) {
         if (DEBUG) {
-            console.log(`initLuaMT: already initialized, skipping`);
+            console.log(`  → SKIPPING (already initialized)`);
         }
         return;
     }
 
     if (DEBUG) {
-        const stack = new Error().stack.split('\n').slice(2, 6).join('\n');
-        console.log(`\n=== initLuaMT() called ===`);
+        console.log(`  → EXECUTING MT PATTERN NOW`);
         console.log(`luaRngCounter BEFORE init: ${levelState ? levelState.luaRngCounter : 'no levelState'}`);
-        console.log(`Call stack:\n${stack}`);
     }
 
     for (let i = 1000; i <= 1004; i++) rn2(i);
@@ -204,6 +218,11 @@ export function initLuaMT() {
     rn2(1012);
     for (let i = 1014; i <= 1036; i++) rn2(i);
     _mtInitializedLocal = true;
+
+    if (DEBUG) {
+        const rngCount = typeof getRngCallCount === 'function' ? getRngCallCount() : '?';
+        console.log(`  → [RNG ${rngCount}] MT pattern completed, flag now=${_mtInitializedLocal}`);
+    }
     // Advance luaRngCounter to account for MT init calls (30 RNG calls total)
     // MT init pattern: 1000-1004(5), 1010(1), 1012(1), 1014-1036(23) = 30 calls
     // BUT counter should be 37 because offsets continue: next calls use 1037+
@@ -287,6 +306,10 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth, skipL
         if (!levelState.map) {
             return null; // No map available for BSP room placement
         }
+
+        // NOTE: MT initialization for room CONTENTS happens AFTER room creation,
+        // not before. des.object/des.monster will trigger MT init when needed.
+        // Do NOT call initLuaMT() here - it would happen too early in the sequence.
 
         // Call dungeon.create_room with map - it modifies map directly
         // Returns false if no space available, true on success
