@@ -75,12 +75,28 @@ async function startNewGame() {
         () => document.querySelectorAll('#terminal span').length > 100,
         { timeout: 5000 }
     );
-    // New chargen flow: "Shall I pick..." → 'a' (auto-pick, skip confirm)
-    // Then dismiss lore --More-- and welcome --More--
+    // Wait for game to be ready for input
+    await page.waitForFunction(
+        () => {
+            const text = document.getElementById('terminal')?.textContent || '';
+            return text.includes('Shall I pick') || text.includes('Who are you?');
+        },
+        { timeout: 5000 }
+    );
+    // Chargen flow: enter name, then 'a' for auto-pick, then dismiss messages
+    await sendChar('T');
+    await sendChar('e');
+    await sendChar('s');
+    await sendChar('t');
+    await sendKey('Enter');
+    await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
+    // "Shall I pick..." → 'a' (auto-pick, skip confirm)
     await sendChar('a');
     await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
+    // Dismiss lore --More--
     await sendChar(' ');
     await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
+    // Dismiss welcome --More--
     await sendChar(' ');
     await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
 }
