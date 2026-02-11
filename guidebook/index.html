@@ -21,7 +21,8 @@
   <div id="search-index"></div>
 </aside>
 <main id="guide-content">
-<pre><code># A Guide to the Mazes of Menace</code></pre>
+<section id="a-guide-to-the-mazes-of-menace" class="level1">
+<h1>A Guide to the Mazes of Menace</h1>
 <p style="text-align: center; font-style: italic; margin: 1.5em 0;">
 Guidebook for NetHack
 </p>
@@ -177,7 +178,8 @@ Guidebook for NetHack
 <p><code>&amp;</code> Tell what a command does.</p>
 <p><code>&lt;</code> Go up to the previous level (if you are on a staircase or lad- der).</p>
 <p><code>&gt;</code> Go down to the next level (if you are on a staircase or ladder).</p>
-<p><code>[yuhjklbn]</code> Go one step in the direction indicated (see Figure 3). If you sense or remember a monster there, you will fight the monster instead. Only these one-step movement commands cause you to</p>
+<pre><code>[yuhjklbn]</code></pre>
+<p>Go one step in the direction indicated (see Figure 3). If you sense or remember a monster there, you will fight the monster instead. Only these one-step movement commands cause you to</p>
 <p>fight monsters; the others (below) are “safe.”</p>
 <pre><code>          +----------------------------------------------------------------+
           |          y  k  u                             7  8  9           |
@@ -187,7 +189,8 @@ Guidebook for NetHack
           |          b  j  n                             1  2  3           |
           |      (`number_pad` off)                    (`number_pad` on)       |
           +---------------------------Figure-3-----------------------------+</code></pre>
-<p><code>[YUHJKLBN]</code> Go in that direction until you hit a wall or run into something.</p>
+<pre><code>[YUHJKLBN]</code></pre>
+<p>Go in that direction until you hit a wall or run into something.</p>
 <p><code>m[yuhjklbn]</code> Prefix: move without picking up objects or fighting (even if you remember a monster there).</p>
 <p>A few non-movement commands use the <code>m</code> prefix to request operat- ing via menu (to temporarily override the <code>menustyle:traditional</code> option). Primarily useful for <code>,</code> (pickup) when there is only one class of objects present (where there won’t be any “what kinds of objects?” prompt, so no opportunity to answer <code>m</code> at that prompt).</p>
 <p>The prefix will make “<code>#travel</code>” command show a menu of interesting targets in sight. It can also be used with the <code>\</code> (known, show a list of all discovered objects) and the <code>`</code> (knownclass, show a list of discovered objects in a particular class) commands to offer a menu of several sorting alternatives (which sets a new value for the sortdiscoveries option); also for “<code>#vanquished</code>” and “<code>#genocided</code>” commands to offer a sorting menu.</p>
@@ -853,7 +856,7 @@ OPTIONS=!legacy,autopickup,pickup_types:$&quot;=/!?+</code></pre>
 <p><strong><code>AUTOPICKUP_EXCEPTION</code></strong> Set exceptions to the <code>pickup_types</code> option. See the “Configuring Autopickup Exceptions” section.</p>
 <p><strong><code>BINDINGS</code></strong> Change the key bindings of some special keys, menu accelerators, extended commands, or mouse buttons. You can specify multiple bind- ings. Format is key followed by the command, separated by a colon. See the “Changing Key Bindings” section for more information.</p>
 <p>Example:</p>
-<pre><code>BIND=`^X`:getpos.autodescribe</code></pre>
+<pre><code>BIND=^X:getpos.autodescribe</code></pre>
 <p><strong><code>CHOOSE</code></strong> Chooses at random one of the comma-separated parameters as an active section name. Lines in other sections are ignored.</p>
 <p>Example:</p>
 <pre><code>OPTIONS=color
@@ -862,9 +865,9 @@ CHOOSE=char A,char B
 OPTIONS=role:arc,race:dwa,align:law,gender:fem
 [char B]
 OPTIONS=role:wiz,race:elf,align:cha,gender:mal
-[] `#end` of CHOOSE
-OPTIONS=!`rest_on_space`</code></pre>
-<p>If <a href="#section-2"></a> is present, the preceding section is closed and no new section begins; whatever follows will be common to all sections. Otherwise</p>
+[] #end of CHOOSE
+OPTIONS=!rest_on_space</code></pre>
+<p>If [] is present, the preceding section is closed and no new section begins; whatever follows will be common to all sections. Otherwise</p>
 <p>the last section extends to the end of the options file.</p>
 <p><strong><code>MENUCOLOR</code></strong> Highlight menu lines with different colors. See the “Configuring Menu Colors” section.</p>
 <p><strong><code>MSGTYPE</code></strong> Change the way messages are shown in the top status line. See the “Configuring Message Types” section.</p>
@@ -880,28 +883,22 @@ SYMBOLS=S_golem:7</code></pre>
 <pre><code>WIZKIT=~/wizkit.txt</code></pre>
 <p>Here is an example of configuration file contents:</p>
 <pre><code># Set your character&#39;s role, race, gender, and alignment.
-OPTIONS=role:Valkyrie, race:Human, gender:female, align:lawful</code></pre>
-</section>
-</section>
-<section id="section" class="level1">
-<h1></h1>
-<pre><code># Turn on autopickup, set automatically picked up object types
-OPTIONS=autopickup,pickup_types:$&quot;=/!?+</code></pre>
-</section>
-<section id="section-1" class="level1">
-<h1></h1>
-<pre><code># Map customization
+OPTIONS=role:Valkyrie, race:Human, gender:female, align:lawful
+#
+# Turn on autopickup, set automatically picked up object types
+OPTIONS=autopickup,pickup_types:$&quot;=/!?+
+#
+# Map customization
 OPTIONS=color           # Display things in color if possible
-OPTIONS=`lit_corridor`    # Show lit corridors differently
-OPTIONS=`hilite_pet`,`hilite_pile`
+OPTIONS=lit_corridor    # Show lit corridors differently
+OPTIONS=hilite_pet,hilite_pile
 # Replace small punctuation (tick marks) with digits
 OPTIONS=boulder:0
-SYMBOLS=S_golem:7</code></pre>
+SYMBOLS=S_golem:7
+#
+# No startup splash screen. Windows GUI only.
+OPTIONS=!splash_screen</code></pre>
 </section>
-<section id="section-2" class="level1">
-<h1></h1>
-<pre><code># No startup splash screen. Windows GUI only.
-OPTIONS=!`splash_screen`</code></pre>
 <section id="using-the-nethackoptions-environment-variable" class="level3">
 <h3>9.3. Using the NETHACKOPTIONS environment variable</h3>
 <p>The NETHACKOPTIONS variable is a comma-separated list of initial values for the various options. Some can only be turned on or off. You turn one of these on by adding the name of the option to the list, and turn it off by typing a <code>!</code> or “no” before the name. Others take a character string as a value. You can set string options by typing the option name, a colon or equals sign, and then the value of the string. The value is terminated by the next comma or the end of string.</p>
@@ -952,7 +949,8 @@ OPTIONS=!`splash_screen`</code></pre>
 <p>Each disclosure possibility can optionally be preceded by a prefix which lets you refine how it behaves. Here are the valid prefixes:</p>
 <p>y - prompt you and default to yes on the prompt; n - prompt you and default to no on the prompt; + - disclose it without prompting; - - do not disclose it and do not prompt.</p>
 <p>The listings of vanquished monsters and of genocided types can be sorted, so there are two additional choices for <code>v</code> and <code>g</code>:</p>
-<p>? - prompt you and default to ask on the prompt; # - disclose it without prompting, ask for sort order.</p>
+<p>? - prompt you and default to ask on the prompt;</p>
+<pre><code># - disclose it without prompting, ask for sort order.</code></pre>
 <p>Asking refers to picking one of the orderings from a menu. The <code>+</code> disclose without prompting choice, or being prompted and answering <code>y</code> rather than <code>a</code>, will default to showing monsters in the order specified by the sortvanquished option.</p>
 <p>Omitted categories are implicitly added with <code>n</code> prefix. Specified categories with omitted prefix implicitly use <code>+</code> prefix. Order of the disclosure categories does not matter, program display for end- of-game disclosure follows a set sequence.</p>
 <p>(for example “disclose:yi na +v -g o”) The example sets inventory to prompt and default to yes, attributes to prompt and default to no, vanquished to disclose without prompting, genocided to not disclose and not prompt, conduct to implicitly prompt and default to no, and overview to disclose without prompting.</p>
@@ -1181,9 +1179,8 @@ OPTIONS=!role:arc bar kni</code></pre>
 <section id="crash-report-options" class="level3">
 <h3>9.6. Crash Report Options</h3>
 <p>Please note that NetHack does not send any information off your computer unless you manually click submit on a form.</p>
-<pre><code>OPTION=crash_email:`email_address`
-
-OPTION=crash_name:`your_name`</code></pre>
+<pre><code>OPTION=crash_email:email_address</code></pre>
+<pre><code>OPTION=crash_name:your_name</code></pre>
 <p>These options are used only to save you some typing on the crash report and <code>#bugreport</code> forms.</p>
 <pre><code>OPTION=crash_urlmax:bytes</code></pre>
 <p>This option is used to limit the length of the URLs generated and is only needed if your browser cannot handle arbitrarily long URLs.</p>
@@ -1227,8 +1224,8 @@ autopickup_exception=&quot;&gt;* cursed*&quot;</code></pre>
 <h3>9.10. Changing Key Bindings</h3>
 <p>It is possible to change the default key bindings of some special commands, menu accelerator keys, and extended commands, by using BIND stanzas in the configuration file. Format is key, followed by the command to bind to, separated by a colon. The key can be a single character (“x”), a control key (“<code>^X</code>”, “C-x”), a meta key (“<code>M-x</code>”), a mouse button, or a three-digit decimal ASCII code.</p>
 <p>For example:</p>
-<pre><code>BIND=`^X`:getpos.autodescribe
-BIND=\:`menu_first_page`
+<pre><code>BIND=^X:getpos.autodescribe
+BIND=\:menu_first_page
 BIND=v:loot</code></pre>
 <p>Extended command keys You can bind multiple keys to the same extended command. Unbind a key by using “nothing” as the extended command to bind to. You can also bind the “<esc>”, “<enter>”, and “<space>” keys.</p>
 <p>Menu accelerator keys The menu control or accelerator keys can also be rebound via OPTIONS lines in the configuration file. You cannot bind object symbols or selection letters into menu accelerators. Some interfaces only sup- port some of the menu accelerators.</p>
@@ -1359,18 +1356,44 @@ OPTION=hilite_status: condition/lev+fly/red&amp;inverse</code></pre>
 <p><code>symset</code> Set the name of the symbol set that you want to load.</p>
 <p><code>roguesymset</code> Set the name of the symbol set that you want to load for display on the rogue level.</p>
 <p>You can also override one or more symbols using the SYMBOLS and ROGUESYMBOLS configuration file options. Symbols are specified as name:value pairs. Note that NetHack escape-processes the value string in conventional C fashion. This means that  is a prefix to take the following character literally. Thus  needs to be represented as \. The special prefix form switches on the meta bit in the symbol value, and the ^ prefix causes the following character to be treated as a control character.</p>
-<p>NetHack Symbols Symbol Name Description —————————————————————– S_air (air) _ S_altar (altar) " S_amulet (amulet) A S_angel (angelic being) a S_ant (ant or other insect) ^ S_anti_magic_trap (anti-magic field) [ S_armor (suit or piece of armor) [ S_armour (suit or piece of armor) ^ S_arrow_trap (arrow trap) 0 S_ball (iron ball) # S_bars (iron bars) B S_bat (bat or bird) ^ S_bear_trap (bear trap) - S_blcorn (bottom left corner) b S_blob (blob) + S_book (spellbook) ) S_boomleft (boomerang open left) ( S_boomright (boomerang open right) ` S_boulder (boulder) - S_brcorn (bottom right corner) &gt; S_brdnladder (branch ladder down) &gt; S_brdnstair (branch staircase down) &lt; S_brupladder (branch ladder up) &lt; S_brupstair (branch staircase up) C S_centaur (centaur) _ S_chain (iron chain) # S_cloud (cloud) c S_cockatrice (cockatrice) $ S_coin (pile of coins) # S_corr (corridor) - S_crwall (wall) # S_darkroom (dark room) ^ S_dart_trap (dart trap) &amp; S_demon (major demon)</p>
+<p>NetHack Symbols Symbol Name Description —————————————————————– S_air (air) _ S_altar (altar) " S_amulet (amulet) A S_angel (angelic being) a S_ant (ant or other insect) ^ S_anti_magic_trap (anti-magic field) [ S_armor (suit or piece of armor) [ S_armour (suit or piece of armor) ^ S_arrow_trap (arrow trap) 0 S_ball (iron ball)</p>
+<pre><code>#  S_bars                 (iron bars)</code></pre>
+<p>B S_bat (bat or bird) ^ S_bear_trap (bear trap) - S_blcorn (bottom left corner) b S_blob (blob) + S_book (spellbook) ) S_boomleft (boomerang open left) ( S_boomright (boomerang open right) ` S_boulder (boulder) - S_brcorn (bottom right corner) &gt; S_brdnladder (branch ladder down) &gt; S_brdnstair (branch staircase down) &lt; S_brupladder (branch ladder up) &lt; S_brupstair (branch staircase up) C S_centaur (centaur) _ S_chain (iron chain)</p>
+<pre><code>#  S_cloud                (cloud)</code></pre>
+<p>c S_cockatrice (cockatrice) $ S_coin (pile of coins)</p>
+<pre><code>#  S_corr                 (corridor)</code></pre>
 <ul>
-<li>S_digbeam (dig beam) &gt; S_dnladder (ladder down) &gt; S_dnstair (staircase down) d S_dog (dog or other canine) D S_dragon (dragon) ; S_eel (sea monster) E S_elemental (elemental) # S_engrcorr (engraving in a corridor) ` S_engroom (engraving in a room) / S_expl_tl (explosion top left)</li>
-<li>S_expl_tc (explosion top center)   S_expl_tr (explosion top right) | S_expl_ml (explosion middle left) S_expl_mc (explosion middle center) | S_expl_mr (explosion middle right)   S_expl_bl (explosion bottom left)</li>
-<li>S_expl_bc (explosion bottom center) / S_expl_br (explosion bottom right) e S_eye (eye or sphere) ^ S_falling_rock_trap (falling rock trap) f S_feline (cat or other feline) ^ S_fire_trap (fire trap) ! S_flashbeam (flash beam) % S_food (piece of food) { S_fountain (fountain) F S_fungus (fungus or mold)</li>
-<li>S_gem (gem or rock) S_ghost (ghost) H S_giant (giant humanoid) G S_gnome (gnome) ’ S_golem (golem) | S_grave (grave) g S_gremlin (gremlin)</li>
-<li>S_hbeam (horizontal beam [zap animation]) # S_hcdbridge (horizontal raised drawbridge)</li>
+<li>S_crwall (wall)</li>
+</ul>
+<pre><code>#  S_darkroom             (dark room)</code></pre>
+<p>^ S_dart_trap (dart trap) &amp; S_demon (major demon)</p>
+<ul>
+<li>S_digbeam (dig beam) &gt; S_dnladder (ladder down) &gt; S_dnstair (staircase down) d S_dog (dog or other canine) D S_dragon (dragon) ; S_eel (sea monster) E S_elemental (elemental)</li>
+</ul>
+<pre><code>#  S_engrcorr             (engraving in a corridor)</code></pre>
+<p>` S_engroom (engraving in a room) / S_expl_tl (explosion top left) - S_expl_tc (explosion top center)   S_expl_tr (explosion top right) | S_expl_ml (explosion middle left) S_expl_mc (explosion middle center) | S_expl_mr (explosion middle right)   S_expl_bl (explosion bottom left) - S_expl_bc (explosion bottom center) / S_expl_br (explosion bottom right) e S_eye (eye or sphere) ^ S_falling_rock_trap (falling rock trap) f S_feline (cat or other feline) ^ S_fire_trap (fire trap) ! S_flashbeam (flash beam) % S_food (piece of food) { S_fountain (fountain) F S_fungus (fungus or mold) * S_gem (gem or rock) S_ghost (ghost) H S_giant (giant humanoid) G S_gnome (gnome) ’ S_golem (golem) | S_grave (grave) g S_gremlin (gremlin) - S_hbeam (horizontal beam [zap animation])</p>
+<pre><code>#  S_hcdbridge            (horizontal raised drawbridge)</code></pre>
+<ul>
 <li>S_hcdoor (closed door in horizontal wall) . S_hodbridge (horizontal lowered drawbridge) | S_hodoor (open door in horizontal wall) ^ S_hole (hole) @ S_human (human or elf) h S_humanoid (humanoid)</li>
 <li>S_hwall (horizontal wall) . S_ice (ice) i S_imp (imp or minor demon) I S_invisible (invisible monster) J S_jabberwock (jabberwock) j S_jelly (jelly) k S_kobold (kobold) K S_kop (Keystone Kop) ^ S_land_mine (land mine) } S_lava (molten lava) } S_lavawall (wall of lava) l S_leprechaun (leprechaun)</li>
 </ul>
-<p>^ S_level_teleporter (level teleporter) L S_lich (lich) y S_light (light) # S_litcorr (lit corridor) : S_lizard (lizard)   S_lslant (diagonal beam [zap animation]) ^ S_magic_portal (magic portal) ^ S_magic_trap (magic trap) m S_mimic (mimic) ] S_mimic_def (mimic) M S_mummy (mummy) N S_naga (naga) . S_ndoor (doorway without door) n S_nymph (nymph) O S_ogre (ogre) o S_orc (orc) p S_piercer (piercer) ^ S_pit (pit) # S_poisoncloud (poison cloud) ^ S_polymorph_trap (polymorph trap) } S_pool (water) ! S_potion (potion) P S_pudding (pudding or ooze) q S_quadruped (quadruped) Q S_quantmech (quantum mechanic) = S_ring (ring) ` S_rock (boulder or statue) r S_rodent (rodent) ^ S_rolling_boulder_trap (rolling boulder trap) . S_room (floor of a room) / S_rslant (diagonal beam [zap animation]) ^ S_rust_trap (rust trap) R S_rustmonst (rust monster or disenchanter) ? S_scroll (scroll) # S_sink (sink) ^ S_sleeping_gas_trap (sleeping gas trap) S S_snake (snake) s S_spider (arachnid or centipede) ^ S_spiked_pit (spiked pit) ^ S_squeaky_board (squeaky board) 0 S_ss1 (magic shield 1 of 4) # S_ss2 (magic shield 2 of 4) @ S_ss3 (magic shield 3 of 4) * S_ss4 (magic shield 4 of 4) ^ S_statue_trap (statue trap) S_stone (solid rock) ] S_strange_obj (strange object) - S_sw_bc (swallow bottom center)   S_sw_bl (swallow bottom left) / S_sw_br (swallow bottom right) | S_sw_ml (swallow middle left) | S_sw_mr (swallow middle right) - S_sw_tc (swallow top center)</p>
-<p>/ S_sw_tl (swallow top left)   S_sw_tr (swallow top right) - S_tdwall (wall) ^ S_teleportation_trap (teleportation trap)   S_throne (opulent throne) - S_tlcorn (top left corner) | S_tlwall (wall) ( S_tool (useful item (pick-axe, key, lamp…)) ^ S_trap_door (trap door) t S_trapper (trapper or lurker above) - S_trcorn (top right corner) # S_tree (tree) T S_troll (troll) | S_trwall (wall) - S_tuwall (wall) U S_umber (umber hulk) S_unexplored (unexplored terrain) u S_unicorn (unicorn or horse) &lt; S_upladder (ladder up) &lt; S_upstair (staircase up) V S_vampire (vampire) | S_vbeam (vertical beam [zap animation]) # S_vcdbridge (vertical raised drawbridge) + S_vcdoor (closed door in vertical wall) . S_venom (splash of venom) ^ S_vibrating_square (vibrating square) . S_vodbridge (vertical lowered drawbridge) - S_vodoor (open door in vertical wall) v S_vortex (vortex) | S_vwall (vertical wall) / S_wand (wand) } S_water (water) ) S_weapon (weapon) " S_web (web) w S_worm (worm) ~ S_worm_tail (long worm tail) W S_wraith (wraith) x S_xan (xan or other extraordinary insect) X S_xorn (xorn) Y S_yeti (apelike creature) Z S_zombie (zombie) z S_zruty (zruty) S_pet_override (any pet if ACCESSIBILITY=1 is set) S_hero_override (hero if ACCESSIBILITY=1 is set)</p>
+<p>^ S_level_teleporter (level teleporter) L S_lich (lich) y S_light (light)</p>
+<pre><code>#  S_litcorr              (lit corridor)</code></pre>
+<p>: S_lizard (lizard)   S_lslant (diagonal beam [zap animation]) ^ S_magic_portal (magic portal) ^ S_magic_trap (magic trap) m S_mimic (mimic) ] S_mimic_def (mimic) M S_mummy (mummy) N S_naga (naga) . S_ndoor (doorway without door) n S_nymph (nymph) O S_ogre (ogre) o S_orc (orc) p S_piercer (piercer) ^ S_pit (pit)</p>
+<pre><code>#  S_poisoncloud          (poison cloud)</code></pre>
+<p>^ S_polymorph_trap (polymorph trap) } S_pool (water) ! S_potion (potion) P S_pudding (pudding or ooze) q S_quadruped (quadruped) Q S_quantmech (quantum mechanic) = S_ring (ring) ` S_rock (boulder or statue) r S_rodent (rodent) ^ S_rolling_boulder_trap (rolling boulder trap) . S_room (floor of a room) / S_rslant (diagonal beam [zap animation]) ^ S_rust_trap (rust trap) R S_rustmonst (rust monster or disenchanter) ? S_scroll (scroll)</p>
+<pre><code>#  S_sink                 (sink)</code></pre>
+<p>^ S_sleeping_gas_trap (sleeping gas trap) S S_snake (snake) s S_spider (arachnid or centipede) ^ S_spiked_pit (spiked pit) ^ S_squeaky_board (squeaky board) 0 S_ss1 (magic shield 1 of 4)</p>
+<pre><code>#  S_ss2                  (magic shield 2 of 4)</code></pre>
+<p>@ S_ss3 (magic shield 3 of 4) * S_ss4 (magic shield 4 of 4) ^ S_statue_trap (statue trap) S_stone (solid rock) ] S_strange_obj (strange object) - S_sw_bc (swallow bottom center)   S_sw_bl (swallow bottom left) / S_sw_br (swallow bottom right) | S_sw_ml (swallow middle left) | S_sw_mr (swallow middle right) - S_sw_tc (swallow top center)</p>
+<p>/ S_sw_tl (swallow top left)   S_sw_tr (swallow top right) - S_tdwall (wall) ^ S_teleportation_trap (teleportation trap)   S_throne (opulent throne) - S_tlcorn (top left corner) | S_tlwall (wall) ( S_tool (useful item (pick-axe, key, lamp…)) ^ S_trap_door (trap door) t S_trapper (trapper or lurker above) - S_trcorn (top right corner)</p>
+<pre><code>#  S_tree                 (tree)</code></pre>
+<p>T S_troll (troll) | S_trwall (wall) - S_tuwall (wall) U S_umber (umber hulk) S_unexplored (unexplored terrain) u S_unicorn (unicorn or horse) &lt; S_upladder (ladder up) &lt; S_upstair (staircase up) V S_vampire (vampire) | S_vbeam (vertical beam [zap animation])</p>
+<pre><code>#  S_vcdbridge            (vertical raised drawbridge)</code></pre>
+<ul>
+<li>S_vcdoor (closed door in vertical wall) . S_venom (splash of venom) ^ S_vibrating_square (vibrating square) . S_vodbridge (vertical lowered drawbridge)</li>
+<li>S_vodoor (open door in vertical wall) v S_vortex (vortex) | S_vwall (vertical wall) / S_wand (wand) } S_water (water) ) S_weapon (weapon) " S_web (web) w S_worm (worm) ~ S_worm_tail (long worm tail) W S_wraith (wraith) x S_xan (xan or other extraordinary insect) X S_xorn (xorn) Y S_yeti (apelike creature) Z S_zombie (zombie) z S_zruty (zruty) S_pet_override (any pet if ACCESSIBILITY=1 is set) S_hero_override (hero if ACCESSIBILITY=1 is set)</li>
+</ul>
 <p>Notes:</p>
 <ul>
 <li><p>Several symbols in this table appear to be blank. They are the space character, except for S_pet_override and S_hero_override which don’t have any default value and can only be used if enabled in the “sysconf” file.</p></li>
@@ -1437,6 +1460,7 @@ OPTION=hilite_status: condition/lev+fly/red&amp;inverse</code></pre>
 <p>LIVELOG = A bit-mask of types of events that should be written to the livelog file if one is present. The sample sysconf file accom- panying the program contains a comment which lists the meaning of the various bits used. Intended for server systems supporting simultaneous play by multiple players (to be clear, each one running</p>
 <p>a separate single player game), for displaying their game progress to observers. Only relevant if the program was built with LIVELOG enabled. When available, it should be left commented out on single player installations because over time the file could grow to be extremely large unless it is actively maintained.</p>
 <p>CRASHREPORTURL = If set to https://www.nethack.org/links/cr-37BETA.html and support is compiled in, brings up a browser window pre-populated with the information needed to report a problem if the game panics or ends up in an internally inconsistent state, or if the <code>#bugreport</code> command is invoked.</p>
+</section>
 </section>
 <section id="scoring" class="level2">
 <h2>10. Scoring</h2>

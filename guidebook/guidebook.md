@@ -1,4 +1,4 @@
-    # A Guide to the Mazes of Menace
+# A Guide to the Mazes of Menace
 
 <p style="text-align: center; font-style: italic; margin: 1.5em 0;">Guidebook for NetHack</p>
 
@@ -541,7 +541,10 @@ der).
 
 `>`    Go down to the next level (if you are on a staircase or ladder).
 
-`[yuhjklbn]`
+```
+[yuhjklbn]
+```
+
 Go  one  step  in the direction indicated (see Figure 3).  If you
 sense or remember a monster there, you  will  fight  the  monster
 instead.   Only  these  one-step  movement  commands cause you to
@@ -558,7 +561,10 @@ fight monsters; the others (below) are "safe."
           +---------------------------Figure-3-----------------------------+
 ```
 
-`[YUHJKLBN]`
+```
+[YUHJKLBN]
+```
+
 Go in that direction until you hit a wall or run into something.
 
 `m[yuhjklbn]`
@@ -3148,8 +3154,11 @@ tiple  options  separated  by  commas in a single OPTIONS directive.
 
 Example:
 
-    OPTIONS=dogname:Fido
-    OPTIONS=!legacy,autopickup,pickup_types:$"=/!?+
+```
+OPTIONS=dogname:Fido
+OPTIONS=!legacy,autopickup,pickup_types:$"=/!?+
+```
+
 
 **`HACKDIR`**
 Default location of files NetHack needs. On Windows HACKDIR defaults
@@ -3185,7 +3194,10 @@ that command.
 
 Example:
 
-    AUTOCOMPLETE=zap,!annotate
+```
+AUTOCOMPLETE=zap,!annotate
+```
+
 
 **`AUTOPICKUP_EXCEPTION`**
 Set  exceptions  to  the  `pickup_types` option.  See the "Configuring
@@ -3199,7 +3211,10 @@ See the "Changing Key Bindings" section for more information.
 
 Example:
 
-    BIND=`^X`:getpos.autodescribe
+```
+BIND=^X:getpos.autodescribe
+```
+
 
 **`CHOOSE`**
 Chooses at random one of the comma-separated parameters as an active
@@ -3207,14 +3222,17 @@ section name.  Lines in other sections are ignored.
 
 Example:
 
-    OPTIONS=color
-    CHOOSE=char A,char B
-    [char A]
-    OPTIONS=role:arc,race:dwa,align:law,gender:fem
-    [char B]
-    OPTIONS=role:wiz,race:elf,align:cha,gender:mal
-    [] `#end` of CHOOSE
-    OPTIONS=!`rest_on_space`
+```
+OPTIONS=color
+CHOOSE=char A,char B
+[char A]
+OPTIONS=role:arc,race:dwa,align:law,gender:fem
+[char B]
+OPTIONS=role:wiz,race:elf,align:cha,gender:mal
+[] #end of CHOOSE
+OPTIONS=!rest_on_space
+```
+
 
 If [] is present, the preceding section is closed and no new section
 begins;  whatever follows will be common to all sections.  Otherwise
@@ -3246,8 +3264,11 @@ NetHack Symbols" section.
 
 Example:
 
-    # replace small punctuation (tick marks) with digits
-    SYMBOLS=S_golem:7
+```
+# replace small punctuation (tick marks) with digits
+SYMBOLS=S_golem:7
+```
+
 
 **`WIZKIT`**
 Debug mode only:  extra items to add to initial inventory.  Value is
@@ -3257,26 +3278,32 @@ function that handles wishing.
 
 Example:
 
-    WIZKIT=~/wizkit.txt
+```
+WIZKIT=~/wizkit.txt
+```
+
 
 Here is an example of configuration file contents:
 
-    # Set your character's role, race, gender, and alignment.
-    OPTIONS=role:Valkyrie, race:Human, gender:female, align:lawful
+```
+# Set your character's role, race, gender, and alignment.
+OPTIONS=role:Valkyrie, race:Human, gender:female, align:lawful
 #
-    # Turn on autopickup, set automatically picked up object types
-    OPTIONS=autopickup,pickup_types:$"=/!?+
+# Turn on autopickup, set automatically picked up object types
+OPTIONS=autopickup,pickup_types:$"=/!?+
 #
-    # Map customization
-    OPTIONS=color           # Display things in color if possible
-    OPTIONS=`lit_corridor`    # Show lit corridors differently
-    OPTIONS=`hilite_pet`,`hilite_pile`
-    # Replace small punctuation (tick marks) with digits
-    OPTIONS=boulder:0
-    SYMBOLS=S_golem:7
+# Map customization
+OPTIONS=color           # Display things in color if possible
+OPTIONS=lit_corridor    # Show lit corridors differently
+OPTIONS=hilite_pet,hilite_pile
+# Replace small punctuation (tick marks) with digits
+OPTIONS=boulder:0
+SYMBOLS=S_golem:7
 #
-    # No startup splash screen. Windows GUI only.
-    OPTIONS=!`splash_screen`
+# No startup splash screen. Windows GUI only.
+OPTIONS=!splash_screen
+```
+
 
 
 ### 9.3. Using the NETHACKOPTIONS environment variable
@@ -3481,7 +3508,10 @@ The listings of vanquished monsters and of genocided  types  can  be
 sorted, so there are two additional choices for `v` and `g`:
 
 ? - prompt you and default to ask on the prompt;
-    # - disclose it without prompting, ask for sort order.
+```
+# - disclose it without prompting, ask for sort order.
+```
+
 
 Asking  refers to picking one of the orderings from a menu.  The `+`
 disclose without prompting choice, or being prompted  and  answering
@@ -4067,8 +4097,11 @@ plished in the same manner as with boolean options, by prefixing the
 option or its value(s) with `!` or "no".
 Examples:
 
-    OPTIONS=role:!arc !bar !kni
-    OPTIONS=!role:arc bar kni
+```
+OPTIONS=role:!arc !bar !kni
+OPTIONS=!role:arc bar kni
+```
+
 
 There  can  be  multiple instances of the role option if they're all
 negations.
@@ -4557,7 +4590,10 @@ If  NetHack can, it should display all windows of a particular style
 with the specified foreground and background  colors.   Windows  GUI
 and curses windowport only.  The format is
 
-    OPTION=windowcolors:style foreground/background
+```
+OPTION=windowcolors:style foreground/background
+```
+
 
 where  style  is  one of "menu", "message", "status", or "text", and
 foreground and background are colors, either numeric (hash sign fol-
@@ -4581,13 +4617,22 @@ in the visible area of the window.
 Please note that NetHack does not send any information  off  your
 computer unless you manually click submit on a form.
 
-    OPTION=crash_email:`email_address`
+```
+OPTION=crash_email:email_address
+```
 
-    OPTION=crash_name:`your_name`
+
+```
+OPTION=crash_name:your_name
+```
+
 These  options  are  used  only  to save you some typing on the
 crash report and `#bugreport` forms.
 
-    OPTION=crash_urlmax:bytes
+```
+OPTION=crash_urlmax:bytes
+```
+
 This option is used to limit the length of the  URLs  generated
 and  is  only  needed if your browser cannot handle arbitrarily
 long URLs.
@@ -4710,9 +4755,12 @@ saved with the game.
 
 Here are some examples:
 
-    autopickup_exception="<*arrow"
-    autopickup_exception=">*corpse"
-    autopickup_exception=">* cursed*"
+```
+autopickup_exception="<*arrow"
+autopickup_exception=">*corpse"
+autopickup_exception=">* cursed*"
+```
+
 
 The first example above will result in autopickup of any type  of
 arrow.  The second example results in the exclusion of any corpse from
@@ -4731,9 +4779,12 @@ mouse button, or a three-digit decimal ASCII code.
 
 For example:
 
-    BIND=`^X`:getpos.autodescribe
-    BIND=\:`menu_first_page`
-    BIND=v:loot
+```
+BIND=^X:getpos.autodescribe
+BIND=\:menu_first_page
+BIND=v:loot
+```
+
 
 Extended command keys
 You can bind multiple keys to the same extended command.   Unbind  a
@@ -4906,8 +4957,11 @@ shown in between.
 Here's an example of message types using NetHack's internal  pattern
 matching facility:
 
-    MSGTYPE=stop "You feel hungry."
-    MSGTYPE=hide "You displaced *."
+```
+MSGTYPE=stop "You feel hungry."
+MSGTYPE=hide "You displaced *."
+```
+
 
 specifies  that  whenever  a message "You feel hungry" is shown, the
 user is prompted with more-prompt, and a message matching "You  dis-
@@ -4926,7 +4980,10 @@ curses, win32tty and win32gui interfaces support this.
 In general, the configuration file entries to describe  the  menu
 color mappings look like this:
 
-    MENUCOLOR="pattern"=color&attribute
+```
+MENUCOLOR="pattern"=color&attribute
+```
+
 
 pattern    - the pattern to match;
 color      - the color to use for lines matching the pattern;
@@ -4949,9 +5006,12 @@ form used may interpret the attributes any way it wants.
 Here's  an  example  of menu colors using NetHack's internal pattern
 matching facility:
 
-    MENUCOLOR="* blessed *"=green
-    MENUCOLOR="* cursed *"=red
-    MENUCOLOR="* cursed *(being worn)"=red&underline
+```
+MENUCOLOR="* blessed *"=green
+MENUCOLOR="* cursed *"=red
+MENUCOLOR="* cursed *(being worn)"=red&underline
+```
+
 
 specifies that any menu line with " blessed " contained in  it  will
 be shown in green color, lines with " cursed " will be shown in red,
@@ -4996,9 +5056,12 @@ The pattern should be a regular expression.
 
 For example:
 
-    SOUNDDIR=C:\nethack\sounds
-    SOUND=MESG "This door is locked" "lock.wav" 100
-    SOUND=MESG hide "^You miss the " "swing.wav" 75
+```
+SOUNDDIR=C:\nethack\sounds
+SOUND=MESG "This door is locked" "lock.wav" 100
+SOUND=MESG hide "^You miss the " "swing.wav" 75
+```
+
 
 
 ### 9.14. Configuring Status Hilites
@@ -5010,13 +5073,19 @@ status display.
 
 The format for defining status colors is:
 
-    OPTION=hilite_status:field-name/behavior/color&attributes
+```
+OPTION=hilite_status:field-name/behavior/color&attributes
+```
+
 
 For example, the following line in your configuration  file  will
 cause  the  hitpoints  field  to display in the color red if your hit-
 points drop to or below a threshold of 30%:
 
-    OPTION=hilite_status:hitpoints/<=30%/red/normal
+```
+OPTION=hilite_status:hitpoints/<=30%/red/normal
+```
+
 
 (That example is actually specifying  red&normal  for  <=30%  and  no-
 color&normal for >30%.)
@@ -5025,7 +5094,10 @@ For  another  example,  the  following line in your configuration
 file will cause wisdom to be displayed red if it drops and green if it
 rises:
 
-    OPTION=hilite_status:wisdom/down/red/up/green
+```
+OPTION=hilite_status:wisdom/down/red/up/green
+```
+
 
 Allowed colors are black, red, green, brown, blue, magenta, cyan,
 gray, orange, light-green, yellow, light-blue,  light-magenta,  light-
@@ -5143,16 +5215,19 @@ to 0.
 
 Example hilites:
 
-    OPTION=hilite_status: gold/up/yellow/down/brown
-    OPTION=hilite_status: characteristics/up/green/down/red
-    OPTION=hilite_status: hitpoints/100%/gray&normal
-    OPTION=hilite_status: hitpoints/<100%/green&normal
-    OPTION=hilite_status: hitpoints/<66%/yellow&normal
-    OPTION=hilite_status: hitpoints/<50%/orange&normal
-    OPTION=hilite_status: hitpoints/<33%/red&bold
-    OPTION=hilite_status: hitpoints/<15%/red&inverse
-    OPTION=hilite_status: condition/major/orange&inverse
-    OPTION=hilite_status: condition/lev+fly/red&inverse
+```
+OPTION=hilite_status: gold/up/yellow/down/brown
+OPTION=hilite_status: characteristics/up/green/down/red
+OPTION=hilite_status: hitpoints/100%/gray&normal
+OPTION=hilite_status: hitpoints/<100%/green&normal
+OPTION=hilite_status: hitpoints/<66%/yellow&normal
+OPTION=hilite_status: hitpoints/<50%/orange&normal
+OPTION=hilite_status: hitpoints/<33%/red&bold
+OPTION=hilite_status: hitpoints/<15%/red&inverse
+OPTION=hilite_status: condition/major/orange&inverse
+OPTION=hilite_status: condition/lev+fly/red&inverse
+```
+
 
 
 ### 9.15. Modifying NetHack Symbols
@@ -5191,7 +5266,10 @@ a  S_ant                  (ant or other insect)
 [  S_armour               (suit or piece of armor)
 ^  S_arrow_trap           (arrow trap)
 0  S_ball                 (iron ball)
-    #  S_bars                 (iron bars)
+```
+#  S_bars                 (iron bars)
+```
+
 B  S_bat                  (bat or bird)
 ^  S_bear_trap            (bear trap)
 -  S_blcorn               (bottom left corner)
@@ -5207,12 +5285,21 @@ b  S_blob                 (blob)
 <  S_brupstair            (branch staircase up)
 C  S_centaur              (centaur)
 _  S_chain                (iron chain)
-    #  S_cloud                (cloud)
+```
+#  S_cloud                (cloud)
+```
+
 c  S_cockatrice           (cockatrice)
 $  S_coin                 (pile of coins)
-    #  S_corr                 (corridor)
+```
+#  S_corr                 (corridor)
+```
+
 -  S_crwall               (wall)
-    #  S_darkroom             (dark room)
+```
+#  S_darkroom             (dark room)
+```
+
 ^  S_dart_trap            (dart trap)
 &  S_demon                (major demon)
 
@@ -5223,7 +5310,10 @@ d  S_dog                  (dog or other canine)
 D  S_dragon               (dragon)
 ;  S_eel                  (sea monster)
 E  S_elemental            (elemental)
-    #  S_engrcorr             (engraving in a corridor)
+```
+#  S_engrcorr             (engraving in a corridor)
+```
+
 `  S_engroom              (engraving in a room)
 /  S_expl_tl              (explosion top left)
 -  S_expl_tc              (explosion top center)
@@ -5250,7 +5340,10 @@ G  S_gnome                (gnome)
 |  S_grave                (grave)
 g  S_gremlin              (gremlin)
 -  S_hbeam                (horizontal beam [zap animation])
-    #  S_hcdbridge            (horizontal raised drawbridge)
+```
+#  S_hcdbridge            (horizontal raised drawbridge)
+```
+
 +  S_hcdoor               (closed door in horizontal wall)
 .  S_hodbridge            (horizontal lowered drawbridge)
 |  S_hodoor               (open door in horizontal wall)
@@ -5273,7 +5366,10 @@ l  S_leprechaun           (leprechaun)
 ^  S_level_teleporter     (level teleporter)
 L  S_lich                 (lich)
 y  S_light                (light)
-    #  S_litcorr              (lit corridor)
+```
+#  S_litcorr              (lit corridor)
+```
+
 :  S_lizard               (lizard)
 \  S_lslant               (diagonal beam [zap animation])
 ^  S_magic_portal         (magic portal)
@@ -5288,7 +5384,10 @@ O  S_ogre                 (ogre)
 o  S_orc                  (orc)
 p  S_piercer              (piercer)
 ^  S_pit                  (pit)
-    #  S_poisoncloud          (poison cloud)
+```
+#  S_poisoncloud          (poison cloud)
+```
+
 ^  S_polymorph_trap       (polymorph trap)
 }  S_pool                 (water)
 !  S_potion               (potion)
@@ -5304,14 +5403,20 @@ r  S_rodent               (rodent)
 ^  S_rust_trap            (rust trap)
 R  S_rustmonst            (rust monster or disenchanter)
 ?  S_scroll               (scroll)
-    #  S_sink                 (sink)
+```
+#  S_sink                 (sink)
+```
+
 ^  S_sleeping_gas_trap    (sleeping gas trap)
 S  S_snake                (snake)
 s  S_spider               (arachnid or centipede)
 ^  S_spiked_pit           (spiked pit)
 ^  S_squeaky_board        (squeaky board)
 0  S_ss1                  (magic shield 1 of 4)
-    #  S_ss2                  (magic shield 2 of 4)
+```
+#  S_ss2                  (magic shield 2 of 4)
+```
+
 @  S_ss3                  (magic shield 3 of 4)
 *  S_ss4                  (magic shield 4 of 4)
 ^  S_statue_trap          (statue trap)
@@ -5335,7 +5440,10 @@ S_stone                (solid rock)
 ^  S_trap_door            (trap door)
 t  S_trapper              (trapper or lurker above)
 -  S_trcorn               (top right corner)
-    #  S_tree                 (tree)
+```
+#  S_tree                 (tree)
+```
+
 T  S_troll                (troll)
 |  S_trwall               (wall)
 -  S_tuwall               (wall)
@@ -5346,7 +5454,10 @@ u  S_unicorn              (unicorn or horse)
 <  S_upstair              (staircase up)
 V  S_vampire              (vampire)
 |  S_vbeam                (vertical beam [zap animation])
-    #  S_vcdbridge            (vertical raised drawbridge)
+```
+#  S_vcdbridge            (vertical raised drawbridge)
+```
+
 +  S_vcdoor               (closed door in vertical wall)
 .  S_venom                (splash of venom)
 ^  S_vibrating_square     (vibrating square)
@@ -5395,7 +5506,10 @@ or individually within your nethack.rc file.
 
 The format for defining a glyph representation is:
 
-    OPTIONS=glyph:glyphid/U+nnnn/R-G-B
+```
+OPTIONS=glyph:glyphid/U+nnnn/R-G-B
+```
+
 
 The window port that is active needs to provide support for  dis-
 playing  UTF-8  character sequences and explicit red-green-blue colors
@@ -5404,7 +5518,10 @@ following  line in your configuration file will cause the glyph repre-
 sentation for glyphid G_pool to use Unicode codepoint U+224B  and  the
 color represented by R-G-B value 0-0-160:
 
-    OPTIONS=glyph:G_pool/U+224B/0-0-160
+```
+OPTIONS=glyph:G_pool/U+224B/0-0-160
+```
+
 
 The  list  of acceptable glyphid's can be produced by nethack --dumpg-
 lyphids.  Individual NetHack glyphs can be specified using the G_ pre-

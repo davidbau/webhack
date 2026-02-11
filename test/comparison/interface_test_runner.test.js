@@ -134,27 +134,16 @@ function formatDiffReport(diffs, limit = 20) {
  * Simulate JS NetHack rendering for a given step
  */
 async function simulateJSStep(step, previousState) {
-  // Import dependencies dynamically
-  const { HeadlessDisplay } = await import('./session_helpers.js');
-  const { default: NetHack } = await import('../../js/nethack.js');
-  const { initRng } = await import('../../js/rng.js');
+  // Import headless game runner
+  const { HeadlessGame } = await import('./headless_game.js');
 
   // Initialize or reuse game state
   let game = previousState?.game;
-  let display = previousState?.display;
 
   if (!game) {
-    // First step: initialize game
-    display = new HeadlessDisplay();
-
-    // Use a fixed seed for reproducibility (same as C sessions use)
+    // First step: initialize game with same seed as C sessions
     const seed = 42;
-    initRng(seed);
-
-    // Create game with headless display
-    game = new NetHack(display);
-
-    // Initialize game state
+    game = new HeadlessGame(seed);
     game.init();
   }
 
@@ -166,9 +155,9 @@ async function simulateJSStep(step, previousState) {
 
   // Capture the current screen state
   return {
-    screen: display.getScreenLines(),
-    attrs: display.getAttrLines(),
-    state: { game, display }
+    screen: game.getScreen(),
+    attrs: game.getAttrs(),
+    state: { game }
   };
 }
 
@@ -333,7 +322,7 @@ describe('Interface Tests', () => {
       );
 
       if (!comparison.matches) {
-        const report = formatDiffReport(comparison.diffs, 50);
+        const report = formatDiffReport(comparison.diffs, 10);
         console.log('\n❌ JS vs C screen differences:\n' + report);
       }
 
@@ -367,7 +356,7 @@ describe('Interface Tests', () => {
       let state = null;
       const stepResults = [];
 
-      for (let i = 0; i < Math.min(3, session.steps.length); i++) {
+      for (let i = 0; i < Math.min(5, session.steps.length); i++) {
         const step = session.steps[i];
         const jsResult = await simulateJSStep(step, state);
         state = jsResult.state;
