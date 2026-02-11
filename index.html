@@ -555,6 +555,25 @@
 
     <script>
     /* ============================================================
+       Welcome Message & Keyboard Shortcuts Hint
+       ============================================================ */
+    (function() {
+        // Performance mark for page ready
+        if (window.performance && performance.mark) {
+            performance.mark('ui-ready');
+        }
+
+        console.log('%cNetHack JS - Mazes of Menace', 'font-size: 18px; font-weight: bold; color: #6b2c2c;');
+        console.log('%cKeyboard Shortcuts:', 'font-weight: bold; margin-top: 10px;');
+        console.log('  Ctrl+B        Toggle side panels');
+        console.log('  Ctrl++        Increase font size');
+        console.log('  Ctrl+-        Decrease font size');
+        console.log('\n%cGame Controls:', 'font-weight: bold;');
+        console.log('  See the left panel for complete NetHack keyboard commands');
+        console.log('\n%cHave fun exploring the dungeons!', 'color: #4a2020; font-style: italic;');
+    })();
+
+    /* ============================================================
        Side Panel Toggle Management
        Controls visibility of left (keyref) and right (hover) panels
        State persists via localStorage
@@ -793,17 +812,33 @@
     })();
 
     /* ============================================================
-       Game Focus Management
-       Automatically focus game when terminal loads for immediate play
+       Game Focus Management & Load Timeout
+       Automatically focus game when terminal loads
+       Show error message if game fails to load within timeout
        ============================================================ */
     (function() {
         const gameDiv = document.getElementById('game');
+        const loadingDiv = document.getElementById('loading');
         if (!gameDiv) return;
+
+        let gameLoaded = false;
 
         // Watch for terminal creation and focus it
         const observer = new MutationObserver(function(mutations) {
             const terminal = document.getElementById('terminal');
             if (terminal) {
+                gameLoaded = true;
+
+                // Performance mark for game load
+                if (window.performance && performance.mark) {
+                    performance.mark('game-loaded');
+                    try {
+                        performance.measure('game-load-time', 'ui-ready', 'game-loaded');
+                        const measure = performance.getEntriesByName('game-load-time')[0];
+                        console.log('%cGame loaded in ' + Math.round(measure.duration) + 'ms', 'color: #4a2020;');
+                    } catch(e) {}
+                }
+
                 // Small delay to ensure game is ready
                 setTimeout(function() {
                     terminal.focus();
@@ -816,6 +851,15 @@
             childList: true,
             subtree: true
         });
+
+        // Timeout: show error if game doesn't load within 30 seconds
+        setTimeout(function() {
+            if (!gameLoaded && loadingDiv) {
+                loadingDiv.innerHTML = 'Failed to load NetHack. Please refresh the page.<br><small style="margin-top: 0.5em; display: block;">Check the browser console for error details.</small>';
+                loadingDiv.style.color = '#c33';
+                console.error('NetHack failed to load within timeout period');
+            }
+        }, 30000);
     })();
     </script>
 
