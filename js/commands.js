@@ -501,6 +501,10 @@ async function handleMovement(dir, player, map, display, game) {
     }
 
     // Move the player
+    // DEBUG: Log position updates for turns 20-23
+    if (player.turns >= 19 && player.turns <= 22) {
+        console.log(`[handleMovement] Turn ${player.turns+1}: updating player from (${player.x},${player.y}) to (${nx},${ny})`);
+    }
     player.x = nx;
     player.y = ny;
     player.moved = true;

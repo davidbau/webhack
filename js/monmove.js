@@ -499,7 +499,7 @@ function dog_move(mon, map, player, display, fov) {
     // C ref: dog_goal iterates fobj (ALL objects on level)
     // C's fobj is LIFO (place_object prepends), so iterate in reverse to match
     if (debugTurn && mon.tame) {
-        console.log(`  dog_goal: omx=${omx}, omy=${omy}, SQSRCHRADIUS=5`);
+        console.log(`  dog_goal: omx=${omx}, omy=${omy}, player=(${player.x},${player.y}), SQSRCHRADIUS=5`);
         console.log(`  dog_goal: minX=Math.max(1,${omx}-5)=${minX}, maxX=Math.min(79,${omx}+5)=${maxX}`);
         console.log(`  dog_goal: scanning ${map.objects.length} objects, range x=[${minX},${maxX}] y=[${minY},${maxY}]`);
     }
