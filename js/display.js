@@ -154,12 +154,13 @@ export class Display {
         this.cols = TERMINAL_COLS;
         this.rows = TERMINAL_ROWS;
 
-        // The character grid: [row][col] = {ch, color}
+        // The character grid: [row][col] = {ch, color, attr}
+        // attr: 0=normal, 1=inverse, 2=bold, 4=underline (can be OR'd)
         this.grid = [];
         for (let r = 0; r < this.rows; r++) {
             this.grid[r] = [];
             for (let c = 0; c < this.cols; c++) {
-                this.grid[r][c] = { ch: ' ', color: CLR_GRAY };
+                this.grid[r][c] = { ch: ' ', color: CLR_GRAY, attr: 0 };
             }
         }
 
@@ -228,20 +229,39 @@ export class Display {
         this._setupHover(pre);
     }
 
-    // Set a character at terminal position (col, row) with color
-    setCell(col, row, ch, color) {
+    // Set a character at terminal position (col, row) with color and attributes
+    // attr: 0=normal, 1=inverse, 2=bold, 4=underline (can be OR'd together)
+    setCell(col, row, ch, color, attr = 0) {
         if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) return;
         const cell = this.grid[row][col];
-        if (cell.ch === ch && cell.color === color) return; // no change
+        if (cell.ch === ch && cell.color === color && cell.attr === attr) return; // no change
         cell.ch = ch;
         cell.color = color;
+        cell.attr = attr;
         const span = this.spans[row][col];
         span.textContent = ch;
 
         // Apply color flag - disable colors when color=false
         // C ref: iflags.wc_color
         const displayColor = (this.flags.color !== false) ? color : CLR_GRAY;
-        span.style.color = COLOR_CSS[displayColor] || COLOR_CSS[CLR_GRAY];
+
+        // Apply attributes via CSS
+        // C ref: win/tty/termcap.c - inverse video, bold, underline
+        const isInverse = (attr & 1) !== 0;
+        const isBold = (attr & 2) !== 0;
+        const isUnderline = (attr & 4) !== 0;
+
+        if (isInverse) {
+            // Inverse video: swap foreground and background
+            span.style.color = '#000';
+            span.style.backgroundColor = COLOR_CSS[displayColor] || COLOR_CSS[CLR_GRAY];
+        } else {
+            span.style.color = COLOR_CSS[displayColor] || COLOR_CSS[CLR_GRAY];
+            span.style.backgroundColor = '';
+        }
+
+        span.style.fontWeight = isBold ? 'bold' : '';
+        span.style.textDecoration = isUnderline ? 'underline' : '';
     }
 
     // Clear a row
@@ -251,10 +271,10 @@ export class Display {
         }
     }
 
-    // Write a string at position (col, row)
-    putstr(col, row, str, color = CLR_GRAY) {
+    // Write a string at position (col, row) with optional attributes
+    putstr(col, row, str, color = CLR_GRAY, attr = 0) {
         for (let i = 0; i < str.length && col + i < this.cols; i++) {
-            this.setCell(col + i, row, str[i], color);
+            this.setCell(col + i, row, str[i], color, attr);
         }
     }
 
@@ -692,8 +712,14 @@ export class Display {
         this.clearScreen();
 
         // Render each line at the offset
+        // C ref: win/tty/wintty.c - menu headers use inverse video
         for (let i = 0; i < lines.length && i < this.rows; i++) {
-            this.putstr(offx, i, lines[i], CLR_GRAY);
+            const line = lines[i];
+            // First line (menu header) gets inverse video if it starts with space and contains text
+            // C ref: role.c - headers like " Pick a role or profession" use inverse
+            const isHeader = (i === 0 && line.trim().length > 0 && line.startsWith(' '));
+            const attr = isHeader ? 1 : 0;  // 1 = inverse video
+            this.putstr(offx, i, line, CLR_WHITE, attr);
         }
 
         return offx;
