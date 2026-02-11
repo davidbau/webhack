@@ -1553,6 +1553,15 @@ export function object(name_or_opts, x, y) {
     // rest use 4-5 each. Without exact Lua code, approximate with 4 calls average
     // TODO: Implement exact C Lua pattern once we understand the state machine
     if (levelState && levelState.luaRngCounter !== undefined) {
+        const DEBUG_LUA_RNG = typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1';
+        const baseOffset = levelState.luaRngCounter;
+
+        if (DEBUG_LUA_RNG) {
+            const stack = new Error().stack;
+            console.log(`\n=== Lua RNG triggered for des.object() ===`);
+            console.log(`Counter: ${baseOffset}, Stack:\n${stack}`);
+        }
+
         // Lazy MT initialization: On first Lua RNG use, initialize MT state
         // C ref: MT init happens when Lua math.random() is first called
         if (!_mtInitialized) {
@@ -1560,7 +1569,6 @@ export function object(name_or_opts, x, y) {
         }
 
         const numRngCalls = 4;
-        const baseOffset = levelState.luaRngCounter;
         for (let i = 0; i < numRngCalls; i++) {
             rn2(1000 + baseOffset + i);
         }

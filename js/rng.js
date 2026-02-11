@@ -109,6 +109,14 @@ function RND(x) {
 export function rn2(x) {
     enterRng();
     if (x <= 0) { exitRng(); return 0; }
+
+    // Debug Lua RNG calls
+    if (typeof process !== 'undefined' && process.env.DEBUG_LUA_RNG === '1' && x >= 1000 && x <= 1040) {
+        const stack = new Error().stack;
+        console.log(`\n=== rn2(${x}) called (Lua RNG) ===`);
+        console.log(`Stack:\n${stack}`);
+    }
+
     const result = RND(x);
     logRng('rn2', x, result);
     exitRng();

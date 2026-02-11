@@ -15,6 +15,7 @@
 import * as des from '../sp_lev.js';
 import { selection, percent, shuffle, levelState } from '../sp_lev.js';
 import { rn2, rnd, d, getRngLog } from '../rng.js';
+import { setMtInitialized } from '../dungeon.js';
 
 // Module-level state for postprocessing callbacks
 let postprocess = [];
@@ -1050,6 +1051,9 @@ export function pre_themerooms_generate() {
    rn2(1010);
    rn2(1012);
    for (let i = 1014; i <= 1036; i++) rn2(i);
+
+   // Mark MT as initialized to prevent double-init from des.object/des.monster
+   setMtInitialized(true);
 
    const debug_themerm = nh.debug_themerm(false);
    const debug_fill = nh.debug_themerm(true);
