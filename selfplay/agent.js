@@ -2523,11 +2523,12 @@ export class Agent {
         }
 
         // PRIORITY: Systematic frontier clearing mode
-        // When we have a moderate number of frontier cells (10-80) but are stuck,
+        // When we have frontier cells (10-300) but are stuck,
         // systematically visit each unvisited frontier cell to ensure thorough exploration
+        // Upper limit prevents trying to clear hundreds of cells in huge open areas
         const shouldSystematicallyClearFrontier = (
             frontier.length >= 10 &&
-            frontier.length <= 80 &&
+            frontier.length <= 300 &&
             this.levelStuckCounter > 20 &&
             level.stairsDown.length === 0
         );

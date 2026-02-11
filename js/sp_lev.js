@@ -2048,7 +2048,11 @@ export function object(name_or_opts, x, y) {
     let obj = null;
 
     // Create the object now (triggers next_ident and other creation RNG)
-    if (typeof name_or_opts === 'string') {
+    if (!name_or_opts) {
+        // No arguments: create completely random object
+        // C ref: sp_lev.c spo_object() with NULL name → mkobj(RANDOM_CLASS)
+        obj = mkobj(0, false);  // RANDOM_CLASS = 0
+    } else if (typeof name_or_opts === 'string') {
         // Single-character strings are object class codes (!, ?, +, etc.)
         // C ref: sp_lev.c spo_object() handles single chars as class selection
         if (name_or_opts.length === 1) {
@@ -2069,9 +2073,10 @@ export function object(name_or_opts, x, y) {
     } else if (name_or_opts && typeof name_or_opts === 'object' && name_or_opts.id) {
         const otyp = objectNameToType(name_or_opts.id);
         if (otyp >= 0) {
-            // C ref: Use mkcorpstat() for corpses with specific monster type
+            // C ref: Use mkcorpstat() for corpses/statues with specific monster type
             // This handles corpsenm assignment correctly (assigns random, then overwrites)
-            if (name_or_opts.montype && name_or_opts.id.toLowerCase() === 'corpse') {
+            const lowerName = name_or_opts.id.toLowerCase();
+            if (name_or_opts.montype && (lowerName === 'corpse' || lowerName === 'statue')) {
                 const mndx = monsterNameToIndex(name_or_opts.montype);
                 obj = mkcorpstat(otyp, mndx, true);
             } else {

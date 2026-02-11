@@ -181,7 +181,7 @@ export function d(n, x) {
     // math.random is replaced with nh.random in C
     // nh.random(1, x) = 1 + rn2(x), logs rn2(x)
     // Match C's logging by calling rn2(x) + 1 directly
-    let tmp = n;
+    let tmp = 0;
     for (let i = 0; i < n; i++) {
         tmp += 1 + rn2(x);  // Match nh.random(1, x) = 1 + rn2(x)
     }
