@@ -17,8 +17,9 @@ def convert_guidebook(input_file, output_file):
         # Remove trailing whitespace but preserve leading spaces
         line = line.rstrip()
 
-        # Skip page headers (NetHack 3.7.0 ... December 11, 2025)
-        if 'NetHack 3.7.0' in line and 'December' in line:
+        # Skip page headers (NetHack 3.7.0 ... [Month] [Day], [Year])
+        # These appear as headers with NetHack version and a date
+        if 'NetHack 3.7.0' in line and re.search(r'\d{4}$', line.strip()):
             continue
 
         # Skip the opening title and metadata (first ~9 lines)
@@ -32,7 +33,7 @@ def convert_guidebook(input_file, output_file):
                 output.append('> ' + line.strip() + '\n')
             elif 'Edited and expanded' in line or 'Mike Stephenson' in line:
                 output.append('> ' + line.strip() + '\n')
-            elif 'December' in line or '202' in line:
+            elif re.search(r'\d{4}$', line.strip()):  # Date line (any month, ends with year)
                 output.append('> ' + line.strip() + '\n')
                 output.append('\n')
                 output.append('---\n')
@@ -63,25 +64,25 @@ def convert_guidebook(input_file, output_file):
             prev_line_empty = True
             continue
 
-        # Check for ASCII diagram start (lines with +------+ patterns)
-        if re.match(r'^\+[-=]+\+?\s*$', line) and not in_ascii_diagram:
+        # Check for ASCII diagram start (lines with +------+ patterns, may be indented)
+        if re.match(r'^\s*\+[-=]+\+\s*$', line.rstrip()) and not in_ascii_diagram:
             in_ascii_diagram = True
             output.append('```\n')
-            output.append(line + '\n')
+            output.append(line.lstrip() + '\n')
             prev_line_empty = False
             continue
 
-        # Check for ASCII diagram end
-        if in_ascii_diagram and re.match(r'^\+[-=]+[A-Za-z0-9\s-]*\+?\s*$', line):
-            output.append(line + '\n')
+        # Check for ASCII diagram end (lines like +---Figure-1---+ or +----+)
+        if in_ascii_diagram and re.match(r'^\s*\+[-=A-Za-z0-9\s]*\+\s*$', line.rstrip()):
+            output.append(line.lstrip() + '\n')
             output.append('```\n\n')
             in_ascii_diagram = False
             prev_line_empty = True
             continue
 
-        # Inside ASCII diagram - preserve exactly
+        # Inside ASCII diagram - preserve but strip leading indent
         if in_ascii_diagram:
-            output.append(line + '\n')
+            output.append(line.lstrip() + '\n')
             prev_line_empty = False
             continue
 
@@ -90,6 +91,15 @@ def convert_guidebook(input_file, output_file):
             if not prev_line_empty:
                 output.append('\n')
             prev_line_empty = True
+            continue
+
+        # Symbol definitions (indented: symbol + spaces + description)
+        # e.g., "     #    A corridor, or iron bars..."
+        symbol_def = re.match(r'^\s+([^\s])\s{4,}([A-Z].+)$', line)
+        if symbol_def:
+            symbol, description = symbol_def.groups()
+            output.append(f'`{symbol}`    {description}\n')
+            prev_line_empty = False
             continue
 
         # Lines with significant indentation might be lists or code
@@ -117,8 +127,56 @@ def convert_guidebook(input_file, output_file):
                 output.append(cleaned + '\n')
                 prev_line_empty = False
 
+    # Post-process to wrap inline symbol references
+    # e.g., "appear as #" -> "appear as `#`"
+    processed_output = []
+    for line in output:
+        # Skip lines that are already in code blocks or headings
+        if line.startswith('#') or line.startswith('```'):
+            processed_output.append(line)
+            continue
+
+        # Wrap #commands (e.g., #attributes, #quit)
+        # Match #command after space, start of line, or quote
+        line = re.sub(r'(^|[\s"\(])(#[a-z]+)(\s|[,.\)\"]|$)', r'\1`\2`\3', line)
+
+        # Wrap control character patterns
+        # ^<key> pattern (generic placeholder)
+        line = re.sub(r'\^<([a-z]+)>', r'`^<\1>`', line)
+        # ^X, ^C etc. (specific keys)
+        line = re.sub(r'\^([A-Z])\b', r'`^\1`', line)
+
+        # Special case: ``' (backtick character) needs double backticks to escape
+        # Convert ``' -> `` ` `` (backtick shown in code)
+        line = re.sub(r"``'", r'`` ` ``', line)
+
+        # Convert ASCII quotes around single chars to proper backticks
+        # e.g., `m' -> `m` or `x' -> `x` or `,' -> `,` or `\' -> `\`
+        line = re.sub(r"`([a-zA-Z0-9#@+\-\.,\\'])'", r'`\1`', line)
+
+        # Wrap movement key patterns (vi keys)
+        # [yuhjklbn], [YUHJKLBN], m[yuhjklbn], etc.
+        # Match at word boundary or start of line
+        line = re.sub(r'(^|\s)([mMfFgG]?\[yuhjklbn\])(\s|$)', r'\1`\2`\3', line)
+        line = re.sub(r'(^|\s)(\[YUHJKLBN\])(\s|$)', r'\1`\2`\3', line)
+
+        # Wrap <Control>+[yuhjklbn] pattern first
+        line = re.sub(r'<Control>\+\[yuhjklbn\]', r'`<Control>+[yuhjklbn]`', line)
+
+        # Wrap <X>+<Y> patterns (e.g., <Control>+<key>, <Control>+<direction>)
+        line = re.sub(r'<(Control|Shift|Ctrl)>\+<([a-z]+)>', r'`<\1>+<\2>`', line)
+
+        # Wrap standalone <key> references (avoiding those already in backticks)
+        line = re.sub(r'(?<!`)<(Control|Shift|Ctrl|key|direction)>(?![+`])', r'`<\1>`', line)
+
+        # Wrap single symbols in common phrases
+        # Pattern: "as X" or "shown as X" where X is a single non-alphanumeric char
+        line = re.sub(r'\bas ([#@$%^&*+|<>._-])(\s)', r'as `\1`\2', line)
+        line = re.sub(r'\bshown as ([#@$%^&*+|<>._-])(\s)', r'shown as `\1`\2', line)
+        processed_output.append(line)
+
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.writelines(output)
+        f.writelines(processed_output)
 
     print(f"Converted {input_file} -> {output_file}")
     print(f"Output: {len(output)} lines")

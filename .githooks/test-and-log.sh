@@ -60,7 +60,11 @@ DURATION=$((TEST_END - TEST_START))
 
 # Parse test results from output
 PASS_COUNT=$(grep -c "^✔" "$TEST_OUTPUT" || echo 0)
+PASS_COUNT=$(echo "$PASS_COUNT" | tr -d '[:space:]')
+PASS_COUNT=${PASS_COUNT:-0}
 FAIL_COUNT=$(grep -c "^✖" "$TEST_OUTPUT" || echo 0)
+FAIL_COUNT=$(echo "$FAIL_COUNT" | tr -d '[:space:]')
+FAIL_COUNT=${FAIL_COUNT:-0}
 TOTAL_COUNT=$((PASS_COUNT + FAIL_COUNT))
 
 echo ""
@@ -81,12 +85,18 @@ CATEGORY_GAMEPLAY_FAIL=$(grep "gameplay" "$TEST_OUTPUT" 2>/dev/null | grep -c "^
 CATEGORY_CHARGEN_PASS=$(grep "chargen" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✔" 2>/dev/null || echo 0)
 CATEGORY_CHARGEN_FAIL=$(grep "chargen" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✖" 2>/dev/null || echo 0)
 
-# Ensure all category variables are valid numbers
+# Ensure all category variables are valid numbers (strip whitespace and set defaults)
+CATEGORY_MAP_PASS=$(echo "$CATEGORY_MAP_PASS" | tr -d '[:space:]')
 CATEGORY_MAP_PASS=${CATEGORY_MAP_PASS:-0}
+CATEGORY_MAP_FAIL=$(echo "$CATEGORY_MAP_FAIL" | tr -d '[:space:]')
 CATEGORY_MAP_FAIL=${CATEGORY_MAP_FAIL:-0}
+CATEGORY_GAMEPLAY_PASS=$(echo "$CATEGORY_GAMEPLAY_PASS" | tr -d '[:space:]')
 CATEGORY_GAMEPLAY_PASS=${CATEGORY_GAMEPLAY_PASS:-0}
+CATEGORY_GAMEPLAY_FAIL=$(echo "$CATEGORY_GAMEPLAY_FAIL" | tr -d '[:space:]')
 CATEGORY_GAMEPLAY_FAIL=${CATEGORY_GAMEPLAY_FAIL:-0}
+CATEGORY_CHARGEN_PASS=$(echo "$CATEGORY_CHARGEN_PASS" | tr -d '[:space:]')
 CATEGORY_CHARGEN_PASS=${CATEGORY_CHARGEN_PASS:-0}
+CATEGORY_CHARGEN_FAIL=$(echo "$CATEGORY_CHARGEN_FAIL" | tr -d '[:space:]')
 CATEGORY_CHARGEN_FAIL=${CATEGORY_CHARGEN_FAIL:-0}
 
 # Check for regression
@@ -94,6 +104,8 @@ REGRESSION=false
 if [ -f "$RESULTS_FILE" ]; then
   # Get last test run's pass count
   LAST_PASS=$(tail -1 "$RESULTS_FILE" | jq -r '.stats.pass' 2>/dev/null || echo 0)
+  LAST_PASS=$(echo "$LAST_PASS" | tr -d '[:space:]')
+  LAST_PASS=${LAST_PASS:-0}
 
   if [ "$PASS_COUNT" -lt "$LAST_PASS" ]; then
     REGRESSION=true
@@ -119,6 +131,8 @@ fi
 NEW_TESTS=0
 if [ -f "$RESULTS_FILE" ]; then
   LAST_TOTAL=$(tail -1 "$RESULTS_FILE" | jq -r '.stats.total' 2>/dev/null || echo 0)
+  LAST_TOTAL=$(echo "$LAST_TOTAL" | tr -d '[:space:]')
+  LAST_TOTAL=${LAST_TOTAL:-0}
   NEW_TESTS=$((TOTAL_COUNT - LAST_TOTAL))
 fi
 
