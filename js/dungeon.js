@@ -1272,8 +1272,9 @@ function finddpos(map, dir, aroom) {
         }
     }
 
-    // Cannot find a valid position
-    return { x: x1, y: y1 };
+    // Cannot find a valid position - return null to match C's FALSE
+    // This prevents join() from calling dig_corridor() for invalid connections
+    return null;
 }
 
 // C ref: mklev.c maybe_sdoor()
@@ -1552,7 +1553,11 @@ function join(map, a, b, nxcor, depth) {
         tt = finddpos(map, DIR_N, troom);
     }
 
-    if (!cc || !tt) return;
+    if (!cc || !tt) {
+        // finddpos() returned null - no valid door position found
+        // This prevents calling dig_corridor() for impossible connections
+        return;
+    }
 
     const xx = cc.x, yy = cc.y;
     const tx = tt.x - dx, ty = tt.y - dy;
