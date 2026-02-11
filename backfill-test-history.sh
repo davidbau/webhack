@@ -126,7 +126,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Process each commit
-echo "$COMMITS_WITHOUT_NOTES" | while read commit; do
+while read commit; do
   CURRENT=$((CURRENT + 1))
   SHORT=$(echo "$commit" | cut -c1-7)
 
@@ -216,21 +216,21 @@ echo "$COMMITS_WITHOUT_NOTES" | while read commit; do
   echo "Results: $PASS_COUNT pass, $FAIL_COUNT fail (${DURATION}s)"
 
   # Parse category-specific results (best effort)
-  MAP_PASS=$(grep "^✔" "$TEST_OUTPUT" | grep -c "map" 2>/dev/null || echo 0)
-  MAP_FAIL=$(grep "^✖" "$TEST_OUTPUT" | grep -c "map" 2>/dev/null || echo 0)
-  MAP_TOTAL=$((MAP_PASS + MAP_FAIL))
+  MAP_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "map" || echo 0)
+  MAP_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "map" || echo 0)
+  MAP_TOTAL=$((${MAP_PASS:-0} + ${MAP_FAIL:-0}))
 
-  GAMEPLAY_PASS=$(grep "^✔" "$TEST_OUTPUT" | grep -c "gameplay" 2>/dev/null || echo 0)
-  GAMEPLAY_FAIL=$(grep "^✖" "$TEST_OUTPUT" | grep -c "gameplay" 2>/dev/null || echo 0)
-  GAMEPLAY_TOTAL=$((GAMEPLAY_PASS + GAMEPLAY_FAIL))
+  GAMEPLAY_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "gameplay" || echo 0)
+  GAMEPLAY_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "gameplay" || echo 0)
+  GAMEPLAY_TOTAL=$((${GAMEPLAY_PASS:-0} + ${GAMEPLAY_FAIL:-0}))
 
-  CHARGEN_PASS=$(grep "^✔" "$TEST_OUTPUT" | grep -c "chargen" 2>/dev/null || echo 0)
-  CHARGEN_FAIL=$(grep "^✖" "$TEST_OUTPUT" | grep -c "chargen" 2>/dev/null || echo 0)
-  CHARGEN_TOTAL=$((CHARGEN_PASS + CHARGEN_FAIL))
+  CHARGEN_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "chargen" || echo 0)
+  CHARGEN_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "chargen" || echo 0)
+  CHARGEN_TOTAL=$((${CHARGEN_PASS:-0} + ${CHARGEN_FAIL:-0}))
 
-  SPECIAL_PASS=$(grep "^✔" "$TEST_OUTPUT" | grep -c "special\|oracle\|bigroom" 2>/dev/null || echo 0)
-  SPECIAL_FAIL=$(grep "^✖" "$TEST_OUTPUT" | grep -c "special\|oracle\|bigroom" 2>/dev/null || echo 0)
-  SPECIAL_TOTAL=$((SPECIAL_PASS + SPECIAL_FAIL))
+  SPECIAL_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "special\|oracle\|bigroom" || echo 0)
+  SPECIAL_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "special\|oracle\|bigroom" || echo 0)
+  SPECIAL_TOTAL=$((${SPECIAL_PASS:-0} + ${SPECIAL_FAIL:-0}))
 
   # Create test note
   TEST_NOTE=$(cat <<EOF
@@ -290,7 +290,7 @@ EOF
 
   rm "$TEST_OUTPUT"
   echo ""
-done
+done < <(echo "$COMMITS_WITHOUT_NOTES")
 
 # Cleanup and summary handled by trap
 exit 0
