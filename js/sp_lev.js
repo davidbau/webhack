@@ -641,12 +641,16 @@ export function level_init(opts = {}) {
             }
         }
     } else if (style === 'mazegrid' || style === 'maze') {
-        // Fill entire map with background character (typically walls for mazes)
-        // The actual maze/structure is overlaid by subsequent des.map() calls
+        // Fill map with background character (typically walls for mazes)
+        // C NetHack doesn't fill the entire grid - it preserves STONE in borders
+        // and unfilled areas. Only fill the interior region.
         const fillChar = levelState.init.bg !== -1 ? levelState.init.bg : STONE;
         for (let x = 0; x < 80; x++) {
             for (let y = 0; y < 21; y++) {
-                levelState.map.locations[x][y].typ = fillChar;
+                // C NetHack behavior: All cells start as STONE(0), no background fill
+                // The des.map() overlay replaces STONE with actual terrain
+                // So we leave everything as STONE (already initialized by GameMap)
+                levelState.map.locations[x][y].typ = STONE;
             }
         }
     } else if (style === 'swamp') {
@@ -894,7 +898,29 @@ export function map(data) {
     }
 
     // Parse map string into 2D array
-    const lines = mapStr.split('\n').filter(line => line.length > 0);
+    // Filter out empty lines AND lines with only whitespace
+    let lines = mapStr.split('\n').filter(line => line.trim().length > 0);
+
+    // Strip common leading whitespace (like Python's textwrap.dedent)
+    // C NetHack does this to allow indented map strings in Lua files
+    if (lines.length > 0) {
+        const leadingSpaces = lines.map(line => {
+            const match = line.match(/^( *)/);
+            return match ? match[1].length : 0;
+        });
+        const nonEmptyLines = lines.filter(line => line.trim().length > 0);
+        if (nonEmptyLines.length > 0) {
+            const nonEmptySpaces = nonEmptyLines.map(line => {
+                const match = line.match(/^( *)/);
+                return match ? match[1].length : 0;
+            });
+            const minSpaces = Math.min(...nonEmptySpaces);
+            if (minSpaces > 0) {
+                lines = lines.map(line => line.substring(minSpaces));
+            }
+        }
+    }
+
     const height = lines.length;
     const width = Math.max(...lines.map(line => line.length));
 
