@@ -1533,11 +1533,25 @@ export function room(opts = {}) {
             console.log(`des.room(): RANDOM placement x=${x}, y=${y}, w=${w}, h=${h}, xalign=${xalign}, yalign=${yalign}, rtype=${rtype}, lit=${lit}`);
         }
 
-        // For random-placement rooms, defer create_room call to match C's build_room structure
-        // C ref: build_room() does: rn2(100) → litstate_rnd() → create_room()
-        // We'll skip litstate_rnd AND defer create_room, then call both at the right time
+        // C ref: build_room() order is: rn2(100) → create_room() (which starts with litstate_rnd)
+        // For fully-random rooms (all params -1), create_room uses rnd_rect+BSP → defer to dungeon.js
+        // For partially-random rooms (e.g. Mausoleum: specified w/h, random x/y),
+        //   create_room uses grid placement → rnd(5), rnd(5), rnd(3), rnd(3)
+        // Both paths need rn2(100) THEN litstate_rnd BEFORE create_room_splev's work.
+        const fullyRandom = (x < 0 && y < 0 && w < 0 && xalign < 0 && yalign < 0);
+
+        if (!fullyRandom) {
+            // Partially random room (e.g., Mausoleum: specified w/h, random x/y)
+            // C ref: build_room sp_lev.c:2803 — rn2(100) chance check FIRST
+            rtype = (!chance || rn2(100) < chance) ? requestedRtype : 0; // 0 = OROOM
+            // C ref: create_room sp_lev.c:1512 — litstate_rnd BEFORE position randomization
+            lit = litstate_rnd(lit, levelState.depth || 1);
+        }
+
+        // For fully-random rooms, defer create_room call so we can do rn2(100)+litstate_rnd first
+        // For partially-random rooms, rn2(100)+litstate_rnd already done above
         const roomCalc = create_room_splev(x, y, w, h, xalign, yalign,
-                                           rtype, lit, levelState.depth || 1, true, false, true); // skipLitstate=true, forceRandomize=false, deferCreateRoom=true
+                                           rtype, lit, levelState.depth || 1, true, false, fullyRandom); // skipLitstate=true always, deferCreateRoom only for fullyRandom
 
         if (!roomCalc) {
             if (DEBUG) {
