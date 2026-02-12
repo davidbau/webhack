@@ -3673,15 +3673,10 @@ export function makelevel(depth, dnum, dlevel) {
         }
     }
 
-    // Initialize needfill for ordinary and theme rooms
-    // C ref: In C NetHack, OROOM and THEMEROOM get needfill=FILL_NORMAL by default
-    // This was missing from the JS port, preventing monster/object generation
-    for (let i = 0; i < map.nroom; i++) {
-        const croom = map.rooms[i];
-        if (croom.rtype === OROOM || croom.rtype === THEMEROOM) {
-            croom.needfill = FILL_NORMAL;
-        }
-    }
+    // C ref: sp_lev.c lspo_room() sets needfill during room creation.
+    // During themed room generation (in_mk_themerooms), default is FILL_NONE (0).
+    // Only rooms with explicit filled=1 get FILL_NORMAL.
+    // We do NOT bulk-override needfill here — des.room() sets it correctly.
 
     // C ref: mklev.c:1381-1401 — bonus item room selection + fill loop
     // ROOM_IS_FILLABLE: (rtype == OROOM || rtype == THEMEROOM) && needfill == FILL_NORMAL

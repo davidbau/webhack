@@ -2,7 +2,7 @@
 // Faithful port of makemon.c from NetHack 3.7
 // C ref: makemon.c — monster creation, selection, weapon/inventory assignment
 
-import { rn2, rnd, rn1, d, getRngLog } from './rng.js';
+import { rn2, rnd, rn1, d, c_d, getRngLog } from './rng.js';
 import { mksobj, mkobj, next_ident } from './mkobj.js';
 import { def_monsyms } from './symbols.js';
 import { SHOPBASE, ROOMOFFSET } from './config.js';
@@ -360,7 +360,7 @@ export function newmonhp(mndx) {
     if (m_lev === 0) {
         hp = rnd(4);
     } else {
-        hp = d(m_lev, 8);
+        hp = c_d(m_lev, 8);
     }
 
     // C ref: if mhpmax == basehp, add 1
@@ -865,7 +865,7 @@ function m_initinv(mndx, depth, m_lev) {
     }
     if ((ptr.flags2 & M2_GREEDY) && !rn2(5)) {
         // mkmonmoney: d(level_difficulty(), minvent ? 5 : 10)
-        d(Math.max(depth, 1), 10);
+        c_d(Math.max(depth, 1), 10);
     }
 }
 

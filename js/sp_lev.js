@@ -126,6 +126,9 @@ export function setLevelContext(map, depth) {
     levelState.roomStack = [];
     levelState.roomDepth = 0;
     levelState.currentRoom = null;
+    // C ref: gi.in_mk_themerooms — set during themed room generation
+    // Affects needfill default: themed rooms default to FILL_NONE (0), not FILL_NORMAL (1)
+    levelState.inThemerooms = true;
 
     // Callback for room creation failure (set by themed room generator)
     levelState.roomFailureCallback = null;
@@ -141,6 +144,7 @@ export function clearLevelContext() {
     levelState.roomStack = [];
     levelState.roomDepth = 0;
     levelState.currentRoom = null;
+    levelState.inThemerooms = false;
 }
 
 /**
@@ -1282,7 +1286,7 @@ export function room(opts = {}) {
     if (DEBUG_LIT && type === 'themed') {
         console.log(`  des.room(): type="${type}", opts.lit=${opts.lit}, computed lit=${lit}`);
     }
-    const filled = opts.filled ?? 1;
+    const filled = opts.filled;  // keep undefined if not specified; needfill logic handles defaulting
     const chance = opts.chance ?? 100;
     const contents = opts.contents;
 
@@ -1551,11 +1555,14 @@ export function room(opts = {}) {
             // Extract the room that was just added
             const room = levelState.map.rooms[levelState.map.rooms.length - 1];
 
-            // Set needfill for OROOM and THEMEROOM
+            // C ref: sp_lev.c lspo_room() — needfill defaults depend on context:
+            // During themed room generation (in_mk_themerooms): default 0 (FILL_NONE)
+            // Otherwise: default 1 (FILL_NORMAL)
+            // Explicit filled=1 overrides to FILL_NORMAL in either case.
             const OROOM_LOCAL = 0;
             const THEMEROOM_LOCAL = 1;
             if (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL) {
-                room.needfill = FILL_NORMAL;
+                room.needfill = (filled !== undefined) ? filled : (levelState.inThemerooms ? 0 : FILL_NORMAL);
             }
 
             // Continue with room contents execution below
@@ -1722,8 +1729,13 @@ export function room(opts = {}) {
         rtype: rtype,
         rlit: finalLit,
         irregular: false,
-        // C ref: mklev.c - OROOM and THEMEROOM get needfill=FILL_NORMAL by default
-        needfill: (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL) ? FILL_NORMAL : undefined,
+        // C ref: sp_lev.c lspo_room() — needfill defaults depend on context:
+        // During themed room generation (in_mk_themerooms): default 0 (FILL_NONE)
+        // Otherwise: default 1 (FILL_NORMAL)
+        // Explicit filled=1 overrides to FILL_NORMAL in either case.
+        needfill: (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL)
+            ? (filled !== undefined ? filled : (levelState.inThemerooms ? 0 : FILL_NORMAL))
+            : undefined,
         // Lua compatibility: region property for accessing room bounds
         region: { x1: roomX, y1: roomY, x2: roomX + roomW - 1, y2: roomY + roomH - 1 }
     };

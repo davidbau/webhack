@@ -7,7 +7,7 @@ import { COLNO, ROWNO, DOOR, STAIRS, LADDER, FOUNTAIN, SINK, THRONE, ALTAR, GRAV
          D_ISOPEN, D_NODOOR, ACCESSIBLE, IS_WALL, MAXLEVEL, VERSION_STRING,
          isok, A_STR, A_DEX, A_CON } from './config.js';
 import { SQKY_BOARD } from './symbols.js';
-import { rn2, rnd, rnl, d } from './rng.js';
+import { rn2, rnd, rnl, d, c_d } from './rng.js';
 import { objectData, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
          TOOL_CLASS, FOOD_CLASS, POTION_CLASS, SCROLL_CLASS, SPBOOK_CLASS,
          WAND_CLASS, COIN_CLASS, GEM_CLASS, ROCK_CLASS } from './objects.js';
@@ -1091,11 +1091,11 @@ async function handleQuaff(player, map, display) {
         player.removeFromInventory(item);
         // Simple potion effects
         if (item.name.includes('healing')) {
-            const heal = d(4, 4) + 2;
+            const heal = c_d(4, 4) + 2;
             player.heal(heal);
             display.putstr_message(`You feel better. (${heal} HP restored)`);
         } else if (item.name.includes('extra healing')) {
-            const heal = d(8, 4) + 4;
+            const heal = c_d(8, 4) + 4;
             player.heal(heal);
             display.putstr_message(`You feel much better. (${heal} HP restored)`);
         } else {

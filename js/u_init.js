@@ -13,7 +13,7 @@
 //   3. com_pager("legacy")     — NHCORE_START_NEW_GAME lua shuffle
 //   4. welcome(TRUE)           — rndencode + seer_turn
 
-import { rn2, rnd, rn1, rne, d, getRngLog } from './rng.js';
+import { rn2, rnd, rn1, rne, d, c_d, getRngLog } from './rng.js';
 import { mksobj, mkobj } from './mkobj.js';
 import { isok, NUM_ATTRS,
          PM_ARCHEOLOGIST, PM_BARBARIAN, PM_CAVEMAN, PM_HEALER,
@@ -150,14 +150,13 @@ const MONSYM_CHARS = {
 // C ref: dog.c:90-101 pet_type() — determine starting pet monster index
 function pet_type(roleIndex) {
     const role = roles[roleIndex];
-    // C ref: dog.c:100 — ALWAYS calls rn2(2) even for predetermined pet types
-    // This maintains RNG alignment across all roles
-    const roll = rn2(2);
+    // C ref: dog.c:93-94 — if role has a predetermined pet, return immediately
+    // without calling rn2(2). Only random pet selection calls rn2(2).
     if (role.petType === 'pony') return PM_PONY;
     if (role.petType === 'cat') return PM_KITTEN;
     if (role.petType === 'dog') return PM_LITTLE_DOG;
-    // null / NON_PM → random: use roll result
-    return roll ? PM_KITTEN : PM_LITTLE_DOG;
+    // null / NON_PM → random: call rn2(2) to pick
+    return rn2(2) ? PM_KITTEN : PM_LITTLE_DOG;
 }
 
 // C ref: dog.c makedog() → makemon.c makemon()
@@ -187,12 +186,14 @@ function makedog(map, player, depth) {
     rnd(2);
 
     // C ref: makemon.c:1018+1043 — newmonhp
+    // Uses c_d() (C-style d()) which logs composite d(n,x) entry,
+    // matching C's rnd.c d() that calls RND() directly (not rn2).
     const m_lev = adj_lev(petData.level, depth, 1);
     let mhp;
     if (m_lev === 0) {
         mhp = rnd(4);
     } else {
-        mhp = d(m_lev, 8);
+        mhp = c_d(m_lev, 8);
     }
 
     // C ref: makemon.c:1280 — gender

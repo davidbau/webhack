@@ -3,7 +3,7 @@
 // C ref: trap.c — burnarmor()
 // C ref: mon.c — xkilled(), corpse_chance()
 
-import { rn2, rnd, d, rne, rnz } from './rng.js';
+import { rn2, rnd, d, c_d, rne, rnz } from './rng.js';
 import { isok, ACCESSIBLE, IS_WALL, IS_DOOR, COLNO, ROWNO, A_STR } from './config.js';
 import { objectData, WAND_CLASS, WAN_FIRE, WAN_COLD, WAN_LIGHTNING,
          WAN_SLEEP, WAN_DEATH, WAN_MAGIC_MISSILE, WAN_STRIKING,
@@ -116,8 +116,8 @@ function zhitm(mon, type, nd, map) {
         if (mdat.mr1 & MR_FIRE) {
             // resistant — no damage
         } else {
-            // C ref: zap.c:4251 — d(nd, 6) for fire damage
-            tmp = d(nd, 6);
+            // C ref: zap.c:4251 — c_d(nd, 6) for fire damage
+            tmp = c_d(nd, 6);
 
             // C ref: zap.c:4257 — burnarmor, then conditional rn2(3)
             if (burnarmor(mon)) {
@@ -130,13 +130,13 @@ function zhitm(mon, type, nd, map) {
         if (mdat.mr1 & MR_COLD) {
             // resistant
         } else {
-            tmp = d(nd, 6);
+            tmp = c_d(nd, 6);
             if (!rn2(3)) {
                 // destroy_items
             }
         }
     } else if (type === ZT_LIGHTNING) {
-        tmp = d(nd, 6);
+        tmp = c_d(nd, 6);
         if (mdat.mr1 & MR_ELEC) {
             tmp = 0; // resistant, but still rolls damage for RNG
         }
@@ -144,7 +144,7 @@ function zhitm(mon, type, nd, map) {
             // destroy_items
         }
     } else if (type === ZT_MAGIC_MISSILE) {
-        tmp = d(nd, 6);
+        tmp = c_d(nd, 6);
     } else if (type === ZT_SLEEP) {
         // sleep effect, no HP damage
     } else if (type === ZT_DEATH) {

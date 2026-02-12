@@ -188,6 +188,22 @@ export function d(n, x) {
     return tmp;
 }
 
+// C ref: rnd.c d() — C-style d(n,x) that uses RND directly.
+// Unlike Lua's d() which calls rn2() per die (logged individually),
+// C's rnd.c d() calls RND() per die (not logged individually) and logs
+// the result as a composite d(n,x)=result entry.
+// Use this for C code paths (e.g. newmonhp), not for Lua code paths.
+export function c_d(n, x) {
+    enterRng();
+    let tmp = n;
+    for (let i = 0; i < n; i++) {
+        tmp += RND(x);
+    }
+    logRng('d', `${n},${x}`, tmp);
+    exitRng();
+    return tmp;
+}
+
 // C ref: rnd.c rnz() -- randomized scaling
 // C logs rnz summary via explicit rng_log_write; internal rn2 calls are
 // suppressed by RNGLOG_IN_RND_C. Internal rne(4) IS logged (explicit log).

@@ -1,7 +1,7 @@
 // combat.js -- Combat system
 // Mirrors uhitm.c (hero hits monster) and mhitu.c (monster hits hero)
 
-import { rn2, rnd, d, rne, rnz } from './rng.js';
+import { rn2, rnd, d, c_d, rne, rnz } from './rng.js';
 import { rndmonnum } from './makemon.js';
 import { mons, G_FREQ, MZ_TINY, M2_NEUTER, M2_MALE, M2_FEMALE } from './monsters.js';
 import { CORPSE, FOOD_CLASS, FLESH } from './objects.js';
@@ -34,7 +34,7 @@ export function playerAttackMonster(player, monster, display, map) {
         damage = rnd(player.weapon.wsdam);
         damage += player.weapon.enchantment || 0;
     } else if (player.weapon && player.weapon.damage) {
-        damage = d(player.weapon.damage[0], player.weapon.damage[1]);
+        damage = c_d(player.weapon.damage[0], player.weapon.damage[1]);
         damage += player.weapon.enchantment || 0;
     } else {
         // Bare-handed combat
@@ -157,9 +157,9 @@ export function monsterAttackPlayer(monster, player, display) {
         // C ref: mhitu.c:1182 — d(dice, sides) for attack damage
         let damage = 0;
         if (attack.dice && attack.sides) {
-            damage = d(attack.dice, attack.sides);
+            damage = c_d(attack.dice, attack.sides);
         } else if (attack.dmg) {
-            damage = d(attack.dmg[0], attack.dmg[1]);
+            damage = c_d(attack.dmg[0], attack.dmg[1]);
         }
 
         // Handle special attack effects
