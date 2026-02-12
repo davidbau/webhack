@@ -4,10 +4,10 @@
 
 check_setup() {
   local HOOKS_PATH=$(git config core.hooksPath)
-  local AUTO_PUSH
-  AUTO_PUSH=$(git config --get-all remote.origin.push 2>/dev/null | grep -c "refs/notes" || true)
+  local AUTO_FETCH
+  AUTO_FETCH=$(git config --get-all remote.origin.fetch 2>/dev/null | grep -c "refs/notes" || true)
 
-  if [ "$HOOKS_PATH" != ".githooks" ] || [ "${AUTO_PUSH:-0}" -eq 0 ]; then
+  if [ "$HOOKS_PATH" != ".githooks" ] || [ "${AUTO_FETCH:-0}" -eq 0 ]; then
     echo ""
     echo "=========================================="
     echo "⚠️  Testing Infrastructure Not Configured"
@@ -17,11 +17,6 @@ check_setup() {
     echo ""
     echo "Quick fix (takes 5 seconds):"
     echo "  ./scripts/setup-testing.sh"
-    echo ""
-    echo "Or manually:"
-    echo "  git config core.hooksPath .githooks"
-    echo "  git config --add remote.origin.push '+refs/heads/*:refs/heads/*'"
-    echo "  git config --add remote.origin.push '+refs/notes/test-results:refs/notes/test-results'"
     echo ""
     echo "Why this matters:"
     echo "  - Ensures test quality tracking"

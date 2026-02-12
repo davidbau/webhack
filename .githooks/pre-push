@@ -25,12 +25,15 @@ CURRENT_COMMIT=$(git rev-parse HEAD)
 CURRENT_SHORT=$(git rev-parse --short HEAD)
 
 if git notes --ref=test-results show "$CURRENT_COMMIT" >/dev/null 2>&1; then
-  echo "✅ Test note exists for commit $CURRENT_SHORT — push allowed"
-  exit 0
+  echo "✅ Test note exists for commit $CURRENT_SHORT"
+else
+  echo "ℹ️  No test note for commit $CURRENT_SHORT"
 fi
 
-echo ""
-echo "⚠️  No test note for commit $CURRENT_SHORT."
-echo "   Run:  .githooks/test-and-log.sh && git commit --amend --no-edit"
-echo "   Pushing without test results..."
+# Push notes alongside branches (force-push: local note is always for a fresh commit)
+echo "Syncing test-results notes..."
+git push origin +refs/notes/test-results:refs/notes/test-results 2>/dev/null && \
+  echo "✅ Notes pushed" || \
+  echo "ℹ️  No notes to push"
+
 exit 0

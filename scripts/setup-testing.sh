@@ -28,13 +28,10 @@ git config --local --unset-all remote.origin.push '.*refs/notes.*' 2>/dev/null |
 # Also clean push refspec for heads if we previously set it
 git config --local --unset-all remote.origin.push 'refs/heads.*' 2>/dev/null || true
 
-# Fetch notes directly with force (remote wins on conflict)
+# Fetch notes directly with force (remote wins — backfills are authoritative)
 git config --local --add remote.origin.fetch '+refs/notes/*:refs/notes/*'
 echo "✅ Auto-fetch for notes configured (remote-over-local)"
-
-# Push notes with force to keep remote up to date
-git config --local --add remote.origin.push '+refs/notes/test-results:refs/notes/test-results'
-echo "✅ Auto-push for notes configured"
+echo "✅ Notes auto-push via pre-push hook"
 
 # Configure notes rewriting on rebase
 git config --local notes.rewriteRef 'refs/notes/*'
