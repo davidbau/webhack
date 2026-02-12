@@ -888,28 +888,8 @@ export function map(data) {
     }
 
     // Parse map string into 2D array
-    // Filter out empty lines AND lines with only whitespace
-    let lines = mapStr.split('\n').filter(line => line.trim().length > 0);
-
-    // Strip common leading whitespace (like Python's textwrap.dedent)
-    // C NetHack does this to allow indented map strings in Lua files
-    if (lines.length > 0) {
-        const leadingSpaces = lines.map(line => {
-            const match = line.match(/^( *)/);
-            return match ? match[1].length : 0;
-        });
-        const nonEmptyLines = lines.filter(line => line.trim().length > 0);
-        if (nonEmptyLines.length > 0) {
-            const nonEmptySpaces = nonEmptyLines.map(line => {
-                const match = line.match(/^( *)/);
-                return match ? match[1].length : 0;
-            });
-            const minSpaces = Math.min(...nonEmptySpaces);
-            if (minSpaces > 0) {
-                lines = lines.map(line => line.substring(minSpaces));
-            }
-        }
-    }
+    // Match C behavior: keep leading spaces; only skip completely empty lines.
+    let lines = mapStr.split('\n').filter(line => line.length > 0);
 
     const height = lines.length;
     const width = Math.max(...lines.map(line => line.length));
