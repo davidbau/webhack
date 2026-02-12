@@ -13,7 +13,8 @@ import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT
          POISON, UNDEF, TABU } from './dog.js';
 import { couldsee, m_cansee, do_clear_area } from './vision.js';
 import { PM_GRID_BUG, PM_IRON_GOLEM, mons,
-         M1_FLY, M1_AMORPHOUS, M1_CLING, MZ_SMALL, MR_FIRE, MR_SLEEP } from './monsters.js';
+         M1_FLY, M1_AMORPHOUS, M1_CLING, M1_SEE_INVIS,
+         MZ_SMALL, MR_FIRE, MR_SLEEP } from './monsters.js';
 import { STATUE_TRAP, MAGIC_TRAP, VIBRATING_SQUARE, RUST_TRAP, FIRE_TRAP,
          SLP_GAS_TRAP, BEAR_TRAP, PIT, SPIKED_PIT, HOLE, TRAPDOOR,
          WEB, ANTI_MAGIC } from './symbols.js';
@@ -421,6 +422,186 @@ function dochug(mon, map, player, display, fov) {
 }
 
 // ========================================================================
+// Pet ranged attack evaluation
+// C ref: dogmove.c find_targ(), score_targ(), best_target(), pet_ranged_attk()
+// ========================================================================
+
+// C ref: dogmove.c:654-696 find_targ() — find first visible monster along a line
+//
+// CRITICAL FOR RNG ALIGNMENT: C checks mtmp->mux/muy (pet's tracked player
+// position) along the scan line. If the player is in the path, find_targ
+// returns &gy.youmonst, which score_targ handles with an early -3000 return
+// BEFORE consuming rnd(5). For tame pets, mux/muy always equals the player's
+// actual position (see set_apparxy in monmove.c:2211-2214).
+//
+// Without this check, JS scans past the player and finds monsters beyond,
+// consuming extra rnd(5) calls that C never makes. This is a recurring bug
+// pattern — see memory/pet_ranged_attk_bug.md for full documentation.
+function find_targ(mon, dx, dy, maxdist, map, player) {
+    let curx = mon.mx, cury = mon.my;
+    for (let dist = 0; dist < maxdist; dist++) {
+        curx += dx;
+        cury += dy;
+        if (!isok(curx, cury)) break;
+        // C ref: dogmove.c:679 — if pet can't see this cell, stop
+        if (!m_cansee(mon, map, curx, cury)) break;
+        // C ref: dogmove.c:682-683 — if pet thinks player is here, return player
+        // For tame pets, mux/muy == u.ux/u.uy (see set_apparxy)
+        if (player && curx === player.x && cury === player.y) {
+            return { isPlayer: true, mx: player.x, my: player.y };
+        }
+        // C ref: dogmove.c:685-693 — check for monster at position
+        const targ = map.monsterAt(curx, cury);
+        if (targ && !targ.dead) {
+            // C ref: dogmove.c:687-690 — must be visible to the pet and not hidden
+            const perceiveInvis = !!(mons[mon.mndx]?.flags1 & M1_SEE_INVIS);
+            if ((!targ.minvis || perceiveInvis) && !targ.mundetected) {
+                return targ;
+            }
+            // Pet can't see it — clear target and keep scanning
+        }
+    }
+    return null;
+}
+
+// C ref: dogmove.c:698-740 find_friends() — check if allies are behind target
+// Scans beyond the target in the same direction to see if the player or
+// tame monsters are in the line of fire. Returns 1 if so (pet should not fire).
+function find_friends(mon, target, maxdist, map, player) {
+    const dx = Math.sign(target.mx - mon.mx);
+    const dy = Math.sign(target.my - mon.my);
+    let curx = target.mx, cury = target.my;
+    let dist = Math.max(Math.abs(target.mx - mon.mx), Math.abs(target.my - mon.my));
+
+    for (; dist <= maxdist; ++dist) {
+        curx += dx;
+        cury += dy;
+        if (!isok(curx, cury)) return false;
+        // C ref: dogmove.c:717-718 — if pet can't see beyond, stop
+        if (!m_cansee(mon, map, curx, cury)) return false;
+        // C ref: dogmove.c:721-722 — player behind target
+        if (player && curx === player.x && cury === player.y) return true;
+        // C ref: dogmove.c:724-736 — tame monster behind target
+        const pal = map.monsterAt(curx, cury);
+        if (pal && !pal.dead) {
+            if (pal.tame) {
+                const perceiveInvis = !!(mons[mon.mndx]?.flags1 & M1_SEE_INVIS);
+                if (!pal.minvis || perceiveInvis) return true;
+            }
+            // Quest leaders/guardians — skip for now (not in early game)
+        }
+    }
+    return false;
+}
+
+// C ref: dogmove.c:742-840 score_targ() — evaluate target attractiveness
+//
+// RNG CRITICAL: rnd(5) fuzz factor at line 835, rn2(3) if confused at 753/837.
+// Several early returns (lines 774, 778, 783, 789, 794) exit BEFORE consuming
+// rnd(5). The player target (isPlayer) hits line 786→789 returning -3000 before
+// rnd(5) — this is critical for RNG alignment.
+//
+// For vampire shifters (line 818), rn2() is consumed. Not relevant for early
+// game pets but included for correctness.
+function score_targ(mon, target, map, player) {
+    let score = 0;
+    // C ref: dogmove.c:753 — if not confused, or 1-in-3 chance, do full scoring
+    if (!mon.confused || !rn2(3)) {
+        // C ref: dogmove.c:758-769 — alignment checks (minions/priests)
+        // Simplified: early-game monsters are not minions/priests
+
+        // C ref: dogmove.c:771-774 — quest friendlies (not in early game)
+
+        // C ref: dogmove.c:776-779 — coaligned priests (not in early game)
+
+        // C ref: dogmove.c:780-783 — adjacent targets penalized
+        const dm = Math.max(Math.abs(mon.mx - target.mx), Math.abs(mon.my - target.my));
+        if (dm <= 1) {
+            score -= 3000;
+            return score;
+        }
+        // C ref: dogmove.c:785-789 — tame monsters and player never targeted
+        // Returns BEFORE rnd(5) at line 835
+        if (target.tame || target.isPlayer) {
+            score -= 3000;
+            return score;
+        }
+        // C ref: dogmove.c:791-794 — friends behind target
+        if (find_friends(mon, target, 15, map, player)) {
+            score -= 3000;
+            return score;
+        }
+        // C ref: dogmove.c:797-798 — hostile bonus
+        if (!target.peaceful) score += 10;
+        // C ref: dogmove.c:800-801 — passive monster penalty
+        const mdat = mons[target.mndx];
+        if (mdat && mdat.attacks && mdat.attacks[0] && mdat.attacks[0].type === 0) {
+            score -= 1000;
+        }
+        // C ref: dogmove.c:804-807 — weak target penalty
+        const targLev = target.mlevel || 0;
+        const monLev = mon.mlevel || 0;
+        if ((targLev < 2 && monLev > 5)
+            || (monLev > 12 && targLev < monLev - 9)) {
+            score -= 25;
+        }
+        // C ref: dogmove.c:813-822 — vampire shifter level adjustment
+        // rn2() consumed here for vampire shifters — not relevant early game
+        let mtmpLev = monLev;
+        // (vampire shifter check omitted — no vampires in early game)
+
+        // C ref: dogmove.c:826-827 — vastly stronger foe penalty
+        if (targLev > mtmpLev + 4)
+            score -= (targLev - mtmpLev) * 20;
+        // C ref: dogmove.c:831 — beefiest monster bonus
+        score += targLev * 2 + Math.floor((target.mhp || 0) / 3);
+    }
+    // C ref: dogmove.c:835 — fuzz factor (consumed for all targets that reach here)
+    score += rnd(5);
+    // C ref: dogmove.c:837-838 — confused penalty
+    if (mon.confused && !rn2(3)) score -= 1000;
+    return score;
+}
+
+// C ref: dogmove.c:842-890 best_target() — find best ranged attack target
+function best_target(mon, forced, map, player) {
+    // C ref: dogmove.c:854 — blind pets can't see targets
+    // mcansee is initialized TRUE for all new monsters (makemon.c:1298)
+    // and only set FALSE by blinding effects. We check mon.mblind here.
+    if (mon.mblind) return null;
+    let bestscore = -40000;
+    let bestTarg = null;
+    // C ref: dogmove.c:861-882 — scan all 8 directions
+    for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            if (!dx && !dy) continue;
+            const targ = find_targ(mon, dx, dy, 7, map, player);
+            if (!targ) continue;
+            const currscore = score_targ(mon, targ, map, player);
+            if (currscore > bestscore) {
+                bestscore = currscore;
+                bestTarg = targ;
+            }
+        }
+    }
+    // C ref: dogmove.c:886-887 — filter negative scores
+    if (!forced && bestscore < 0) bestTarg = null;
+    return bestTarg;
+}
+
+// C ref: dogmove.c:892-970 pet_ranged_attk() — pet considers ranged attack
+// For early game pets (dogs/cats), they have no ranged attacks,
+// but best_target still evaluates targets (consuming RNG via score_targ).
+// The actual attack path (mattackm) is not reached for melee-only pets.
+function pet_ranged_attk(mon, map, player) {
+    const mtarg = best_target(mon, false, map, player);
+    // C ref: dogmove.c:912 — hungry check (rn2(5) consumed only if target found)
+    // For early game: pet_ranged_attk returns MMOVE_NOTHING because
+    // mattackm returns M_ATTK_MISS for pets without ranged attacks.
+    // No additional RNG consumed after best_target for melee-only pets.
+}
+
+// ========================================================================
 // dog_move — tame pet AI
 // ========================================================================
 
@@ -694,6 +875,16 @@ function dog_move(mon, map, player, display, fov) {
             if (j < 0) chcnt = 0;
             chi = i;
         }
+    }
+
+    // C ref: dogmove.c:1274-1279 — pet ranged attack before newdogpos
+    // IMPORTANT: In C, when food is found (goto newdogpos at line 1236),
+    // this code is SKIPPED because the goto jumps past it. Only execute
+    // pet_ranged_attk when the pet didn't find food to eat.
+    // Even if pet has no ranged attacks, best_target still evaluates
+    // all visible monsters and calls score_targ (consuming rnd(5) each).
+    if (!do_eat) {
+        pet_ranged_attk(mon, map, player);
     }
 
     // Move the dog
