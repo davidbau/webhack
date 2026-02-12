@@ -10,12 +10,6 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Guard against recursion: the notes push below triggers pre-push again
-if [ -n "$_WEBHACK_PRE_PUSH" ]; then
-  exit 0
-fi
-export _WEBHACK_PRE_PUSH=1
-
 # Check if setup has been run
 source "$SCRIPT_DIR/check-setup.sh"
 if ! check_setup; then
