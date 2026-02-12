@@ -664,6 +664,18 @@ function start_corpse_timeout_rng(corpsenm) {
     }
 }
 
+// C ref: mkobj.c set_corpsenm() — set corpsenm and restart timers
+// Used by create_object (sp_lev) when overriding corpsenm after mksobj
+// Unlike mkcorpstat's conditional check, this ALWAYS restarts start_corpse_timeout
+// for corpses, matching C's set_corpsenm which unconditionally calls it.
+export function set_corpsenm(obj, id) {
+    obj.corpsenm = id;
+    if (objectData[obj.otyp]?.name === 'corpse') {
+        start_corpse_timeout_rng(id);
+    }
+    obj.owt = weight(obj);
+}
+
 // C ref: mkobj.c mkcorpstat() — create a corpse or statue with specific monster type
 // ptr_mndx: monster index to override corpsenm (-1 for random/no override)
 // init: whether to call mksobj_init (CORPSTAT_INIT flag)

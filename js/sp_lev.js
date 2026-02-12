@@ -15,7 +15,7 @@
 
 import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, getRngCallCount } from './rng.js';
-import { mksobj, mkobj, mkcorpstat } from './mkobj.js';
+import { mksobj, mkobj, mkcorpstat, set_corpsenm } from './mkobj.js';
 import { create_room, create_subroom, makecorridors, init_rect, rnd_rect, get_rect, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized, wallification as dungeonWallification } from './dungeon.js';
 import { seedFromMT } from './xoshiro256.js';
 import {
@@ -1988,12 +1988,16 @@ export function object(name_or_opts, x, y) {
     } else if (name_or_opts && typeof name_or_opts === 'object' && name_or_opts.id) {
         const otyp = objectNameToType(name_or_opts.id);
         if (otyp >= 0) {
-            // C ref: Use mkcorpstat() for corpses/statues with specific monster type
-            // This handles corpsenm assignment correctly (assigns random, then overwrites)
+            // C ref: sp_lev.c create_object() — uses mksobj_at + set_corpsenm,
+            // NOT mkcorpstat. set_corpsenm ALWAYS restarts start_corpse_timeout
+            // for corpses (unconditionally), unlike mkcorpstat's conditional check.
             const lowerName = name_or_opts.id.toLowerCase();
             if (name_or_opts.montype && (lowerName === 'corpse' || lowerName === 'statue')) {
                 const mndx = monsterNameToIndex(name_or_opts.montype);
-                obj = mkcorpstat(otyp, mndx, true);
+                obj = mksobj(otyp, true, false);
+                if (mndx >= 0) {
+                    set_corpsenm(obj, mndx);
+                }
             } else {
                 obj = mksobj(otyp, true, false);
             }
