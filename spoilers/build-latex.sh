@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build script for "A Traveler's Guide to the Mazes of Menace"
+# Build script for "The Traveler's Companion to the Mazes of Menace"
 # LaTeX pipeline: guide.md → pandoc + lua filter → xelatex → guide-latex.pdf
 set -euo pipefail
 

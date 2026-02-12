@@ -46,64 +46,53 @@ $body$
     tocItems.push({ el: li, id: id, heading: h });
   });
 
-  // --- Scroll tracking via IntersectionObserver ---
+  // --- Scroll tracking ---
+  // Highlight the last section whose top is above 200px from viewport top.
+  // This correctly picks subsections (h3) over their parent (h2) once
+  // the subsection heading has scrolled into the upper portion of the page.
   var currentActive = null;
+  var sections = [];
+  tocItems.forEach(function(item) {
+    var target = document.getElementById(item.id);
+    if (target) sections.push({ id: item.id, el: target, tocItem: item.el });
+  });
 
-  if ('IntersectionObserver' in window) {
-    var sections = [];
-    tocItems.forEach(function(item) {
-      var target = document.getElementById(item.id);
-      if (target) sections.push({ id: item.id, el: target, tocItem: item.el });
-    });
-
-    // Track which sections are visible
-    var visibleSections = new Set();
-
-    var observer = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        var id = entry.target.id;
-        if (entry.isIntersecting) {
-          visibleSections.add(id);
-        } else {
-          visibleSections.delete(id);
-        }
-      });
-
-      // Find the first visible section in document order
-      var firstVisible = null;
-      for (var i = 0; i < sections.length; i++) {
-        if (visibleSections.has(sections[i].id)) {
-          firstVisible = sections[i];
-          break;
-        }
+  var scrollTicking = false;
+  function updateActiveSection() {
+    scrollTicking = false;
+    var scrollLine = 100;
+    var best = null;
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i].el.getBoundingClientRect().top <= scrollLine) {
+        best = sections[i];
       }
+    }
+    if (!best || best.tocItem === currentActive) return;
 
-      if (firstVisible) {
-        if (currentActive) currentActive.classList.remove('active');
-        firstVisible.tocItem.classList.add('active');
-        currentActive = firstVisible.tocItem;
+    if (currentActive) currentActive.classList.remove('active');
+    best.tocItem.classList.add('active');
+    currentActive = best.tocItem;
 
-        // Update URL hash to reflect current section
-        if (history.replaceState) {
-          history.replaceState(null, '', '#' + firstVisible.id);
-        }
+    if (history.replaceState) {
+      history.replaceState(null, '', '#' + best.id);
+    }
 
-        // Scroll TOC to keep active item visible
-        var tocContainer = document.getElementById('sidebar-toc');
-        var itemTop = firstVisible.tocItem.offsetTop;
-        var containerHeight = tocContainer.clientHeight;
-        var scrollTop = tocContainer.scrollTop;
-        if (itemTop < scrollTop + 60 || itemTop > scrollTop + containerHeight - 40) {
-          tocContainer.scrollTop = itemTop - containerHeight / 3;
-        }
-      }
-    }, {
-      rootMargin: '-5% 0px -70% 0px',
-      threshold: 0
-    });
-
-    sections.forEach(function(s) { observer.observe(s.el); });
+    var tocContainer = document.getElementById('sidebar-toc');
+    var itemTop = best.tocItem.offsetTop;
+    var containerHeight = tocContainer.clientHeight;
+    var scrollTop = tocContainer.scrollTop;
+    if (itemTop < scrollTop + 60 || itemTop > scrollTop + containerHeight - 40) {
+      tocContainer.scrollTop = itemTop - containerHeight / 3;
+    }
   }
+
+  window.addEventListener('scroll', function() {
+    if (!scrollTicking) {
+      requestAnimationFrame(updateActiveSection);
+      scrollTicking = true;
+    }
+  }, { passive: true });
+  updateActiveSection();
 
   // --- Search ---
   var searchInput = document.getElementById('search-input');

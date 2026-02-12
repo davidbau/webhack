@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>A Traveler's Guide to the Mazes of Menace — Essential Secrets</title>
+  <title>The Traveler's Companion to the Mazes of Menace</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Source+Code+Pro:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
@@ -21,8 +21,8 @@
   <div id="search-index"></div>
 </aside>
 <main id="guide-content">
-<section id="a-travelers-guide-to-the-mazes-of-menace" class="level1">
-<h1>A Traveler’s Guide to the <span class="nobr">Mazes of Menace</span></h1>
+<section id="the-travelers-companion-to-the-mazes-of-menace" class="level1">
+<h1>The Traveler’s Companion to the <span class="nobr">Mazes of Menace</span></h1>
 <p style="text-align: center; font-style: italic; margin: 1.5em 0;">
 Do not read this guide aloud. The dungeon is listening.
 </p>
@@ -4179,7 +4179,7 @@ Do not read this guide aloud. The dungeon is listening.
 <p>This is what a community looks like over decades. People writing things down so that others don’t have to die the same stupid death. It’s generous, it’s nerdy, and it’s one of the best things about NetHack.</p>
 <p>All data in this guide has been verified against the current game source code. Any errors are ours alone.</p>
 <hr />
-<p><em>A Traveler’s Guide to the Mazes of Menace</em> <em>First Edition</em></p>
+<p><em>The Traveler’s Companion to the Mazes of Menace</em> <em>First Edition</em></p>
 <p><em>This work is licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.</em></p>
 </section>
 </section>
@@ -4208,64 +4208,53 @@ Do not read this guide aloud. The dungeon is listening.
     tocItems.push({ el: li, id: id, heading: h });
   });
 
-  // --- Scroll tracking via IntersectionObserver ---
+  // --- Scroll tracking ---
+  // Highlight the last section whose top is above 200px from viewport top.
+  // This correctly picks subsections (h3) over their parent (h2) once
+  // the subsection heading has scrolled into the upper portion of the page.
   var currentActive = null;
+  var sections = [];
+  tocItems.forEach(function(item) {
+    var target = document.getElementById(item.id);
+    if (target) sections.push({ id: item.id, el: target, tocItem: item.el });
+  });
 
-  if ('IntersectionObserver' in window) {
-    var sections = [];
-    tocItems.forEach(function(item) {
-      var target = document.getElementById(item.id);
-      if (target) sections.push({ id: item.id, el: target, tocItem: item.el });
-    });
-
-    // Track which sections are visible
-    var visibleSections = new Set();
-
-    var observer = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        var id = entry.target.id;
-        if (entry.isIntersecting) {
-          visibleSections.add(id);
-        } else {
-          visibleSections.delete(id);
-        }
-      });
-
-      // Find the first visible section in document order
-      var firstVisible = null;
-      for (var i = 0; i < sections.length; i++) {
-        if (visibleSections.has(sections[i].id)) {
-          firstVisible = sections[i];
-          break;
-        }
+  var scrollTicking = false;
+  function updateActiveSection() {
+    scrollTicking = false;
+    var scrollLine = 100;
+    var best = null;
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i].el.getBoundingClientRect().top <= scrollLine) {
+        best = sections[i];
       }
+    }
+    if (!best || best.tocItem === currentActive) return;
 
-      if (firstVisible) {
-        if (currentActive) currentActive.classList.remove('active');
-        firstVisible.tocItem.classList.add('active');
-        currentActive = firstVisible.tocItem;
+    if (currentActive) currentActive.classList.remove('active');
+    best.tocItem.classList.add('active');
+    currentActive = best.tocItem;
 
-        // Update URL hash to reflect current section
-        if (history.replaceState) {
-          history.replaceState(null, '', '#' + firstVisible.id);
-        }
+    if (history.replaceState) {
+      history.replaceState(null, '', '#' + best.id);
+    }
 
-        // Scroll TOC to keep active item visible
-        var tocContainer = document.getElementById('sidebar-toc');
-        var itemTop = firstVisible.tocItem.offsetTop;
-        var containerHeight = tocContainer.clientHeight;
-        var scrollTop = tocContainer.scrollTop;
-        if (itemTop < scrollTop + 60 || itemTop > scrollTop + containerHeight - 40) {
-          tocContainer.scrollTop = itemTop - containerHeight / 3;
-        }
-      }
-    }, {
-      rootMargin: '-5% 0px -70% 0px',
-      threshold: 0
-    });
-
-    sections.forEach(function(s) { observer.observe(s.el); });
+    var tocContainer = document.getElementById('sidebar-toc');
+    var itemTop = best.tocItem.offsetTop;
+    var containerHeight = tocContainer.clientHeight;
+    var scrollTop = tocContainer.scrollTop;
+    if (itemTop < scrollTop + 60 || itemTop > scrollTop + containerHeight - 40) {
+      tocContainer.scrollTop = itemTop - containerHeight / 3;
+    }
   }
+
+  window.addEventListener('scroll', function() {
+    if (!scrollTicking) {
+      requestAnimationFrame(updateActiveSection);
+      scrollTicking = true;
+    }
+  }, { passive: true });
+  updateActiveSection();
 
   // --- Search ---
   var searchInput = document.getElementById('search-input');

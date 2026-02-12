@@ -1,4 +1,4 @@
-# A Traveler's Guide to the <span class="nobr">Mazes of Menace</span>
+# The Traveler's Companion to the <span class="nobr">Mazes of Menace</span>
 
 <p style="text-align: center; font-style: italic; margin: 1.5em 0;">Do not read this guide aloud. The dungeon is listening.</p>
 
@@ -4967,7 +4967,7 @@ source code. Any errors are ours alone.
 
 ---
 
-*A Traveler's Guide to the Mazes of Menace*
+*The Traveler's Companion to the Mazes of Menace*
 *First Edition*
 
 *This work is licensed under

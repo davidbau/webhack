@@ -461,10 +461,10 @@ use? [a-zA-Z ?*]”, asks you to choose an object you are carrying.
 Here, `a-zA-Z` are the inventory letters of your possible choices.
 Typing `?` gives you an inventory list of these items, so you can see
 what each letter refers to.
-In this example, there is also a ‘*’
+In this example, there is also a `*`
 indicating that you may choose an object not on the list, if you
 wanted to use something unexpected.
-Typing a ‘*’ lists your entire
+Typing a `*` lists your entire
 inventory, so you can see the inventory letters of every object you're
 carrying.
 Finally, if you change your mind and decide you don't want
@@ -1370,7 +1370,7 @@ manually edited the config file, don't use this.
 Default key is `s`.
 
 `#seeall`    Show all equipment in use.
-Default key is ‘*’.
+Default key is `*`.
 Will display in-use items in a menu even when there is only one.
 
 `#seeamulet`    Show the amulet currently worn.
@@ -2423,7 +2423,7 @@ The commands to use weapons are `w` (wield), `t` (throw),
 
 You can throw just about anything via the `t` command.  It will prompt
 for the item to throw; picking `?` will list things in your inventory
-which are considered likely to be thrown, or picking ‘*’ will list
+which are considered likely to be thrown, or picking `*` will list
 your entire inventory.
 After you've chosen what to throw, you will
 be prompted for a direction rather than for a specific target.
@@ -2910,7 +2910,7 @@ armor can be used for amulets and other accessories (rings and eyewear),
 but accessories won't be shown as likely candidates in a prompt for
 choosing what to wear or take off.
 
-### 7.14. Gems (‘*’)
+### 7.14. Gems (`*`)
 
 Some gems are valuable, and can be sold for a lot of gold.
 They are also a far more efficient way of carrying your riches.
@@ -2921,7 +2921,7 @@ valuable.
 All rocks, however, can be used as projectile weapons (if you have a sling).
 In the most desperate of cases, you can still throw them by hand.
 
-### 7.15. Large rocks (‘`’)
+### 7.15. Large rocks (`` ` ``)
 
 Statues and boulders are not particularly useful, and are generally heavy.
 It is rumored that some statues are not what they seem.
@@ -3546,7 +3546,7 @@ Persistent.
 Persistent.
 
 `boulder`    Set the character used to display boulders (default is the `large rock`
-class symbol, ‘`’).
+class symbol, `` ` ``).
 
 `catname`    Name your starting cat (for example `catname:Morris`).
 Cannot be set with the ‘`O`’ command.
@@ -4883,7 +4883,7 @@ Default is `!`.
 `getpos.moveskip`    When asked for a location, and using the shifted movement keys or meta-digit
 keys to fast-move around, move by skipping the same glyphs instead of
 by 8 units.
-Default is ‘*’.
+Default is `*`.
 
 `getpos.filter`    When asked for a location, change the filtering mode when using one of
 the next or previous keys to cycle through targets.

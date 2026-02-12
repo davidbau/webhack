@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build script for "A Traveler's Guide to the Mazes of Menace"
+# Build script for "The Traveler's Companion to the Mazes of Menace"
 # Converts guide.md → index.html → guide.pdf
 set -euo pipefail
 
