@@ -21,42 +21,33 @@ else
   echo "✅ Hooks configured: .githooks"
 fi
 
-# Check if auto-fetch is configured
-if git config --local --get-all remote.origin.fetch | grep -q "refs/notes/"; then
-  echo "✅ Auto-fetch for notes already configured"
-else
-  echo "Configuring auto-fetch for notes..."
-  git config --local --add remote.origin.fetch '+refs/notes/*:refs/notes/*'
-  echo "✅ Auto-fetch configured for notes"
-fi
+# Clean up any stale notes fetch/push refspecs before adding correct ones
+echo "Configuring notes fetch/push..."
+git config --local --unset-all remote.origin.fetch '+refs/notes.*' 2>/dev/null || true
+git config --local --unset-all remote.origin.push '.*refs/notes.*' 2>/dev/null || true
+# Also clean push refspec for heads if we previously set it
+git config --local --unset-all remote.origin.push 'refs/heads.*' 2>/dev/null || true
 
-# Check if auto-push is configured
-if git config --local --get-all remote.origin.push | grep -q "refs/notes/"; then
-  echo "✅ Auto-push for notes already configured"
-else
-  echo "Configuring auto-push for all refs..."
-  git config --local remote.origin.push "refs/heads/*:refs/heads/*"
-  git config --local --add remote.origin.push "refs/notes/*:refs/notes/*"
-  echo "✅ Auto-push configured for branches and notes"
-fi
+# Fetch notes directly with force (remote wins on conflict)
+git config --local --add remote.origin.fetch '+refs/notes/*:refs/notes/*'
+echo "✅ Auto-fetch for notes configured (remote-over-local)"
+
+# Push notes with force to keep remote up to date
+git config --local --add remote.origin.push '+refs/notes/test-results:refs/notes/test-results'
+echo "✅ Auto-push for notes configured"
 
 # Configure notes rewriting on rebase
-if git config --local notes.rewriteRef | grep -q "refs/notes/"; then
-  echo "✅ Notes rewriting already configured"
-else
-  echo "Configuring notes to survive rebases..."
-  git config notes.rewriteRef refs/notes/*
-  echo "✅ Notes rewriting configured"
-fi
+git config --local notes.rewriteRef 'refs/notes/*'
+echo "✅ Notes rewriting configured"
 
 # Make sure all scripts are executable
 echo "Ensuring all hook scripts are executable..."
 chmod +x .githooks/*.sh .githooks/pre-* 2>/dev/null || true
 echo "✅ Scripts are executable"
 
-# Fetch notes if they exist
+# Fetch notes from remote (force-overwrites local with remote)
 echo "Fetching notes from remote..."
-if git fetch origin 'refs/notes/*:refs/notes/*' 2>/dev/null; then
+if git fetch origin 2>/dev/null; then
   echo "✅ Notes fetched"
 
   # Rebuild dashboard from notes
@@ -66,7 +57,7 @@ if git fetch origin 'refs/notes/*:refs/notes/*' 2>/dev/null; then
     echo "✅ Dashboard rebuilt"
   fi
 else
-  echo "ℹ️  No test notes found on remote (this is normal for new repositories)"
+  echo "ℹ️  Could not fetch from remote"
 fi
 
 echo ""

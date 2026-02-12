@@ -12,9 +12,10 @@ echo ""
 
 # Configure automatic fetch/push of notes
 echo "📝 Configuring git to sync notes..."
-git config --add remote.origin.fetch '+refs/notes/test-results:refs/notes/test-results' 2>/dev/null || true
-git config --add remote.origin.push '+refs/notes/test-results:refs/notes/test-results' 2>/dev/null || true
-git config notes.rewriteRef refs/notes/test-results
+# Fetch with force (remote-over-local); push with force to keep remote updated
+git config --local --add remote.origin.fetch '+refs/notes/*:refs/notes/*' 2>/dev/null || true
+git config --local --add remote.origin.push '+refs/notes/test-results:refs/notes/test-results' 2>/dev/null || true
+git config --local notes.rewriteRef 'refs/notes/*'
 
 echo "✅ Git notes sync configured"
 echo ""
@@ -60,7 +61,7 @@ if [ -f "$RESULTS_FILE" ] && [ -s "$RESULTS_FILE" ]; then
   fi
 fi
 
-# Fetch notes from remote if they exist
+# Fetch notes from remote (force-overwrites local with remote)
 echo "Fetching notes from remote..."
 git fetch origin refs/notes/test-results:refs/notes/test-results 2>/dev/null && \
   echo "✅ Fetched notes from remote" || \
