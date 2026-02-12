@@ -70,6 +70,23 @@ export async function rhack(ch, game) {
 
     // Period = wait/search
     if (c === '.' || c === 's') {
+        // C ref: do.c cmd_safety_prevention() — prevent wait/search when hostile adjacent
+        // Gated on flags.safe_wait (default true) and !multi (always 0 for non-counted)
+        if (game && game.flags && game.flags.safe_wait && !game.menuRequested) {
+            let monNearby = false;
+            for (let dx = -1; dx <= 1 && !monNearby; dx++) {
+                for (let dy = -1; dy <= 1 && !monNearby; dy++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const mon = map.monsterAt(player.x + dx, player.y + dy);
+                    if (mon && !mon.dead && !mon.tame && !mon.peaceful) {
+                        monNearby = true;
+                    }
+                }
+            }
+            if (monNearby) {
+                return { moved: false, tookTime: false };
+            }
+        }
         // C ref: cmd.c -- '.' is rest, 's' is search
         if (c === 's') {
             display.putstr_message('You search...');
