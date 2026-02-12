@@ -242,7 +242,7 @@ QUEST_ROLE_BY_PREFIX = {
 }
 
 
-def wizard_teleport_to_level(session, level_name, verbose):
+def wizard_teleport_to_level(session, level_name, verbose, branch_name=None, allow_branch_fallback=False):
     """Use Ctrl+V ? menu to teleport to a named level.
 
     Name-based teleport only works within the current branch, so this uses
@@ -279,6 +279,7 @@ def wizard_teleport_to_level(session, level_name, verbose):
 
     # Scan menu pages to find the target level
     target_key = None
+    branch_key = None
     for page in range(5):  # max 5 pages
         time.sleep(0.5)
         try:
@@ -303,6 +304,10 @@ def wizard_teleport_to_level(session, level_name, verbose):
                 if verbose:
                     print(f'  [menu] Found "{level_name}" → key "{target_key}" in: {line}')
                 break
+            if allow_branch_fallback and branch_name and branch_key is None:
+                mb = re.match(r'^([a-zA-Z])\s+-\s+.*' + re.escape(branch_name) + r':', line)
+                if mb:
+                    branch_key = mb.group(1)
             # Also match "knox: 20" without letter (Fort Ludios has no letter sometimes)
             # and branch entries like "Stair to Sokoban: 10"
 
@@ -318,6 +323,11 @@ def wizard_teleport_to_level(session, level_name, verbose):
             tmux_send_special(session, 'Space', 0.3)
         else:
             break
+
+    if not target_key and allow_branch_fallback and branch_key:
+        target_key = branch_key
+        if verbose:
+            print(f'  [menu] Falling back to branch "{branch_name}" via key "{target_key}"')
 
     if not target_key:
         if verbose:
@@ -368,6 +378,170 @@ def wizard_teleport_to_level(session, level_name, verbose):
 
     time.sleep(0.3)
     return True
+
+
+def _extract_dlvl(content):
+    m = re.search(r'\bDlvl:(\d+)\b', content or '')
+    return int(m.group(1)) if m else None
+
+
+def wizard_level_teleport_depth(session, target_depth, verbose):
+    """Use wizard mode Ctrl+V to teleport to an absolute dungeon depth."""
+    if verbose:
+        print(f'  [teleport] Numeric teleport to Dlvl:{target_depth}')
+
+    tmux_send_special(session, 'C-v', 0.3)
+
+    for _ in range(30):
+        try:
+            content = tmux_capture(session)
+        except subprocess.CalledProcessError:
+            return False
+        if '--More--' in content:
+            tmux_send_special(session, 'Space', 0.2)
+            continue
+        if 'To what level' in content or 'what level' in content.lower():
+            tmux_send(session, str(target_depth), 0.2)
+            tmux_send_special(session, 'Enter', 0.5)
+            break
+        time.sleep(0.1)
+    else:
+        if verbose:
+            print('  [teleport] WARNING: did not receive numeric level prompt')
+        return False
+
+    for _ in range(50):
+        try:
+            content = tmux_capture(session)
+        except subprocess.CalledProcessError:
+            return False
+        if '--More--' in content:
+            tmux_send_special(session, 'Space', 0.2)
+            continue
+        dlvl = _extract_dlvl(content)
+        if dlvl == target_depth:
+            if verbose:
+                print(f'  [teleport] Arrived at Dlvl:{dlvl}')
+            return True
+        time.sleep(0.1)
+
+    if verbose:
+        print(f'  [teleport] WARNING: did not confirm arrival at Dlvl:{target_depth}')
+    return False
+
+
+def _open_wizlevel_menu(session):
+    tmux_send_special(session, 'C-v', 0.3)
+    for _ in range(30):
+        content = tmux_capture(session)
+        if '--More--' in content:
+            tmux_send_special(session, 'Space', 0.2)
+            continue
+        if 'To what level' in content:
+            break
+        time.sleep(0.1)
+    else:
+        return False
+    tmux_send(session, '?', 0.2)
+    tmux_send_special(session, 'Enter', 0.5)
+    return True
+
+
+def wizard_teleport_to_branch_stair(session, branch_name, verbose):
+    """Teleport to the branch stair entry line shown in wizard level menu."""
+    if verbose:
+        print(f'  [teleport] Looking for branch stair to "{branch_name}"')
+    if not _open_wizlevel_menu(session):
+        if verbose:
+            print('  [teleport] WARNING: failed to open level menu')
+        return None
+
+    target_key = None
+    stair_depth = None
+    branch_pat = re.compile(
+        r'^([a-zA-Z])\s+-\s+[*]?\s*(?:One way\s+)?Stair to '
+        + re.escape(branch_name)
+        + r':\s*(\d+)'
+    )
+
+    for _ in range(8):
+        content = tmux_capture(session)
+        for raw in content.split('\n'):
+            line = raw.strip()
+            m = branch_pat.match(line)
+            if m:
+                target_key = m.group(1)
+                stair_depth = int(m.group(2))
+                if verbose:
+                    print(f'  [menu] Branch stair key "{target_key}" depth {stair_depth}')
+                break
+        if target_key:
+            break
+        if '(end)' in content:
+            break
+        if re.search(r'\(\d+ of \d+\)', content):
+            tmux_send_special(session, 'Space', 0.2)
+        else:
+            break
+
+    if not target_key:
+        tmux_send_special(session, 'Escape', 0.2)
+        if verbose:
+            print(f'  [teleport] WARNING: branch stair for "{branch_name}" not found')
+        return None
+
+    tmux_send(session, target_key, 0.3)
+    for _ in range(40):
+        content = tmux_capture(session)
+        if '--More--' in content:
+            tmux_send_special(session, 'Space', 0.2)
+            continue
+        if _extract_dlvl(content) is not None:
+            break
+        time.sleep(0.1)
+    return stair_depth
+
+
+def capture_filler_level(session, level_name, verbose):
+    """Capture filler levels via branch-aware movement + numeric teleport."""
+    if level_name == 'minefill':
+        stair_depth = wizard_teleport_to_branch_stair(session, 'The Gnomish Mines', verbose)
+        if stair_depth is None:
+            return False
+
+        # Enter the branch from the branch stair location.
+        tmux_send(session, '>', 0.5)
+        for _ in range(30):
+            content = tmux_capture(session)
+            if '--More--' in content:
+                tmux_send_special(session, 'Space', 0.2)
+                continue
+            dlvl = _extract_dlvl(content)
+            if dlvl is not None:
+                break
+            time.sleep(0.1)
+        else:
+            return False
+
+        # Mines filler is branch level 3; after entering branch at level 1,
+        # jump two absolute depths deeper.
+        target_depth = dlvl + 2
+        return wizard_level_teleport_depth(session, target_depth, verbose)
+
+    if level_name == 'hellfill':
+        # Valley is Gehennom branch level 1 and is always named in menu.
+        if not wizard_teleport_to_level(session, 'valley', verbose):
+            return False
+        content = tmux_capture(session)
+        dlvl = _extract_dlvl(content)
+        if dlvl is None:
+            return False
+
+        # Gehennom filler target: branch level 2 (one deeper than valley).
+        target_depth = dlvl + 1
+        return wizard_level_teleport_depth(session, target_depth, verbose)
+
+    return False
 
 
 def parse_dumpmap(dumpmap_file):
@@ -422,6 +596,7 @@ def generate_group(group_name, seeds, verbose=False):
                 f'NETHACKDIR={INSTALL_DIR} '
                 f'NETHACK_SEED={seed} '
                 f'NETHACK_DUMPMAP={dumpmap_file} '
+                f"{('NETHACK_RNGLOG=' + os.environ['NETHACK_RNGLOG'] + ' ') if os.environ.get('NETHACK_RNGLOG') else ''}"
                 f'HOME={RESULTS_DIR} '
                 f'TERM=xterm-256color '
                 f'{NETHACK_BINARY} -u Wizard -D; '
@@ -442,7 +617,19 @@ def generate_group(group_name, seeds, verbose=False):
                     print(f"  Teleporting to {level_name}...")
 
                     # Teleport to the level
-                    wizard_teleport_to_level(session_name, level_name, verbose)
+                    if group_name == 'filler':
+                        ok = capture_filler_level(session_name, level_name, verbose)
+                    else:
+                        ok = wizard_teleport_to_level(
+                            session_name,
+                            level_name,
+                            verbose,
+                            branch_name=level_def.get('branch'),
+                            allow_branch_fallback=bool(level_def.get('allowBranchFallback')),
+                        )
+                    if not ok:
+                        print(f"  WARNING: teleport failed for {level_name}, skipping capture")
+                        continue
 
                     # Clean previous dumpmap
                     if os.path.exists(dumpmap_file):
@@ -458,8 +645,11 @@ def generate_group(group_name, seeds, verbose=False):
                         continue
 
                     grid = parse_dumpmap(dumpmap_file)
-                    if len(grid) != 21:
-                        print(f"  WARNING: {level_name} has {len(grid)} rows (expected 21)")
+                    if len(grid) != 21 or any(len(row) != 80 for row in grid):
+                        rows = len(grid)
+                        cols = len(grid[0]) if rows else 0
+                        print(f"  WARNING: {level_name} has shape {rows}x{cols} (expected 21x80), skipping capture")
+                        continue
 
                     level_data = {
                         'levelName': level_name,
