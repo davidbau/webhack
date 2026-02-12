@@ -99,12 +99,12 @@ export async function rhack(ch, game) {
 
     // Open door
     if (c === 'o') {
-        return await handleOpen(player, map, display);
+        return await handleOpen(player, map, display, game);
     }
 
     // Close door
     if (c === 'c') {
-        return await handleClose(player, map, display);
+        return await handleClose(player, map, display, game);
     }
 
     // Inventory
@@ -187,7 +187,7 @@ export async function rhack(ch, game) {
 
     // Kick (Ctrl+D)
     if (ch === 4) {
-        return await handleKick(player, map, display);
+        return await handleKick(player, map, display, game);
     }
 
     // Previous messages (Ctrl+P)
@@ -761,7 +761,7 @@ async function handleUpstairs(player, map, display, game) {
 
 // Handle opening a door
 // C ref: do.c doopen()
-async function handleOpen(player, map, display) {
+async function handleOpen(player, map, display, game) {
     display.putstr_message('In what direction?');
     const dirCh = await nhgetch();
     const c = String.fromCharCode(dirCh);
@@ -813,7 +813,7 @@ async function handleOpen(player, map, display) {
 
 // Handle closing a door
 // C ref: do.c doclose()
-async function handleClose(player, map, display) {
+async function handleClose(player, map, display, game) {
     display.putstr_message('In what direction?');
     const dirCh = await nhgetch();
     const c = String.fromCharCode(dirCh);
@@ -1209,7 +1209,7 @@ function handleLook(player, map, display) {
 
 // Handle kicking
 // C ref: dokick.c dokick()
-async function handleKick(player, map, display) {
+async function handleKick(player, map, display, game) {
     display.putstr_message('In what direction?');
     const dirCh = await nhgetch();
     const c = String.fromCharCode(dirCh);
