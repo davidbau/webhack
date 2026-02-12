@@ -18,23 +18,21 @@ export function generate() {
 
     des.level_init({ style: "mines", fg: ".", bg: "I", smoothed: true, joined: false, lit: 1, walled: false });
 
-    des.map(`
-
-    PPPPxxxx                      xxxxPPPPPx
-    PLPxxx                          xPPLLLPP
-    PPP    .......................    PPPLLP
-    xx   ............................   PPPP
-    x  ...............................  xxxx
-      .................................   xx
-    ....................................   x
-      ...................................   
-    x  ..................................  x
-    xx   ..............................   PP
-    xPPP  ..........................     PLP
-    xPLLP                             xxPLLP
-    xPPPPxx                         xxxxPPPP
-
-    `);
+    des.map(`\
+PPPPxxxx                      xxxxPPPPPx
+PLPxxx                          xPPLLLPP
+PPP    .......................    PPPLLP
+xx   ............................   PPPP
+x  ...............................  xxxx
+  .................................   xx
+....................................   x
+  ...................................   
+x  ..................................  x
+xx   ..............................   PP
+xPPP  ..........................     PLP
+xPLLP                             xxPLLP
+xPPPPxx                         xxxxPPPP
+`);
     // Dungeon Description
     des.region(selection.area(0,0,39,12), "lit");
     // Stairs

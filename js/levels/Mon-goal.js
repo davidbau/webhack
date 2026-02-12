@@ -19,24 +19,22 @@ export function generate() {
 
     des.level_init({ style: "mines", fg: "L", bg: ".", smoothed: false, joined: false, lit: 0, walled: false });
 
-    des.map(`
-
-    xxxxxx..xxxxxx...xxxxxxxxx
-    xxxx......xx......xxxxxxxx
-    xx.xx.............xxxxxxxx
-    x....................xxxxx
-    ......................xxxx
-    ......................xxxx
-    xx........................
-    xxx......................x
-    xxx................xxxxxxx
-    xxxx.....x.xx.......xxxxxx
-    xxxxx...xxxxxx....xxxxxxxx
-
-    `);
+    des.map(`\
+xxxxxx..xxxxxx...xxxxxxxxx
+xxxx......xx......xxxxxxxx
+xx.xx.............xxxxxxxx
+x....................xxxxx
+......................xxxx
+......................xxxx
+xx........................
+xxx......................x
+xxx................xxxxxxx
+xxxx.....x.xx.......xxxxxx
+xxxxx...xxxxxx....xxxxxxxx
+`);
     // Dungeon Description
     let place = [ [14,4],[13,7] ]
-    let placeidx = rn2(place.length);
+    let placeidx = (rn2((place.length) - (1) + 1) + (1));
 
     des.region(selection.area(0,0,25,10), "unlit");
     // Stairs

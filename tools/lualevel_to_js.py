@@ -19,7 +19,7 @@ class SimpleLuaConverter:
     def __init__(self):
         self.imports_needed = set(['des'])
         # Files that are not level generators and should be skipped or handled differently
-        self.skip_files = {'nhcore', 'nhlib', 'quest'}  # Library/data files, not level generators
+        self.skip_files = {'nhcore', 'nhlib', 'quest', 'dungeon', 'themerms'}  # Library/data files, not level generators
         # Files where object shorthand conversion (Fix 2: = to :) causes problems
         self.skip_shorthand_conversion = set()  # Currently none - using postprocessing fixes instead
 
@@ -44,27 +44,6 @@ class SimpleLuaConverter:
                 if i >= 0 and lines[i].strip() == 'end':
                     lines[i] = '-- removed extra end'
             lua_content = '\n'.join(lines)
-
-        # minend-3, minetn-5, minetn-6, orcus: Similar issue
-        if basename in ['minend-3', 'minetn-5', 'minetn-6', 'orcus']:
-            # Count 'for' and 'function' vs 'end' to balance
-            for_count = lua_content.count('for ')
-            func_count = lua_content.count('function ')
-            if_count = lua_content.count(' if ')
-            expected_ends = for_count + func_count + if_count
-            actual_ends = lua_content.count('\nend')
-
-            if actual_ends > expected_ends:
-                # Remove extra ends from the end of file
-                lines = lua_content.split('\n')
-                ends_to_remove = actual_ends - expected_ends
-                for i in range(len(lines) - 1, -1, -1):
-                    if ends_to_remove <= 0:
-                        break
-                    if lines[i].strip() == 'end':
-                        lines[i] = '-- removed extra end'
-                        ends_to_remove -= 1
-                lua_content = '\n'.join(lines)
 
         # themerms: Fix function declaration inside if statement
         if basename == 'themerms':
@@ -154,6 +133,22 @@ class SimpleLuaConverter:
         js = js.replace('__VARARGS__', '...args')
 
         # Step 16: Convert math functions
+        # math.random(a, b) => rn2((b) - (a) + 1) + a  (inclusive)
+        def replace_math_random_range(m):
+            self.imports_needed.add('rn2')
+            a = m.group(1).strip()
+            b = m.group(2).strip()
+            return f'(rn2(({b}) - ({a}) + 1) + ({a}))'
+        js = re.sub(r'\bmath\.random\s*\(\s*([^,()]+?)\s*,\s*([^)]+?)\s*\)', replace_math_random_range, js)
+
+        # math.random(n) => rnd(n)
+        def replace_math_random_single(m):
+            self.imports_needed.add('rnd')
+            n = m.group(1).strip()
+            return f'rnd({n})'
+        js = re.sub(r'\bmath\.random\s*\(\s*([^)]+?)\s*\)', replace_math_random_single, js)
+
+        # Remaining zero-arg cases keep native random.
         js = re.sub(r'\bmath\.random\b', 'Math.random', js)
         js = re.sub(r'\bmath\.floor\b', 'Math.floor', js)
         js = re.sub(r'\bmath\.ceil\b', 'Math.ceil', js)
@@ -164,11 +159,18 @@ class SimpleLuaConverter:
         # Step 17: Convert arrays (recursive for nested)
         js = self._convert_arrays(js)
 
+        # Step 17b: Convert Lua 1-based table indexing to JS 0-based where safe
+        js = self._convert_lua_indexing(js)
+
         # Step 18: Fix octal literals (08 -> 8, 09 -> 9)
         js = re.sub(r'\b0([0-9])\b', r'\1', js)
 
         # Step 19: Add semicolons to des.* calls
         js = self._add_semicolons(js)
+
+        # hellfill defines hell_tweaks itself; avoid self-import.
+        if Path(filename).stem == 'hellfill':
+            self.imports_needed.discard('hell_tweaks')
 
         # Step 20: Wrap in module structure (before restoring long strings,
         # so map content doesn't get indented by _wrap_module)
@@ -178,7 +180,13 @@ class SimpleLuaConverter:
         # lines stay at column 0 matching C's Lua [[...]] strings)
         for i, content in enumerate(protected_strings):
             placeholder = f'__LONGSTRING_{i}__'
-            js = js.replace(f'`{placeholder}`', f'`{content}\n`')
+            if content.startswith('\n'):
+                # Use line-continuation after opening backtick to avoid an
+                # extra leading newline in generated template literals.
+                rendered = f'`\\\n{content[1:]}`'
+            else:
+                rendered = f'`{content}`'
+            js = js.replace(f'`{placeholder}`', rendered)
 
         # Step 22: Postprocessing fixes for problematic files
         js = self._postprocess_fixes(js, filename)
@@ -211,12 +219,23 @@ class SimpleLuaConverter:
             self.imports_needed.add('selection')
         if re.search(r'\bshuffle\s*\(', js):
             self.imports_needed.add('shuffle')
+        if re.search(r'\bnh\.', js):
+            self.imports_needed.add('nh')
+        if re.search(r'\bu\.', js):
+            self.imports_needed.add('u')
+        if re.search(r'\bmonkfoodshop\s*\(', js):
+            self.imports_needed.add('monkfoodshop')
+        if re.search(r'\balign\s*\[', js):
+            self.imports_needed.add('align_consts')
+            self.imports_needed.add('shuffle')
         if re.search(r'\brn2\s*\(', js):
             self.imports_needed.add('rn2')
         if re.search(r'\brnd\s*\(', js):
             self.imports_needed.add('rnd')
         if re.search(r'\bd\s*\(', js):
             self.imports_needed.add('d')
+        if re.search(r'\bhell_tweaks\s*\(', js):
+            self.imports_needed.add('hell_tweaks')
 
     def _convert_for_loops(self, js):
         """Convert Lua for loops to JavaScript, handling complex expressions."""
@@ -239,7 +258,12 @@ class SimpleLuaConverter:
                     end = parts[1].strip()
                     step = parts[2].strip() if len(parts) > 2 else '1'
 
-                    if step == '1':
+                    # Lua idiom: for i = 1, #arr do  -> JS: for (let i = 0; i < arr.length; i++)
+                    # Keep i as zero-based so arr[i] works naturally after conversion.
+                    if step == '1' and start == '1' and end.startswith('#'):
+                        arr = end[1:].strip()
+                        result.append(f'{indent}for (let {var} = 0; {var} < {arr}.length; {var}++) {{')
+                    elif step == '1':
                         result.append(f'{indent}for (let {var} = {start}; {var} <= {end}; {var}++) {{')
                     else:
                         result.append(f'{indent}for (let {var} = {start}; {var} <= {end}; {var} += {step}) {{')
@@ -313,6 +337,37 @@ class SimpleLuaConverter:
         # Array/string length
         js = re.sub(r'#(\w+)', r'\1.length', js)
 
+        return js
+
+    def _convert_lua_indexing(self, js):
+        """Convert common Lua 1-based indexing patterns to JS 0-based indexing."""
+        # arr[math.random(1, #arr)] -> arr[rn2(arr.length)]
+        # This is the highest-signal pattern for converted Lua tables.
+        pattern_random_idx = re.compile(
+            r'(\b[A-Za-z_][\w.]*)\s*\[\s*Math\.random\s*\(\s*1\s*,\s*([A-Za-z_][\w.]*)\.length\s*\)\s*\]'
+        )
+        if pattern_random_idx.search(js):
+            self.imports_needed.add('rn2')
+            js = pattern_random_idx.sub(r'\1[rn2(\2.length)]', js)
+
+        # arr[(rn2((arr.length) - (1) + 1) + (1))] -> arr[rn2(arr.length)]
+        # This comes from math.random(1, #arr) after expression conversion.
+        pattern_rn2_plus_one_idx = re.compile(
+            r'(\b[A-Za-z_][\w.]*)\s*\[\s*\(?\s*rn2\s*\(\s*\(\s*([A-Za-z_][\w.]*)\.length\s*\)\s*-\s*\(\s*1\s*\)\s*\+\s*1\s*\)\s*\+\s*\(\s*1\s*\)\s*\)?\s*\]'
+        )
+        if pattern_rn2_plus_one_idx.search(js):
+            self.imports_needed.add('rn2')
+            js = pattern_rn2_plus_one_idx.sub(r'\1[rn2(\2.length)]', js)
+
+        # obj[1] -> obj[0], obj[2] -> obj[1], etc.
+        # Restrict to direct identifier/member expressions to avoid touching array literals.
+        def dec_literal_index(match):
+            base = match.group(1)
+            idx = int(match.group(2))
+            return f'{base}[{idx - 1}]'
+
+        js = re.sub(r'(\b[A-Za-z_][\w.]*)\s*\[\s*([1-9]\d*)\s*\]', dec_literal_index, js)
+        js = re.sub(r'(\b[A-Za-z_][\w.()]*?)\s*\|\s*(\b[A-Za-z_][\w.()]*\b)', r'\1.union(\2)', js)
         return js
 
     def _convert_arrays(self, js):
@@ -472,31 +527,34 @@ class SimpleLuaConverter:
         js = re.sub(r'(\[ [^\]]+\"\[\"+[^\]]*\])(\])', r'\1', js)
         js = re.sub(r'(\[ [^\]]+\"\{"+[^\]]*\])(\])', r'\1', js)
 
-        # Fix 2: Fix object shorthand initializers (= should be :)
-        # In object literals, convert base = -1 to base: -1
-        # Skip for files where this causes problems with variable declarations in function bodies
-        if basename not in self.skip_shorthand_conversion:
-            lines = js.split('\n')
-            result_lines = []
-            in_object = 0
-            for line in lines:
-                # Track object depth
-                in_object += line.count('{') - line.count('}')
+        # Fix 1b: Add missing declarations for first-time bare assignments
+        # (e.g., "place = selection.new();") while preserving reassignments.
+        lines = js.split('\n')
+        seen = set()
+        fixed_lines = []
+        decl_pat = re.compile(r'^\s*(?:let|const|var)\s+([A-Za-z_]\w*)')
+        bare_assign_pat = re.compile(r'^(\s*)([A-Za-z_]\w*)\s*=\s*(.+)$')
+        for line in lines:
+            decl_match = decl_pat.match(line)
+            if decl_match:
+                seen.add(decl_match.group(1))
+                fixed_lines.append(line)
+                continue
 
-                # If inside an object and line has standalone = (not in strings/===/!=)
-                if in_object > 0 and '=' in line and ':' not in line:
-                    # Check if it's an assignment not a comparison
-                    stripped = line.strip()
-                    if (re.match(r'^\w+\s*=\s*[^=]', stripped) and
-                        not stripped.startswith('let ') and
-                        not stripped.startswith('const ') and
-                        not '===' in stripped and
-                        not '!==' in stripped):
-                        # Convert first = to :
-                        line = re.sub(r'(\w+)\s*=\s*', r'\1: ', line, count=1)
+            assign_match = bare_assign_pat.match(line)
+            if assign_match:
+                indent, name, rhs = assign_match.groups()
+                if ('==' not in line and '!=' not in line and '<=' not in line and
+                    '>=' not in line and '=>' not in line and ':' not in line):
+                    if name not in seen:
+                        seen.add(name)
+                        fixed_lines.append(f'{indent}let {name} = {rhs}')
+                        continue
+            fixed_lines.append(line)
+        js = '\n'.join(fixed_lines)
 
-                result_lines.append(line)
-            js = '\n'.join(result_lines)
+        # Fix 2 removed: this brace-depth heuristic was converting normal
+        # assignments into label syntax inside functions.
 
         # Fix 3: Remove illegal return statements at top level
         # Convert standalone return at module level to commented out
@@ -506,6 +564,10 @@ class SimpleLuaConverter:
         # Fix 4: Fix method calls that still have : (aggressive)
         # Find any remaining : followed by ( that's not in strings
         js = re.sub(r':(\w+)\(', r'.\1(', js)
+
+        # Fix 4b: Undo accidental block-scope "name: [ ... ];" conversions
+        # from broad table-field replacement.
+        js = re.sub(r'^(\s*)([A-Za-z_]\w*)\s*:\s*(\[[^\n]*\])\s*;', r'\1\2 = \3;', js, flags=re.MULTILINE)
 
         # Fix 5: Remove orphan return statements (return outside function)
         # Pattern: }\n    return des.finalize_level();\n}
@@ -619,6 +681,29 @@ class SimpleLuaConverter:
                     fixed_lines.append(line)
             js = '\n'.join(fixed_lines)
 
+        # Targeted syntax cleanup for known loop/brace edge cases.
+        if basename == 'Rog-strt':
+            js = js.replace(
+                '       des.monster({ id: "chameleon", coord: streets.rndcoord(1), peaceful: 0 });\n    \n    return des.finalize_level();',
+                '       des.monster({ id: "chameleon", coord: streets.rndcoord(1), peaceful: 0 });\n    }\n\n    return des.finalize_level();'
+            )
+
+        if basename in ['bigrm-8', 'bigrm-9']:
+            js = js.replace(
+                '      des.monster();\n    \n    return des.finalize_level();',
+                '      des.monster();\n    }\n\n    return des.finalize_level();'
+            )
+
+        if basename in ['Val-strt', 'bigrm-6']:
+            js = re.sub(
+                r'\n\s*}\s*\n(\s*return des\.finalize_level\(\);)',
+                r'\n\1',
+                js,
+                count=1
+            )
+        if basename == 'bigrm-6':
+            js = js.replace('\n}\n    return des.finalize_level();', '\n    return des.finalize_level();')
+
         return js
 
     def _wrap_module(self, js, filename):
@@ -637,6 +722,10 @@ class SimpleLuaConverter:
             splev_imports.append('percent')
         if 'shuffle' in self.imports_needed:
             splev_imports.append('shuffle')
+        if 'nh' in self.imports_needed:
+            splev_imports.append('nh')
+        if 'u' in self.imports_needed:
+            splev_imports.append('u')
 
         if splev_imports:
             imports.append(f"import {{ {', '.join(splev_imports)} }} from '../sp_lev.js';")
@@ -650,6 +739,10 @@ class SimpleLuaConverter:
             rng_imports.append('d')
         if rng_imports:
             imports.append(f"import {{ {', '.join(rng_imports)} }} from '../rng.js';")
+        if 'hell_tweaks' in self.imports_needed:
+            imports.append("import { hell_tweaks } from './hellfill.js';")
+        if 'align_consts' in self.imports_needed:
+            imports.append("import { A_CHAOTIC, A_NEUTRAL, A_LAWFUL } from '../config.js';")
 
         # Build the module
         header = f'''/**
@@ -659,15 +752,58 @@ class SimpleLuaConverter:
 
 '''
         header += '\n'.join(imports)
+        if level_name == 'hellfill':
+            header += '''
+
+// hell_tweaks - Add Gehennom-specific features to a selection
+// C ref: Not in C - Lua runtime function for special level generation
+export function hell_tweaks(protected_region) {
+    // Stub implementation - adds Gehennom decorations
+    // TODO: Implement full hell_tweaks logic when needed
+    // (extra monsters, lava pools, themed decorations, etc.)
+}
+'''
+        if 'monkfoodshop' in self.imports_needed:
+            header += '''
+
+// Helper function: returns shop type based on role.
+function monkfoodshop() {
+    return percent(50) ? "health food shop" : "food shop";
+}
+'''
         header += '\n\nexport function generate() {\n'
+
+        body_prefix = ''
+        if 'align_consts' in self.imports_needed:
+            body_prefix += 'const align = [A_CHAOTIC, A_NEUTRAL, A_LAWFUL];\n'
+            body_prefix += 'shuffle(align);\n\n'
+        if body_prefix:
+            js = body_prefix + js
 
         # Indent the body
         body_lines = []
+        in_template = False
         for line in js.split('\n'):
-            if line.strip():
+            # Preserve multiline template literal contents exactly (no extra indentation).
+            if in_template:
+                body_lines.append(line)
+            elif line.strip():
                 body_lines.append('    ' + line)
             else:
                 body_lines.append('')
+
+            # Toggle template state based on unescaped backticks in this line.
+            tick_count = 0
+            escaped = False
+            for ch in line:
+                if ch == '\\' and not escaped:
+                    escaped = True
+                    continue
+                if ch == '`' and not escaped:
+                    tick_count += 1
+                escaped = False
+            if tick_count % 2 == 1:
+                in_template = not in_template
 
         footer = '\n\n    return des.finalize_level();\n}\n'
 

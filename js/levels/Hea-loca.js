@@ -18,20 +18,18 @@ export function generate() {
     // 
     des.level_init({ style: "mines", fg: ".", bg: "P", smoothed: true ,joined: true, lit: 1, walled: false });
 
-    des.map(`
-
-    PPPPPPPPPPPPP.......PPPPPPPPPPP
-    PPPPPPPP...............PPPPPPPP
-    PPPP.....-------------...PPPPPP
-    PPPPP....|.S.........|....PPPPP
-    PPP......+.|.........|...PPPPPP
-    PPP......+.|.........|..PPPPPPP
-    PPPP.....|.S.........|..PPPPPPP
-    PPPPP....-------------....PPPPP
-    PPPPPPPP...............PPPPPPPP
-    PPPPPPPPPPP........PPPPPPPPPPPP
-
-    `);
+    des.map(`\
+PPPPPPPPPPPPP.......PPPPPPPPPPP
+PPPPPPPP...............PPPPPPPP
+PPPP.....-------------...PPPPPP
+PPPPP....|.S.........|....PPPPP
+PPP......+.|.........|...PPPPPP
+PPP......+.|.........|..PPPPPPP
+PPPP.....|.S.........|..PPPPPPP
+PPPPP....-------------....PPPPP
+PPPPPPPP...............PPPPPPPP
+PPPPPPPPPPP........PPPPPPPPPPPP
+`);
     // Dungeon Description
     des.region(selection.area(0,0,30,9), "lit");
     des.region({ region: [12,3, 20,6], lit: 1, type: "temple", filled: 1 });

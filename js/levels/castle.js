@@ -30,10 +30,8 @@ export function generate() {
 
     des.level_flags("mazelevel", "noteleport", "noflipy");
 
-    des.map({
-        x: 2,
-        y: 2,
-        map: `
+    des.map(`\
+}}}}}}}}}.............................................}}}}}}}}}
 }-------}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}-------}
 }|.....|-----------------------------------------------|.....|}
 }|.....+...............................................+.....|}
@@ -50,8 +48,7 @@ export function generate() {
 }|.....|-----------------------------------------------|.....|}
 }-------}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}-------}
 }}}}}}}}}.............................................}}}}}}}}}
-`
-    });
+`);
 
     // Random registers initialisation
     let object = [ "[", ")", "*", "%" ];
@@ -204,33 +201,33 @@ export function generate() {
     des.monster("shark",57,0);
     des.monster("shark",57,16);
     // The throne room && the court monsters
-    des.monster(monster[10],27,5);
-    des.monster(monster[1],30,5);
-    des.monster(monster[2],33,5);
-    des.monster(monster[3],36,5);
-    des.monster(monster[4],28,6);
-    des.monster(monster[5],31,6);
-    des.monster(monster[6],34,6);
-    des.monster(monster[7],37,6);
-    des.monster(monster[8],27,7);
-    des.monster(monster[9],30,7);
-    des.monster(monster[10],33,7);
-    des.monster(monster[1],36,7);
-    des.monster(monster[2],28,8);
-    des.monster(monster[3],31,8);
-    des.monster(monster[4],34,8);
-    des.monster(monster[5],27,9);
-    des.monster(monster[6],30,9);
-    des.monster(monster[7],33,9);
-    des.monster(monster[8],36,9);
-    des.monster(monster[9],28,10);
-    des.monster(monster[10],31,10);
-    des.monster(monster[1],34,10);
-    des.monster(monster[2],37,10);
-    des.monster(monster[3],27,11);
-    des.monster(monster[4],30,11);
-    des.monster(monster[5],33,11);
-    des.monster(monster[6],36,11);
+    des.monster(monster[9],27,5);
+    des.monster(monster[0],30,5);
+    des.monster(monster[1],33,5);
+    des.monster(monster[2],36,5);
+    des.monster(monster[3],28,6);
+    des.monster(monster[4],31,6);
+    des.monster(monster[5],34,6);
+    des.monster(monster[6],37,6);
+    des.monster(monster[7],27,7);
+    des.monster(monster[8],30,7);
+    des.monster(monster[9],33,7);
+    des.monster(monster[0],36,7);
+    des.monster(monster[1],28,8);
+    des.monster(monster[2],31,8);
+    des.monster(monster[3],34,8);
+    des.monster(monster[4],27,9);
+    des.monster(monster[5],30,9);
+    des.monster(monster[6],33,9);
+    des.monster(monster[7],36,9);
+    des.monster(monster[8],28,10);
+    des.monster(monster[9],31,10);
+    des.monster(monster[0],34,10);
+    des.monster(monster[1],37,10);
+    des.monster(monster[2],27,11);
+    des.monster(monster[3],30,11);
+    des.monster(monster[4],33,11);
+    des.monster(monster[5],36,11);
     // MazeWalks
     des.mazewalk(0,10,"west");
     des.mazewalk(62,6,"east");

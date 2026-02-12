@@ -14,7 +14,7 @@ export function generate() {
     des.level_init({ style: "solidfill", fg: " " });
 
     des.level_flags("mazelevel", "noteleport", "hardfloor", "solidify");
-    des.map({ halign: "half-left", valign: "center", map: `
+    des.map({ halign: "half-left", valign: "center", map: `\
   --- --- ---  
   |.| |.| |.|  
 ---S---S---S---
@@ -36,23 +36,23 @@ export function generate() {
     des.ladder("down", 3,7);
     des.door("locked",10,4);
     des.door("locked",9,7);
+    des.monster("&",place[9]);
     des.monster("&",place[0]);
-    des.monster("&",place[0]);
-    des.monster("hell hound pup",place[0]);
-    des.monster("hell hound pup",place[0]);
-    des.monster("winter wolf",place[0]);
-    des.object({ id: "chest", coord: place[0],
+    des.monster("hell hound pup",place[1]);
+    des.monster("hell hound pup",place[2]);
+    des.monster("winter wolf",place[3]);
+    des.object({ id: "chest", coord: place[4],
                  contents: function() {
                     des.object("amulet of life saving");
                  }
     });
-    des.object({ id: "chest", coord: place[0],
+    des.object({ id: "chest", coord: place[5],
                  contents: function() {
                     des.object("amulet of strangulation");
                  }
     });
-    des.object("water walking boots",place[0]);
-    des.object("crystal plate mail",place[0]);
+    des.object("water walking boots",place[6]);
+    des.object("crystal plate mail",place[7]);
 
     let spbooks = [
        "spellbook of invisibility",
@@ -64,7 +64,7 @@ export function generate() {
        "spellbook of polymorph"
     ]
     shuffle(spbooks);
-    des.object(spbooks[0],place[0]);
+    des.object(spbooks[0],place[8]);
 
     // Walls in the tower are non diggable
     des.non_diggable(selection.area(0,0,14,10));

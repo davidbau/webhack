@@ -6,20 +6,10 @@
 import * as des from '../sp_lev.js';
 
 export function generate() {
-    // Initialize level state (includes BSP rectangle pool initialization)
-    des.resetLevelState();
-
-    // Enable Lua RNG pattern for Oracle level (nhl_rn2 calls)
-    // This must be set before any des.object() or des.monster() calls
-    const levelState = des.getLevelState();
-    levelState.luaRngCounter = 0;
-
-    // MT init will happen lazily on first des.object() call via sp_lev.js check
-
     // NetHack oracle oracle.lua	$NHDT-Date: 1652196033 2022/5/10 15:20:33 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.1 $
     // Copyright (c) 2015 by Pasi Kallinen
     // NetHack may be freely redistributed.  See license for details.
-    //
+    // 
     // Oracle level
     des.level_flags("noflip");
 

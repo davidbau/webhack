@@ -19,28 +19,26 @@ export function generate() {
 
     des.level_flags("mazelevel");
 
-    des.map(`
-
-    ------------------------------------------------------------------   ------
-    |                        |.......|     |.......-...|       |.....|.       |
-    |    ---------        ----.......-------...........|       ---...-S-      |
-    |    |.......|        |..........................-S-      --.......|      |
-    |    |......-------   ---........................|.       |.......--      |
-    |    |..--........-----..........................|.       -.-..----       |
-    |    --..--.-----........-.....................---        --..--          |
-    |     --..--..| -----------..................---.----------..--           |
-    |      |...--.|    |..S...S..............---................--            |
-    |     ----..-----  ------------........--- ------------...---             |
-    |     |.........--            ----------              ---...-- -----      |
-    |    --.....---..--                           --------  --...---...--     |
-    | ----..-..-- --..---------------------      --......--  ---........|     |
-    |--....-----   --..-..................---    |........|    |.......--     |
-    |.......|       --......................S..  --......--    ---..----      |
-    |--.--.--        ----.................---     ------..------...--         |
-    | |....S..          |...............-..|         ..S...........|          |
-    --------            --------------------           ------------------------
-
-    `);
+    des.map(`\
+------------------------------------------------------------------   ------
+|                        |.......|     |.......-...|       |.....|.       |
+|    ---------        ----.......-------...........|       ---...-S-      |
+|    |.......|        |..........................-S-      --.......|      |
+|    |......-------   ---........................|.       |.......--      |
+|    |..--........-----..........................|.       -.-..----       |
+|    --..--.-----........-.....................---        --..--          |
+|     --..--..| -----------..................---.----------..--           |
+|      |...--.|    |..S...S..............---................--            |
+|     ----..-----  ------------........--- ------------...---             |
+|     |.........--            ----------              ---...-- -----      |
+|    --.....---..--                           --------  --...---...--     |
+| ----..-..-- --..---------------------      --......--  ---........|     |
+|--....-----   --..-..................---    |........|    |.......--     |
+|.......|       --......................S..  --......--    ---..----      |
+|--.--.--        ----.................---     ------..------...--         |
+| |....S..          |...............-..|         ..S...........|          |
+--------            --------------------           ------------------------
+`);
 
     // Dungeon Description
     let place = [ [8,16],[13,7],[21,8],[41,14],[50,4],[50,16],[66,1] ]
@@ -63,29 +61,29 @@ export function generate() {
     // Non diggable walls
     des.non_diggable(selection.area(0,0,74,17));
     // Niches
-    // Note: place[6] empty
-    des.object("diamond",place[7]);
-    des.object("emerald",place[7]);
-    des.object("worthless piece of violet glass",place[7]);
-    des.monster({ class: "m", coord: place[7], appear_as: "obj:luckstone" });
-    des.object("worthless piece of white glass",place[1]);
-    des.object("emerald",place[1]);
+    // Note: place[5] empty
+    des.object("diamond",place[6]);
+    des.object("emerald",place[6]);
+    des.object("worthless piece of violet glass",place[6]);
+    des.monster({ class: "m", coord: place[6], appear_as: "obj:luckstone" });
+    des.object("worthless piece of white glass",place[0]);
+    des.object("emerald",place[0]);
+    des.object("amethyst",place[0]);
+    des.monster({ class: "m", coord: place[0], appear_as: "obj:loadstone" });
+    des.object("diamond",place[1]);
+    des.object("worthless piece of green glass",place[1]);
     des.object("amethyst",place[1]);
-    des.monster({ class: "m", coord: place[1], appear_as: "obj:loadstone" });
-    des.object("diamond",place[2]);
-    des.object("worthless piece of green glass",place[2]);
-    des.object("amethyst",place[2]);
-    des.monster({ class: "m", coord: place[2], appear_as: "obj:flint" });
-    des.object("worthless piece of white glass",place[3]);
-    des.object("emerald",place[3]);
-    des.object("worthless piece of violet glass",place[3]);
-    des.monster({ class: "m", coord: place[3], appear_as: "obj:touchstone" });
-    des.object("worthless piece of red glass",place[4]);
+    des.monster({ class: "m", coord: place[1], appear_as: "obj:flint" });
+    des.object("worthless piece of white glass",place[2]);
+    des.object("emerald",place[2]);
+    des.object("worthless piece of violet glass",place[2]);
+    des.monster({ class: "m", coord: place[2], appear_as: "obj:touchstone" });
+    des.object("worthless piece of red glass",place[3]);
+    des.object("ruby",place[3]);
+    des.object("loadstone",place[3]);
     des.object("ruby",place[4]);
-    des.object("loadstone",place[4]);
-    des.object("ruby",place[5]);
-    des.object("worthless piece of red glass",place[5]);
-    des.object({ id: "luckstone", coord: place[5], buc: "!-cursed", achievement: 1 });
+    des.object("worthless piece of red glass",place[4]);
+    des.object({ id: "luckstone", coord: place[4], buc: "!-cursed", achievement: 1 });
     // Random objects
     des.object("*");
     des.object("*");

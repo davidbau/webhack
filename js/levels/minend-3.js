@@ -19,7 +19,7 @@ export function generate() {
 
     des.level_flags("mazelevel", "nommap");
 
-    des.map({ halign: "center", valign: "bottom", map: `
+    des.map({ halign: "center", valign: "bottom", map: `\
  - - - - - - - - - - -- -- - - . - - - - - - - - - -- - - -- - - - - . - - |
 ------...---------.-----------...-----.-------.-------     ----------------|
  - - - - - - - - - - - . - - - . - - - - - - - - - - -- - -- - . - - - - - |
@@ -73,8 +73,8 @@ export function generate() {
     des.object("amethyst");
     des.object("*");
     des.object("amethyst");
-    des.object({ id: "luckstone", coord: place[2], buc: "!-cursed", achievement: 1 });
-    des.object("flint",place[1]);
+    des.object({ id: "luckstone", coord: place[1], buc: "!-cursed", achievement: 1 });
+    des.object("flint",place[0]);
     des.object("?");
     des.object("?");
     des.object("?");
@@ -95,8 +95,8 @@ export function generate() {
     des.trap();
     des.trap();
     // One-time annoyance factor
-    des.trap("level teleport",place[2]);
     des.trap("level teleport",place[1]);
+    des.trap("level teleport",place[0]);
     des.monster("M");
     des.monster("M");
     des.monster("M");

@@ -5,8 +5,8 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
-import { hell_tweaks } from './hellfill.js';
 import { rn2 } from '../rng.js';
+import { hell_tweaks } from './hellfill.js';
 
 export function generate() {
     // NetHack yendor wizard1.lua	$NHDT-Date: 1652196039 2022/5/10 15:20:39 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.3 $
@@ -25,7 +25,7 @@ export function generate() {
     let bnds = tmpbounds.bounds();
     let bounds2 = selection.fillrect(bnds.lx, bnds.ly + 1, bnds.hx - 2, bnds.hy - 1);
 
-    let wiz1 = des.map({ halign: "center", valign: "center", map: `
+    let wiz1 = des.map({ halign: "center", valign: "center", map: `\
 ----------------------------x
 |.......|..|.........|.....|x
 |.......S..|.}}}}}}}.|.....|x

@@ -22,7 +22,7 @@ export function generate() {
     let bounds2 = selection.fillrect(bnds.lx, bnds.ly + 1, bnds.hx - 2, bnds.hy - 1);
 
     // First part
-    let asmo1 = des.map({ halign: "half-left", valign: "center", map: `
+    let asmo1 = des.map({ halign: "half-left", valign: "center", map: `\
 ---------------------
 |.............|.....|
 |.............S.....|
@@ -83,7 +83,7 @@ export function generate() {
     des.teleport_region({ region: [1,0,6,20], region_islev: 1, exclude: [6,1,70,16], exclude_islev: 1 });
 
     // Second part
-    let asmo2 = des.map({ halign: "half-right", valign: "center", map: `
+    let asmo2 = des.map({ halign: "half-right", valign: "center", map: `\
 ---------------------------------
 ................................|
 ................................+
@@ -102,7 +102,7 @@ export function generate() {
        des.trap("magic");
     } });
 
-    let protected_region = bounds2.negate().union(asmo1).union(asmo2);
+    let protected_region = bounds2.negate().union(asmo1) | asmo2;
     hell_tweaks(protected_region);
 
 

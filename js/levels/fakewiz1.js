@@ -21,7 +21,7 @@ export function generate() {
     let bnds = tmpbounds.bounds();
     let bounds2 = selection.fillrect(bnds.lx, bnds.ly + 1, bnds.hx - 2, bnds.hy - 1);
 
-    let fakewiz1 = des.map({ halign: "center", valign: "center", map: `
+    let fakewiz1 = des.map({ halign: "center", valign: "center", map: `\
 .........
 .}}}}}}}.
 .}}---}}.

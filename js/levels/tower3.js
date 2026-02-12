@@ -14,7 +14,7 @@ export function generate() {
     des.level_init({ style: "solidfill", fg: " " });
 
     des.level_flags("mazelevel", "noteleport", "hardfloor", "solidify");
-    des.map({ halign: "half-left", valign: "center", map: `
+    des.map({ halign: "half-left", valign: "center", map: `\
     --- --- ---    
     |.| |.| |.|    
   ---S---S---S---  
@@ -47,14 +47,14 @@ export function generate() {
     des.monster();
     des.monster();
     des.monster();
-    des.object("long sword",place[0]);
-    des.trap({ coord: place[0] });
+    des.object("long sword",place[3]);
+    des.trap({ coord: place[3] });
     des.object("lock pick",place[0]);
     des.trap({ coord: place[0] });
-    des.object("elven cloak",place[0]);
-    des.trap({ coord: place[0] });
-    des.object("blindfold",place[0]);
-    des.trap({ coord: place[0] });
+    des.object("elven cloak",place[1]);
+    des.trap({ coord: place[1] });
+    des.object("blindfold",place[2]);
+    des.trap({ coord: place[2] });
     // Walls in the tower are non diggable
     des.non_diggable(selection.area(0,0,18,12));
 

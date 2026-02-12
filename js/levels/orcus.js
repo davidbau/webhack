@@ -5,8 +5,8 @@
 
 import * as des from '../sp_lev.js';
 import { selection } from '../sp_lev.js';
-import { hell_tweaks } from './hellfill.js';
 import { rn2 } from '../rng.js';
+import { hell_tweaks } from './hellfill.js';
 
 export function generate() {
     // NetHack gehennom orcus.lua	$NHDT-Date: 1652196033 2022/5/10 15:20:33 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.3 $
@@ -23,7 +23,7 @@ export function generate() {
     let bounds2 = selection.fillrect(bnds.lx, bnds.ly + 1, bnds.hx - 2, bnds.hy - 1);
 
     // A ghost town
-    let orcus1 = des.map({ halign: "right", valign: "center", map: `
+    let orcus1 = des.map({ halign: "right", valign: "center", map: `\
 .|....|....|....|..............|....|........
 .|....|....|....|..............|....|........
 .|....|....|....|--...-+-------|.............
@@ -115,7 +115,7 @@ export function generate() {
        des.object();
        // An object that's worth most of a wish
        // (this is part of the compensation for the reduced wishes at the Castle)
-       if (rn2(2) == 1) {
+       if ((rn2((1) - (0) + 1) + (0)) == 1) {
           des.object("magic marker");
        } else {
           des.object("magic lamp");

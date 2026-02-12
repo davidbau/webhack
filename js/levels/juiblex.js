@@ -17,7 +17,7 @@ export function generate() {
     // des.level_init(mines,'.','}',true,true,unlit,false)
     des.level_init({ style: "swamp", lit: 0 });
     // guarantee at least one open spot to ensure successful stair placement
-    des.map({ halign: "left", valign: "bottom", map: `
+    des.map({ halign: "left", valign: "bottom", map: `\
 xxxxxxxx
 xx...xxx
 xxx...xx
@@ -25,7 +25,7 @@ xxxx.xxx
 xxxxxxxx
 ` });
     des.object("boulder");
-    des.map({ halign: "right", valign: "top", map: `
+    des.map({ halign: "right", valign: "top", map: `\
 xxxxxxxx
 xxxx.xxx
 xxx...xx
@@ -34,28 +34,26 @@ xxxxxxxx
 ` });
     des.object("boulder");
     // lair
-    des.map(`
-
-    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-    xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
-    xxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxx
-    xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
-    xxxxxxxxxxxxxxxxxxxxxxxx}}}xxxxxxxxxxxxxxx}}}}}xxxx
-    xxxxxxxxxxxxxxxxxxxxxxx}}}}}xxxxxxxxxxxxx}.....}xxx
-    xxxxxxxxxxxxxxxxxxxxxx}}...}}xxxxxxxxxxx}..P.P..}xx
-    xxxxxxxxxxxxxxxxxxxxx}}..P..}}xxxxxxxxxxx}.....}xxx
-    xxxxxxxxxxxxxxxxxxxxx}}.P.P.}}xxxxxxxxxxxx}...}xxxx
-    xxxxxxxxxxxxxxxxxxxxx}}..P..}}xxxxxxxxxxxx}...}xxxx
-    xxxxxxxxxxxxxxxxxxxxxx}}...}}xxxxxxxxxxxxxx}}}xxxxx
-    xxxxxxxxxxxxxxxxxxxxxxx}}}}}xxxxxxxxxxxxxxxxxxxxxxx
-    xxxxxxxxxxxxxxxxxxxxxxxx}}}xxxxxxxxxxxxxxxxxxxxxxxx
-    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-    xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
-    xxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxx
-    xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
-    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-    `);
+    des.map(`\
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
+xxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxx
+xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
+xxxxxxxxxxxxxxxxxxxxxxxx}}}xxxxxxxxxxxxxxx}}}}}xxxx
+xxxxxxxxxxxxxxxxxxxxxxx}}}}}xxxxxxxxxxxxx}.....}xxx
+xxxxxxxxxxxxxxxxxxxxxx}}...}}xxxxxxxxxxx}..P.P..}xx
+xxxxxxxxxxxxxxxxxxxxx}}..P..}}xxxxxxxxxxx}.....}xxx
+xxxxxxxxxxxxxxxxxxxxx}}.P.P.}}xxxxxxxxxxxx}...}xxxx
+xxxxxxxxxxxxxxxxxxxxx}}..P..}}xxxxxxxxxxxx}...}xxxx
+xxxxxxxxxxxxxxxxxxxxxx}}...}}xxxxxxxxxxxxxx}}}xxxxx
+xxxxxxxxxxxxxxxxxxxxxxx}}}}}xxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxx}}}xxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
+xxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxx
+xxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+`);
     // Random registers
     let monster = [ "j","b","P","F" ]
     shuffle(monster)
@@ -90,14 +88,14 @@ xxxxxxxx
     des.object("!",44,9);
     des.object("!",45,9);
     // And lots of blobby monsters
-    des.monster(monster[4],25,6);
-    des.monster(monster[1],24,7);
-    des.monster(monster[2],26,7);
-    des.monster(monster[3],23,8);
-    des.monster(monster[3],27,8);
-    des.monster(monster[2],24,9);
-    des.monster(monster[1],26,9);
-    des.monster(monster[4],25,10);
+    des.monster(monster[3],25,6);
+    des.monster(monster[0],24,7);
+    des.monster(monster[1],26,7);
+    des.monster(monster[2],23,8);
+    des.monster(monster[2],27,8);
+    des.monster(monster[1],24,9);
+    des.monster(monster[0],26,9);
+    des.monster(monster[3],25,10);
     des.monster("j");
     des.monster("j");
     des.monster("j");

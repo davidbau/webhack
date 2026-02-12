@@ -4,7 +4,7 @@
  */
 
 import * as des from '../sp_lev.js';
-import { selection, percent } from '../sp_lev.js';
+import { selection, percent, nh } from '../sp_lev.js';
 import { rn2 } from '../rng.js';
 
 export function generate() {
@@ -28,14 +28,10 @@ export function generate() {
     }
 
     // replace horizontal && vertical walls
-    let sel = selection.match(`
-    .w.
-    `) | selection.match(".\nw\n.");
+    let sel = selection.match(`.w.`) | selection.match(".\nw\n.");
     sel.iterate(replace_wall_boulder);
     // replace the leftover corner walls
-    sel = selection.match(`
-    .w.
-    `);
+    sel = selection.match(`.w.`);
     sel.iterate(replace_wall_boulder);
 
     des.stair("up");

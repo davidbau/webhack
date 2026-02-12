@@ -5,7 +5,7 @@
 
 import * as des from '../sp_lev.js';
 import { selection, percent, shuffle } from '../sp_lev.js';
-import { rnd, rn2 } from '../rng.js';
+import { rn2 } from '../rng.js';
 
 export function generate() {
     // NetHack 3.7	mines minetn-1.lua	$NHDT-Date: 1652196030 2022/5/10 15:20:30 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.8 $
@@ -23,29 +23,27 @@ export function generate() {
 
     des.level_init({ style: "mines", fg: ".", bg: " ", smoothed: true, joined: true, walled: true });
 
-    des.map(`
-
-    .....................................
-    .----------------F------------------.
-    .|.................................|.
-    .|.-------------......------------.|.
-    .|.|...|...|...|......|..|...|...|.|.
-    .F.|...|...|...|......|..|...|...|.|.
-    .|.|...|...|...|......|..|...|...|.F.
-    .|.|...|...|----......------------.|.
-    .|.---------.......................|.
-    .|.................................|.
-    .|.---------.....--...--...........|.
-    .|.|...|...|----.|.....|.---------.|.
-    .|.|...|...|...|.|.....|.|..|....|.|.
-    .|.|...|...|...|.|.....|.|..|....|.|.
-    .|.|...|...|...|.|.....|.|..|....|.|.
-    .|.-------------.-------.---------.|.
-    .|.................................F.
-    .-----------F------------F----------.
-    .....................................
-
-    `);
+    des.map(`\
+.....................................
+.----------------F------------------.
+.|.................................|.
+.|.-------------......------------.|.
+.|.|...|...|...|......|..|...|...|.|.
+.F.|...|...|...|......|..|...|...|.|.
+.|.|...|...|...|......|..|...|...|.F.
+.|.|...|...|----......------------.|.
+.|.---------.......................|.
+.|.................................|.
+.|.---------.....--...--...........|.
+.|.|...|...|----.|.....|.---------.|.
+.|.|...|...|...|.|.....|.|..|....|.|.
+.|.|...|...|...|.|.....|.|..|....|.|.
+.|.|...|...|...|.|.....|.|..|....|.|.
+.|.-------------.-------.---------.|.
+.|.................................F.
+.-----------F------------F----------.
+.....................................
+`);
 
     // Don't let the player fall into his likely death; used to explicitly exclude
     // the town, but that meant that you couldn't teleport out as well as ! in.
@@ -88,11 +86,11 @@ export function generate() {
 
     // scatter some bodies
     des.object({ id: "corpse", x: 20,y: 12, montype: "aligned cleric" });
+    des.object({ id: "corpse", coord: place[0], montype: "shopkeeper" });
     des.object({ id: "corpse", coord: place[1], montype: "shopkeeper" });
     des.object({ id: "corpse", coord: place[2], montype: "shopkeeper" });
     des.object({ id: "corpse", coord: place[3], montype: "shopkeeper" });
     des.object({ id: "corpse", coord: place[4], montype: "shopkeeper" });
-    des.object({ id: "corpse", coord: place[5], montype: "shopkeeper" });
     des.object({ id: "corpse", montype: "watchman" });
     des.object({ id: "corpse", montype: "watchman" });
     des.object({ id: "corpse", montype: "watchman" });
@@ -100,7 +98,7 @@ export function generate() {
     des.object({ id: "corpse", montype: "watch captain" });
 
     // Rubble!
-    for (let i = 1; i <= 9 + rnd(10); i++) {
+    for (let i = 1; i <= 9 + (rn2((2*5) - (2 - 1) + 1) + (2 - 1)); i++) {
       if (percent(90)) {
         des.object("boulder");
       }
@@ -108,29 +106,29 @@ export function generate() {
     }
 
     // Guarantee 7 candles since we won't have Izchak available
-    des.object({ id: "wax candle", coord: place[4], quantity: rnd(2) });
+    des.object({ id: "wax candle", coord: place[3], quantity: (rn2((2) - (1) + 1) + (1)) });
 
-    des.object({ id: "wax candle", coord: place[1], quantity: 2 + rn2(3) });
-    des.object({ id: "wax candle", coord: place[2], quantity: rnd(2) });
-    des.object({ id: "tallow candle", coord: place[3], quantity: rnd(3) });
-    des.object({ id: "tallow candle", coord: place[2], quantity: rnd(2) });
-    des.object({ id: "tallow candle", coord: place[4], quantity: rnd(2) });
+    des.object({ id: "wax candle", coord: place[0], quantity: (rn2((4) - (2) + 1) + (2)) });
+    des.object({ id: "wax candle", coord: place[1], quantity: (rn2((2) - (1) + 1) + (1)) });
+    des.object({ id: "tallow candle", coord: place[2], quantity: (rn2((3) - (1) + 1) + (1)) });
+    des.object({ id: "tallow candle", coord: place[1], quantity: (rn2((2) - (1) + 1) + (1)) });
+    des.object({ id: "tallow candle", coord: place[3], quantity: (rn2((2) - (1) + 1) + (1)) });
 
     // go ahead && leave a lamp next to one corpse to be suggestive
     // && some empty wands...args
-    des.object("oil lamp",place[2]);
-    des.object({ id: "wand of striking", coord: place[1], buc: "uncursed", spe: 0 });
+    des.object("oil lamp",place[1]);
+    des.object({ id: "wand of striking", coord: place[0], buc: "uncursed", spe: 0 });
+    des.object({ id: "wand of striking", coord: place[2], buc: "uncursed", spe: 0 });
     des.object({ id: "wand of striking", coord: place[3], buc: "uncursed", spe: 0 });
-    des.object({ id: "wand of striking", coord: place[4], buc: "uncursed", spe: 0 });
+    des.object({ id: "wand of magic missile", coord: place[3], buc: "uncursed", spe: 0 });
     des.object({ id: "wand of magic missile", coord: place[4], buc: "uncursed", spe: 0 });
-    des.object({ id: "wand of magic missile", coord: place[5], buc: "uncursed", spe: 0 });
 
     // the Orcish Army
 
     let inside = selection.floodfill(18,8)
-    let near_temple = selection.area(17,8, 23,14).intersect(inside)
+    let near_temple = selection.area(17,8, 23,14) & inside
 
-    for (let i = 1; i <= 5 + rn2(11); i++) {
+    for (let i = 1; i <= 5 + (rn2((1*10) - (1 - 1) + 1) + (1 - 1)); i++) {
        if (percent(50)) {
           des.monster({ id: "orc-captain", coord: inside.rndcoord(1), peaceful: 0 });
        } else {
@@ -142,12 +140,12 @@ export function generate() {
        }
     }
     // shamans can be hanging out in/near the temple
-    for (let i = 1; i <= rnd(6); i++) {
+    for (let i = 1; i <= (rn2((2*3) - (2 - 1) + 1) + (2 - 1)); i++) {
        des.monster({ id: "orc shaman", coord: near_temple.rndcoord(0), peaceful: 0 });
     }
     // these are ! such a big deal
     // to run into outside the bars
-    for (let i = 1; i <= 9 + rnd(10); i++) {
+    for (let i = 1; i <= 9 + (rn2((2*5) - (2 - 1) + 1) + (2 - 1)); i++) {
        if (percent(90)) {
           des.monster({ id: "hill orc", peaceful: 0 });
        } else {

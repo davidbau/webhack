@@ -22,11 +22,11 @@ class LuaToJsConverter:
     def convert_file(self, lua_content, filename):
         """Convert a Lua special level file to JavaScript."""
         self.imports_needed = set(['des'])
+        level_name = Path(filename).stem
 
         js_lines = []
 
         # Add header comment
-        level_name = Path(filename).stem
         js_lines.append(f"/**")
         js_lines.append(f" * {level_name} - NetHack special level")
         js_lines.append(f" * Converted from: {filename}")
@@ -36,19 +36,49 @@ class LuaToJsConverter:
         # Convert the main content
         converted_body = self.convert_body(lua_content)
 
+        # hellfill defines hell_tweaks in-file; avoid self-import.
+        if level_name == 'hellfill':
+            self.imports_needed.discard('hell_tweaks')
+
         # Add imports
         js_lines.extend(self.generate_imports())
         js_lines.append("")
 
+        if level_name == 'hellfill':
+            js_lines.append("// hell_tweaks - Add Gehennom-specific features to a selection")
+            js_lines.append("// C ref: Not in C - Lua runtime function for special level generation")
+            js_lines.append("export function hell_tweaks(protected_region) {")
+            js_lines.append("    // Stub implementation - adds Gehennom decorations")
+            js_lines.append("    // TODO: Implement full hell_tweaks logic when needed")
+            js_lines.append("    // (extra monsters, lava pools, themed decorations, etc.)")
+            js_lines.append("}")
+            js_lines.append("")
+
         # Wrap in export function
         js_lines.append("export function generate() {")
 
-        # Add converted body with indentation
+        # Add converted body with indentation, but preserve template literal
+        # contents exactly (no extra leading spaces injected into map strings).
+        in_template = False
         for line in converted_body.split('\n'):
-            if line.strip():
+            if in_template:
+                js_lines.append(line)
+            elif line.strip():
                 js_lines.append("    " + line)
             else:
                 js_lines.append("")
+
+            tick_count = 0
+            escaped = False
+            for ch in line:
+                if ch == '\\' and not escaped:
+                    escaped = True
+                    continue
+                if ch == '`' and not escaped:
+                    tick_count += 1
+                escaped = False
+            if tick_count % 2 == 1:
+                in_template = not in_template
 
         # Add finalize
         js_lines.append("")
@@ -79,6 +109,8 @@ class LuaToJsConverter:
             rng_imports.append('d')
         if rng_imports:
             imports.append(f"import {{ {', '.join(rng_imports)} }} from '../rng.js';")
+        if 'hell_tweaks' in self.imports_needed:
+            imports.append("import { hell_tweaks } from './hellfill.js';")
 
         if 'nh' in self.imports_needed:
             imports.append("import * as nh from '../util.js';")
@@ -227,7 +259,11 @@ class LuaToJsConverter:
                 string_content = '\n'.join(self.multiline_string_lines)
                 # Escape backticks in template content
                 string_content = string_content.replace('`', '\\`')
-                converted_line = before + '`\n' + string_content + '\n`' + after
+                if string_content.startswith('\n'):
+                    template = '`\\\n' + string_content[1:] + '`'
+                else:
+                    template = '`' + string_content + '`'
+                converted_line = before + template + after
                 js_lines.append(self.convert_line(converted_line))
                 self.in_multiline_string = False
                 i += 1
@@ -480,6 +516,10 @@ class LuaToJsConverter:
         end = range_parts[1]
         step = range_parts[2] if len(range_parts) > 2 else '1'
 
+        # Lua idiom: for i = 1,#arr do  -> JS: for (let i = 0; i < arr.length; i++)
+        if step == '1' and start == '1' and end.startswith('#'):
+            arr = end[1:].strip()
+            return f"for (let {var_name} = 0; {var_name} < {arr}.length; {var_name}++) {{"
         if step == '1':
             return f"for (let {var_name} = {start}; {var_name} <= {end}; {var_name}++) {{"
         else:
@@ -824,6 +864,8 @@ class LuaToJsConverter:
             self.imports_needed.add('nh')
         if re.search(r'\bshuffle\(', expr):
             self.imports_needed.add('shuffle')
+        if re.search(r'\bhell_tweaks\s*\(', expr):
+            self.imports_needed.add('hell_tweaks')
 
         # Method call syntax: obj:method() → obj.method()
         expr = re.sub(r'(\w+):(\w+)\(', r'\1.\2(', expr)
@@ -843,6 +885,21 @@ class LuaToJsConverter:
         expr = re.sub(r'([^=!])==([^=])', r'\1===\2', expr)
 
         # Math functions
+        # math.random(a, b) => rn2((b) - (a) + 1) + a
+        def replace_math_random_range(m):
+            self.imports_needed.add('rn2')
+            a = m.group(1).strip()
+            b = m.group(2).strip()
+            return f'(rn2(({b}) - ({a}) + 1) + ({a}))'
+        expr = re.sub(r'\bmath\.random\s*\(\s*([^,()]+?)\s*,\s*([^)]+?)\s*\)', replace_math_random_range, expr)
+
+        # math.random(n) => rnd(n)
+        def replace_math_random_single(m):
+            self.imports_needed.add('rnd')
+            n = m.group(1).strip()
+            return f'rnd({n})'
+        expr = re.sub(r'\bmath\.random\s*\(\s*([^)]+?)\s*\)', replace_math_random_single, expr)
+
         expr = re.sub(r'math\.random\(', 'Math.random(', expr)
         expr = re.sub(r'math\.floor\(', 'Math.floor(', expr)
         expr = re.sub(r'math\.ceil\(', 'Math.ceil(', expr)
@@ -852,6 +909,31 @@ class LuaToJsConverter:
 
         # Table/array length: # → .length
         expr = re.sub(r'#(\w+)', r'\1.length', expr)
+
+        # Lua table indexing conversions:
+        # 1) obj[Math.random(1, obj.length)] -> obj[rn2(obj.length)]
+        # 2) obj[1] -> obj[0], obj[2] -> obj[1], etc.
+        rnd_idx_pat = re.compile(
+            r'(\b[A-Za-z_][\w.]*)\s*\[\s*Math\.random\s*\(\s*1\s*,\s*([A-Za-z_][\w.]*)\.length\s*\)\s*\]'
+        )
+        if rnd_idx_pat.search(expr):
+            self.imports_needed.add('rn2')
+            expr = rnd_idx_pat.sub(r'\1[rn2(\2.length)]', expr)
+
+        rn2_plus_one_idx_pat = re.compile(
+            r'(\b[A-Za-z_][\w.]*)\s*\[\s*\(?\s*rn2\s*\(\s*\(\s*([A-Za-z_][\w.]*)\.length\s*\)\s*-\s*\(\s*1\s*\)\s*\+\s*1\s*\)\s*\+\s*\(\s*1\s*\)\s*\)?\s*\]'
+        )
+        if rn2_plus_one_idx_pat.search(expr):
+            self.imports_needed.add('rn2')
+            expr = rn2_plus_one_idx_pat.sub(r'\1[rn2(\2.length)]', expr)
+
+        def dec_literal_index(match):
+            base = match.group(1)
+            idx = int(match.group(2))
+            return f'{base}[{idx - 1}]'
+
+        expr = re.sub(r'(\b[A-Za-z_][\w.]*)\s*\[\s*([1-9]\d*)\s*\]', dec_literal_index, expr)
+        expr = re.sub(r'(\b[A-Za-z_][\w.()]*?)\s*\|\s*(\b[A-Za-z_][\w.()]*\b)', r'\1.union(\2)', expr)
 
         # Boolean/null values
         expr = re.sub(r'\bnil\b', 'null', expr)

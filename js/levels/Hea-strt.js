@@ -22,30 +22,28 @@ export function generate() {
 
     des.level_flags("mazelevel", "noteleport", "hardfloor");
 
-    des.map(`
-
-    PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
-    PPPP........PPPP.....PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP.P..PPPPP......PPPPPPPP
-    PPP..........PPPP...PPPPP.........................PPPP..PPPPP........PPPPPPP
-    PP............PPPPPPPP..............................PPP...PPPP......PPPPPPPP
-    P.....PPPPPPPPPPPPPPP................................PPPPPPPPPPPPPPPPPPPPPPP
-    PPPP....PPPPPPPPPPPP...................................PPPPP.PPPPPPPPPPPPPPP
-    PPPP........PPPPP.........-----------------------........PP...PPPPPPP.....PP
-    PPP............PPPPP....--|.|......S..........S.|--.....PPPP.PPPPPPP.......P
-    PPPP..........PPPPP.....|.S.|......-----------|S|.|......PPPPPP.PPP.......PP
-    PPPPPP......PPPPPP......|.|.|......|...|......|.|.|.....PPPPPP...PP.......PP
-    PPPPPPPPPPPPPPPPPPP.....+.|.|......S.\.S......|.|.+......PPPPPP.PPPP.......P
-    PPP...PPPPP...PPPP......|.|.|......|...|......|.|.|.......PPPPPPPPPPP.....PP
-    PP.....PPP.....PPP......|.|S|-----------......|.S.|......PPPPPPPPPPPPPPPPPPP
-    PPP..PPPPP...PPPP.......--|.S..........S......|.|--.....PPPPPPPPP....PPPPPPP
-    PPPPPPPPPPPPPPPP..........-----------------------..........PPPPP..........PP
-    PPPPPPPPPPPPPPPPP........................................PPPPPP............P
-    PPP.............PPPP...................................PPP..PPPP..........PP
-    PP...............PPPPP................................PPPP...PPPP........PPP
-    PPP.............PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP....PPPPPP
-    PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
-
-    `);
+    des.map(`\
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+PPPP........PPPP.....PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP.P..PPPPP......PPPPPPPP
+PPP..........PPPP...PPPPP.........................PPPP..PPPPP........PPPPPPP
+PP............PPPPPPPP..............................PPP...PPPP......PPPPPPPP
+P.....PPPPPPPPPPPPPPP................................PPPPPPPPPPPPPPPPPPPPPPP
+PPPP....PPPPPPPPPPPP...................................PPPPP.PPPPPPPPPPPPPPP
+PPPP........PPPPP.........-----------------------........PP...PPPPPPP.....PP
+PPP............PPPPP....--|.|......S..........S.|--.....PPPP.PPPPPPP.......P
+PPPP..........PPPPP.....|.S.|......-----------|S|.|......PPPPPP.PPP.......PP
+PPPPPP......PPPPPP......|.|.|......|...|......|.|.|.....PPPPPP...PP.......PP
+PPPPPPPPPPPPPPPPPPP.....+.|.|......S.\.S......|.|.+......PPPPPP.PPPP.......P
+PPP...PPPPP...PPPP......|.|.|......|...|......|.|.|.......PPPPPPPPPPP.....PP
+PP.....PPP.....PPP......|.|S|-----------......|.S.|......PPPPPPPPPPPPPPPPPPP
+PPP..PPPPP...PPPP.......--|.S..........S......|.|--.....PPPPPPPPP....PPPPPPP
+PPPPPPPPPPPPPPPP..........-----------------------..........PPPPP..........PP
+PPPPPPPPPPPPPPPPP........................................PPPPPP............P
+PPP.............PPPP...................................PPP..PPPP..........PP
+PP...............PPPPP................................PPPP...PPPP........PPP
+PPP.............PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP....PPPPPP
+PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+`);
 
     des.replace_terrain({ region: [1,1, 74,18], fromterrain: "P", toterrain: ".", chance: 10 });
 

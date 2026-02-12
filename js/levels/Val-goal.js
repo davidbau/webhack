@@ -18,27 +18,25 @@ export function generate() {
 
     des.level_init({ style: "mines", fg: ".", bg: "L", smoothed: true, joined: true, lit: 1, walled: false });
 
-    des.map(`
-
-    xxxxxx.....................xxxxxxxx
-    xxxxx.......LLLLL.LLLLL......xxxxxx
-    xxxx......LLLLLLLLLLLLLLL......xxxx
-    xxxx.....LLL|---------|LLL.....xxxx
-    xxxx....LL|--.........--|LL.....xxx
-    x......LL|-...LLLLLLL...-|LL.....xx
-    .......LL|...LL.....LL...|LL......x
-    ......LL|-..LL.......LL..-|LL......
-    ......LL|.................|LL......
-    ......LL|-..LL.......LL..-|LL......
-    .......LL|...LL.....LL...|LL.......
-    xx.....LL|-...LLLLLLL...-|LL......x
-    xxx.....LL|--.........--|LL.....xxx
-    xxxx.....LLL|---------|LLL...xxxxxx
-    xxxxx.....LLLLLLLLLLLLLLL...xxxxxxx
-    xxxxxx......LLLLL.LLLLL.....xxxxxxx
-    xxxxxxxxx..................xxxxxxxx
-
-    `);
+    des.map(`\
+xxxxxx.....................xxxxxxxx
+xxxxx.......LLLLL.LLLLL......xxxxxx
+xxxx......LLLLLLLLLLLLLLL......xxxx
+xxxx.....LLL|---------|LLL.....xxxx
+xxxx....LL|--.........--|LL.....xxx
+x......LL|-...LLLLLLL...-|LL.....xx
+.......LL|...LL.....LL...|LL......x
+......LL|-..LL.......LL..-|LL......
+......LL|.................|LL......
+......LL|-..LL.......LL..-|LL......
+.......LL|...LL.....LL...|LL.......
+xx.....LL|-...LLLLLLL...-|LL......x
+xxx.....LL|--.........--|LL.....xxx
+xxxx.....LLL|---------|LLL...xxxxxx
+xxxxx.....LLLLLLLLLLLLLLL...xxxxxxx
+xxxxxx......LLLLL.LLLLL.....xxxxxxx
+xxxxxxxxx..................xxxxxxxx
+`);
     // Dungeon Description
     des.region(selection.area(0,0,34,16), "lit");
     // Stairs

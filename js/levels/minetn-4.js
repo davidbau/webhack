@@ -4,18 +4,19 @@
  */
 
 import * as des from '../sp_lev.js';
-import { percent, shuffle } from '../sp_lev.js';
+import { shuffle } from '../sp_lev.js';
 import { A_CHAOTIC, A_NEUTRAL, A_LAWFUL } from '../config.js';
 
-// Helper function: returns shop type based on role
+// Helper function: returns shop type based on role.
 function monkfoodshop() {
-    return percent(50) ? "health food shop" : "food shop";
+    // return percent(50) ? "health food shop" : "food shop";
 }
 
+
 export function generate() {
-    // Shuffle alignment array for altar shrines (standard NetHack pattern)
     const align = [A_CHAOTIC, A_NEUTRAL, A_LAWFUL];
     shuffle(align);
+
     // NetHack mines minetn-4.lua	$NHDT-Date: 1652196031 2022/5/10 15:20:31 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.2 $
     // Copyright (c) 1989-95 by Jean-Christophe Collet
     // Copyright (c) 1991-95 by M. Stephenson
@@ -45,7 +46,7 @@ export function generate() {
                   des.room({ type: "temple", lit: 1, x: 11, y: 3, w: 5, h: 4,
                              contents: function() {
                                 des.door({ state: "closed", wall: "south" });
-                                des.altar({ x: 2,y: 1,align: align[1], type: "shrine" });
+                                des.altar({ x: 2,y: 1,align: align[0], type: "shrine" });
                                 des.monster("gnomish wizard");
                                 des.monster("gnomish wizard");
                              }

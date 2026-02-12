@@ -17,7 +17,7 @@ export function generate() {
     des.level_init({ style: "solidfill", fg: " " });
 
     des.level_flags("mazelevel", "noteleport", "hardfloor", "solidify");
-    des.map({ halign: "half-left", valign: "center", map: `
+    des.map({ halign: "half-left", valign: "center", map: `\
   --- --- ---  
   |.| |.| |.|  
 ---S---S---S---
@@ -50,11 +50,11 @@ export function generate() {
     let Vgenod = nh.is_genocided("vampire");
     let Vnames = [ null, null, null ];
     if ((! Vgenod)) {
-       Vnames: [ "Madame", "Marquise", "Countess" ];
+       Vnames = [ "Madame", "Marquise", "Countess" ];
     }
-    des.monster({ id: "vampire lady", coord: niches[3], name: Vnames[1], waiting: 1 });
-    des.monster({ id: "vampire lady", coord: niches[4], name: Vnames[2], waiting: 1 });
-    des.monster({ id: "vampire lady", coord: niches[5], name: Vnames[3], waiting: 1 });
+    des.monster({ id: "vampire lady", coord: niches[3], name: Vnames[0], waiting: 1 });
+    des.monster({ id: "vampire lady", coord: niches[4], name: Vnames[1], waiting: 1 });
+    des.monster({ id: "vampire lady", coord: niches[5], name: Vnames[2], waiting: 1 });
     // The doors
     des.door("closed",8,3);
     des.door("closed",10,3);
@@ -72,12 +72,12 @@ export function generate() {
     des.object("chest",niches[2]);
     des.object({ id: "chest", coord: niches[3],
                  contents: function() {
-                    des.object({ id: "wax candle", quantity: 4 + rn2(5) });
+                    des.object({ id: "wax candle", quantity: (rn2((8) - (4) + 1) + (4)) });
                  }
     });
     des.object({ id: "chest", coord: niches[4],
                  contents: function() {
-                    des.object({ id: "tallow candle", quantity: 4 + rn2(5) });
+                    des.object({ id: "tallow candle", quantity: (rn2((8) - (4) + 1) + (4)) });
                  }
     });
     // We have to protect the tower against outside attacks

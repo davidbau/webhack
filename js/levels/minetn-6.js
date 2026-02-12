@@ -4,20 +4,19 @@
  */
 
 import * as des from '../sp_lev.js';
-import { selection, percent, shuffle } from '../sp_lev.js';
+import { selection, shuffle } from '../sp_lev.js';
 import { A_CHAOTIC, A_NEUTRAL, A_LAWFUL } from '../config.js';
 
-// Helper function: returns shop type based on role
-// C ref: NetHack minetn levels - "health food shop" for Monk, "food shop" otherwise
-// During level generation, role is unknown, so use 50/50 random selection
+// Helper function: returns shop type based on role.
 function monkfoodshop() {
-    return percent(50) ? "health food shop" : "food shop";
+    // return percent(50) ? "health food shop" : "food shop";
 }
 
+
 export function generate() {
-    // Shuffle alignment array for altar shrines (standard NetHack pattern)
     const align = [A_CHAOTIC, A_NEUTRAL, A_LAWFUL];
     shuffle(align);
+
     // NetHack mines minetn-6.lua	$NHDT-Date: 1652196031 2022/5/10 15:20:31 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.3 $
     // Copyright (c) 1989-95 by Jean-Christophe Collet
     // Copyright (c) 1991-95 by M. Stephenson
@@ -36,7 +35,7 @@ export function generate() {
     // creating inaccessible spaces. The inaccessibles flag does compensate for
     // this, but it does so by doing things like creating backdoors into adjacent
     // shops which we don't want.
-    des.map({ halign: "center", valign: "top", map: `
+    des.map({ halign: "center", valign: "top", map: `\
 x--------xxxxxxxxxxx-------------------x
 x------xxxxxxxxxxxxxx-----------------xx
 .-----................----------------.x
@@ -72,7 +71,7 @@ xxxx-------xxxxxxxxxxxxxxx--------------
     des.region({ region: [23,3, 25,5], lit: 1, type: "shop", filled: 1 });
     des.region({ region: [22,14, 24,15], lit: 1, type: monkfoodshop(), filled: 1 });
     des.region({ region: [31,14, 36,16], lit: 1, type: "temple", filled: 1 });
-    des.altar({ x: 35,y: 15,align: align[1],type: "shrine"});
+    des.altar({ x: 35,y: 15,align: align[0],type: "shrine"});
 
     des.door("closed",5,4);
     des.door("locked",4,10);

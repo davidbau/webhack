@@ -19,7 +19,7 @@ export function generate() {
     des.level_flags("mazelevel", "corrmaze");
     // the two pools are fakes used to mark spots which need special wall fixups
     // the two iron bars are eyes && spots to their left will be made diggable
-    des.map({ halign: "right", valign: "center", map: `
+    des.map({ halign: "right", valign: "center", map: `\
 -------------------------------------------------
 |                   ----               ----      
 |          ----     |     -----------  |         
