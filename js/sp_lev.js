@@ -2956,6 +2956,20 @@ export function trap(type_or_opts, x, y) {
         }
     }
 
+    if (levelState.finalizeContext) {
+        // C ref: sp_lev.c lspo_trap() creates traps immediately in script order.
+        // In parity mode, defer coordinate resolution to execution time to keep
+        // get_location_coord() timing aligned with C.
+        executeDeferredTrap({
+            type_or_opts,
+            deferCoord: true,
+            rawX: srcX,
+            rawY: srcY,
+            room: levelState.currentRoom || null
+        });
+        return;
+    }
+
     const randomRequested = (srcX === undefined || srcY === undefined);
     const pos = getLocationCoord(srcX, srcY, GETLOC_DRY, levelState.currentRoom || null);
     let absX = pos.x;
@@ -3702,10 +3716,11 @@ function executeDeferredMonsters() {
  * Called from finalize_level() after corridor generation
  */
 function executeDeferredTrap(deferred) {
-    const { type_or_opts, x, y } = deferred;
+    const { type_or_opts, x, y, deferCoord, rawX, rawY, room } = deferred;
 
     // Execute the original trap() logic
     let trapType, trapX = x, trapY = y;
+    let randomRequested = false;
 
     if (type_or_opts === undefined) {
         trapType = undefined;
@@ -3733,7 +3748,13 @@ function executeDeferredTrap(deferred) {
         }
     }
 
-    if (trapX === undefined || trapY === undefined) {
+    if (deferCoord) {
+        randomRequested = (rawX === undefined || rawY === undefined);
+        const pos = getLocationCoord(rawX, rawY, GETLOC_DRY, room || null);
+        trapX = pos.x;
+        trapY = pos.y;
+    } else if (trapX === undefined || trapY === undefined) {
+        randomRequested = true;
         trapX = rn2(60) + 10;
         trapY = rn2(15) + 3;
     }
@@ -3742,8 +3763,23 @@ function executeDeferredTrap(deferred) {
     if (!trapType) {
         // C ref: create_trap() -> mktrap(NO_TRAP, MKTRAP_MAZEFLAG, tm)
         // for random trap selection at a fixed coordinate.
+        // For random coordinates, C re-rolls if stairs/ladder.
+        if (randomRequested && !(room || levelState.currentRoom)
+            && trapX !== undefined && trapY !== undefined) {
+            let trycnt = 0;
+            while (trycnt++ <= 100) {
+                const typ = levelState.map.locations[trapX][trapY]?.typ;
+                if (typ !== STAIRS && typ !== LADDER) break;
+                const randomPos = getLocationCoord(undefined, undefined, GETLOC_DRY, null);
+                if (randomPos.x < 0 || randomPos.y < 0) break;
+                trapX = randomPos.x;
+                trapY = randomPos.y;
+            }
+        }
         const tm = { x: trapX, y: trapY };
-        const depth = levelState.levelDepth || 1;
+        const depth = (levelState.finalizeContext && Number.isFinite(levelState.finalizeContext.dunlev))
+            ? levelState.finalizeContext.dunlev
+            : (levelState.levelDepth || 1);
         mktrap(levelState.map, 0,
                MKTRAP_MAZEFLAG | MKTRAP_NOSPIDERONWEB,
                null, tm, depth);
