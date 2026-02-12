@@ -188,9 +188,10 @@ describe('E2E: Role selection and game start', () => {
 
     it('shows dungeon features (walls, floor)', async () => {
         // The map should already be rendered after selectRoleAndStart()
-        // DECgraphics is on by default: walls use box-drawing chars, floor is still '.'
+        // DECgraphics is on by default: floor is middle dot, walls are box-drawing
         const text = await getTerminalText(page);
-        assert.ok(text.includes('.'), 'Should show floor tiles');
+        const hasFloor = text.includes('.') || text.includes('\u00b7');
+        assert.ok(hasFloor, 'Should show floor tiles (. or middle dot)');
         // Accept both ASCII (-/|) and DECgraphics box-drawing wall characters
         const hasAsciiWalls = text.includes('-') && text.includes('|');
         const hasBoxWalls = /[\u2500-\u257F]/.test(text);
@@ -357,6 +358,9 @@ describe('E2E: Help and information commands', () => {
         const msg = await getRow(page, 0);
         assert.ok(msg.includes('NetHack') && msg.includes('Version'),
             `About should show version, got: "${msg.trim()}"`);
+        // Dismiss --More-- prompt left by version info
+        await sendChar(page, ' ');
+        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
     });
 
     it('? then c shows game commands in pager', async () => {
@@ -538,13 +542,13 @@ describe('E2E: Display integrity', () => {
 
     it('map uses correct graphics characters (DECgraphics mode by default)', async () => {
         const text = await getTerminalText(page);
-        // Default is DECgraphics mode — walls use box-drawing characters
+        // Default is DECgraphics mode — walls use box-drawing, floor is middle dot
         const hasAsciiWalls = text.includes('-') && text.includes('|');
         const hasBoxWalls = /[\u2500-\u257F]/.test(text);
-        const hasFloor = text.includes('.');
+        const hasFloor = text.includes('.') || text.includes('\u00b7');
         const hasPlayer = text.includes('@');
         assert.ok(hasAsciiWalls || hasBoxWalls, 'Map should have wall characters (ASCII or box-drawing)');
-        assert.ok(hasFloor, 'Map should have floor character (.)');
+        assert.ok(hasFloor, 'Map should have floor character (. or middle dot)');
         assert.ok(hasPlayer, 'Map should have player @');
     });
 

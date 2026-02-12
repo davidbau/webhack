@@ -151,7 +151,8 @@ describe('E2E: Critical startup checks', () => {
                         // Accept ASCII (-/|) or box-drawing wall chars
                         const hasWalls = (text.includes('-') && text.includes('|')) ||
                                          /[\u2500-\u257F]/.test(text);
-                        return text.includes('@') && text.includes('.') && hasWalls;
+                        const hasFloor = text.includes('.') || text.includes('\u00b7');
+                        return text.includes('@') && hasFloor && hasWalls;
                     },
                     { timeout: 5000 }
                 );
@@ -170,7 +171,8 @@ describe('E2E: Critical startup checks', () => {
                 const text = pre.textContent;
                 const hasWalls = (text.includes('-') && text.includes('|')) ||
                                  /[\u2500-\u257F]/.test(text);
-                return text.includes('@') && text.includes('.') && hasWalls;
+                const hasFloor = text.includes('.') || text.includes('\u00b7');
+                return text.includes('@') && hasFloor && hasWalls;
             });
 
             assert.ok(hasDungeonChars, 'Map should show player, floor, and wall characters');
