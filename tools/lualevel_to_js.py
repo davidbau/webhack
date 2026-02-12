@@ -170,13 +170,15 @@ class SimpleLuaConverter:
         # Step 19: Add semicolons to des.* calls
         js = self._add_semicolons(js)
 
-        # Step 20: Restore protected long strings
+        # Step 20: Wrap in module structure (before restoring long strings,
+        # so map content doesn't get indented by _wrap_module)
+        js = self._wrap_module(js, filename)
+
+        # Step 21: Restore protected long strings (after wrapping, so map
+        # lines stay at column 0 matching C's Lua [[...]] strings)
         for i, content in enumerate(protected_strings):
             placeholder = f'__LONGSTRING_{i}__'
-            js = js.replace(f'`{placeholder}`', f'`\n{content}\n`')
-
-        # Step 21: Wrap in module structure
-        js = self._wrap_module(js, filename)
+            js = js.replace(f'`{placeholder}`', f'`{content}\n`')
 
         # Step 22: Postprocessing fixes for problematic files
         js = self._postprocess_fixes(js, filename)

@@ -503,63 +503,72 @@ export const themerooms = [
    {
       name: 'L-shaped',
       contents: function() {
-         des.map({ map: `-----xxx
+         des.map({ map: `
+-----xxx
 |...|xxx
 |...|xxx
 |...----
 |......|
 |......|
 |......|
---------`, contents: function(m) { filler_region(1, 1); } });
+--------
+`, contents: function(m) { filler_region(1, 1); } });
       },
    },
 
    {
       name: 'L-shaped, rot 1',
       contents: function() {
-         des.map({ map: `xxx-----
+         des.map({ map: `
+xxx-----
 xxx|...|
 xxx|...|
 ----...|
 |......|
 |......|
 |......|
---------`, contents: function(m) { filler_region(5, 1); } });
+--------
+`, contents: function(m) { filler_region(5, 1); } });
       },
    },
 
    {
       name: 'L-shaped, rot 2',
       contents: function() {
-         des.map({ map: `--------
+         des.map({ map: `
+--------
 |......|
 |......|
 |......|
 ----...|
 xxx|...|
 xxx|...|
-xxx-----`, contents: function(m) { filler_region(1, 1); } });
+xxx-----
+`, contents: function(m) { filler_region(1, 1); } });
       },
    },
 
    {
       name: 'L-shaped, rot 3',
       contents: function() {
-         des.map({ map: `--------
+         des.map({ map: `
+--------
 |......|
 |......|
 |......|
 |...----
 |...|xxx
 |...|xxx
------xxx`, contents: function(m) { filler_region(1, 1); } });
+-----xxx
+`, contents: function(m) { filler_region(1, 1); } });
       },
    },
 
    {
       name: 'Blocked center',
       contents: function() {
-         des.map({ map: `-----------
+         des.map({ map: `
+-----------
 |.........|
 |.........|
 |.........|
@@ -569,7 +578,8 @@ xxx-----`, contents: function(m) { filler_region(1, 1); } });
 |.........|
 |.........|
 |.........|
------------`, contents: function(m) {
+-----------
+`, contents: function(m) {
             if (percent(30)) {
                const terr = [ "-", "P" ];
                shuffle(terr);
@@ -585,20 +595,23 @@ xxx-----`, contents: function(m) { filler_region(1, 1); } });
    {
       name: 'Circular, small',
       contents: function() {
-         des.map({ map: `xx---xx
+         des.map({ map: `
+xx---xx
 x--.--x
 --...--
 |.....|
 --...--
 x--.--x
-xx---xx`, contents: function(m) { filler_region(3, 3); } });
+xx---xx
+`, contents: function(m) { filler_region(3, 3); } });
       },
    },
 
    {
       name: 'Circular, medium',
       contents: function() {
-         des.map({ map: `xx-----xx
+         des.map({ map: `
+xx-----xx
 x--...--x
 --.....--
 |.......|
@@ -606,14 +619,16 @@ x--...--x
 |.......|
 --.....--
 x--...--x
-xx-----xx`, contents: function(m) { filler_region(4, 4); } });
+xx-----xx
+`, contents: function(m) { filler_region(4, 4); } });
       },
    },
 
    {
       name: 'Circular, big',
       contents: function() {
-         des.map({ map: `xxx-----xxx
+         des.map({ map: `
+xxx-----xxx
 x---...---x
 x-.......-x
 --.......--
@@ -623,28 +638,32 @@ x-.......-x
 --.......--
 x-.......-x
 x---...---x
-xxx-----xxx`, contents: function(m) { filler_region(5, 5); } });
+xxx-----xxx
+`, contents: function(m) { filler_region(5, 5); } });
       },
    },
 
    {
       name: 'T-shaped',
       contents: function() {
-         des.map({ map: `xxx-----xxx
+         des.map({ map: `
+xxx-----xxx
 xxx|...|xxx
 xxx|...|xxx
 ----...----
 |.........|
 |.........|
 |.........|
------------`, contents: function(m) { filler_region(5, 5); } });
+-----------
+`, contents: function(m) { filler_region(5, 5); } });
       },
    },
 
    {
       name: 'T-shaped, rot 1',
       contents: function() {
-         des.map({ map: `-----xxx
+         des.map({ map: `
+-----xxx
 |...|xxx
 |...|xxx
 |...----
@@ -654,28 +673,32 @@ xxx|...|xxx
 |...----
 |...|xxx
 |...|xxx
------xxx`, contents: function(m) { filler_region(2, 2); } });
+-----xxx
+`, contents: function(m) { filler_region(2, 2); } });
       },
    },
 
    {
       name: 'T-shaped, rot 2',
       contents: function() {
-         des.map({ map: `-----------
+         des.map({ map: `
+-----------
 |.........|
 |.........|
 |.........|
 ----...----
 xxx|...|xxx
 xxx|...|xxx
-xxx-----xxx`, contents: function(m) { filler_region(2, 2); } });
+xxx-----xxx
+`, contents: function(m) { filler_region(2, 2); } });
       },
    },
 
    {
       name: 'T-shaped, rot 3',
       contents: function() {
-         des.map({ map: `xxx-----
+         des.map({ map: `
+xxx-----
 xxx|...|
 xxx|...|
 ----...|
@@ -685,14 +708,16 @@ xxx|...|
 ----...|
 xxx|...|
 xxx|...|
-xxx-----`, contents: function(m) { filler_region(5, 5); } });
+xxx-----
+`, contents: function(m) { filler_region(5, 5); } });
       },
    },
 
    {
       name: 'S-shaped',
       contents: function() {
-         des.map({ map: `-----xxx
+         des.map({ map: `
+-----xxx
 |...|xxx
 |...|xxx
 |...----
@@ -702,28 +727,32 @@ xxx-----`, contents: function(m) { filler_region(5, 5); } });
 ----...|
 xxx|...|
 xxx|...|
-xxx-----`, contents: function(m) { filler_region(2, 2); } });
+xxx-----
+`, contents: function(m) { filler_region(2, 2); } });
       },
    },
 
    {
       name: 'S-shaped, rot 1',
       contents: function() {
-         des.map({ map: `xxx--------
+         des.map({ map: `
+xxx--------
 xxx|......|
 xxx|......|
 ----......|
 |......----
 |......|xxx
 |......|xxx
---------xxx`, contents: function(m) { filler_region(5, 5); } });
+--------xxx
+`, contents: function(m) { filler_region(5, 5); } });
       },
    },
 
    {
       name: 'Z-shaped',
       contents: function() {
-         des.map({ map: `xxx-----
+         des.map({ map: `
+xxx-----
 xxx|...|
 xxx|...|
 ----...|
@@ -733,28 +762,32 @@ xxx|...|
 |...----
 |...|xxx
 |...|xxx
------xxx`, contents: function(m) { filler_region(5, 5); } });
+-----xxx
+`, contents: function(m) { filler_region(5, 5); } });
       },
    },
 
    {
       name: 'Z-shaped, rot 1',
       contents: function() {
-         des.map({ map: `--------xxx
+         des.map({ map: `
+--------xxx
 |......|xxx
 |......|xxx
 |......----
 ----......|
 xxx|......|
 xxx|......|
-xxx--------`, contents: function(m) { filler_region(2, 2); } });
+xxx--------
+`, contents: function(m) { filler_region(2, 2); } });
       },
    },
 
    {
       name: 'Cross',
       contents: function() {
-         des.map({ map: `xxx-----xxx
+         des.map({ map: `
+xxx-----xxx
 xxx|...|xxx
 xxx|...|xxx
 ----...----
@@ -764,14 +797,16 @@ xxx|...|xxx
 ----...----
 xxx|...|xxx
 xxx|...|xxx
-xxx-----xxx`, contents: function(m) { filler_region(6, 6); } });
+xxx-----xxx
+`, contents: function(m) { filler_region(6, 6); } });
       },
    },
 
    {
       name: 'Four-leaf clover',
       contents: function() {
-         des.map({ map: `-----x-----
+         des.map({ map: `
+-----x-----
 |...|x|...|
 |...---...|
 |.........|
@@ -781,19 +816,22 @@ xx|.....|xx
 |.........|
 |...---...|
 |...|x|...|
------x-----`, contents: function(m) { filler_region(6, 6); } });
+-----x-----
+`, contents: function(m) { filler_region(6, 6); } });
       },
    },
 
    {
       name: 'Water-surrounded vault',
       contents: function() {
-         des.map({ map: `}}}}}}
+         des.map({ map: `
+}}}}}}
 }----}
 }|..|}
 }|..|}
 }----}
-}}}}}}`, contents: function(m) {
+}}}}}}
+`, contents: function(m) {
             des.region({ region: [3, 3, 3, 3], type: "themed", irregular: true,
                          filled: 0, joined: false });
             const nasty_undead = [ "giant zombie", "ettin zombie", "vampire lord" ];

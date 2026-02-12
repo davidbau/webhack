@@ -22,18 +22,16 @@ export function generate() {
     let bounds2 = selection.fillrect(bnds.lx, bnds.ly + 1, bnds.hx - 2, bnds.hy - 1);
 
     let fakewiz1 = des.map({ halign: "center", valign: "center", map: `
-
-    .........
-    .}}}}}}}.
-    .}}---}}.
-    .}--.--}.
-    .}|...|}.
-    .}--.--}.
-    .}}---}}.
-    .}}}}}}}.
-    .........
-
-    `, contents: function(rm) {
+.........
+.}}}}}}}.
+.}}---}}.
+.}--.--}.
+.}|...|}.
+.}--.--}.
+.}}---}}.
+.}}}}}}}.
+.........
+`, contents: function(rm) {
        des.levregion({ region: [1,0,79,20], region_islev: 1, exclude: [0,0,8,8], type: "stair-up" });
        des.levregion({ region: [1,0,79,20], region_islev: 1, exclude: [0,0,8,8], type: "stair-down" });
        des.levregion({ region: [1,0,79,20], region_islev: 1, exclude: [0,0,8,8], type: "branch" });

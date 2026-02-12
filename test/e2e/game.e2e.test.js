@@ -365,36 +365,59 @@ describe('E2E: Help and information commands', () => {
 
     it('? then c shows game commands in pager', async () => {
         await sendChar(page, '?');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
+        // Wait for help menu to appear
+        await page.waitForFunction(
+            () => (document.getElementById('terminal')?.textContent || '').includes('Select one item'),
+            { timeout: 3000 }
+        );
         await sendChar(page, 'c');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 300))); // Longer wait for pager to load
+        // Wait for pager content to load (menu disappears, commands appear)
+        await page.waitForFunction(
+            () => {
+                const text = document.getElementById('terminal')?.textContent || '';
+                return !text.includes('Select one item') &&
+                    (text.includes('Game Commands') || text.includes('Move commands') || text.includes('Commands'));
+            },
+            { timeout: 3000 }
+        );
         const text = await getTerminalText(page);
         const hasCommands = text.includes('Game Commands') || text.includes('Move commands') || text.includes('Commands');
-        if (!hasCommands) {
-            console.log('Expected game commands, got (first 500 chars):', text.substring(0, 500));
-        }
         assert.ok(hasCommands, 'Should show game commands from hh.txt');
         await sendChar(page, 'q');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
     });
 
     it('? then d shows history in pager', async () => {
         await sendChar(page, '?');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
+        await page.waitForFunction(
+            () => (document.getElementById('terminal')?.textContent || '').includes('Select one item'),
+            { timeout: 3000 }
+        );
         await sendChar(page, 'd');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 300))); // Longer wait for pager to load
+        await page.waitForFunction(
+            () => {
+                const text = document.getElementById('terminal')?.textContent || '';
+                return !text.includes('Select one item') &&
+                    (text.includes('History') || text.includes('NetHack'));
+            },
+            { timeout: 3000 }
+        );
         const text = await getTerminalText(page);
         assert.ok(text.includes('History') || text.includes('NetHack'),
             'Should show history');
         await sendChar(page, 'q');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
     });
 
     it('& (whatdoes) describes a known key', async () => {
         await sendChar(page, '&');
+        await page.waitForFunction(
+            () => (document.getElementById('terminal')?.textContent || '').includes('what command'),
+            { timeout: 3000 }
+        ).catch(() => {}); // May show prompt differently
         await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
         await sendChar(page, 'o');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
         const msg = await getRow(page, 0);
         const hasDescription = msg.includes('Open') || msg.includes('door') || msg.includes('open');
         if (!hasDescription) {
@@ -406,9 +429,9 @@ describe('E2E: Help and information commands', () => {
 
     it('& (whatdoes) reports unknown for unbound key', async () => {
         await sendChar(page, '&');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
         await sendChar(page, 'X');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
         const msg = await getRow(page, 0);
         assert.ok(msg.includes('unknown'),
             `Whatdoes should report unknown for 'X', got: "${msg.trim()}"`);
@@ -416,9 +439,9 @@ describe('E2E: Help and information commands', () => {
 
     it('/ (whatis) identifies a symbol', async () => {
         await sendChar(page, '/');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
         await sendChar(page, '>');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
         const msg = await getRow(page, 0);
         assert.ok(msg.includes('stairs'),
             `Whatis should identify '>', got: "${msg.trim()}"`);
@@ -426,9 +449,9 @@ describe('E2E: Help and information commands', () => {
 
     it('/ (whatis) identifies letters as monsters', async () => {
         await sendChar(page, '/');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
         await sendChar(page, 'd');
-        await page.evaluate(() => new Promise(r => setTimeout(r, 50)));
+        await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
         const msg = await getRow(page, 0);
         assert.ok(msg.includes('monster'),
             `Whatis should identify 'd' as monster, got: "${msg.trim()}"`);

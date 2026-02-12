@@ -18,24 +18,20 @@ export function generate() {
     des.level_init({ style: "swamp", lit: 0 });
     // guarantee at least one open spot to ensure successful stair placement
     des.map({ halign: "left", valign: "bottom", map: `
-
-    xxxxxxxx
-    xx...xxx
-    xxx...xx
-    xxxx.xxx
-    xxxxxxxx
-
-    ` });
+xxxxxxxx
+xx...xxx
+xxx...xx
+xxxx.xxx
+xxxxxxxx
+` });
     des.object("boulder");
     des.map({ halign: "right", valign: "top", map: `
-
-    xxxxxxxx
-    xxxx.xxx
-    xxx...xx
-    xx...xxx
-    xxxxxxxx
-
-    ` });
+xxxxxxxx
+xxxx.xxx
+xxx...xx
+xx...xxx
+xxxxxxxx
+` });
     des.object("boulder");
     // lair
     des.map(`
