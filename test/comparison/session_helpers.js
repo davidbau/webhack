@@ -700,7 +700,21 @@ export async function replaySession(seed, session) {
         }
 
         // Execute the command once (one turn per keystroke)
-        const result = await rhack(ch, game);
+        let result = await rhack(ch, game);
+
+        // C ref: cmd.c prefix commands (F=fight, G=run, g=rush) return without
+        // consuming time or reading further input. For multi-char keys like "Fh",
+        // the prefix is processed first, then we need to send the remaining char
+        // as a separate command to actually perform the action.
+        // Note: only actual prefix commands need this — other multi-char commands
+        // like "oj" (open-south) or "wb" (wield-b) consume trailing chars via
+        // nhgetch() internally.
+        const PREFIX_CMDS = new Set(['F', 'G', 'g']);
+        if (result && !result.tookTime && step.key.length > 1
+            && PREFIX_CMDS.has(String.fromCharCode(ch))) {
+            const nextCh = step.key.charCodeAt(1);
+            result = await rhack(nextCh, game);
+        }
 
         // If the command took time, run monster movement and turn effects
         if (result && result.tookTime) {

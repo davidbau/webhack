@@ -923,16 +923,16 @@ async function handleWield(player, display) {
     if (c === '-') {
         player.weapon = null;
         display.putstr_message('You are now empty-handed.');
-        // C ref: wield.c:dowield sets multi=0 (no time cost)
-        return { moved: false, tookTime: false };
+        // C ref: wield.c:dowield returns ECMD_TIME (wielding takes a turn)
+        return { moved: false, tookTime: true };
     }
 
     const weapon = weapons.find(w => w.invlet === c);
     if (weapon) {
         player.weapon = weapon;
         display.putstr_message(`${weapon.invlet} - ${weapon.name} (weapon in hand).`);
-        // C ref: wield.c:dowield sets multi=0 (no time cost)
-        return { moved: false, tookTime: false };
+        // C ref: wield.c:dowield returns ECMD_TIME (wielding takes a turn)
+        return { moved: false, tookTime: true };
     }
 
     display.putstr_message("Never mind.");
