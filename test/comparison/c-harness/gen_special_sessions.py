@@ -385,12 +385,14 @@ def _extract_dlvl(content):
     return int(m.group(1)) if m else None
 
 
-def wizard_level_teleport_depth(session, target_depth, verbose):
-    """Use wizard mode Ctrl+V to teleport to an absolute dungeon depth."""
+def wizard_load_des_level(session, level_name, verbose):
+    """Load a special-level Lua file via #wizloaddes."""
     if verbose:
-        print(f'  [teleport] Numeric teleport to Dlvl:{target_depth}')
+        print(f'  [wizloaddes] Loading {level_name}.lua')
 
-    tmux_send_special(session, 'C-v', 0.3)
+    tmux_send(session, '#', 0.2)
+    tmux_send(session, 'wizloaddes', 0.2)
+    tmux_send_special(session, 'Enter', 0.3)
 
     for _ in range(30):
         try:
@@ -400,17 +402,17 @@ def wizard_level_teleport_depth(session, target_depth, verbose):
         if '--More--' in content:
             tmux_send_special(session, 'Space', 0.2)
             continue
-        if 'To what level' in content or 'what level' in content.lower():
-            tmux_send(session, str(target_depth), 0.2)
+        if 'Load which des lua file?' in content:
+            tmux_send(session, level_name, 0.2)
             tmux_send_special(session, 'Enter', 0.5)
             break
         time.sleep(0.1)
     else:
         if verbose:
-            print('  [teleport] WARNING: did not receive numeric level prompt')
+            print(f'  [wizloaddes] WARNING: no file prompt for {level_name}')
         return False
 
-    for _ in range(50):
+    for _ in range(60):
         try:
             content = tmux_capture(session)
         except subprocess.CalledProcessError:
@@ -418,130 +420,19 @@ def wizard_level_teleport_depth(session, target_depth, verbose):
         if '--More--' in content:
             tmux_send_special(session, 'Space', 0.2)
             continue
-        dlvl = _extract_dlvl(content)
-        if dlvl == target_depth:
-            if verbose:
-                print(f'  [teleport] Arrived at Dlvl:{dlvl}')
+        # A settled status line with Dlvl indicates map is ready.
+        if _extract_dlvl(content) is not None:
             return True
         time.sleep(0.1)
 
     if verbose:
-        print(f'  [teleport] WARNING: did not confirm arrival at Dlvl:{target_depth}')
+        print(f'  [wizloaddes] WARNING: timeout waiting for level load of {level_name}')
     return False
-
-
-def _open_wizlevel_menu(session):
-    tmux_send_special(session, 'C-v', 0.3)
-    for _ in range(30):
-        content = tmux_capture(session)
-        if '--More--' in content:
-            tmux_send_special(session, 'Space', 0.2)
-            continue
-        if 'To what level' in content:
-            break
-        time.sleep(0.1)
-    else:
-        return False
-    tmux_send(session, '?', 0.2)
-    tmux_send_special(session, 'Enter', 0.5)
-    return True
-
-
-def wizard_teleport_to_branch_stair(session, branch_name, verbose):
-    """Teleport to the branch stair entry line shown in wizard level menu."""
-    if verbose:
-        print(f'  [teleport] Looking for branch stair to "{branch_name}"')
-    if not _open_wizlevel_menu(session):
-        if verbose:
-            print('  [teleport] WARNING: failed to open level menu')
-        return None
-
-    target_key = None
-    stair_depth = None
-    branch_pat = re.compile(
-        r'^([a-zA-Z])\s+-\s+[*]?\s*(?:One way\s+)?Stair to '
-        + re.escape(branch_name)
-        + r':\s*(\d+)'
-    )
-
-    for _ in range(8):
-        content = tmux_capture(session)
-        for raw in content.split('\n'):
-            line = raw.strip()
-            m = branch_pat.match(line)
-            if m:
-                target_key = m.group(1)
-                stair_depth = int(m.group(2))
-                if verbose:
-                    print(f'  [menu] Branch stair key "{target_key}" depth {stair_depth}')
-                break
-        if target_key:
-            break
-        if '(end)' in content:
-            break
-        if re.search(r'\(\d+ of \d+\)', content):
-            tmux_send_special(session, 'Space', 0.2)
-        else:
-            break
-
-    if not target_key:
-        tmux_send_special(session, 'Escape', 0.2)
-        if verbose:
-            print(f'  [teleport] WARNING: branch stair for "{branch_name}" not found')
-        return None
-
-    tmux_send(session, target_key, 0.3)
-    for _ in range(40):
-        content = tmux_capture(session)
-        if '--More--' in content:
-            tmux_send_special(session, 'Space', 0.2)
-            continue
-        if _extract_dlvl(content) is not None:
-            break
-        time.sleep(0.1)
-    return stair_depth
 
 
 def capture_filler_level(session, level_name, verbose):
-    """Capture filler levels via branch-aware movement + numeric teleport."""
-    if level_name == 'minefill':
-        stair_depth = wizard_teleport_to_branch_stair(session, 'The Gnomish Mines', verbose)
-        if stair_depth is None:
-            return False
-
-        # Enter the branch from the branch stair location.
-        tmux_send(session, '>', 0.5)
-        for _ in range(30):
-            content = tmux_capture(session)
-            if '--More--' in content:
-                tmux_send_special(session, 'Space', 0.2)
-                continue
-            dlvl = _extract_dlvl(content)
-            if dlvl is not None:
-                break
-            time.sleep(0.1)
-        else:
-            return False
-
-        # Mines filler is branch level 3; after entering branch at level 1,
-        # jump two absolute depths deeper.
-        target_depth = dlvl + 2
-        return wizard_level_teleport_depth(session, target_depth, verbose)
-
-    if level_name == 'hellfill':
-        # Valley is Gehennom branch level 1 and is always named in menu.
-        if not wizard_teleport_to_level(session, 'valley', verbose):
-            return False
-        content = tmux_capture(session)
-        dlvl = _extract_dlvl(content)
-        if dlvl is None:
-            return False
-
-        # Gehennom filler target: branch level 2 (one deeper than valley).
-        target_depth = dlvl + 1
-        return wizard_level_teleport_depth(session, target_depth, verbose)
-
-    return False
+    """Capture filler levels by loading the exact des Lua file."""
+    return wizard_load_des_level(session, level_name, verbose)
 
 
 def parse_dumpmap(dumpmap_file):
