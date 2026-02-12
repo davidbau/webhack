@@ -28,7 +28,7 @@ import {
     PM_ARCHEOLOGIST as ROLE_ARCHEOLOGIST, PM_WIZARD as ROLE_WIZARD
 } from './config.js';
 import { GameMap, makeRoom, FILL_NONE, FILL_NORMAL } from './map.js';
-import { rn2, rnd, rn1, d } from './rng.js';
+import { rn2, rnd, rn1, d, getRngCallCount } from './rng.js';
 import { getbones } from './bones.js';
 import { mkobj, mksobj, mkcorpstat, weight, setLevelDepth, TAINT_AGE } from './mkobj.js';
 import { makemon, mkclass, NO_MM_FLAGS, MM_NOGRP } from './makemon.js';
@@ -125,9 +125,14 @@ export function get_rects() {
 // C ref: rect.c rnd_rect() - exported for sp_lev.js themed room generation
 export function rnd_rect() {
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_THEMEROOMS === '1';
+    const DEBUG_POOL = typeof process !== 'undefined' && process.env.DEBUG_RECT_POOL === '1';
     if (DEBUG) {
         const stack = new Error().stack.split('\n')[2].trim(); // Get caller
         console.log(`  rnd_rect: ENTRY rect_cnt=${rect_cnt} from ${stack}`);
+    }
+    if (DEBUG_POOL) {
+        const callCount = typeof getRngCallCount === 'function' ? getRngCallCount() : -1;
+        console.log(`  rnd_rect[${callCount}]: pool=${rect_cnt} [${rects.slice(0, rect_cnt).map(r => `(${r.lx},${r.ly})-(${r.hx},${r.hy})`).join(', ')}]`);
     }
     const result = rect_cnt > 0 ? rects[rn2(rect_cnt)] : null;
     if (DEBUG) {
@@ -305,7 +310,7 @@ export function check_room(map, lowx, ddx, lowy, ddy, vault, inThemerooms) {
             if (ymax >= ROWNO) ymax = ROWNO - 1;
             for (; y <= ymax; y++) {
                 const loc = map.at(x, y);
-                if (loc && loc.typ !== STONE) {
+                if (loc && loc.typ !== STONE) { if (typeof process !== "undefined" && process.env.DEBUG_CHECK_ROOM === "1") console.log(`  check_room CONFLICT at (${x},${y}) typ=${loc.typ} in room check (${lowx},${lowy})-(${hix},${hiy}), nroom=${map.nroom}`);
                     if (!rn2(3)) return null;
                     // C ref: sp_lev.c:1457-1458 — in themerooms mode,
                     // any overlap causes immediate failure (no shrinking)
