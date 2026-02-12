@@ -14,6 +14,10 @@ def _is_code_like(s):
     s = s.strip()
     if not s:
         return False
+    # Single character or symbol - almost certainly a keystroke/symbol
+    # (must check before backtick/asterisk bailouts below)
+    if len(s) == 1:
+        return True
     # Already has backticks - don't double-wrap
     if '`' in s:
         return False
@@ -21,9 +25,6 @@ def _is_code_like(s):
     # as that would make the formatting literal
     if '*' in s:
         return False
-    # Single character or symbol - almost certainly a keystroke
-    if len(s) == 1:
-        return True
     # Very short strings that are clearly keys/codes
     if len(s) <= 3 and not s[0].isupper():
         return True
@@ -1252,16 +1253,22 @@ def convert_guidebook(input_file, output_file):
         )
 
         # Convert quoted short strings to backtick code
+        def _backtick_wrap(s):
+            """Wrap s in backtick code span, using `` ` `` syntax if s contains backticks."""
+            if '`' in s:
+                return '`` ' + s + ' ``'
+            return '`' + s + '`'
+
         # Single curly quotes around short strings (keystrokes, commands)
         line = re.sub(
             r'\u2018([^\u2019]{1,30})\u2019',
-            lambda m: '`' + m.group(1) + '`' if _is_code_like(m.group(1)) else '\u2018' + m.group(1) + '\u2019',
+            lambda m: _backtick_wrap(m.group(1)) if _is_code_like(m.group(1)) else '\u2018' + m.group(1) + '\u2019',
             line
         )
         # Double curly quotes around short strings
         line = re.sub(
             r'\u201c([^\u201d]{1,30})\u201d',
-            lambda m: '`' + m.group(1) + '`' if _is_code_like(m.group(1)) else '\u201c' + m.group(1) + '\u201d',
+            lambda m: _backtick_wrap(m.group(1)) if _is_code_like(m.group(1)) else '\u201c' + m.group(1) + '\u201d',
             line
         )
         # Longer double curly quotes that look like game prompts (contain [..?..])
