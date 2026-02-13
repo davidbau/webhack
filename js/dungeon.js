@@ -1398,13 +1398,37 @@ export function add_doors_to_room(map, croom) {
 
 // C ref: sp_lev.c maybe_add_door()
 function maybe_add_door(map, x, y, droom) {
+    const shared_with_room = (tx, ty, room, rmno) => {
+        if (!isok(tx, ty)) return false;
+        const here = map.at(tx, ty);
+        if (here && here.roomno === rmno && !here.edge) return false;
+        if (isok(tx - 1, ty)) {
+            const l = map.at(tx - 1, ty);
+            if (l && l.roomno === rmno && tx - 1 <= room.hx) return true;
+        }
+        if (isok(tx + 1, ty)) {
+            const r = map.at(tx + 1, ty);
+            if (r && r.roomno === rmno && tx + 1 >= room.lx) return true;
+        }
+        if (isok(tx, ty - 1)) {
+            const u = map.at(tx, ty - 1);
+            if (u && u.roomno === rmno && ty - 1 <= room.hy) return true;
+        }
+        if (isok(tx, ty + 1)) {
+            const d = map.at(tx, ty + 1);
+            if (d && d.roomno === rmno && ty + 1 >= room.ly) return true;
+        }
+        return false;
+    };
+
     // Check if this door location is associated with this room
     if (droom.hx >= 0) {
         const inside = (x >= droom.lx && x <= droom.hx && y >= droom.ly && y <= droom.hy);
         const loc = map.at(x, y);
-        const roomMatch = loc && loc.roomno === droom.roomno;
+        const rmno = ((droom.roomnoidx ?? map.rooms.indexOf(droom)) + ROOMOFFSET);
+        const roomMatch = loc && loc.roomno === rmno;
 
-        if ((!droom.irregular && inside) || roomMatch) {
+        if ((!droom.irregular && inside) || roomMatch || shared_with_room(x, y, droom, rmno)) {
             add_door(map, x, y, droom);
         }
     }
