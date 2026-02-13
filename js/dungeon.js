@@ -4149,18 +4149,22 @@ function bad_location(map, x, y, nlx, nly, nhx, nhy) {
 // C ref: mkmaze.c:413-469 — put_lregion_here
 // Try to place region at (x,y). Returns true on success.
 function put_lregion_here(map, x, y, nlx, nly, nhx, nhy, rtype, oneshot) {
-    // Check if location is bad
-    if (bad_location(map, x, y, nlx, nly, nhx, nhy) ||
-        is_exclusion_zone(rtype, x, y)) {
+    // Check if location is bad.
+    let invalid = bad_location(map, x, y, nlx, nly, nhx, nhy)
+        || is_exclusion_zone(rtype, x, y);
+    if (invalid) {
         if (!oneshot) {
             return false; // Try again
         }
-        // In oneshot mode, try to force placement by removing trap
-        // (simplified - C has more complex logic here)
-        if (bad_location(map, x, y, nlx, nly, nhx, nhy) ||
-            is_exclusion_zone(rtype, x, y)) {
-            return false;
+        // C ref: mkmaze.c put_lregion_here() oneshot path:
+        // if the only candidate is blocked by a trap, remove the trap and retry.
+        const trap = map.trapAt(x, y);
+        if (trap) {
+            map.traps = map.traps.filter(t => t !== trap);
         }
+        invalid = bad_location(map, x, y, nlx, nly, nhx, nhy)
+            || is_exclusion_zone(rtype, x, y);
+        if (invalid) return false;
     }
 
     // Place the feature based on region type

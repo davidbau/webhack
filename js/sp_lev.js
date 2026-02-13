@@ -766,11 +766,12 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth, skipL
 
         // C ref: sp_lev.c:1601-1622 — Calculate absolute coordinates from grid position
         // Grid divides map into 5×5 sections: COLNO/5 = 16, ROWNO/5 = 4.2 ≈ 4
-        const COLNO_DIV5 = Math.floor(COLNO / 5);  // 16
-        const ROWNO_DIV5 = Math.floor(ROWNO / 5);  // 4
+        const cdiv = (num, den) => Math.trunc(num / den);
+        const COLNO_DIV5 = cdiv(COLNO, 5);  // 16
+        const ROWNO_DIV5 = cdiv(ROWNO, 5);  // 4
 
-        xabs = Math.floor(((xtmp - 1) * COLNO) / 5) + 1;
-        yabs = Math.floor(((ytmp - 1) * ROWNO) / 5) + 1;
+        xabs = cdiv(((xtmp - 1) * COLNO), 5) + 1;
+        yabs = cdiv(((ytmp - 1) * ROWNO), 5) + 1;
 
     // Apply alignment — C constants: SPLEV_LEFT=1, SPLEV_CENTER=3, SPLEV_RIGHT=5
     // rnd(3) returns 1-3, so only LEFT(1) and CENTER(3) are reachable;
@@ -779,7 +780,7 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth, skipL
         case 1: // SPLEV_LEFT
             break;
         case 3: // SPLEV_CENTER
-            xabs += Math.floor((COLNO_DIV5 - wtmp) / 2);
+            xabs += cdiv((COLNO_DIV5 - wtmp), 2);
             break;
         case 5: // SPLEV_RIGHT (only from explicit level scripts)
             xabs += COLNO_DIV5 - wtmp;
@@ -790,7 +791,7 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth, skipL
         case 1: // TOP
             break;
         case 3: // SPLEV_CENTER
-            yabs += Math.floor((ROWNO_DIV5 - htmp) / 2);
+            yabs += cdiv((ROWNO_DIV5 - htmp), 2);
             break;
         case 5: // BOTTOM (only from explicit level scripts)
             yabs += ROWNO_DIV5 - htmp;
@@ -2302,20 +2303,21 @@ export function room(opts = {}) {
         // Top-level rooms use grid coordinates (1-5) that get converted to map positions
         // Nested rooms use relative coordinates within parent (no conversion)
         if (levelState.roomDepth === 0) {
+            const cdiv = (num, den) => Math.trunc(num / den);
             // Grid to absolute conversion (C: xabs = (((xtmp - 1) * COLNO) / 5) + 1)
-            roomX = Math.floor(((x - 1) * COLNO) / 5) + 1;
-            roomY = Math.floor(((y - 1) * ROWNO) / 5) + 1;
+            roomX = cdiv(((x - 1) * COLNO), 5) + 1;
+            roomY = cdiv(((y - 1) * ROWNO), 5) + 1;
 
             // Apply alignment offset (C ref: sp_lev.c:1605-1619)
-            const COLNO_DIV5 = Math.floor(COLNO / 5);  // 16
-            const ROWNO_DIV5 = Math.floor(ROWNO / 5);  // 4
+            const COLNO_DIV5 = cdiv(COLNO, 5);  // 16
+            const ROWNO_DIV5 = cdiv(ROWNO, 5);  // 4
 
             // xalign/yalign already converted by alignMap: 1=LEFT/TOP, 3=CENTER, 5=RIGHT/BOTTOM
             // Apply horizontal alignment
             if (xalign === 5) { // RIGHT
                 roomX += COLNO_DIV5 - w;
             } else if (xalign === 3) { // CENTER
-                roomX += Math.floor((COLNO_DIV5 - w) / 2);
+                roomX += cdiv((COLNO_DIV5 - w), 2);
             }
             // LEFT (1) needs no offset
 
@@ -2323,7 +2325,7 @@ export function room(opts = {}) {
             if (yalign === 5) { // BOTTOM
                 roomY += ROWNO_DIV5 - h;
             } else if (yalign === 3) { // CENTER
-                roomY += Math.floor((ROWNO_DIV5 - h) / 2);
+                roomY += cdiv((ROWNO_DIV5 - h), 2);
             }
             // TOP (1) needs no offset
 
