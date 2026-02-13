@@ -1029,6 +1029,7 @@ export function resetLevelState() {
  * @param {boolean} [ctx.isBranchLevel]
  * @param {number} [ctx.dunlev]
  * @param {number} [ctx.dunlevs]
+ * @param {boolean} [ctx.applyRoomFill]
  */
 export function setFinalizeContext(ctx = null) {
     if (!ctx) {
@@ -1038,7 +1039,8 @@ export function setFinalizeContext(ctx = null) {
     levelState.finalizeContext = {
         isBranchLevel: !!ctx.isBranchLevel,
         dunlev: Number.isFinite(ctx.dunlev) ? ctx.dunlev : undefined,
-        dunlevs: Number.isFinite(ctx.dunlevs) ? ctx.dunlevs : undefined
+        dunlevs: Number.isFinite(ctx.dunlevs) ? ctx.dunlevs : undefined,
+        applyRoomFill: !!ctx.applyRoomFill
     };
 }
 
@@ -1477,6 +1479,10 @@ function flipLevelRandom() {
     // C uses FlipX(val) = (maxx - val) + minx and FlipY(val) = (maxy - val) + miny
     const flipX = (x) => (maxX - x) + minX;
     const flipY = (y) => (maxY - y) + minY;
+    const inFlipArea = (x, y) => (
+        Number.isInteger(x) && Number.isInteger(y)
+        && x >= minX && x <= maxX && y >= minY && y <= maxY
+    );
 
     // Apply flips by swapping cells
     // Vertical flip: swap rows
@@ -1538,6 +1544,106 @@ function flipLevelRandom() {
                 region.delarea.x2 = tmp;
             }
         }
+    }
+
+    // C ref: sp_lev.c flip_level() updates room/subroom bounds and door coords
+    // before later placement steps (e.g. fixup_special() -> place_lregion()).
+    const flipRoom = (room) => {
+        if (!room) return;
+        if (flipBits & 1) {
+            const ly = flipY(room.ly);
+            const hy = flipY(room.hy);
+            room.ly = Math.min(ly, hy);
+            room.hy = Math.max(ly, hy);
+        }
+        if (flipBits & 2) {
+            const lx = flipX(room.lx);
+            const hx = flipX(room.hx);
+            room.lx = Math.min(lx, hx);
+            room.hx = Math.max(lx, hx);
+        }
+        if (room.region) {
+            room.region.x1 = room.lx;
+            room.region.y1 = room.ly;
+            room.region.x2 = room.hx;
+            room.region.y2 = room.hy;
+        }
+    };
+
+    const seenRooms = new Set();
+    for (const room of map.rooms || []) {
+        if (!room || seenRooms.has(room)) continue;
+        seenRooms.add(room);
+        flipRoom(room);
+        for (const sub of room.sbrooms || []) {
+            if (!sub || seenRooms.has(sub)) continue;
+            seenRooms.add(sub);
+            flipRoom(sub);
+        }
+    }
+
+    for (const door of map.doors || []) {
+        if (!door || !inFlipArea(door.x, door.y)) continue;
+        if (flipBits & 1) door.y = flipY(door.y);
+        if (flipBits & 2) door.x = flipX(door.x);
+    }
+
+    // C ref: sp_lev.c flip_level() flips stairway/ladders metadata so
+    // subsequent placement logic (fixup_special/place_lregion) stays aligned
+    // with flipped terrain.
+    const flipPoint = (pt) => {
+        if (!pt || !Number.isInteger(pt.x) || !Number.isInteger(pt.y)) return;
+        // C Flip_coord() skips zero-x sentinel entries and only flips points
+        // that are inside the flip area.
+        if (pt.x === 0) return;
+        if (!inFlipArea(pt.x, pt.y)) return;
+        if (flipBits & 1) pt.y = flipY(pt.y);
+        if (flipBits & 2) pt.x = flipX(pt.x);
+    };
+
+    flipPoint(map.upstair);
+    flipPoint(map.dnstair);
+    flipPoint(map.upladder);
+    flipPoint(map.dnladder);
+
+    // C ref: sp_lev.c flip_level() flips trap/object/monster coordinates too.
+    for (const trap of map.traps || []) {
+        if (!trap) continue;
+        if (inFlipArea(trap.tx, trap.ty)) {
+            if (flipBits & 1) trap.ty = flipY(trap.ty);
+            if (flipBits & 2) trap.tx = flipX(trap.tx);
+            if (Number.isInteger(trap.x)) trap.x = trap.tx;
+            if (Number.isInteger(trap.y)) trap.y = trap.ty;
+        }
+        if (trap.launch && inFlipArea(trap.launch.x, trap.launch.y)) {
+            if (flipBits & 1) trap.launch.y = flipY(trap.launch.y);
+            if (flipBits & 2) trap.launch.x = flipX(trap.launch.x);
+        }
+        if (trap.launch2 && inFlipArea(trap.launch2.x, trap.launch2.y)) {
+            if (flipBits & 1) trap.launch2.y = flipY(trap.launch2.y);
+            if (flipBits & 2) trap.launch2.x = flipX(trap.launch2.x);
+        }
+    }
+
+    for (const obj of map.objects || []) {
+        if (!obj || !inFlipArea(obj.ox, obj.oy)) continue;
+        if (flipBits & 1) obj.oy = flipY(obj.oy);
+        if (flipBits & 2) obj.ox = flipX(obj.ox);
+    }
+
+    for (const mon of map.monsters || []) {
+        if (!mon) continue;
+        const mx = Number.isInteger(mon.mx) ? mon.mx : mon.x;
+        const my = Number.isInteger(mon.my) ? mon.my : mon.y;
+        if (!inFlipArea(mx, my)) continue;
+        let fx = mx;
+        let fy = my;
+        if (flipBits & 1) fy = flipY(fy);
+        if (flipBits & 2) fx = flipX(fx);
+        if (Number.isInteger(mon.mx)) mon.mx = fx;
+        if (Number.isInteger(mon.my)) mon.my = fy;
+        if (Number.isInteger(mon.x)) mon.x = fx;
+        if (Number.isInteger(mon.y)) mon.y = fy;
     }
 
     return true;
@@ -1802,10 +1908,8 @@ export function map(data) {
         }
     }
 
-    // Apply wall_extends() to compute correct junction types
-    if (levelState.coder.solidify) {
-        wallification(levelState.map);
-    }
+    // C ref: sp_lev.c lspo_map() does not wallify here.
+    // Wall junction typing happens during finalize_level().
 
     // Enable map-relative coordinate mode
     // C ref: After des.map(), all Lua coordinates are relative to map origin
@@ -2936,12 +3040,15 @@ export function stair(direction, x, y) {
     }
 
     const stairType = dir === 'up' ? STAIRS_UP : STAIRS_DOWN;
-    // C ref: sp_lev.c l_create_stairway() -> set_ok_location_func(good_stair_loc)
-    // where random stair placement accepts only ROOM/CORR/ICE.
-    setOkLocationFunc((tx, ty) => {
-        const typ = levelState.map.locations[tx][ty].typ;
-        return typ === ROOM || typ === CORR || typ === ICE;
-    });
+    const isRandom = sx === undefined || sy === undefined || sx < 0 || sy < 0;
+    // C ref: sp_lev.c l_create_stairway():
+    // set_ok_location_func(good_stair_loc) only for random placement.
+    if (isRandom) {
+        setOkLocationFunc((tx, ty) => {
+            const typ = levelState.map.locations[tx][ty].typ;
+            return typ === ROOM || typ === CORR || typ === ICE;
+        });
+    }
     const pos = getLocationCoord(sx, sy, GETLOC_DRY, levelState.currentRoom || null);
     setOkLocationFunc(null);
     const stairX = pos.x;
@@ -2949,6 +3056,21 @@ export function stair(direction, x, y) {
     if (stairX < 0 || stairY < 0) return;
 
     if (stairX >= 0 && stairX < COLNO && stairY >= 0 && stairY < ROWNO) {
+        // C ref: l_create_stairway() marks SpLev_Map before mkstairs(),
+        // even if mkstairs later rejects placement at dungeon boundaries.
+        markSpLevTouched(stairX, stairY);
+
+        // C ref: l_create_stairway() removes pre-existing trap at the stair spot.
+        const trap = levelState.map.trapAt(stairX, stairY);
+        if (trap) {
+            levelState.map.traps = (levelState.map.traps || []).filter(t => t !== trap);
+        }
+
+        // C ref: mkstairs(..., force=TRUE) for fixed coordinates coerces terrain.
+        if (!isRandom) {
+            levelState.map.locations[stairX][stairY].typ = ROOM;
+        }
+
         if (!canPlaceStair(dir)) {
             return;
         }
@@ -2965,7 +3087,6 @@ export function stair(direction, x, y) {
             levelState.map.dnstair = { x: stairX, y: stairY };
         }
         markSpLevMap(stairX, stairY);
-        markSpLevTouched(stairX, stairY);
     }
 }
 
@@ -4621,7 +4742,7 @@ export function finalize_level() {
     // C ref: mklev.c:1388-1422 — Fill ordinary rooms with random content.
     // Scope this to explicit parity contexts to avoid drifting handcrafted
     // special levels during normal generation.
-    if (levelState.map && levelState.finalizeContext) {
+    if (levelState.map && levelState.finalizeContext?.applyRoomFill) {
         const map = levelState.map;
         const depth = levelState.levelDepth || 1;
         const OROOM = 0;

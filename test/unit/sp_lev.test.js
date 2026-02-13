@@ -333,6 +333,21 @@ describe('sp_lev.js - des.* API', () => {
             'untouched CROSSWALL should remain CROSSWALL');
     });
 
+    it('finalize_level keeps stair metadata aligned after vertical flip', () => {
+        resetLevelState();
+        initRng(1); // first rn2(2) => 1, so vertical flip is applied
+        des.level_init({ style: 'solidfill', fg: '.', lit: 0 });
+        des.stair('up', 10, 5);
+
+        const state = getLevelState();
+        state.coder.allow_flips = 1; // vertical only
+        const map = des.finalize_level();
+
+        assert.equal(map.locations[10][15].typ, STAIRS, 'stair terrain should flip to mirrored y');
+        assert.equal(map.upstair.x, 10, 'upstair x metadata should remain aligned');
+        assert.equal(map.upstair.y, 15, 'upstair y metadata should be flipped');
+    });
+
     it('place_lregion oneshot removes destroyable trap blocker', () => {
         resetLevelState();
         des.level_init({ style: 'solidfill', fg: '.' });

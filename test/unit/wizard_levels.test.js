@@ -11,6 +11,21 @@ import { generate as generateWizard3 } from '../../js/levels/wizard3.js';
 import { initRng } from '../../js/rng.js';
 import { STONE, ROOM, VWALL, TRWALL, MOAT, CORR } from '../../js/config.js';
 
+function getBounds(map) {
+    let minX = 79, minY = 20, maxX = 0, maxY = 0;
+    for (let x = 0; x < 80; x++) {
+        for (let y = 0; y < 21; y++) {
+            if (map.locations[x][y].typ !== STONE) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+    }
+    return { minX, minY, maxX, maxY };
+}
+
 describe('Wizard\'s Tower level generation', () => {
     before(() => {
         initRng(1);
@@ -58,9 +73,15 @@ describe('Wizard\'s Tower level generation', () => {
         // Check for the Wizard
         const wizard = map.monsters.find(m => m.id === 'Wizard of Yendor');
         assert.ok(wizard, 'Wizard of Yendor should be present');
-        // C parity: map-relative coords are converted to absolute after des.map().
-        assert.equal(wizard.x, 41, 'Wizard X position');
-        assert.equal(wizard.y, 10, 'Wizard Y position');
+        const bounds = getBounds(map);
+        const expectedPositions = new Set([
+            '41,10',
+            `${bounds.maxX - 41 + bounds.minX},10`,
+            `41,${bounds.maxY - 10 + bounds.minY}`,
+            `${bounds.maxX - 41 + bounds.minX},${bounds.maxY - 10 + bounds.minY}`
+        ]);
+        assert.ok(expectedPositions.has(`${wizard.x},${wizard.y}`),
+            `Wizard position should match flipped variants (got ${wizard.x},${wizard.y})`);
 
         // Book of the Dead should be placed at the wizard's tile.
         const objectsAtWizard = map.objects.filter(o => o.ox === wizard.x && o.oy === wizard.y);

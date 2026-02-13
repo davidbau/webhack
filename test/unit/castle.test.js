@@ -9,6 +9,38 @@ import { generate as generateCastle } from '../../js/levels/castle.js';
 import { initRng } from '../../js/rng.js';
 import { STONE, ROOM, VWALL, TRWALL, MOAT, CORR } from '../../js/config.js';
 
+function getBounds(map) {
+    let minX = 79, minY = 20, maxX = 0, maxY = 0;
+    for (let x = 0; x < 80; x++) {
+        for (let y = 0; y < 21; y++) {
+            if (map.locations[x][y].typ !== STONE) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+    }
+    return { minX, minY, maxX, maxY };
+}
+
+function transformRect(rect, bounds, flipX, flipY) {
+    let { x1, y1, x2, y2 } = rect;
+    if (flipX) {
+        const nx1 = bounds.maxX - x2 + bounds.minX;
+        const nx2 = bounds.maxX - x1 + bounds.minX;
+        x1 = Math.min(nx1, nx2);
+        x2 = Math.max(nx1, nx2);
+    }
+    if (flipY) {
+        const ny1 = bounds.maxY - y2 + bounds.minY;
+        const ny2 = bounds.maxY - y1 + bounds.minY;
+        y1 = Math.min(ny1, ny2);
+        y2 = Math.max(ny1, ny2);
+    }
+    return { x1, y1, x2, y2 };
+}
+
 describe('Castle (Stronghold) level generation', () => {
     before(() => {
         initRng(1);
@@ -74,21 +106,39 @@ describe('Castle (Stronghold) level generation', () => {
         const map = state.map;
         const ox = state.xstart;
         const oy = state.ystart;
+        const bounds = getBounds(map);
 
         // Castle has 4 storerooms × 7 objects each × 2 rows = 56 objects
         // Plus wand of wishing + potion + chest + scare monster scroll = 60 total
         assert.ok(map.objects.length >= 55, `Should have many objects (found ${map.objects.length})`);
 
         // Check that storerooms exist at coordinates relative to map origin.
-        const storeroom1 = map.objects.filter(o =>
-            o.oy >= oy + 5 && o.oy <= oy + 6 && o.ox >= ox + 39 && o.ox <= ox + 45
-        );
-        const storeroom2 = map.objects.filter(o =>
-            o.oy >= oy + 5 && o.oy <= oy + 6 && o.ox >= ox + 49 && o.ox <= ox + 55
-        );
+        const base1 = { x1: ox + 39, y1: oy + 5, x2: ox + 45, y2: oy + 6 };
+        const base2 = { x1: ox + 49, y1: oy + 5, x2: ox + 55, y2: oy + 6 };
+        const flips = [
+            { fx: false, fy: false },
+            { fx: true, fy: false },
+            { fx: false, fy: true },
+            { fx: true, fy: true }
+        ];
 
-        assert.ok(storeroom1.length >= 10, `Storeroom 1 should have objects (found ${storeroom1.length})`);
-        assert.ok(storeroom2.length >= 10, `Storeroom 2 should have objects (found ${storeroom2.length})`);
+        let storeroom1Count = 0;
+        let storeroom2Count = 0;
+        for (const f of flips) {
+            const r1 = transformRect(base1, bounds, f.fx, f.fy);
+            const r2 = transformRect(base2, bounds, f.fx, f.fy);
+            const c1 = map.objects.filter(o =>
+                o.ox >= r1.x1 && o.ox <= r1.x2 && o.oy >= r1.y1 && o.oy <= r1.y2
+            ).length;
+            const c2 = map.objects.filter(o =>
+                o.ox >= r2.x1 && o.ox <= r2.x2 && o.oy >= r2.y1 && o.oy <= r2.y2
+            ).length;
+            if (c1 > storeroom1Count) storeroom1Count = c1;
+            if (c2 > storeroom2Count) storeroom2Count = c2;
+        }
+
+        assert.ok(storeroom1Count >= 10, `Storeroom 1 should have objects (found ${storeroom1Count})`);
+        assert.ok(storeroom2Count >= 10, `Storeroom 2 should have objects (found ${storeroom2Count})`);
     });
 
     it('should place throne room with court monsters', () => {
