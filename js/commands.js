@@ -775,7 +775,7 @@ async function handleDownstairs(player, map, display, game) {
     display.putstr_message('You descend the staircase.');
 
     // Generate new level (changeLevel sets player.dungeonLevel)
-    game.changeLevel(newDepth);
+    game.changeLevel(newDepth, 'down');
     return { moved: false, tookTime: true };
 }
 
@@ -801,7 +801,7 @@ async function handleUpstairs(player, map, display, game) {
 
     const newDepth = player.dungeonLevel - 1;
     display.putstr_message('You climb the staircase.');
-    game.changeLevel(newDepth);
+    game.changeLevel(newDepth, 'up');
     return { moved: false, tookTime: true };
 }
 

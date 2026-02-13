@@ -2,7 +2,7 @@
 // Mirrors allmain.c from the C source.
 // This is the heart of the JS port: the game initialization and main loop.
 
-import { COLNO, ROWNO, ROOM, STAIRS, NORMAL_SPEED, ACCESSIBLE, isok, A_DEX, A_CON,
+import { NORMAL_SPEED, A_DEX, A_CON,
          A_LAWFUL, A_NEUTRAL, A_CHAOTIC,
          RACE_HUMAN, RACE_ELF, RACE_DWARF, RACE_GNOME, RACE_ORC,
          FEMALE, MALE, TERMINAL_COLS } from './config.js';
@@ -18,6 +18,7 @@ import { initLevelGeneration, makelevel, setGameSeed } from './dungeon.js';
 import { rhack } from './commands.js';
 import { movemon, settrack } from './monmove.js';
 import { simulatePostLevelInit, mon_arrive } from './u_init.js';
+import { getArrivalPosition } from './level_transition.js';
 import { loadSave, deleteSave, hasSave, saveGame,
          loadFlags, saveFlags, getUrlParams, deserializeRng,
          restGameState, restLev,
@@ -1102,7 +1103,7 @@ class NetHackGame {
 
     // Generate or retrieve a level
     // C ref: dungeon.c -- level management
-    changeLevel(depth) {
+    changeLevel(depth, transitionDir = null) {
         // Cache current level
         if (this.map) {
             this.levels[this.player.dungeonLevel] = this.map;
@@ -1128,7 +1129,7 @@ class NetHackGame {
         }
 
         this.player.dungeonLevel = depth;
-        this.placePlayerOnLevel();
+        this.placePlayerOnLevel(transitionDir);
 
         // Bones level message
         if (this.map.isBones) {
@@ -1143,35 +1144,10 @@ class NetHackGame {
 
     // Place player on the current level
     // C ref: allmain.c moveloop_preamble() -> places hero at stair position
-    placePlayerOnLevel() {
-        // For level 1, there are no upstairs; place in a room
-        // For deeper levels, place at upstair (came from above)
-        const hasUpstair = this.map.upstair.x > 0 && this.map.upstair.y > 0;
-        if (hasUpstair && this.player.dungeonLevel > 1) {
-            this.player.x = this.map.upstair.x;
-            this.player.y = this.map.upstair.y;
-            return;
-        }
-
-        // Find a room to place player
-        if (this.map.rooms.length > 0) {
-            const room = this.map.rooms[0];
-            this.player.x = Math.floor((room.lx + room.hx) / 2);
-            this.player.y = Math.floor((room.ly + room.hy) / 2);
-            return;
-        }
-
-        // Fallback: find any accessible square
-        for (let x = 1; x < COLNO - 1; x++) {
-            for (let y = 1; y < ROWNO - 1; y++) {
-                const loc = this.map.at(x, y);
-                if (loc && ACCESSIBLE(loc.typ)) {
-                    this.player.x = x;
-                    this.player.y = y;
-                    return;
-                }
-            }
-        }
+    placePlayerOnLevel(transitionDir = null) {
+        const pos = getArrivalPosition(this.map, this.player.dungeonLevel, transitionDir);
+        this.player.x = pos.x;
+        this.player.y = pos.y;
     }
 
     // Handle ?reset=1 — list saved data and prompt for deletion
