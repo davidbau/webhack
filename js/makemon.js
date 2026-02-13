@@ -28,6 +28,7 @@ import {
     M2_HOSTILE, M2_PEACEFUL, M2_DOMESTIC, M2_NEUTER, M2_GREEDY,
     M1_FLY, M1_NOHANDS,
     PM_ORC, PM_GIANT, PM_ELF, PM_HUMAN, PM_ETTIN, PM_MINOTAUR, PM_NAZGUL,
+    PM_MASTER_LICH, PM_ARCH_LICH,
     PM_WUMPUS, PM_LONG_WORM, PM_GIANT_EEL,
     PM_SOLDIER, PM_SERGEANT, PM_LIEUTENANT, PM_CAPTAIN, PM_WATCHMAN, PM_WATCH_CAPTAIN, PM_GUARD,
     PM_SHOPKEEPER, AT_WEAP, AT_EXPL, PM_PESTILENCE,
@@ -42,6 +43,7 @@ import {
     ROCK_CLASS, GEM_CLASS, SPBOOK_CLASS,
     TALLOW_CANDLE, WAX_CANDLE,
     ARROW, DAGGER, KNIFE, SHORT_SWORD, LONG_SWORD, SILVER_SABER, BROADSWORD,
+    ATHAME,
     SCIMITAR, SPEAR, JAVELIN, TRIDENT, AXE, BATTLE_AXE, MACE, WAR_HAMMER, LUCERN_HAMMER,
     FLAIL, HALBERD, CLUB, AKLYS, RUBBER_HOSE, BULLWHIP, QUARTERSTAFF,
     TWO_HANDED_SWORD, MORNING_STAR, STILETTO, PICK_AXE,
@@ -55,7 +57,7 @@ import {
     DWARVISH_IRON_HELM, DWARVISH_MITHRIL_COAT,
     DWARVISH_ROUNDSHIELD, DWARVISH_CLOAK,
     CROSSBOW, CROSSBOW_BOLT, BOW, SLING, FLINT,
-    PARTISAN, BEC_DE_CORBIN,
+    PARTISAN, BEC_DE_CORBIN, RANSEUR, SPETUM, GLAIVE,
     CREAM_PIE, DART, SHURIKEN, YA, YUMI, BOULDER,
     LEATHER_ARMOR, IRON_SHOES, SMALL_SHIELD, LARGE_SHIELD,
     SHIELD_OF_REFLECTION, CHAIN_MAIL, PLATE_MAIL, BRONZE_PLATE_MAIL,
@@ -68,7 +70,7 @@ import {
     POT_FULL_HEALING, POT_SICKNESS, POT_SPEED, POT_INVISIBILITY,
     POT_GAIN_LEVEL, POT_POLYMORPH,
     CRYSTAL_BALL, BRASS_LANTERN, SKELETON_KEY,
-    WAN_STRIKING, FOOD_RATION, TIN_OPENER,
+    WAN_STRIKING, FOOD_RATION, TIN_OPENER, WAN_NOTHING,
     WAN_MAGIC_MISSILE, WAN_DEATH, WAN_SLEEP, WAN_FIRE, WAN_COLD, WAN_LIGHTNING,
     WAN_TELEPORTATION, WAN_CREATE_MONSTER, WAN_DIGGING,
     WAN_MAKE_INVISIBLE, WAN_SPEED_MONSTER, WAN_POLYMORPH,
@@ -231,7 +233,7 @@ export function rndmonnum(depth) {
 // C ref: makemon.c:1750-1967
 // ========================================================================
 
-const A_NONE = 0;
+const A_NONE = -128;
 const G_GENO = 0x0020;
 const G_GONE = 0x03; // G_GENOD | G_EXTINCT (mvflags)
 
@@ -375,9 +377,9 @@ export function def_char_to_monclass(ch) {
 // C ref: makemon.c:1013-1055
 // ========================================================================
 
-export function newmonhp(mndx) {
+export function newmonhp(mndx, depth = 1) {
     const ptr = mons[mndx];
-    let m_lev = adj_lev(ptr);
+    let m_lev = adj_lev(ptr, depth);
     let hp;
 
     // Golem: fixed HP based on type — no RNG
@@ -588,12 +590,13 @@ function m_initweap(mndx, depth) {
         break;
 
     case S_TROLL:
+        // C ref: makemon.c:454-467
         if (!rn2(2)) {
             const w = rn2(4);
-            if (w === 0) mksobj(LONG_SWORD, true, false);
-            else if (w === 1) mksobj(TWO_HANDED_SWORD, true, false);
-            else if (w === 2) mksobj(MACE, true, false);
-            else mksobj(AXE, true, false);
+            if (w === 0) mksobj(RANSEUR, true, false);
+            else if (w === 1) mksobj(PARTISAN, true, false);
+            else if (w === 2) mksobj(GLAIVE, true, false);
+            else mksobj(SPETUM, true, false);
         }
         break;
 
@@ -924,16 +927,26 @@ function m_initinv(mndx, depth, m_lev) {
         break;
 
     case S_LICH:
-        // Lich equipment
-        if (ptr.name && ptr.name === 'arch-lich') {
-            if (!rn2(3)) mksobj(rn2(2) ? LONG_SWORD : AXE, true, false);
-        } else if (ptr.name && ptr.name === 'master lich') {
-            if (!rn2(13)) mksobj(rn2(7) ? DAGGER : WAN_STRIKING, true, false);
+        // C ref: makemon.c lich equipment
+        if (mndx === PM_MASTER_LICH) {
+            if (!rn2(13)) mksobj(rn2(7) ? ATHAME : WAN_NOTHING, true, false);
+        } else if (mndx === PM_ARCH_LICH && !rn2(3)) {
+            // C ref: mksobj(rn2(3) ? ATHAME : QUARTERSTAFF, TRUE, rn2(13)?FALSE:TRUE)
+            // Consume the enchantment RNG draw regardless; cursedness is not fully modeled here.
+            const otmp = mksobj(rn2(3) ? ATHAME : QUARTERSTAFF, true, false);
+            rn2(13);
+            if (otmp && (otmp.spe || 0) < 2) {
+                otmp.spe = rnd(3);
+            }
+            if (otmp && !rn2(4)) {
+                otmp.oerodeproof = true;
+            }
         }
         break;
 
     case S_MUMMY:
-        if (!rn2(7)) mksobj(MUMMY_WRAPPING, true, false);
+        // C ref: makemon.c gives wrapping on rn2(7)!=0 (6/7 chance)
+        if (rn2(7)) mksobj(MUMMY_WRAPPING, true, false);
         break;
 
     case S_GNOME:
@@ -1154,7 +1167,7 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     const m_id = next_ident();
 
     // C ref: makemon.c:1259 — newmonhp
-    const { hp, m_lev } = newmonhp(mndx);
+    const { hp, m_lev } = newmonhp(mndx, depth || 1);
 
     // Gender assignment
     // C ref: makemon.c:1278-1290

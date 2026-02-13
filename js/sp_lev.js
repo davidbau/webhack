@@ -41,13 +41,17 @@ import {
     GEM_CLASS, SPBOOK_CLASS, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS, VENOM_CLASS,
     SCR_EARTH, objectData, GOLD_PIECE
 } from './objects.js';
-import { mons, M2_FEMALE, M2_MALE, G_NOGEN } from './monsters.js';
+import { mons, M2_FEMALE, M2_MALE, G_NOGEN, PM_MINOTAUR } from './monsters.js';
 
 // Aliases for compatibility with C naming
 const STAIRS_UP = STAIRS;
 const STAIRS_DOWN = STAIRS;
 const LADDER_UP = LADDER;
 const LADDER_DOWN = LADDER;
+
+function getProcessEnv(name) {
+    return (typeof process !== 'undefined' && process.env) ? process.env[name] : undefined;
+}
 
 // Level generation state (equivalent to C's sp_level sp)
 export let levelState = {
@@ -88,6 +92,8 @@ export let levelState = {
     ystart: 0,              // Map placement offset Y
     xsize: 0,               // Map fragment width
     ysize: 0,               // Map fragment height
+    mazeMaxX: (COLNO - 1) & ~1, // C-like gx.x_maze_max default
+    mazeMaxY: (ROWNO - 1) & ~1, // C-like gy.y_maze_max default
     splevInitPresent: false, // C ref: sp_lev.c splev_init_present
     // Map-relative coordinate system (C ref: Lua coordinates are relative to map origin)
     mapCoordMode: false,    // True after des.map() - coordinates are map-relative
@@ -107,16 +113,29 @@ export let levelState = {
     finalizeContext: null,
     branchPlaced: false,
     levRegions: [],
+    spLevTouched: null,
 };
 
 // Special level flags
 let icedpools = false;
 let Sokoban = false;
 let okLocationOverride = null;
+let monsterExecSeq = 0;
 
 // mkmap.c dimensions
 const MKMAP_HEIGHT = ROWNO - 1;
 const MKMAP_WIDTH = COLNO - 2;
+
+function initSpLevTouched() {
+    if (levelState.spLevTouched) return;
+    levelState.spLevTouched = Array.from({ length: COLNO }, () => Array(ROWNO).fill(false));
+}
+
+function markSpLevTouched(x, y) {
+    if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO) return;
+    initSpLevTouched();
+    levelState.spLevTouched[x][y] = true;
+}
 
 function mkmapInitMap(map, bgTyp) {
     for (let x = 1; x < COLNO; x++) {
@@ -904,6 +923,8 @@ export function resetLevelState() {
         ystart: 0,
         xsize: 0,
         ysize: 0,
+        mazeMaxX: (COLNO - 1) & ~1,
+        mazeMaxY: (ROWNO - 1) & ~1,
         splevInitPresent: false,
         mapCoordMode: false,
         mapOriginX: 0,
@@ -918,10 +939,12 @@ export function resetLevelState() {
         finalizeContext: null,
         branchPlaced: false,
         levRegions: [],
+        spLevTouched: null,
         // luaRngCounter is NOT initialized here - only set explicitly for levels that need it
     };
     icedpools = false;
     Sokoban = false;
+    monsterExecSeq = 0;
 
     // Initialize BSP rectangle pool for random room placement
     // C ref: sp_lev.c special level generation requires rect pool initialization
@@ -1098,6 +1121,8 @@ export function level_init(opts = {}) {
     levelState.traps = [];
 
     if (style === 'solidfill') {
+        levelState.mazeMaxX = (COLNO - 1) & ~1;
+        levelState.mazeMaxY = (ROWNO - 1) & ~1;
         const lit = levelState.init.lit < 0 ? rn2(2) : levelState.init.lit;
         // Fill entire map with foreground character
         const fillChar = levelState.init.fg;
@@ -1115,6 +1140,8 @@ export function level_init(opts = {}) {
         const fillChar = levelState.init.bg !== -1 ? levelState.init.bg : STONE;
         const xMazeMax = (COLNO - 1) & ~1;
         const yMazeMax = (ROWNO - 1) & ~1;
+        levelState.mazeMaxX = xMazeMax;
+        levelState.mazeMaxY = yMazeMax;
         const corrmaze = !!levelState.flags.corrmaze;
 
         for (let x = 2; x <= xMazeMax; x++) {
@@ -1128,6 +1155,8 @@ export function level_init(opts = {}) {
             }
         }
     } else if (style === 'maze') {
+        levelState.mazeMaxX = (COLNO - 1) & ~1;
+        levelState.mazeMaxY = (ROWNO - 1) & ~1;
         // TODO: C create_maze() parity path
         for (let x = 0; x < 80; x++) {
             for (let y = 0; y < 21; y++) {
@@ -1135,6 +1164,8 @@ export function level_init(opts = {}) {
             }
         }
     } else if (style === 'swamp') {
+        levelState.mazeMaxX = (COLNO - 1) & ~1;
+        levelState.mazeMaxY = (ROWNO - 1) & ~1;
         // Swamp level - procedurally generate mixture of land, water, and pools
         // The map will be mostly land with scattered pools and water
         // Subsequent des.map() calls overlay specific terrain features
@@ -1154,6 +1185,8 @@ export function level_init(opts = {}) {
             }
         }
     } else if (style === 'mines' || style === 'rogue') {
+        levelState.mazeMaxX = (COLNO - 1) & ~1;
+        levelState.mazeMaxY = (ROWNO - 1) & ~1;
         // C ref: sp_lev.c LVLINIT_MINES -> mkmap.c
         const map = levelState.map;
         const bgTyp = levelState.init.bg !== -1 ? levelState.init.bg : STONE;
@@ -1648,6 +1681,7 @@ export function map(data) {
                 const terrain = mapchrToTerrain(ch);
                 if (terrain !== -1) {
                     levelState.map.locations[gx][gy].typ = terrain;
+                    markSpLevTouched(gx, gy);
                     if (lit) {
                         levelState.map.locations[gx][gy].lit = 1;
                     }
@@ -1842,6 +1876,7 @@ export function terrain(x_or_opts, y_or_type, type) {
                 const pos = getLocationCoord(x_or_opts[0], x_or_opts[1], GETLOC_ANY_LOC, levelState.currentRoom || null);
                 if (pos.x >= 0 && pos.x < COLNO && pos.y >= 0 && pos.y < ROWNO) {
                     levelState.map.locations[pos.x][pos.y].typ = terrainType;
+                    markSpLevTouched(pos.x, pos.y);
                 }
                 return;
             }
@@ -1850,6 +1885,7 @@ export function terrain(x_or_opts, y_or_type, type) {
             for (const coord of x_or_opts) {
                 if (coord.x >= 0 && coord.x < 80 && coord.y >= 0 && coord.y < 21) {
                     levelState.map.locations[coord.x][coord.y].typ = terrainType;
+                    markSpLevTouched(coord.x, coord.y);
                 }
             }
         } else if (x_or_opts.x !== undefined && x_or_opts.y !== undefined) {
@@ -1860,6 +1896,7 @@ export function terrain(x_or_opts, y_or_type, type) {
             if (terrainType !== -1 && pos.x >= 0 && pos.x < 80 &&
                 pos.y >= 0 && pos.y < 21) {
                 levelState.map.locations[pos.x][pos.y].typ = terrainType;
+                markSpLevTouched(pos.x, pos.y);
             }
         }
     } else if (typeof x_or_opts === 'number') {
@@ -1871,6 +1908,7 @@ export function terrain(x_or_opts, y_or_type, type) {
             const terrainType = mapchrToTerrain(type);
             if (terrainType !== -1) {
                 levelState.map.locations[pos.x][pos.y].typ = terrainType;
+                markSpLevTouched(pos.x, pos.y);
             }
         }
     }
@@ -2820,6 +2858,7 @@ export function stair(direction, x, y) {
         } else {
             levelState.map.dnstair = { x: stairX, y: stairY };
         }
+        markSpLevTouched(stairX, stairY);
     }
 }
 
@@ -3028,6 +3067,9 @@ export function object(name_or_opts, x, y) {
     // DEFERRED PLACEMENT: Queue object + coordinates for map placement after corridors
     // Object is already created (RNG consumed), we just need to place it on the map later
     if (obj) {
+        if (absX >= 0 && absX < COLNO && absY >= 0 && absY < ROWNO) {
+            markSpLevTouched(absX, absY);
+        }
         levelState.deferredObjects.push({ obj, x: absX, y: absY });
         // C ref: lspo_* handlers execute in script order. Keep deferred
         // placements ordered by insertion so finalize_level() can replay
@@ -3596,6 +3638,7 @@ export function door(state_or_opts, x, y) {
         }
     }
     loc.flags = doorMask;
+    markSpLevTouched(doorX, doorY);
 }
 
 /**
@@ -3633,6 +3676,7 @@ export function ladder(direction, x, y) {
     if (x >= 0 && x < 80 && y >= 0 && y < 21) {
         // Place LADDER terrain
         levelState.map.locations[x][y].typ = LADDER;
+        markSpLevTouched(x, y);
 
         // Note: In C, ladders have additional metadata (up vs down)
         // For now, just place the terrain
@@ -3692,6 +3736,7 @@ export function gold(opts) {
     gold.owt = weight(gold);
     if (levelState.map && Array.isArray(levelState.map.objects)) {
         levelState.map.objects.push(gold);
+        markSpLevTouched(pos.x, pos.y);
     }
 }
 
@@ -3729,6 +3774,7 @@ export function feature(type, x, y) {
     const pos = getLocationCoord(fx, fy, GETLOC_ANY_LOC, levelState.currentRoom || null);
     if (pos.x >= 0 && pos.x < 80 && pos.y >= 0 && pos.y < 21) {
         levelState.map.locations[pos.x][pos.y].typ = terrain;
+        markSpLevTouched(pos.x, pos.y);
     }
 }
 
@@ -3745,6 +3791,7 @@ export function gas_cloud(opts = {}) {
     const applyAt = (x, y) => {
         if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO) return;
         levelState.map.locations[x][y].typ = CLOUD;
+        markSpLevTouched(x, y);
     };
 
     const sel = opts.selection;
@@ -3862,12 +3909,15 @@ function executeDeferredObjects() {
 function executeDeferredMonster(deferred) {
     const { opts_or_class, x, y } = deferred;
     const immediateParity = !!levelState.finalizeContext || !!deferred.parityImmediate;
+    const traceMon = (typeof process !== 'undefined' && process.env.WEBHACK_MON_TRACE === '1');
+    const traceStart = traceMon ? getRngCallCount() : 0;
+    const traceSeq = ++monsterExecSeq;
 
     const resolveMonsterIndex = (monsterId, depth) => {
         if (typeof monsterId === 'string' && monsterId.length === 1) {
             const mclass = def_char_to_monclass(monsterId);
             if (mclass > 0 && mclass < 61) {
-                // C ref: create_monster() uses mkclass(class, G_NOGEN)
+                // C ref: sp_lev.c create_monster() uses mkclass(class, G_NOGEN)
                 return mkclass(mclass, G_NOGEN, depth);
             }
             return -1;
@@ -3902,6 +3952,7 @@ function executeDeferredMonster(deferred) {
             if (typeof monsterId === "string") mtmp.id = monsterId;
             mtmp.x = mtmp.mx;
             mtmp.y = mtmp.my;
+            markSpLevTouched(mtmp.mx, mtmp.my);
         }
         return mtmp;
     };
@@ -3916,8 +3967,7 @@ function executeDeferredMonster(deferred) {
         const coordX = (x !== undefined) ? x : rn2(60) + 10;
         const coordY = (y !== undefined) ? y : rn2(15) + 3;
     if (immediateParity) {
-        // C ref: create_monster() default AM_SPLEV_RANDOM -> induced_align()
-        // consumes alignment RNG even when result is not used by JS parity path.
+        // C ref: create_monster() default AM_SPLEV_RANDOM alignment path.
         rn2(3);
             createMonster(randClass, coordX, coordY);
             return;
@@ -4022,6 +4072,11 @@ function executeDeferredMonster(deferred) {
             if (opts.asleep !== undefined) mtmp.msleeping = !!opts.asleep;
             if (opts.waiting !== undefined) mtmp.mstrategy = opts.waiting ? 1 : 0;
         }
+        if (traceMon) {
+            const traceEnd = getRngCallCount();
+            const picked = (mtmp && Number.isFinite(mtmp.mndx)) ? `${mtmp.mndx}:${mtmp.name || ''}` : 'none';
+            console.log(`[MONTRACE] #${traceSeq} id=${String(monsterId)} pick=${picked} pos=(${coordX},${coordY}) rng=${traceStart + 1}-${traceEnd} delta=${traceEnd - traceStart}`);
+        }
         return;
     }
 
@@ -4035,6 +4090,10 @@ function executeDeferredMonster(deferred) {
         asleep: opts?.asleep,
         align: opts?.align
     });
+    if (traceMon) {
+        const traceEnd = getRngCallCount();
+        console.log(`[MONTRACE] #${traceSeq} id=${String(monsterId)} queued pos=(${coordX},${coordY}) rng=${traceStart + 1}-${traceEnd} delta=${traceEnd - traceStart}`);
+    }
 }
 
 function executeDeferredMonsters() {
@@ -4115,6 +4174,7 @@ function executeDeferredTrap(deferred) {
         mktrap(levelState.map, 0,
                MKTRAP_MAZEFLAG | MKTRAP_NOSPIDERONWEB,
                null, tm, depth);
+        markSpLevTouched(trapX, trapY);
         return;
     } else {
         ttyp = trapNameToType(trapType);
@@ -4129,6 +4189,7 @@ function executeDeferredTrap(deferred) {
         ? levelState.finalizeContext.dunlev
         : (levelState.levelDepth || 1);
     mktrap(levelState.map, ttyp, MKTRAP_NOSPIDERONWEB, null, tm, depth);
+    markSpLevTouched(trapX, trapY);
 }
 
 function executeDeferredTraps() {
@@ -4284,9 +4345,18 @@ export function percent(n) {
  * @param {Array} arr - Array to shuffle
  */
 export function shuffle(arr) {
+    const trace = (typeof process !== 'undefined' && process.env.WEBHACK_SHUFFLE_TRACE === '1');
+    let before = null;
+    if (trace) {
+        before = Array.isArray(arr) ? [...arr] : arr;
+    }
     for (let i = arr.length - 1; i > 0; i--) {
         const j = rn2(i + 1);
         [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    if (trace) {
+        const stack = new Error().stack?.split('\n')[2]?.trim() || 'unknown';
+        console.log(`[SHUFFLE] caller=${stack} before=${JSON.stringify(before)} after=${JSON.stringify(arr)}`);
     }
 }
 
@@ -5120,6 +5190,7 @@ export function drawbridge(opts) {
     const bridgeLoc = levelState.map.locations[bx][by];
     bridgeLoc.typ = isOpen ? DRAWBRIDGE_DOWN : DRAWBRIDGE_UP;
     bridgeLoc.flags = 0;
+    markSpLevTouched(bx, by);
 
     // C create_drawbridge() also establishes the adjacent drawbridge wall.
     const wx = bx + dx;
@@ -5128,6 +5199,99 @@ export function drawbridge(opts) {
         const wallLoc = levelState.map.locations[wx][wy];
         wallLoc.typ = DBWALL;
         wallLoc.flags = 0;
+        markSpLevTouched(wx, wy);
+    }
+}
+
+function placeObjectAt(obj, x, y) {
+    if (!obj || !levelState.map) return;
+    obj.ox = x;
+    obj.oy = y;
+    if (!levelState.map.objects) levelState.map.objects = [];
+    levelState.map.objects.push(obj);
+}
+
+// C ref: sp_lev.c maze1xy()
+function maze1xy(humidity) {
+    const maxX = levelState.mazeMaxX || ((COLNO - 1) & ~1);
+    const maxY = levelState.mazeMaxY || ((ROWNO - 1) & ~1);
+    let x = 3;
+    let y = 3;
+    let tryct = 2000;
+    const ignoreTouched = (typeof process !== 'undefined' && process.env.WEBHACK_MAZEWALK_IGNORE_TOUCHED === '1');
+    do {
+        x = rn1(maxX - 3, 3);
+        y = rn1(maxY - 3, 3);
+        if (--tryct < 0) break;
+    } while ((x % 2) === 0 || (y % 2) === 0
+             || (!ignoreTouched && levelState.spLevTouched && levelState.spLevTouched[x]?.[y])
+             || !isOkLocation(x, y, humidity));
+    return { x, y };
+}
+
+// C ref: sp_lev.c fill_empty_maze()
+function fillEmptyMaze() {
+    if (!levelState.map) return;
+    const maxX = levelState.mazeMaxX || ((COLNO - 1) & ~1);
+    const maxY = levelState.mazeMaxY || ((ROWNO - 1) & ~1);
+    let mapcountmax = (maxX - 2) * (maxY - 2);
+    let mapcount = mapcountmax;
+    mapcountmax = Math.floor(mapcountmax / 2);
+
+    for (let x = 2; x < maxX; x++) {
+        for (let y = 0; y < maxY; y++) {
+            if (levelState.spLevTouched && levelState.spLevTouched[x]?.[y]) mapcount--;
+        }
+    }
+
+    if (mapcount <= Math.floor(mapcountmax / 10)) return;
+
+    const mapfact = Math.floor((mapcount * 100) / mapcountmax);
+    const depth = levelState.levelDepth || 1;
+
+    const stats = { mapcount, mapcountmax, mapfact };
+
+    stats.objCount = rnd(Math.floor((20 * mapfact) / 100));
+    for (let i = stats.objCount; i > 0; i--) {
+        const pos = maze1xy(GETLOC_DRY);
+        const obj = mkobj(rn2(2) ? GEM_CLASS : 0, true);
+        placeObjectAt(obj, pos.x, pos.y);
+    }
+    stats.boulderCount = rnd(Math.floor((12 * mapfact) / 100));
+    for (let i = stats.boulderCount; i > 0; i--) {
+        const pos = maze1xy(GETLOC_DRY);
+        placeObjectAt(mksobj(BOULDER, true, false), pos.x, pos.y);
+    }
+    stats.minotaurCount = rn2(2);
+    for (let i = stats.minotaurCount; i > 0; i--) {
+        const pos = maze1xy(GETLOC_DRY);
+        makemon(PM_MINOTAUR, pos.x, pos.y, NO_MM_FLAGS, depth, levelState.map);
+    }
+    stats.monCount = rnd(Math.floor((12 * mapfact) / 100));
+    for (let i = stats.monCount; i > 0; i--) {
+        const pos = maze1xy(GETLOC_DRY);
+        makemon(null, pos.x, pos.y, NO_MM_FLAGS, depth, levelState.map);
+    }
+    stats.goldCount = rn2(Math.floor((15 * mapfact) / 100));
+    for (let i = stats.goldCount; i > 0; i--) {
+        const pos = maze1xy(GETLOC_DRY);
+        const mul = rnd(Math.max(Math.floor(30 / Math.max(12 - depth, 2)), 1));
+        const amount = 1 + rnd(depth + 2) * mul;
+        const gold = mksobj(GOLD_PIECE, true, false);
+        if (gold) {
+            gold.quan = amount;
+            gold.owt = weight(gold);
+            placeObjectAt(gold, pos.x, pos.y);
+        }
+    }
+    stats.trapCount = rn2(Math.floor((15 * mapfact) / 100));
+    for (let i = stats.trapCount; i > 0; i--) {
+        const pos = maze1xy(GETLOC_DRY);
+        mktrap(levelState.map, 0, MKTRAP_MAZEFLAG, null, pos, depth);
+    }
+
+    if (typeof process !== 'undefined' && process.env.WEBHACK_MAZEWALK_TRACE === '1') {
+        console.log(`[MAZEFILL] mapcount=${stats.mapcount}/${stats.mapcountmax} mapfact=${stats.mapfact} counts={obj:${stats.objCount},boulder:${stats.boulderCount},minotaur:${stats.minotaurCount},mon:${stats.monCount},gold:${stats.goldCount},trap:${stats.trapCount}}`);
     }
 }
 
@@ -5141,9 +5305,28 @@ export function drawbridge(opts) {
  * @param {number} y - Starting Y coordinate
  * @param {string} direction - Direction to walk ("north", "south", "east", "west")
  */
-export function mazewalk(x, y, direction) {
+export function mazewalk(xOrOpts, y, direction) {
     if (!levelState.map) {
         levelState.map = new GameMap();
+    }
+
+    let x = xOrOpts;
+    let stocked = true;
+    let ftyp = ROOM;
+    if (xOrOpts && typeof xOrOpts === 'object') {
+        if (Array.isArray(xOrOpts.coord)) {
+            x = xOrOpts.coord[0];
+            y = xOrOpts.coord[1];
+        } else {
+            x = xOrOpts.x;
+            y = xOrOpts.y;
+        }
+        direction = xOrOpts.dir ?? direction;
+        stocked = xOrOpts.stocked !== undefined ? !!xOrOpts.stocked : true;
+        if (xOrOpts.typ !== undefined) {
+            const typ = mapchrToTerrain(xOrOpts.typ);
+            if (typ !== -1) ftyp = typ;
+        }
     }
 
     if (x === undefined || y === undefined) {
@@ -5157,6 +5340,9 @@ export function mazewalk(x, y, direction) {
     if (sx < 0 || sx >= COLNO || sy < 0 || sy >= ROWNO) return;
 
     const dirName = direction || 'random';
+    const mode = getProcessEnv('WEBHACK_MAZEWALK_MODE') || 'legacy';
+    const useStateBounds = (typeof process !== 'undefined' && process.env.WEBHACK_MAZEWALK_BOUNDS === 'state');
+    const trace = (typeof process !== 'undefined' && process.env.WEBHACK_MAZEWALK_TRACE === '1');
     const dirs = [
         { name: 'north', dx: 0, dy: -1 },
         { name: 'south', dx: 0, dy: 1 },
@@ -5171,7 +5357,9 @@ export function mazewalk(x, y, direction) {
     sy += dir.dy;
     if (sx < 0 || sx >= COLNO || sy < 0 || sy >= ROWNO) return;
 
-    const setFloorish = (xx, yy, typ = ROOM) => {
+    if (ftyp < 1) ftyp = levelState.flags.corrmaze ? CORR : ROOM;
+
+    const setFloorIfNotDoor = (xx, yy, typ = ftyp) => {
         if (xx < 0 || xx >= COLNO || yy < 0 || yy >= ROWNO) return;
         const loc = map.locations[xx][yy];
         if (loc.typ !== DOOR && loc.typ !== SDOOR) {
@@ -5179,14 +5367,21 @@ export function mazewalk(x, y, direction) {
             loc.flags = 0;
         }
     };
+    const setFloorForced = (xx, yy, typ = ftyp) => {
+        if (xx < 0 || xx >= COLNO || yy < 0 || yy >= ROWNO) return;
+        const loc = map.locations[xx][yy];
+        loc.typ = typ;
+        loc.flags = 0;
+    };
 
-    setFloorish(sx, sy, ROOM);
+    setFloorIfNotDoor(sx, sy, ftyp);
 
     // C ref: enforce odd parity before walkfrom().
     if ((sx % 2) === 0) {
         sx += (dir.dx > 0) ? 1 : -1;
         if (sx < 0 || sx >= COLNO) return;
-        setFloorish(sx, sy, ROOM);
+        // C ref: parity-fix write is unconditional in lspo_mazewalk().
+        setFloorForced(sx, sy, ftyp);
     }
     if ((sy % 2) === 0) {
         sy += (dir.dy > 0) ? 1 : -1;
@@ -5197,33 +5392,89 @@ export function mazewalk(x, y, direction) {
         if (xx < 0 || xx >= COLNO || yy < 0 || yy >= ROWNO) return false;
         return map.locations[xx][yy].typ === STONE;
     };
-    const inWalkBounds = (xx, yy) => xx >= 3 && yy >= 3 && xx <= (COLNO - 2) && yy <= (ROWNO - 2);
+    const maxX = useStateBounds ? Math.min(COLNO - 1, levelState.mazeMaxX || ((COLNO - 1) & ~1)) : (COLNO - 2);
+    const maxY = useStateBounds ? Math.min(ROWNO - 1, levelState.mazeMaxY || ((ROWNO - 1) & ~1)) : (ROWNO - 2);
+    const inWalkBounds = (xx, yy) => xx >= 3 && yy >= 3 && xx <= maxX && yy <= maxY;
 
     const stack = [{ x: sx, y: sy }];
-    setFloorish(sx, sy, ROOM);
-    while (stack.length > 0) {
-        const cur = stack[stack.length - 1];
-        const order = [0, 1, 2, 3];
-        for (let i = order.length - 1; i > 0; i--) {
-            const j = rn2(i + 1);
-            [order[i], order[j]] = [order[j], order[i]];
-        }
-
-        let carved = false;
-        for (const oi of order) {
-            const d = dirs[oi];
+    setFloorIfNotDoor(sx, sy, ftyp);
+    const stats = trace ? { steps: 0, carves: 0, deadends: 0, q: [0, 0, 0, 0, 0] } : null;
+    if (mode === 'c') {
+        // C-like walkfrom direction order for a=0..3: N, E, S, W.
+        const cDirs = [
+            { dx: 0, dy: -1 },
+            { dx: 1, dy: 0 },
+            { dx: 0, dy: 1 },
+            { dx: -1, dy: 0 }
+        ];
+        while (stack.length > 0) {
+            if (stats) stats.steps++;
+            const cur = stack[stack.length - 1];
+            setFloorIfNotDoor(cur.x, cur.y, ftyp);
+            const choices = [];
+            for (const d of cDirs) {
+                const nx = cur.x + d.dx * 2;
+                const ny = cur.y + d.dy * 2;
+                if (!inWalkBounds(nx, ny) || !isStone(nx, ny)) continue;
+                choices.push(d);
+            }
+            if (stats) {
+                const q = choices.length;
+                if (q >= 0 && q < stats.q.length) stats.q[q]++;
+            }
+            if (!choices.length) {
+                if (stats) stats.deadends++;
+                stack.pop();
+                continue;
+            }
+            const d = choices[rn2(choices.length)];
             const nx = cur.x + d.dx * 2;
             const ny = cur.y + d.dy * 2;
-            if (!inWalkBounds(nx, ny) || !isStone(nx, ny)) continue;
-
-            setFloorish(cur.x + d.dx, cur.y + d.dy, ROOM);
-            setFloorish(nx, ny, ROOM);
+            // C walkfrom() writes the intermediate step unconditionally.
+            setFloorForced(cur.x + d.dx, cur.y + d.dy, ftyp);
+            if (stats) stats.carves++;
             stack.push({ x: nx, y: ny });
-            carved = true;
-            break;
         }
-        if (!carved) stack.pop();
+    } else {
+        while (stack.length > 0) {
+            if (stats) stats.steps++;
+            const cur = stack[stack.length - 1];
+            const order = [0, 1, 2, 3];
+            for (let i = order.length - 1; i > 0; i--) {
+                const j = rn2(i + 1);
+                [order[i], order[j]] = [order[j], order[i]];
+            }
+
+            let choices = 0;
+            let carved = false;
+            for (const oi of order) {
+                const d = dirs[oi];
+                const nx = cur.x + d.dx * 2;
+                const ny = cur.y + d.dy * 2;
+                if (!inWalkBounds(nx, ny) || !isStone(nx, ny)) continue;
+                choices++;
+
+                setFloorIfNotDoor(cur.x, cur.y, ftyp);
+                setFloorForced(cur.x + d.dx, cur.y + d.dy, ftyp);
+                setFloorIfNotDoor(nx, ny, ftyp);
+                if (stats) stats.carves++;
+                stack.push({ x: nx, y: ny });
+                carved = true;
+                break;
+            }
+            if (stats && choices >= 0 && choices < stats.q.length) stats.q[choices]++;
+            if (!carved) {
+                if (stats) stats.deadends++;
+                stack.pop();
+            }
+        }
     }
+    if (stats) {
+        console.log(`[MAZEWALK] mode=${mode} bounds=${useStateBounds ? 'state' : 'legacy'} max=(${maxX},${maxY}) start=(${sx},${sy}) dir=${dirName} steps=${stats.steps} carves=${stats.carves} dead=${stats.deadends} q=[${stats.q.join(',')}]`);
+    }
+
+    const stockedFillEnabled = (typeof process !== 'undefined' && process.env.WEBHACK_MAZEWALK_STOCKED === '1');
+    if (stocked && stockedFillEnabled) fillEmptyMaze();
 }
 
 // Export the des.* API
