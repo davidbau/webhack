@@ -12,8 +12,8 @@ import { FOOD_CLASS, BOULDER, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS } from './obje
 import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT,
          POISON, UNDEF, TABU } from './dog.js';
 import { couldsee, m_cansee, do_clear_area } from './vision.js';
-import { PM_GRID_BUG, PM_IRON_GOLEM, mons,
-         M1_FLY, M1_AMORPHOUS, M1_CLING, M1_SEE_INVIS,
+import { PM_GRID_BUG, PM_IRON_GOLEM, PM_SHOPKEEPER, mons,
+         M1_FLY, M1_AMORPHOUS, M1_CLING, M1_SEE_INVIS, S_MIMIC,
          MZ_SMALL, MR_FIRE, MR_SLEEP } from './monsters.js';
 import { STATUE_TRAP, MAGIC_TRAP, VIBRATING_SQUARE, RUST_TRAP, FIRE_TRAP,
          SLP_GAS_TRAP, BEAR_TRAP, PIT, SPIKED_PIT, HOLE, TRAPDOOR,
@@ -351,6 +351,12 @@ export function movemon(map, player, display, fov) {
 
 // C ref: monmove.c dochug() — process one monster's turn
 function dochug(mon, map, player, display, fov) {
+    // C ref: mimic behavior — disguised mimics stay inert until disturbed.
+    // Minimal parity gate: don't process roaming AI for mimic-class monsters.
+    if (mon.type && mon.type.symbol === S_MIMIC) {
+        return;
+    }
+
     // Phase 2: Sleep check
     // C ref: monmove.c disturb() — wake sleeping monster if player visible & close
     if (mon.sleeping) {
@@ -396,9 +402,14 @@ function dochug(mon, map, player, display, fov) {
     if (!phase3Cond) phase3Cond = !!(mon.peaceful);
 
     if (phase3Cond) {
+        // C ref: monmove.c dochug() routes shopkeepers through shk_move(),
+        // not generic m_move; preserve RNG by skipping random position picking.
+        if (mon.mndx === PM_SHOPKEEPER) {
+            // No-op until full shk_move behavior is implemented.
+        }
         // C ref: monmove.c:1743-1748 — meating check (inside m_move)
         // If monster is still eating, decrement meating and skip movement
-        if (mon.meating) {
+        else if (mon.meating) {
             mon.meating--;
             // C ref: dogmove.c:1454 finish_meating — clear meating when done
             // (no RNG consumed)

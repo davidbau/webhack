@@ -269,6 +269,59 @@ function makedog(map, player, depth) {
     return pet;
 }
 
+// C ref: dog.c:474 mon_arrive() — tame pets follow player between levels.
+// Migrate all living tame monsters from oldMap to newMap and place each near
+// the arrival position using collect_coords-style placement.
+// Returns true if at least one pet was migrated.
+export function mon_arrive(oldMap, newMap, player) {
+    if (!oldMap || !newMap) return false;
+    const pets = (oldMap.monsters || []).filter((m) => {
+        if (!m || m.dead || !m.tame) return false;
+        const dx = Math.abs((m.mx ?? 0) - player.x);
+        const dy = Math.abs((m.my ?? 0) - player.y);
+        // C-like stair following behavior: only nearby pets can follow.
+        return dx <= 1 && dy <= 1;
+    });
+    if (pets.length === 0) return false;
+
+    const cx = (newMap.upstair && newMap.upstair.x > 0) ? newMap.upstair.x : player.x;
+    const cy = (newMap.upstair && newMap.upstair.y > 0) ? newMap.upstair.y : player.y;
+
+    // Preserve relative pet order when prepending into newMap.monsters.
+    for (let i = pets.length - 1; i >= 0; i--) {
+        const pet = pets[i];
+
+        // C ref: dog.c:474 — !rn2(10) chance to lose tameness in transit.
+        // C has an untaming branch here; keep RNG consumption but defer
+        // behavioral untaming until full migration state is modeled.
+        rn2(10);
+
+        const positions = collectCoordsShuffle(cx, cy, 3);
+
+        let petX = cx;
+        let petY = cy;
+        for (const pos of positions) {
+            const loc = newMap.at(pos.x, pos.y);
+            if (loc && ACCESSIBLE(loc.typ)
+                && !newMap.monsterAt(pos.x, pos.y)
+                && !(pos.x === player.x && pos.y === player.y)) {
+                petX = pos.x;
+                petY = pos.y;
+                break;
+            }
+        }
+
+        oldMap.removeMonster(pet);
+        pet.mx = petX;
+        pet.my = petY;
+        pet.sleeping = false;
+        pet.dead = false;
+        newMap.monsters.unshift(pet);
+    }
+
+    return true;
+}
+
 // ========================================================================
 // Inventory Creation
 // ========================================================================

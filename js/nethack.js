@@ -17,7 +17,7 @@ import { GameMap } from './map.js';
 import { initLevelGeneration, makelevel, setGameSeed } from './dungeon.js';
 import { rhack } from './commands.js';
 import { movemon, settrack } from './monmove.js';
-import { simulatePostLevelInit } from './u_init.js';
+import { simulatePostLevelInit, mon_arrive } from './u_init.js';
 import { loadSave, deleteSave, hasSave, saveGame,
          loadFlags, saveFlags, getUrlParams, deserializeRng,
          restGameState, restLev,
@@ -1113,21 +1113,15 @@ class NetHackGame {
         if (this.levels[depth]) {
             this.map = this.levels[depth];
         } else {
+            const previousMap = this.levels[this.player.dungeonLevel];
             // Generate new level (wallification called inside makelevel)
             this.map = makelevel(depth);
             this.levels[depth] = this.map;
 
             // C ref: dog.c:474 mon_arrive — pet arrival on level change
-            // When descending to a new level (depth > 1), pet follows player
-            // Simulates pet placement via collect_coords after level generation
+            // When descending to a new level (depth > 1), pet follows player.
             if (depth > 1) {
-                rn2(10); // !rn2(10) check for spontaneous untaming
-                // collect_coords: finds random accessible position via rn2(width/height)
-                // Three phases with decreasing search radius
-                for (let i = 8; i >= 2; i--) rn2(i);   // Phase 1: 7 calls
-                for (let i = 16; i >= 2; i--) rn2(i);  // Phase 2: 15 calls
-                for (let i = 24; i >= 2; i--) rn2(i);  // Phase 3: 23 calls
-                // Total: 1 + 7 + 15 + 23 = 46 RNG calls
+                mon_arrive(previousMap, this.map, this.player);
             }
         }
 

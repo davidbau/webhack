@@ -2385,9 +2385,9 @@ export function mktrap(map, num, mktrapflags, croom, tm, depth) {
     // WEB: create giant spider (needs makemon — skip for now)
     // At depth < 7, WEB can't generate anyway
 
-    // mktrap_victim: at depth 1, lvl <= rnd(4) is always true
+    // C ref: mklev.c mktrap() victim gate uses strict less-than.
     // Called for ARROW_TRAP, DART_TRAP, ROCKTRAP, BEAR_TRAP, MAGIC_TRAP
-    if (!(mktrapflags & MKTRAP_NOVICTIM) && lvl <= rnd(4)
+    if (!(mktrapflags & MKTRAP_NOVICTIM) && lvl < rnd(4)
         && kind !== SQKY_BOARD && kind !== RUST_TRAP
         && !is_pit(kind) && (kind < HOLE || kind === MAGIC_TRAP)) {
         // LANDMINE: convert to PIT (exploded)
@@ -3736,14 +3736,9 @@ export function makelevel(depth, dnum, dlevel) {
     bound_digging(map);
     mineralize(map, depth);
 
-    // C ref: mkmaze.c:644-645 — place branch stairs for branch levels
-    // Called from fixup_special() after level generation when Is_branchlev is true
-    // For depths 2-4: Gnomish Mines entrance range
-    // Parameters: all zeros = search anywhere on map, place anywhere
-    // rtype = LR_BRANCH (4) = branch staircase
-    if (depth >= 2 && depth <= 4) {
-        place_lregion(map, 0, 0, 0, 0, 0, 0, 0, 0, LR_BRANCH);
-    }
+    // Branch stair placement must be gated by actual chosen branch depth.
+    // Unconditional placement on depths 2..4 over-consumes RNG and is incorrect.
+    // TODO: wire this to real dungeon branch state from init_dungeons().
 
     return map;
 }

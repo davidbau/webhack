@@ -21,10 +21,11 @@ describe('C gameplay replay: seed1', { skip: !session }, () => {
     if (!session) return;
 
     const descendStep = session.steps.findIndex((step) => step.action === 'descend');
-    const parityLimit = descendStep > 0 ? descendStep : Math.min(session.steps.length, 66);
+    const preDescentLimit = descendStep > 0 ? descendStep : Math.min(session.steps.length, 66);
+    const postDescentParityLimit = session.steps.length;
 
     it('fixture includes combat events before descent', () => {
-        const hasCombat = session.steps.slice(0, parityLimit).some((step) =>
+        const hasCombat = session.steps.slice(0, preDescentLimit).some((step) =>
             (step.screen || []).some((line) =>
                 /You (hit|miss)| hits!?| bites!?|killed|dies/i.test(line)
             )
@@ -43,7 +44,19 @@ describe('C gameplay replay: seed1', { skip: !session }, () => {
 
     it('step RNG matches C trace through pre-descent window', async () => {
         const replay = await replaySession(session.seed, session);
-        for (let i = 0; i < parityLimit; i++) {
+        for (let i = 0; i < preDescentLimit; i++) {
+            const jsStep = replay.steps[i];
+            const cStep = session.steps[i];
+            assert.ok(jsStep, `Replay missing step ${i}`);
+            const divergence = compareRng(jsStep.rng, cStep.rng);
+            assert.equal(divergence.index, -1,
+                `step ${i} (${cStep.action}) diverges at ${divergence.index}: JS="${divergence.js}" session="${divergence.session}"`);
+        }
+    });
+
+    it('step RNG matches C trace through full post-descent window', async () => {
+        const replay = await replaySession(session.seed, session);
+        for (let i = 0; i < postDescentParityLimit; i++) {
             const jsStep = replay.steps[i];
             const cStep = session.steps[i];
             assert.ok(jsStep, `Replay missing step ${i}`);

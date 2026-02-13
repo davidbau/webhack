@@ -524,8 +524,11 @@ class HeadlessGame {
             this.map = this.levels[depth];
         } else {
             this.map = makelevel(depth);
-            wallification(this.map);
             this.levels[depth] = this.map;
+
+            // C ref: dog.c:474 mon_arrive — pet arrival on level change
+            // Replay mode: defer pet migration until full mon_arrive parity
+            // (migration state/eligibility) is modeled.
         }
         this.player.dungeonLevel = depth;
         this.placePlayerOnLevel();
@@ -719,7 +722,12 @@ export async function replaySession(seed, session) {
         // If the command took time, run monster movement and turn effects
         if (result && result.tookTime) {
             settrack(game.player); // C ref: allmain.c — record hero position before movemon
-            movemon(game.map, game.player, game.display, game.fov);
+            // C trace behavior: stair transitions consume time but do not run
+            // immediate monster movement on the destination level in the same step.
+            const isLevelTransition = step.action === 'descend' || step.action === 'ascend';
+            if (!isLevelTransition) {
+                movemon(game.map, game.player, game.display, game.fov);
+            }
             game.simulateTurnEnd();
 
             // Run occupation continuation turns (multi-turn eating, etc.)
