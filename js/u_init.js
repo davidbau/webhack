@@ -66,6 +66,8 @@ import {
     WEAPON_CLASS, ARMOR_CLASS, FOOD_CLASS, TOOL_CLASS,
     RING_CLASS, POTION_CLASS, SCROLL_CLASS, SPBOOK_CLASS,
     WAND_CLASS, GEM_CLASS,
+    // Armor categories
+    ARM_SUIT, ARM_SHIELD, ARM_HELM, ARM_GLOVES, ARM_BOOTS, ARM_CLOAK, ARM_SHIRT,
     // Filter exclusions
     WAN_WISHING, WAN_NOTHING, RIN_LEVITATION, RIN_AGGRAVATE_MONSTER,
     RIN_HUNGER, POT_HALLUCINATION, POT_ACID, SCR_AMNESIA, SCR_FIRE,
@@ -904,6 +906,56 @@ function initAttributes(player) {
     // Boost STR/CON until can carry inventory — omitted for now
 }
 
+function equipInitialGear(player) {
+    // C ref: worn.c setworn()/setuwep() during startup inventory setup.
+    // Equip one armor piece per slot category and wield first usable melee weapon.
+    player.weapon = null;
+    player.armor = null;
+    player.shield = null;
+    player.helmet = null;
+    player.gloves = null;
+    player.boots = null;
+    player.cloak = null;
+
+    for (const item of player.inventory) {
+        if (item.oclass !== ARMOR_CLASS) continue;
+        const info = objectData[item.otyp];
+        if (!info) continue;
+        switch (info.sub) {
+            case ARM_SUIT:
+                if (!player.armor) player.armor = item;
+                break;
+            case ARM_SHIELD:
+                if (!player.shield) player.shield = item;
+                break;
+            case ARM_HELM:
+                if (!player.helmet) player.helmet = item;
+                break;
+            case ARM_GLOVES:
+                if (!player.gloves) player.gloves = item;
+                break;
+            case ARM_BOOTS:
+                if (!player.boots) player.boots = item;
+                break;
+            case ARM_CLOAK:
+                if (!player.cloak) player.cloak = item;
+                break;
+            case ARM_SHIRT:
+                // Shirt slot isn't modeled yet; ignored for now.
+                break;
+        }
+    }
+
+    for (const item of player.inventory) {
+        if (item.oclass !== WEAPON_CLASS) continue;
+        const info = objectData[item.otyp];
+        if (info && info.dir !== 0) {
+            player.weapon = item;
+            break;
+        }
+    }
+}
+
 // ========================================================================
 // Main Entry Point
 // ========================================================================
@@ -929,6 +981,7 @@ export function simulatePostLevelInit(player, map, depth) {
     u_init_role(player);
     //    b. u_init_race() → race-specific inventory (instruments, food)
     u_init_race(player);
+    equipInitialGear(player);
     //    c+d. init_attr(75) + vary_init_attr()
     initAttributes(player);
     //    e. u_init_carry_attr_boost() — no RNG
@@ -942,15 +995,16 @@ export function simulatePostLevelInit(player, map, depth) {
     player.pw = role.startingPW + racePW;
     player.pwmax = player.pw;
 
-    // Set AC from equipment
-    // Base AC = 10, SMALL_SHIELD ARM_BONUS = base(1) + enchantment(3) = 4
-    // C ref: do_wear.c find_ac()
+    // Set AC from worn equipment.
+    // C ref: do_wear.c find_ac() uses ac for worn items only.
     player.ac = 10;
-    for (const item of player.inventory) {
-        if (item.oclass === ARMOR_CLASS) {
-            const baseAC = 1; // SMALL_SHIELD base AC contribution
-            player.ac -= (baseAC + item.spe);
-        }
+    const worn = [player.armor, player.shield, player.helmet, player.gloves, player.boots, player.cloak];
+    for (const item of worn) {
+        if (!item) continue;
+        const info = objectData[item.otyp];
+        if (!info) continue;
+        const baseAC = info.oc1 || 0;
+        player.ac -= (baseAC + (item.spe || 0));
     }
 
     // 3. com_pager("legacy") — Book of Odin

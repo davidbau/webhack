@@ -3,8 +3,37 @@
 
 import { rn2, rnd, d, c_d, rne, rnz } from './rng.js';
 import { rndmonnum } from './makemon.js';
-import { mons, G_FREQ, MZ_TINY, M2_NEUTER, M2_MALE, M2_FEMALE } from './monsters.js';
-import { CORPSE, FOOD_CLASS, FLESH } from './objects.js';
+import {
+    mons, G_FREQ, MZ_TINY, M2_NEUTER, M2_MALE, M2_FEMALE,
+    MZ_LARGE,
+    S_ZOMBIE, S_MUMMY, S_VAMPIRE, S_WRAITH, S_LICH, S_GHOST, S_DEMON,
+} from './monsters.js';
+import { CORPSE, FOOD_CLASS, FLESH, objectData } from './objects.js';
+
+function isUndeadOrDemon(monsterType) {
+    if (!monsterType) return false;
+    const sym = monsterType.symbol;
+    return sym === S_ZOMBIE
+        || sym === S_MUMMY
+        || sym === S_VAMPIRE
+        || sym === S_WRAITH
+        || sym === S_LICH
+        || sym === S_GHOST
+        || sym === S_DEMON;
+}
+
+function weaponEnchantment(weapon) {
+    return (weapon && (weapon.enchantment ?? weapon.spe)) || 0;
+}
+
+function weaponDamageSides(weapon, monster) {
+    if (!weapon) return 0;
+    if (weapon.wsdam) return weapon.wsdam;
+    const info = objectData[weapon.otyp];
+    if (!info) return 0;
+    const isLarge = (monster?.type?.size ?? MZ_TINY) >= MZ_LARGE;
+    return isLarge ? (info.ldam || 0) : (info.sdam || 0);
+}
 
 // Attack a monster (hero attacking)
 // C ref: uhitm.c attack() -> hmon_hitmon() -> hmon_hitmon_core()
@@ -13,7 +42,7 @@ export function playerAttackMonster(player, monster, display, map) {
     // C ref: uhitm.c find_roll_to_hit() -- tmp = 1 + abon + find_mac(mtmp) + level
     // then mhit = (tmp > rnd(20)); lower AC = better defense
     const dieRoll = rnd(20);
-    const toHit = 1 + player.strToHit + monster.mac + player.level + (player.weapon ? player.weapon.enchantment || 0 : 0);
+    const toHit = 1 + player.strToHit + monster.mac + player.level + weaponEnchantment(player.weapon);
 
     if (toHit <= dieRoll || dieRoll === 20) {
         // Miss
@@ -30,9 +59,14 @@ export function playerAttackMonster(player, monster, display, map) {
     // Hit! Calculate damage
     // C ref: weapon.c:265 dmgval() -- rnd(oc_wsdam) for small monsters
     let damage = 0;
-    if (player.weapon && player.weapon.wsdam) {
-        damage = rnd(player.weapon.wsdam);
-        damage += player.weapon.enchantment || 0;
+    const wsdam = weaponDamageSides(player.weapon, monster);
+    if (player.weapon && wsdam > 0) {
+        damage = rnd(wsdam);
+        damage += weaponEnchantment(player.weapon);
+        // C ref: weapon.c dmgval() — blessed weapon bonus vs undead/demons.
+        if (player.weapon.blessed && isUndeadOrDemon(monster.type)) {
+            damage += rnd(4);
+        }
     } else if (player.weapon && player.weapon.damage) {
         damage = c_d(player.weapon.damage[0], player.weapon.damage[1]);
         damage += player.weapon.enchantment || 0;

@@ -25,7 +25,8 @@ import {
     VIBRATING_SQUARE, TRAPPED_DOOR, TRAPPED_CHEST, TRAPNUM,
     is_pit, is_hole,
     MKTRAP_NOFLAGS, MKTRAP_MAZEFLAG, MKTRAP_NOSPIDERONWEB, MKTRAP_NOVICTIM,
-    PM_ARCHEOLOGIST as ROLE_ARCHEOLOGIST, PM_WIZARD as ROLE_WIZARD
+    PM_ARCHEOLOGIST as ROLE_ARCHEOLOGIST, PM_WIZARD as ROLE_WIZARD,
+    PM_PRIEST as ROLE_PRIEST
 } from './config.js';
 import { GameMap, makeRoom, FILL_NONE, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, d, getRngCallCount } from './rng.js';
@@ -2976,6 +2977,11 @@ export function simulateDungeonInit(roleIndex) {
     // Wizard (Dark One) need this call; all other nemeses have explicit gender.
     if (roleIndex === ROLE_ARCHEOLOGIST || roleIndex === ROLE_WIZARD) {
         rn2(100);
+    }
+    // C ref: role.c randrole() — priests pick a random pantheon role.
+    // This consumes rn2(SIZE(roles)) before dungeon initialization.
+    if (roleIndex === ROLE_PRIEST) {
+        rn2(roles.length);
     }
 
     // 1. nhlib.lua: shuffle(align) — 3-element Fisher-Yates

@@ -10,7 +10,7 @@ import {
     D_ISOPEN, D_CLOSED, D_LOCKED, D_NODOOR,
     ALTAR, A_LAWFUL, A_NEUTRAL, A_CHAOTIC
 } from '../../js/config.js';
-import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1 } from '../../js/rng.js';
+import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1, rnl, rne, rnz, d } from '../../js/rng.js';
 import { initLevelGeneration, makelevel, setGameSeed, wallification, simulateDungeonInit } from '../../js/dungeon.js';
 import { simulatePostLevelInit } from '../../js/u_init.js';
 import { init_objects } from '../../js/o_init.js';
@@ -164,6 +164,46 @@ function rngCallPart(entry) {
     return atIdx >= 0 ? entry.substring(0, atIdx) : entry;
 }
 
+function consumeRngEntry(entry) {
+    const call = rngCallPart(entry);
+    const match = call.match(/^([a-z0-9_]+)\(([^)]*)\)=/i);
+    if (!match) return;
+    const fn = match[1];
+    const args = match[2]
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(s => Number.parseInt(s, 10));
+
+    switch (fn) {
+        case 'rn2':
+            if (args.length >= 1) rn2(args[0]);
+            break;
+        case 'rnd':
+            if (args.length >= 1) rnd(args[0]);
+            break;
+        case 'rn1':
+            if (args.length >= 2) rn1(args[0], args[1]);
+            break;
+        case 'rnl':
+            if (args.length >= 1) rnl(args[0]);
+            break;
+        case 'rne':
+            if (args.length >= 1) rne(args[0]);
+            break;
+        case 'rnz':
+            if (args.length >= 1) rnz(args[0]);
+            break;
+        case 'd':
+            if (args.length >= 2) d(args[0], args[1]);
+            break;
+    }
+}
+
+function consumeRngEntries(entries) {
+    for (const entry of entries || []) consumeRngEntry(entry);
+}
+
 // Compare two RNG trace arrays.
 // Returns { index: -1 } on match, or { index, js, session } at first divergence.
 // Compares fn(arg)=result portion only (ignores @ source:line tags).
@@ -267,29 +307,28 @@ export function generateMapsWithRng(seed, maxDepth) {
 const ROLE_INDEX = {};
 for (let i = 0; i < roles.length; i++) ROLE_INDEX[roles[i].name] = i;
 
-// Count RNG calls consumed during character selection menus before newgame().
+// Collect RNG calls consumed during character selection menus before newgame().
 // For chargen sessions, steps before "confirm-ok" may consume RNG (e.g., pick_align).
-// For gameplay sessions with chargen data, count RNG from chargen steps before confirm-ok.
+// For gameplay sessions with chargen data, collect RNG from chargen steps before confirm-ok.
 // C ref: role.c pick_gend() — happens during role selection BEFORE initLevelGeneration.
-function countPreStartupRng(session) {
+function getPreStartupRngEntries(session) {
     if (session.type === 'chargen') {
-        let count = 0;
+        const out = [];
         for (const step of (session.steps || [])) {
             if (step.action === 'confirm-ok') break;
-            count += (step.rng || []).length;
+            out.push(...(step.rng || []));
         }
-        return count;
+        return out;
     }
-    // Gameplay/selfplay sessions may have a chargen field with pre-startup RNG
     if (session.chargen && session.chargen.length > 0) {
-        let count = 0;
+        const out = [];
         const confirmIndex = session.chargen.findIndex(s => s.action === 'confirm-ok');
         for (let i = 0; i < confirmIndex && i < session.chargen.length; i++) {
-            count += (session.chargen[i].rng || []).length;
+            out.push(...(session.chargen[i].rng || []));
         }
-        return count;
+        return out;
     }
-    return 0;
+    return [];
 }
 
 // Generate full startup (map gen + post-level init) with RNG trace capture.
@@ -309,8 +348,8 @@ export function generateStartupWithRng(seed, session) {
 
     // Chargen sessions have RNG consumed during character selection menus
     // (e.g., pick_align) before the newgame() startup. Consume those first.
-    const preStartupCalls = countPreStartupRng(session);
-    for (let i = 0; i < preStartupCalls; i++) rn2(1);
+    const preStartupEntries = getPreStartupRngEntries(session);
+    consumeRngEntries(preStartupEntries);
 
     console.log(`After preStartup: ${getRngLog().length} RNG calls`);
     initLevelGeneration(roleIndex);
@@ -361,7 +400,7 @@ export function generateStartupWithRng(seed, session) {
     // Strip pre-startup menu RNG calls from the log.
     // For chargen-type sessions, session.startup.rng excludes chargen steps, so strip them.
     // For gameplay sessions with chargen, session.startup.rng INCLUDES chargen RNG, so keep them.
-    const stripCount = session.type === 'chargen' ? preStartupCalls : 0;
+    const stripCount = session.type === 'chargen' ? preStartupEntries.length : 0;
     const startupLog = fullLog.slice(stripCount);
 
     // Isolate chargen-only RNG (post-map: pet + inventory + attributes + welcome)
@@ -563,14 +602,7 @@ export async function replaySession(seed, session) {
 
         // Consume RNG from steps before map generation (pick_gend, etc.)
         for (let i = 0; i < mapGenStepIndex && i < session.chargen.length; i++) {
-            const step = session.chargen[i];
-            for (const rngEntry of step.rng || []) {
-                const match = rngEntry.match(/rn2\((\d+)\)=(\d+)|rnd\((\d+)\)=(\d+)/);
-                if (match) {
-                    const n = parseInt(match[1] || match[3]);
-                    if (match[1]) rn2(n); else rnd(n);
-                }
-            }
+            consumeRngEntries(session.chargen[i].rng || []);
         }
     }
 
@@ -584,14 +616,7 @@ export async function replaySession(seed, session) {
     // These happen after map gen but before gameplay starts
     if (mapGenStepIndex >= 0 && session.chargen) {
         for (let i = mapGenStepIndex + 1; i < session.chargen.length; i++) {
-            const step = session.chargen[i];
-            for (const rngEntry of step.rng || []) {
-                const match = rngEntry.match(/rn2\((\d+)\)=(\d+)|rnd\((\d+)\)=(\d+)/);
-                if (match) {
-                    const n = parseInt(match[1] || match[3]);
-                    if (match[1]) rn2(n); else rnd(n);
-                }
-            }
+            consumeRngEntries(session.chargen[i].rng || []);
         }
     }
 
@@ -638,10 +663,6 @@ export async function replaySession(seed, session) {
             player.ac = parseInt(hpm[5]);
         }
     }
-
-    // C ref: 3.7 Valkyrie starts with spear (+1), not long sword
-    // spear: oc_wsdam=6, oc_wldam=8
-    player.weapon = { name: 'spear', wsdam: 6, wldam: 8, enchantment: 1 };
 
     if (map.upstair) {
         player.x = map.upstair.x;

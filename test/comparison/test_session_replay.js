@@ -1,373 +1,101 @@
 #!/usr/bin/env node
 /**
- * test_session_replay.js -- Replay C NetHack sessions in JS and compare
- *
- * Takes a session JSON file (from run_session.py or gen_selfplay_trace.py)
- * and replays it in the JS implementation, comparing RNG calls, screen output,
- * and terrain grids at each step.
+ * Replay a captured C NetHack session with the JS engine and report RNG parity.
  *
  * Usage:
- *   node test_session_replay.js <session.json> [--verbose] [--stop-on-mismatch]
- *   node test_session_replay.js sessions/seed3_selfplay_20turns.session.json
- *
- * Output:
- *   - Turn-by-turn comparison summary
- *   - First mismatch location with detailed diagnostics
- *   - RNG divergence analysis
- *   - Overall match percentage
+ *   node test/comparison/test_session_replay.js <session.json> [--verbose] [--stop-on-mismatch]
  */
 
-import fs from 'fs';
-import { initGame, sendkeys } from '../../js/main.js';
-import { getRNGLog, clearRNGLog } from '../../js/rng.js';
-import { map } from '../../js/map.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+import { compareRng, replaySession, generateStartupWithRng } from './session_helpers.js';
 
-// ANSI color codes for output
-const colors = {
-    reset: '\x1b[0m',
-    red: '\x1b[31m',
-    green: '\x1b[32m',
-    yellow: '\x1b[33m',
-    blue: '\x1b[34m',
-    cyan: '\x1b[36m',
-    gray: '\x1b[90m',
-};
-
-/**
- * Load and parse a session JSON file
- */
 function loadSession(filepath) {
-    const content = fs.readFileSync(filepath, 'utf8');
-    return JSON.parse(content);
+    return JSON.parse(fs.readFileSync(filepath, 'utf8'));
 }
 
-/**
- * Format RNG entry for comparison
- */
-function formatRNG(entry) {
-    if (typeof entry === 'string') {
-        return entry;
+function usage() {
+    console.log('Usage: node test/comparison/test_session_replay.js <session.json> [options]');
+    console.log('');
+    console.log('Options:');
+    console.log('  --verbose              Print every step result');
+    console.log('  --stop-on-mismatch     Stop at first mismatch');
+    console.log('  --help                 Show this help');
+}
+
+function mismatchLine(prefix, div) {
+    return `${prefix} diverges at ${div.index}: JS="${div.js}" C="${div.session}"`;
+}
+
+async function main() {
+    const args = process.argv.slice(2);
+    if (args.length === 0 || args.includes('--help')) {
+        usage();
+        process.exit(0);
     }
-    return `${entry.fn}(${entry.arg})=${entry.result}`;
-}
 
-/**
- * Compare two RNG logs
- */
-function compareRNG(expectedRNG, actualRNG) {
-    const mismatches = [];
-    const maxLen = Math.max(expectedRNG.length, actualRNG.length);
+    const sessionPath = path.resolve(args[0]);
+    const verbose = args.includes('--verbose');
+    const stopOnMismatch = args.includes('--stop-on-mismatch');
 
-    for (let i = 0; i < maxLen; i++) {
-        const expected = expectedRNG[i];
-        const actual = actualRNG[i];
+    const session = loadSession(sessionPath);
+    const seed = session.seed;
 
-        if (!expected) {
-            mismatches.push({
-                index: i,
-                type: 'extra',
-                actual: formatRNG(actual),
-            });
-        } else if (!actual) {
-            mismatches.push({
-                index: i,
-                type: 'missing',
-                expected: formatRNG(expected),
-            });
+    console.log(`Session: ${sessionPath}`);
+    console.log(`Seed: ${seed}`);
+    if (session.character) {
+        console.log(`Character: ${session.character.name} (${session.character.role} ${session.character.race} ${session.character.gender} ${session.character.align})`);
+    }
+
+    let failures = 0;
+
+    if (session.startup?.rng) {
+        const startup = generateStartupWithRng(seed, session);
+        const div = compareRng(startup.rng, session.startup.rng);
+        if (div.index === -1) {
+            console.log(`startup: ok (${startup.rngCalls} calls)`);
         } else {
-            const expStr = formatRNG(expected);
-            const actStr = formatRNG(actual);
-            if (expStr !== actStr) {
-                mismatches.push({
-                    index: i,
-                    type: 'different',
-                    expected: expStr,
-                    actual: actStr,
-                });
+            failures++;
+            console.log(mismatchLine('startup RNG', div));
+            if (stopOnMismatch) {
+                process.exit(1);
             }
         }
     }
 
-    return {
-        totalExpected: expectedRNG.length,
-        totalActual: actualRNG.length,
-        matches: maxLen - mismatches.length,
-        mismatches,
-    };
-}
+    const replay = await replaySession(seed, session);
+    const totalSteps = (session.steps || []).length;
+    let matchedSteps = 0;
 
-/**
- * Compare two screen outputs (array of 24 lines)
- */
-function compareScreens(expectedScreen, actualScreen) {
-    const diffs = [];
-
-    for (let i = 0; i < 24; i++) {
-        const expLine = expectedScreen[i] || '';
-        const actLine = actualScreen[i] || '';
-
-        if (expLine !== actLine) {
-            diffs.push({
-                line: i,
-                expected: expLine,
-                actual: actLine,
-            });
-        }
-    }
-
-    return {
-        totalLines: 24,
-        matches: 24 - diffs.length,
-        diffs,
-    };
-}
-
-/**
- * Initialize JS NetHack with the same configuration as the C session
- */
-function initializeGame(session) {
-    // Reset RNG log
-    clearRNGLog();
-
-    // Initialize game with session parameters
-    const options = {
-        seed: session.seed,
-        wizard: session.wizard || false,
-        role: session.character.role,
-        race: session.character.race,
-        gender: session.character.gender,
-        align: session.character.align,
-        symset: session.symset || 'DECgraphics',
-    };
-
-    console.log(`${colors.cyan}Initializing JS NetHack:${colors.reset}`);
-    console.log(`  Seed: ${options.seed}`);
-    console.log(`  Character: ${options.role} (${options.race} ${options.gender} ${options.align})`);
-    console.log(`  Symset: ${options.symset}`);
-    console.log('');
-
-    // Initialize the game
-    initGame(options);
-}
-
-/**
- * Get current screen state from JS NetHack
- */
-function captureJSScreen() {
-    // TODO: Implement actual screen capture from JS NetHack
-    // For now, return placeholder
-    const lines = [];
-    for (let i = 0; i < 24; i++) {
-        lines.push('');
-    }
-    return lines;
-}
-
-/**
- * Replay a single step and compare
- */
-function replayStep(step, stepIndex, options) {
-    const { verbose } = options;
-
-    // Send the keystroke
-    const key = step.key;
-    sendkeys(key);
-
-    // Capture JS state
-    const actualRNG = getRNGLog();
-    const actualScreen = captureJSScreen();
-
-    // Compare RNG
-    const rngComparison = compareRNG(step.rng || [], actualRNG);
-
-    // Compare screen
-    const screenComparison = compareScreens(step.screen || [], actualScreen);
-
-    // Determine if step matches
-    const rngMatch = rngComparison.mismatches.length === 0;
-    const screenMatch = screenComparison.diffs.length === 0;
-    const matches = rngMatch && screenMatch;
-
-    if (verbose || !matches) {
-        const statusIcon = matches ? `${colors.green}✓${colors.reset}` : `${colors.red}✗${colors.reset}`;
-        const action = step.action || key;
-        console.log(`  [${stepIndex.toString().padStart(3, '0')}] ${statusIcon} ${action} (key=${key})`);
-
-        if (!rngMatch) {
-            console.log(`    ${colors.yellow}RNG:${colors.reset} ${rngComparison.matches}/${rngComparison.totalExpected} match, ${rngComparison.mismatches.length} mismatches`);
-        }
-
-        if (!screenMatch && screenComparison.diffs.length > 0) {
-            console.log(`    ${colors.yellow}Screen:${colors.reset} ${screenComparison.matches}/24 lines match, ${screenComparison.diffs.length} diffs`);
-        }
-    }
-
-    // Clear RNG log for next step
-    clearRNGLog();
-
-    return {
-        stepIndex,
-        key,
-        action: step.action,
-        matches,
-        rng: rngComparison,
-        screen: screenComparison,
-    };
-}
-
-/**
- * Replay an entire session and compare
- */
-function replaySession(session, options) {
-    console.log(`${colors.cyan}=== Replaying Session ===${colors.reset}`);
-    console.log(`Source: ${session.type || 'unknown'}`);
-    console.log(`Steps: ${session.steps.length}`);
-    console.log('');
-
-    const results = {
-        session,
-        totalSteps: session.steps.length,
-        matchingSteps: 0,
-        firstMismatch: null,
-        steps: [],
-    };
-
-    // Replay character creation if present
-    if (session.chargen && session.chargen.length > 0) {
-        console.log(`${colors.cyan}=== Character Creation (${session.chargen.length} steps) ===${colors.reset}`);
-        for (let i = 0; i < session.chargen.length; i++) {
-            const result = replayStep(session.chargen[i], i, options);
-            results.steps.push(result);
-            if (result.matches) results.matchingSteps++;
-            else if (!results.firstMismatch) results.firstMismatch = result;
-
-            if (!result.matches && options.stopOnMismatch) {
-                console.log(`${colors.red}Stopping on first mismatch${colors.reset}`);
-                break;
+    for (let i = 0; i < totalSteps; i++) {
+        const jsStep = replay.steps[i];
+        const cStep = session.steps[i];
+        const div = compareRng(jsStep?.rng || [], cStep?.rng || []);
+        const ok = div.index === -1;
+        if (ok) {
+            matchedSteps++;
+            if (verbose) {
+                console.log(`step ${i}: ok (${cStep.action || cStep.key})`);
             }
+            continue;
         }
-        console.log('');
-    }
 
-    // Replay gameplay steps
-    console.log(`${colors.cyan}=== Gameplay Steps ===${colors.reset}`);
-    for (let i = 0; i < session.steps.length; i++) {
-        const result = replayStep(session.steps[i], i, options);
-        results.steps.push(result);
-        if (result.matches) results.matchingSteps++;
-        else if (!results.firstMismatch) results.firstMismatch = result;
-
-        if (!result.matches && options.stopOnMismatch) {
-            console.log(`${colors.red}Stopping on first mismatch${colors.reset}`);
+        failures++;
+        console.log(`step ${i} (${cStep.action || cStep.key}): ${mismatchLine('RNG', div)}`);
+        if (stopOnMismatch) {
             break;
         }
     }
 
-    return results;
+    console.log(`steps: ${matchedSteps}/${totalSteps} matched`);
+    if (failures > 0) {
+        process.exit(1);
+    }
+    console.log('result: PASS');
 }
 
-/**
- * Print detailed mismatch analysis
- */
-function printMismatchAnalysis(mismatch) {
-    console.log('');
-    console.log(`${colors.red}=== First Mismatch Analysis ===${colors.reset}`);
-    console.log(`Step: ${mismatch.stepIndex} (${mismatch.action})`);
-    console.log(`Key: ${mismatch.key}`);
-    console.log('');
-
-    if (mismatch.rng.mismatches.length > 0) {
-        console.log(`${colors.yellow}RNG Mismatches (first 5):${colors.reset}`);
-        for (let i = 0; i < Math.min(5, mismatch.rng.mismatches.length); i++) {
-            const mm = mismatch.rng.mismatches[i];
-            console.log(`  [${mm.index}] ${mm.type}:`);
-            if (mm.expected) console.log(`    Expected: ${mm.expected}`);
-            if (mm.actual) console.log(`    Actual:   ${mm.actual}`);
-        }
-        console.log('');
-    }
-
-    if (mismatch.screen.diffs.length > 0) {
-        console.log(`${colors.yellow}Screen Differences (first 3 lines):${colors.reset}`);
-        for (let i = 0; i < Math.min(3, mismatch.screen.diffs.length); i++) {
-            const diff = mismatch.screen.diffs[i];
-            console.log(`  Line ${diff.line}:`);
-            console.log(`    Expected: ${colors.gray}${diff.expected}${colors.reset}`);
-            console.log(`    Actual:   ${colors.gray}${diff.actual}${colors.reset}`);
-        }
-        console.log('');
-    }
-}
-
-/**
- * Print summary statistics
- */
-function printSummary(results) {
-    const matchPercentage = ((results.matchingSteps / results.totalSteps) * 100).toFixed(1);
-    const success = results.matchingSteps === results.totalSteps;
-
-    console.log('');
-    console.log(`${colors.cyan}=== Summary ===${colors.reset}`);
-    console.log(`Total steps: ${results.totalSteps}`);
-    console.log(`Matching steps: ${results.matchingSteps}`);
-    console.log(`Match rate: ${matchPercentage}%`);
-
-    if (success) {
-        console.log(`${colors.green}✓ 100% MATCH - JS implementation matches C perfectly!${colors.reset}`);
-    } else {
-        console.log(`${colors.red}✗ MISMATCHES FOUND${colors.reset}`);
-        console.log(`First mismatch at step ${results.firstMismatch.stepIndex}`);
-    }
-}
-
-/**
- * Main entry point
- */
-function main() {
-    const args = process.argv.slice(2);
-
-    if (args.length === 0 || args.includes('--help')) {
-        console.log('Usage: node test_session_replay.js <session.json> [options]');
-        console.log('');
-        console.log('Options:');
-        console.log('  --verbose              Show all steps (not just mismatches)');
-        console.log('  --stop-on-mismatch     Stop at first mismatch');
-        console.log('  --help                 Show this help');
-        console.log('');
-        console.log('Example:');
-        console.log('  node test_session_replay.js sessions/seed3_selfplay_20turns.session.json');
-        process.exit(0);
-    }
-
-    const sessionFile = args[0];
-    const options = {
-        verbose: args.includes('--verbose'),
-        stopOnMismatch: args.includes('--stop-on-mismatch'),
-    };
-
-    console.log(`${colors.cyan}NetHack Session Replay Test${colors.reset}`);
-    console.log(`Session file: ${sessionFile}`);
-    console.log('');
-
-    // Load session
-    const session = loadSession(sessionFile);
-
-    // Initialize game
-    initializeGame(session);
-
-    // Replay and compare
-    const results = replaySession(session, options);
-
-    // Print mismatch analysis if any
-    if (results.firstMismatch) {
-        printMismatchAnalysis(results.firstMismatch);
-    }
-
-    // Print summary
-    printSummary(results);
-
-    // Exit code: 0 if perfect match, 1 if mismatches
-    process.exit(results.matchingSteps === results.totalSteps ? 0 : 1);
-}
-
-main();
+main().catch((err) => {
+    console.error(err);
+    process.exit(2);
+});
