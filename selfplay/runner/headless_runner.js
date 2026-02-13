@@ -469,10 +469,28 @@ export class HeadlessAdapter {
     async sendKey(key) {
         if (!this._running) return;
         // Execute the command directly and wait for it to complete.
-        // For commands that prompt (like inventory), they will block
-        // waiting for nhgetch(). The key is that we need to ensure
-        // subsequent sendKey calls provide the expected input.
-        await this.game.executeCommand(key);
+        // Some commands can unexpectedly block waiting for extra input.
+        // To avoid deadlocks in long automated runs, arm a delayed
+        // fallback that feeds safe dismiss keys until the command returns.
+        let rescueTimer = null;
+        let rescueInterval = null;
+        const armRescue = () => {
+            rescueInterval = setInterval(() => {
+                // ESC, 'n', Enter, and Space cover most blocking prompts.
+                pushInput(27);
+                pushInput('n'.charCodeAt(0));
+                pushInput('\n'.charCodeAt(0));
+                pushInput(' '.charCodeAt(0));
+            }, 20);
+        };
+
+        try {
+            rescueTimer = setTimeout(armRescue, 300);
+            await this.game.executeCommand(key);
+        } finally {
+            if (rescueTimer) clearTimeout(rescueTimer);
+            if (rescueInterval) clearInterval(rescueInterval);
+        }
     }
 
     queueInput(key) {
