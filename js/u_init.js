@@ -16,6 +16,7 @@
 import { rn2, rnd, rn1, rne, d, c_d, getRngLog } from './rng.js';
 import { mksobj, mkobj, weight } from './mkobj.js';
 import { isok, NUM_ATTRS,
+         A_STR, A_CON,
          PM_ARCHEOLOGIST, PM_BARBARIAN, PM_CAVEMAN, PM_HEALER,
          PM_KNIGHT, PM_MONK, PM_PRIEST, PM_RANGER, PM_ROGUE,
          PM_SAMURAI, PM_TOURIST, PM_VALKYRIE, PM_WIZARD,
@@ -931,9 +932,50 @@ function initAttributes(player) {
 
     // C ref: attrib.c vary_init_attr()
     varyInitAttr(player.attributes, attrmin, attrmax);
+}
 
-    // C ref: u_init.c u_init_carry_attr_boost() — no RNG, deterministic
-    // Boost STR/CON until can carry inventory — omitted for now
+// C ref: hack.c weight_cap()/inv_weight() + u_init.c u_init_carry_attr_boost()
+function startupWeightCap(player) {
+    const WT_WEIGHTCAP_STRCON = 25;
+    const WT_WEIGHTCAP_SPARE = 50;
+    const MAX_CARR_CAP = 1000;
+    const str = player.attributes[A_STR] || 3;
+    const con = player.attributes[A_CON] || 3;
+    let carrcap = WT_WEIGHTCAP_STRCON * (str + con) + WT_WEIGHTCAP_SPARE;
+    if (carrcap > MAX_CARR_CAP) carrcap = MAX_CARR_CAP;
+    return Math.max(carrcap, 1);
+}
+
+function startupInvWeight(player) {
+    let wt = 0;
+    for (const obj of player.inventory) {
+        if (!obj) continue;
+        if (obj.oclass === COIN_CLASS) {
+            wt += Math.floor(((obj.quan || 0) + 50) / 100);
+        } else {
+            wt += obj.owt || weight(obj);
+        }
+    }
+    return wt - startupWeightCap(player);
+}
+
+function startupAdjAttrib(player, ndx, incr, attrmax) {
+    if (!incr) return false;
+    const oldVal = player.attributes[ndx];
+    const newVal = Math.min(attrmax[ndx], oldVal + incr);
+    if (newVal === oldVal) return false;
+    player.attributes[ndx] = newVal;
+    return true;
+}
+
+function u_init_carry_attr_boost(player) {
+    // Boost STR and CON until hero can carry inventory, or both are capped.
+    const attrmax = RACE_ATTRMAX[player.race] || RACE_ATTRMAX[RACE_HUMAN];
+    while (startupInvWeight(player) > 0) {
+        if (startupAdjAttrib(player, A_STR, 1, attrmax)) continue;
+        if (startupAdjAttrib(player, A_CON, 1, attrmax)) continue;
+        break;
+    }
 }
 
 function equipInitialGear(player) {
@@ -1057,6 +1099,7 @@ export function simulatePostLevelInit(player, map, depth) {
     //    c+d. init_attr(75) + vary_init_attr()
     initAttributes(player);
     //    e. u_init_carry_attr_boost() — no RNG
+    u_init_carry_attr_boost(player);
 
     // Set HP/PW from role + race
     // C ref: u_init.c u_init_misc() — newhp() = role_hp + race_hp
