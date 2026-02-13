@@ -39,7 +39,6 @@ import { roles } from './player.js';
 import {
     ARROW, DART, ROCK, BOULDER, LARGE_BOX, CHEST, GOLD_PIECE, CORPSE,
     STATUE, TALLOW_CANDLE, WAX_CANDLE, BELL, KELP_FROND,
-    AMULET_OF_YENDOR, SPE_BOOK_OF_THE_DEAD, CANDELABRUM_OF_INVOCATION, BELL_OF_OPENING,
     POT_WATER, EXPENSIVE_CAMERA, EGG, CREAM_PIE, MELON, ACID_VENOM, BLINDING_VENOM,
     WEAPON_CLASS, TOOL_CLASS, FOOD_CLASS, GEM_CLASS, WAND_CLASS,
     ARMOR_CLASS, SCROLL_CLASS, POTION_CLASS, RING_CLASS, SPBOOK_CLASS,
@@ -91,6 +90,7 @@ import { parseEncryptedDataFile, parseRumorsFile } from './hacklib.js';
 import { EPITAPH_FILE_TEXT } from './epitaph_data.js';
 import { ENGRAVE_FILE_TEXT } from './engrave_data.js';
 import { shtypes, stock_room } from './shknam.js';
+import { obj_resists } from './objdata.js';
 
 // Module-level game seed for nameshk() — set by setGameSeed() before level gen
 let _gameSeed = 0;
@@ -2410,7 +2410,6 @@ export function mktrap(map, num, mktrapflags, croom, tm, depth) {
     }
 }
 
-// C ref: mklev.c:1804 mktrap_victim() — stub until mkobj is ported
 // C ref: mklev.c mktrap_victim() — creates corpse + items on trap
 function mktrap_victim(map, trap, depth) {
     const x = trap.tx, y = trap.ty;
@@ -2444,17 +2443,6 @@ function mktrap_victim(map, trap, depth) {
     // Random possession loop
     // C ref: mklev.c:1843-1877
     const classMap = [WEAPON_CLASS, TOOL_CLASS, FOOD_CLASS, GEM_CLASS];
-    // C ref: zap.c obj_resists()
-    const objResistsLike = (obj, ochance, achance) => {
-        if (obj.otyp === AMULET_OF_YENDOR
-            || obj.otyp === SPE_BOOK_OF_THE_DEAD
-            || obj.otyp === CANDELABRUM_OF_INVOCATION
-            || obj.otyp === BELL_OF_OPENING) {
-            return true;
-        }
-        const chance = rn2(100);
-        return chance < (obj.oartifact ? achance : ochance);
-    };
     // C ref: dothrow.c breaktest()
     const breaktestLike = (obj) => {
         if (trap.ttyp !== PIT) return false; // only exploded landmine path
@@ -2463,7 +2451,7 @@ function mktrap_victim(map, trap, depth) {
         if (obj.oclass === ARMOR_CLASS && od.material === GLASS) {
             nonbreakchance = 90;
         }
-        if (objResistsLike(obj, nonbreakchance, 99)) {
+        if (obj_resists(obj, nonbreakchance, 99)) {
             return false;
         }
         if (od.material === GLASS && !obj.oartifact && obj.oclass !== GEM_CLASS) {
@@ -2513,6 +2501,11 @@ function mktrap_victim(map, trap, depth) {
             otmp.blessed = false;
             otmp.cursed = true; // C ref: curse(otmp) at mklev.c:1905
             placeObj(otmp);
+            const loc = map.at(x, y);
+            // C ref: if (!levl[x][y].lit) begin_burn(otmp, FALSE)
+            if (loc && !loc.lit) {
+                otmp.lamplit = true;
+            }
         }
     } else {
         victim_mnum = PM_HUMAN;

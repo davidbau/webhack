@@ -17,6 +17,8 @@
   - alignment sign checks, amulet hostility, minion handling,
   - final `rn2(16 + clamp(record, -15..)) && rn2(2 + abs(mal))` RNG path.
 - Added explicit player alignment-state fields (`alignmentRecord`, `alignmentAbuse`) and persisted them through save/restore state.
+- `mktrap_victim` now reuses shared C-ported `obj_resists()` logic (instead of a local duplicate) for landmine `breaktest()` behavior.
+- Added C-style dark-square candle ignition behavior in `mktrap_victim` gnome-corpse branch (`begin_burn` analog via `lamplit`).
 
 ## Validation snapshot
 
