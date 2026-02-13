@@ -254,6 +254,7 @@ export function saveYou(player) {
         x: player.x, y: player.y,
         name: player.name, roleIndex: player.roleIndex,
         race: player.race, gender: player.gender, alignment: player.alignment,
+        alignmentRecord: player.alignmentRecord, alignmentAbuse: player.alignmentAbuse,
         hp: player.hp, hpmax: player.hpmax, pw: player.pw, pwmax: player.pwmax,
         ac: player.ac, level: player.level, exp: player.exp, score: player.score,
         attributes: [...player.attributes],
@@ -273,6 +274,7 @@ export function restYou(data) {
     const p = new Player();
     const fields = [
         'x', 'y', 'name', 'roleIndex', 'race', 'gender', 'alignment',
+        'alignmentRecord', 'alignmentAbuse',
         'hp', 'hpmax', 'pw', 'pwmax', 'ac', 'level', 'exp', 'score',
         'dungeonLevel', 'maxDungeonLevel', 'gold', 'hunger', 'nutrition',
         'movement', 'speed', 'moved', 'luck', 'moreluck',

@@ -331,6 +331,23 @@ export function alignName(alignValue) {
     return 'neutral';
 }
 
+// C ref: role.c roles[].initrecord
+export function initialAlignmentRecordForRole(roleIndex) {
+    switch (roleIndex) {
+        case 0:  // Archeologist
+        case 1:  // Barbarian
+        case 3:  // Healer
+        case 4:  // Knight
+        case 5:  // Monk
+        case 7:  // Rogue
+        case 8:  // Ranger
+        case 9:  // Samurai
+            return 10;
+        default:
+            return 0;
+    }
+}
+
 // Lore text template -- from quest.lua
 // Substitutions: %d=deity name, %G=god/goddess, %r=rank title
 export const LORE_TEXT_TEMPLATE = `It is written in the Book of %d:
@@ -372,6 +389,8 @@ export class Player {
         this.race = RACE_HUMAN;
         this.gender = 0;
         this.alignment = A_NEUTRAL;
+        this.alignmentRecord = 0; // C ref: u.ualign.record
+        this.alignmentAbuse = 0;  // C ref: u.ualign.abuse
 
         // Vital stats
         // C ref: you.h u.uhp, u.uhpmax, u.uen, u.uenmax
@@ -465,6 +484,8 @@ export class Player {
         this.pw = role.startingPW;
         this.pwmax = role.startingPW;
         this.alignment = role.align;
+        this.alignmentRecord = initialAlignmentRecordForRole(roleIndex);
+        this.alignmentAbuse = 0;
 
         // Starting AC depends on role; default 10 = unarmored
         this.ac = 10;

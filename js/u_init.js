@@ -80,8 +80,13 @@ import {
     // Object data for level/charged checks
     objectData,
 } from './objects.js';
-import { roles } from './player.js';
-import { mons, PM_LITTLE_DOG, PM_KITTEN, PM_PONY } from './monsters.js';
+import { roles, initialAlignmentRecordForRole } from './player.js';
+import { always_hostile, always_peaceful } from './mondata.js';
+import {
+    mons, PM_LITTLE_DOG, PM_KITTEN, PM_PONY, PM_ERINYS,
+    MS_LEADER, MS_NEMESIS, MS_GUARDIAN,
+    M2_MINION, M2_HUMAN, M2_ELF, M2_DWARF, M2_GNOME, M2_ORC,
+} from './monsters.js';
 
 // ========================================================================
 // Pet Creation
@@ -163,6 +168,71 @@ function pet_type(roleIndex) {
     return rn2(2) ? PM_KITTEN : PM_LITTLE_DOG;
 }
 
+function sgn(x) {
+    return x > 0 ? 1 : (x < 0 ? -1 : 0);
+}
+
+function race_peaceful(ptr, player) {
+    const flags2 = ptr.flags2 || 0;
+    switch (player.race) {
+        case RACE_ELF:
+            return !!(flags2 & M2_ELF);
+        case RACE_DWARF:
+            return !!(flags2 & (M2_DWARF | M2_GNOME));
+        case RACE_GNOME:
+            return !!(flags2 & (M2_DWARF | M2_GNOME));
+        default:
+            return false;
+    }
+}
+
+function race_hostile(ptr, player) {
+    const flags2 = ptr.flags2 || 0;
+    switch (player.race) {
+        case RACE_HUMAN:
+            return !!(flags2 & (M2_GNOME | M2_ORC));
+        case RACE_ELF:
+            return !!(flags2 & M2_ORC);
+        case RACE_DWARF:
+            return !!(flags2 & M2_ORC);
+        case RACE_GNOME:
+            return !!(flags2 & M2_HUMAN);
+        case RACE_ORC:
+            return !!(flags2 & (M2_HUMAN | M2_ELF | M2_DWARF));
+        default:
+            return false;
+    }
+}
+
+// C ref: makemon.c peace_minded(struct permonst *ptr)
+function peace_minded(ptr, player) {
+    const mal = ptr.align || 0;
+    const ual = player.alignment || 0;
+    const alignRecord = Number.isInteger(player.alignmentRecord)
+        ? player.alignmentRecord
+        : initialAlignmentRecordForRole(player.roleIndex);
+    const alignAbuse = Number.isInteger(player.alignmentAbuse)
+        ? player.alignmentAbuse
+        : 0;
+    const hasAmulet = !!player.amulet;
+
+    if (always_peaceful(ptr)) return true;
+    if (always_hostile(ptr)) return false;
+    if (ptr.sound === MS_LEADER || ptr.sound === MS_GUARDIAN) return true;
+    if (ptr.sound === MS_NEMESIS) return false;
+    if (ptr === mons[PM_ERINYS]) return !alignAbuse;
+
+    if (race_peaceful(ptr, player)) return true;
+    if (race_hostile(ptr, player)) return false;
+
+    if (sgn(mal) !== sgn(ual)) return false;
+    if (mal < 0 && hasAmulet) return false;
+    if ((ptr.flags2 || 0) & M2_MINION) return alignRecord >= 0;
+
+    const firstBound = 16 + (alignRecord < -15 ? -15 : alignRecord);
+    return !!rn2(firstBound) && !!rn2(2 + Math.abs(mal));
+}
+
 // C ref: dog.c makedog() → makemon.c makemon()
 // Creates the starting pet and places it on the map.
 // Returns the pet monster object. RNG consumption matches C exactly.
@@ -203,25 +273,8 @@ function makedog(map, player, depth) {
     // C ref: makemon.c:1280 — gender
     rn2(2);
 
-    // C ref: makemon.c:1295 — peace_minded(ptr)
-    // peace_minded() consumes RNG when it reaches the alignment check.
-    // For neutral-aligned players, it calls rn2(16+record) && rn2(2+abs(mal)).
-    // For lawful/chaotic players, it returns early (race_peaceful) with no RNG.
-    // Knight/pony is a special case: also no peace_minded (pony handling).
-    const playerAlign = player.alignment;
-    if (pmIdx !== PM_PONY && playerAlign === 0) {
-        // C trace parity: neutral starts use role-specific first bound:
-        //   rn2(26): Archeologist, Barbarian, Healer, Monk, Ranger
-        //   rn2(16): Caveman, Priest, Tourist, Valkyrie, Wizard
-        const highPeaceRoles = new Set([
-            PM_ARCHEOLOGIST, PM_BARBARIAN, PM_HEALER, PM_MONK, PM_RANGER,
-        ]);
-        const firstBound = highPeaceRoles.has(player.roleIndex) ? 26 : 16;
-        const peacefulFirst = rn2(firstBound);
-        if (peacefulFirst) {
-            rn2(2);
-        }
-    }
+    // C ref: makemon.c:1295 — mtmp->mpeaceful = peace_minded(ptr)
+    peace_minded(petData, player);
 
     // C ref: dog.c:264-267 — put_saddle_on_mon(NULL, mtmp) for pony
     // Creates a saddle and adds to pony's minvent

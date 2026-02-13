@@ -10,6 +10,13 @@
 - Ported C `u.umoney0` flow into startup inventory: Healer/Tourist starting money is now emitted via `Money` inventory object (`GOLD_PIECE`) with coin-class quantity semantics.
 - Tightened `mktrap_victim` candle object fields to match C (explicit `quan=1`, recalculated weight).
 - Replaced `mktrap_victim` landmine breakage approximation with direct C-faithful `breaktest()` + `obj_resists()` logic (including invocation-item immunity and glass-material handling).
+- Replaced startup pet `peace_minded` heuristic with a direct C-faithful port from `makemon.c`, including:
+  - `always_peaceful` / `always_hostile`,
+  - leader/guardian/nemesis and Erinys special case,
+  - race-based peaceful/hostile masks,
+  - alignment sign checks, amulet hostility, minion handling,
+  - final `rn2(16 + clamp(record, -15..)) && rn2(2 + abs(mal))` RNG path.
+- Added explicit player alignment-state fields (`alignmentRecord`, `alignmentAbuse`) and persisted them through save/restore state.
 
 ## Validation snapshot
 
@@ -23,7 +30,7 @@
 - Chargen suite execution is stable again in CI/local `npm test` flow.
 - Remaining work is fidelity-oriented, not runner-breakage:
   - bring strict chargen startup parity closer for seed/class cases,
-  - continue C-faithful `mktrap_victim` behavior and healer startup/inventory sequencing.
+  - continue C-faithful startup logic reductions where role/race/alignment state still uses inferred defaults.
 
 ## Immediate next targets
 
