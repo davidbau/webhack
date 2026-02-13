@@ -619,10 +619,19 @@ function iniInv(player, table) {
             obj.quan = player.umoney0 || 0;
             obj.owt = weight(obj);
         } else {
-            obj.known = true;
+            if (objectData[otyp]?.uses_known) obj.known = true;
             obj.dknown = true;
             obj.bknown = true;
+            obj.rknown = true;
+            if (obj.cobj || obj.contents || objectData[otyp]?.name === 'statue') {
+                obj.cknown = true;
+                obj.lknown = true;
+                obj.otrapped = 0;
+            }
             obj.cursed = false;
+            if (obj.opoisoned && player.alignment !== -1) {
+                obj.opoisoned = 0; // C ref: clear poison for non-chaotic starts
+            }
             if (obj.oclass === WEAPON_CLASS || obj.oclass === TOOL_CLASS) {
                 obj.quan = trquan(trop);
                 quan = 1; // stop flag
