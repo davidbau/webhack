@@ -52,9 +52,9 @@ export function generate() {
     des.region({ x1: 37,y1: 8,x2: 46,y2: 11, lit: 1, type: "throne", filled: 1 });
     // 50% chance each to move throne &&/|| fort's entry secret door up one row
     if (percent(50)) {
-       des.monster({ id: "Croesus", x: 43, y: 10, peaceful: 0 });
+       des.monster({ id: "Croesus", x: 43, y: 10, peaceful: 0, parityImmediate: true });
     } else {
-       des.monster({ id: "Croesus", x: 43, y: 9, peaceful: 0 });
+       des.monster({ id: "Croesus", x: 43, y: 9, peaceful: 0, parityImmediate: true });
        des.terrain(43,9, "\\");
        des.terrain(43,10, ".");
     }

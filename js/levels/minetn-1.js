@@ -126,7 +126,7 @@ export function generate() {
     // the Orcish Army
 
     let inside = selection.floodfill(18,8)
-    let near_temple = selection.area(17,8, 23,14) & inside
+    let near_temple = selection.area(17,8, 23,14).intersect(inside)
 
     for (let i = 1; i <= 5 + (rn2((1*10) - (1 - 1) + 1) + (1 - 1)); i++) {
        if (percent(50)) {

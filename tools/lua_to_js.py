@@ -941,7 +941,31 @@ class LuaToJsConverter:
             return f'{base}[{idx - 1}]'
 
         expr = re.sub(r'(\b[A-Za-z_][\w.]*)\s*\[\s*([1-9]\d*)\s*\]', dec_literal_index, expr)
-        expr = re.sub(r'(\b[A-Za-z_][\w.()]*?)\s*\|\s*(\b[A-Za-z_][\w.()]*\b)', r'\1.union(\2)', expr)
+
+        # Lua selection set ops sometimes survive as bitwise operators after
+        # translation (for example: selection.area(...) & inside).
+        union_patterns = [
+            re.compile(r'(\b[A-Za-z_][\w.()]*\([^)]*\))\s*\|\s*(\b[A-Za-z_][\w.()]*)'),
+            re.compile(r'(\b[A-Za-z_][\w.()]*)\s*\|\s*(\b[A-Za-z_][\w.()]*\([^)]*\))')
+        ]
+        intersect_patterns = [
+            re.compile(r'(\b[A-Za-z_][\w.()]*\([^)]*\))\s*&\s*(\b[A-Za-z_][\w.()]*)'),
+            re.compile(r'(\b[A-Za-z_][\w.()]*)\s*&\s*(\b[A-Za-z_][\w.()]*\([^)]*\))')
+        ]
+
+        changed = True
+        while changed:
+            changed = False
+            for pat in union_patterns:
+                new_expr = pat.sub(r'\1.union(\2)', expr)
+                if new_expr != expr:
+                    expr = new_expr
+                    changed = True
+            for pat in intersect_patterns:
+                new_expr = pat.sub(r'\1.intersect(\2)', expr)
+                if new_expr != expr:
+                    expr = new_expr
+                    changed = True
 
         # Boolean/null values
         expr = re.sub(r'\bnil\b', 'null', expr)

@@ -102,7 +102,7 @@ export function generate() {
     des.monster("giant eel", 37, 9);
     des.monster("giant eel", 39, 15);
     // Monsters on siege duty.
-    let ogrelocs = selection.floodfill(37,7) & selection.area(40,3, 45,20)
+    let ogrelocs = selection.floodfill(37,7).intersect(selection.area(40,3, 45,20))
     for (let i = 0; i <= 11; i++) {
        des.monster({ id: "ogre", coord: ogrelocs.rndcoord(1), peaceful: 0 });
     

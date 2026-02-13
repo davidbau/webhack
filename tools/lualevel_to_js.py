@@ -384,7 +384,32 @@ class SimpleLuaConverter:
             return f'{base}[{idx - 1}]'
 
         js = re.sub(r'(\b[A-Za-z_][\w.]*)\s*\[\s*([1-9]\d*)\s*\]', dec_literal_index, js)
-        js = re.sub(r'(\b[A-Za-z_][\w.()]*?)\s*\|\s*(\b[A-Za-z_][\w.()]*\b)', r'\1.union(\2)', js)
+
+        # Lua selection set ops may survive expression conversion as bitwise
+        # operators (for example: selection.area(...) & inside). Convert those
+        # forms when at least one operand is a call expression.
+        union_patterns = [
+            re.compile(r'(\b[A-Za-z_][\w.()]*\([^)]*\))\s*\|\s*(\b[A-Za-z_][\w.()]*)'),
+            re.compile(r'(\b[A-Za-z_][\w.()]*)\s*\|\s*(\b[A-Za-z_][\w.()]*\([^)]*\))')
+        ]
+        intersect_patterns = [
+            re.compile(r'(\b[A-Za-z_][\w.()]*\([^)]*\))\s*&\s*(\b[A-Za-z_][\w.()]*)'),
+            re.compile(r'(\b[A-Za-z_][\w.()]*)\s*&\s*(\b[A-Za-z_][\w.()]*\([^)]*\))')
+        ]
+
+        changed = True
+        while changed:
+            changed = False
+            for pat in union_patterns:
+                new_js = pat.sub(r'\1.union(\2)', js)
+                if new_js != js:
+                    js = new_js
+                    changed = True
+            for pat in intersect_patterns:
+                new_js = pat.sub(r'\1.intersect(\2)', js)
+                if new_js != js:
+                    js = new_js
+                    changed = True
         return js
 
     def _convert_arrays(self, js):

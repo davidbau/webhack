@@ -28,7 +28,7 @@ export function generate() {
     }
 
     // replace horizontal && vertical walls
-    let sel = selection.match(`.w.`) | selection.match(".\nw\n.");
+    let sel = selection.match(`.w.`).union(selection.match(".\nw\n."));
     sel.iterate(replace_wall_boulder);
     // replace the leftover corner walls
     sel = selection.match(`.w.`);

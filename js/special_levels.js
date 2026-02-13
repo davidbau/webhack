@@ -6,6 +6,7 @@
  */
 
 import { rn2 } from './rng.js';
+import { setSpecialLevelDepth } from './sp_lev.js';
 
 // Import special level generators
 import { generate as generateKnox } from './levels/knox.js';
@@ -174,8 +175,8 @@ import { generate as generateWizGoal } from './levels/Wiz-goal.js';
 // Additional special levels
 import { generate as generateDungeon } from './levels/dungeon.js';
 import { generate as generateHellfill } from './levels/hellfill.js';
-import { generate as generateFakewiz1 } from './levels/fakewiz1.js';
-import { generate as generateFakewiz2 } from './levels/fakewiz2.js';
+import { generate as generateFakewiz1 } from './levels/wizdecoy1.js';
+import { generate as generateFakewiz2 } from './levels/wizdecoy2.js';
 // TEMP: Commented out due to Lua syntax error at line 119
 // import { generate as generateThemerms } from './levels/themerms.js';
 import { generate as generateTut1 } from './levels/tut-1.js';
@@ -219,7 +220,19 @@ const variantCache = new Map();
  */
 function registerSpecialLevel(dnum, dlevel, generator, name) {
     const key = `${dnum}:${dlevel}`;
-    specialLevels.set(key, { generator, name, dnum, dlevel });
+    if (Array.isArray(generator)) {
+        const wrappedGenerators = generator.map((gen) => () => {
+            setSpecialLevelDepth(dlevel);
+            return gen();
+        });
+        specialLevels.set(key, { generator: wrappedGenerators, name, dnum, dlevel });
+    } else {
+        const wrapped = () => {
+            setSpecialLevelDepth(dlevel);
+            return generator();
+        };
+        specialLevels.set(key, { generator: wrapped, name, dnum, dlevel });
+    }
 }
 
 /**

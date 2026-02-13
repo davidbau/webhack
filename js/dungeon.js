@@ -1065,8 +1065,14 @@ function mkstairs(map, x, y, isUp) {
     const loc = map.at(x, y);
     if (!loc) return;
 
-    loc.typ = isUp ? STAIRS : STAIRS;
+    loc.typ = STAIRS;
     loc.stairdir = isUp ? 1 : 0; // 1 = up, 0 = down
+    loc.flags = isUp ? 1 : 0;
+    if (isUp) {
+        map.upstair = { x, y };
+    } else {
+        map.dnstair = { x, y };
+    }
 }
 
 // C ref: mklev.c makerooms()
@@ -2292,7 +2298,7 @@ function hole_destination_rng(map) {
 }
 
 // C ref: mklev.c:1926 traptype_rnd() — pick random trap type
-function traptype_rnd(depth) {
+function traptype_rnd(depth, mktrapflags = MKTRAP_NOFLAGS) {
     const lvl = depth; // level_difficulty() = depth for normal dungeon
     const kind = rnd(TRAPNUM - 1); // rnd(25) → 1..25
 
@@ -2317,7 +2323,9 @@ function traptype_rnd(depth) {
         if (lvl < 6) return NO_TRAP;
         break;
     case WEB:
-        if (lvl < 7) return NO_TRAP;
+        // C ref: mklev.c traptype_rnd() — WEB is allowed below depth 7
+        // when MKTRAP_NOSPIDERONWEB is set.
+        if (lvl < 7 && !(mktrapflags & MKTRAP_NOSPIDERONWEB)) return NO_TRAP;
         break;
     case STATUE_TRAP:
     case POLY_TRAP:
@@ -2349,7 +2357,7 @@ export function mktrap(map, num, mktrapflags, croom, tm, depth) {
     } else {
         // Normal level: loop until we get a valid trap type
         do {
-            kind = traptype_rnd(depth);
+            kind = traptype_rnd(depth, mktrapflags);
         } while (kind === NO_TRAP);
     }
 
@@ -2433,11 +2441,33 @@ function mktrap_victim(map, trap, depth) {
     // Random possession loop
     // C ref: mklev.c:1843-1877
     const classMap = [WEAPON_CLASS, TOOL_CLASS, FOOD_CLASS, GEM_CLASS];
+    // C ref: dothrow.c breaktest() + zap.c obj_resists().
+    // In this path, only the RNG side effect is parity-critical:
+    // obj_resists() consumes rn2(100) when checking whether a fragile
+    // item survives an exploded landmine (ttyp==PIT here).
+    const breaktestLike = (obj) => {
+        if (trap.ttyp !== PIT) return false;
+        // Non-artifact path used for these generated possessions.
+        const nonbreakResists = rn2(100) < 1;
+        if (nonbreakResists) return false;
+        const name = String(objectData[obj.otyp]?.name || '').toLowerCase();
+        if (obj.oclass === POTION_CLASS) return true;
+        return (
+            name === 'egg'
+            || name === 'cream pie'
+            || name === 'melon'
+            || name === 'acid venom'
+            || name === 'blinding venom'
+        );
+    };
+
     do {
         const poss_class = classMap[rn2(4)];
         otmp = mkobj(poss_class, false);
         otmp.cursed = true; // C ref: curse(otmp) at mklev.c:1865
-        placeObj(otmp);
+        if (!breaktestLike(otmp)) {
+            placeObj(otmp);
+        }
     } while (!rn2(5));
 
     // Corpse race selection
@@ -3837,23 +3867,17 @@ function put_lregion_here(map, x, y, nlx, nly, nhx, nhy, rtype, oneshot) {
             break;
 
         case LR_DOWNSTAIR:
-            loc.typ = STAIRS;
-            loc.flags = 0; // down
-            map.dnstair = { x, y };
+            mkstairs(map, x, y, false);
             break;
 
         case LR_UPSTAIR:
-            loc.typ = STAIRS;
-            loc.flags = 1; // up
-            map.upstair = { x, y };
+            mkstairs(map, x, y, true);
             break;
 
         case LR_BRANCH:
             // Branch stairs (entrance to sub-dungeon like Mines)
             // For Gnomish Mines at depth 2-4, this is a down stair
-            loc.typ = STAIRS;
-            loc.flags = 0; // down (into branch)
-            map.dnstair = { x, y };
+            mkstairs(map, x, y, false);
             break;
     }
 
@@ -3885,14 +3909,11 @@ export function place_lregion(map, lx, ly, hx, hy, nlx, nly, nhx, nhy, rtype) {
                     pos = { x: somex(croom), y: somey(croom) };
                 }
 
-                const loc = map.at(pos.x, pos.y);
-                if (!loc) {
+                if (!map.at(pos.x, pos.y)) {
                     console.warn(`Couldn't place lregion type ${rtype}!`);
                     return;
                 }
-                loc.typ = STAIRS;
-                loc.flags = 0;
-                map.dnstair = { x: pos.x, y: pos.y };
+                mkstairs(map, pos.x, pos.y, false);
                 return;
             }
 
