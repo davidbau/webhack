@@ -175,8 +175,8 @@ import { generate as generateWizGoal } from './levels/Wiz-goal.js';
 // Additional special levels
 import { generate as generateDungeon } from './levels/dungeon.js';
 import { generate as generateHellfill } from './levels/hellfill.js';
-import { generate as generateFakewiz1 } from './levels/wizdecoy1.js';
-import { generate as generateFakewiz2 } from './levels/wizdecoy2.js';
+import { generate as generateFakewiz1 } from './levels/fakewiz1.js';
+import { generate as generateFakewiz2 } from './levels/fakewiz2.js';
 // TEMP: Commented out due to Lua syntax error at line 119
 // import { generate as generateThemerms } from './levels/themerms.js';
 import { generate as generateTut1 } from './levels/tut-1.js';
