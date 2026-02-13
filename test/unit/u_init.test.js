@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { initRng, rn2, enableRngLog, getRngLog, disableRngLog } from '../../js/rng.js';
 import { initLevelGeneration, makelevel, wallification } from '../../js/dungeon.js';
 import { Player, roles } from '../../js/player.js';
-import { simulatePostLevelInit } from '../../js/u_init.js';
+import { simulatePostLevelInit, mon_arrive } from '../../js/u_init.js';
 import { A_STR, A_INT, A_WIS, A_DEX, A_CON, A_CHA, NUM_ATTRS, STONE } from '../../js/config.js';
 import { GOLD_PIECE } from '../../js/objects.js';
 
@@ -173,6 +173,55 @@ describe('Post-level initialization (u_init)', () => {
         simulatePostLevelInit(player, map, 1);
         assert.equal(map.monsters.length, monsterCountBefore,
             'Pet should not be force-placed when no valid enexto position exists');
+    });
+
+    it('mon_arrive does not force placement when arrival has no valid tiles', () => {
+        const { player, map: oldMap } = setupSeed42Game();
+        simulatePostLevelInit(player, oldMap, 1);
+
+        const { player: newPlayer, map: newMap } = setupSeed42Game();
+        for (let dx = -3; dx <= 3; dx++) {
+            for (let dy = -3; dy <= 3; dy++) {
+                const x = newPlayer.x + dx;
+                const y = newPlayer.y + dy;
+                if (x === newPlayer.x && y === newPlayer.y) continue;
+                const loc = newMap.at(x, y);
+                if (loc) loc.typ = STONE;
+            }
+        }
+        // Occupy hero square so rloc_to(u.ux,u.uy) branch can't place there.
+        newMap.monsters.push({ mx: newPlayer.x, my: newPlayer.y, mhp: 1, dead: false });
+
+        const oldCount = oldMap.monsters.length;
+        const newCount = newMap.monsters.length;
+        const moved = mon_arrive(oldMap, newMap, newPlayer);
+        assert.equal(moved, false, 'mon_arrive should fail if no valid placement exists');
+        assert.equal(oldMap.monsters.length, oldCount, 'pet should remain on old map when placement fails');
+        assert.equal(newMap.monsters.length, newCount, 'no pet should be force-placed on new map');
+    });
+
+    it('mon_arrive leaves trapped pets behind', () => {
+        const { player, map: oldMap } = setupSeed42Game();
+        oldMap.monsters.push({
+            mx: player.x + 1,
+            my: player.y,
+            mhp: 5,
+            dead: false,
+            tame: true,
+            mtame: 10,
+            mpeaceful: true,
+            mtrapped: true,
+            meating: 0,
+        });
+
+        const { player: newPlayer, map: newMap } = setupSeed42Game();
+        const oldCount = oldMap.monsters.length;
+        const newCount = newMap.monsters.length;
+
+        const moved = mon_arrive(oldMap, newMap, newPlayer);
+        assert.equal(moved, false, 'trapped pets should not be migrated');
+        assert.equal(oldMap.monsters.length, oldCount, 'trapped pet should remain on old map');
+        assert.equal(newMap.monsters.length, newCount, 'no trapped pet should arrive on new map');
     });
 
     it('Healer gets startup money as gold inventory object', () => {
