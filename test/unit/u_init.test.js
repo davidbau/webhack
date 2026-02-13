@@ -8,7 +8,7 @@ import { initRng, rn2, enableRngLog, getRngLog, disableRngLog } from '../../js/r
 import { initLevelGeneration, makelevel, wallification } from '../../js/dungeon.js';
 import { Player, roles } from '../../js/player.js';
 import { simulatePostLevelInit } from '../../js/u_init.js';
-import { A_STR, A_INT, A_WIS, A_DEX, A_CON, A_CHA, NUM_ATTRS } from '../../js/config.js';
+import { A_STR, A_INT, A_WIS, A_DEX, A_CON, A_CHA, NUM_ATTRS, STONE } from '../../js/config.js';
 import { GOLD_PIECE } from '../../js/objects.js';
 
 // Helper: create a level-1 wizard-mode Valkyrie game state
@@ -154,6 +154,25 @@ describe('Post-level initialization (u_init)', () => {
         assert.ok(log[n-3].includes('rn2(2)'), `3rd-to-last should be rn2(2), got: ${log[n-3]}`);
         assert.ok(log[n-2].includes('rnd(9000)'), `2nd-to-last should be rnd(9000), got: ${log[n-2]}`);
         assert.ok(log[n-1].includes('rnd(30)'), `Last should be rnd(30), got: ${log[n-1]}`);
+    });
+
+    it('does not force pet placement when no valid adjacent tiles exist', () => {
+        const { player, map } = setupSeed42Game();
+        const monsterCountBefore = map.monsters.length;
+
+        for (let dx = -3; dx <= 3; dx++) {
+            for (let dy = -3; dy <= 3; dy++) {
+                const x = player.x + dx;
+                const y = player.y + dy;
+                if (x === player.x && y === player.y) continue;
+                const loc = map.at(x, y);
+                if (loc) loc.typ = STONE;
+            }
+        }
+
+        simulatePostLevelInit(player, map, 1);
+        assert.equal(map.monsters.length, monsterCountBefore,
+            'Pet should not be force-placed when no valid enexto position exists');
     });
 
     it('Healer gets startup money as gold inventory object', () => {
