@@ -327,15 +327,45 @@ function makedog(map, player, depth) {
 // Returns true if at least one pet was migrated.
 export const MON_ARRIVE_WITH_YOU = 'With_you';
 
+// C ref: dog.c mon_catchup_elapsed_time() used by mon_arrive() for monsters
+// that spent time in limbo before independent arrival (non-With_you modes).
+function monCatchupElapsedTime(mtmp, nmv) {
+    const imv = Math.max(0, Math.min(0x7ffffffe, Math.trunc(nmv || 0)));
+    if (!imv) return;
+
+    if (mtmp.mtrapped && rn2(imv + 1) > 20) mtmp.mtrapped = false;
+    if (mtmp.mconf && rn2(imv + 1) > 25) mtmp.mconf = false;
+    if (mtmp.mstun && rn2(imv + 1) > 5) mtmp.mstun = false;
+
+    if (Number.isInteger(mtmp.meating) && mtmp.meating > 0) {
+        if (imv > mtmp.meating) mtmp.meating = 0;
+        else mtmp.meating -= imv;
+    }
+
+    if ((mtmp.mtame || 0) > 0) {
+        const wilder = Math.floor((imv + 75) / 150);
+        if (mtmp.mtame > wilder) mtmp.mtame -= wilder;
+        else if (mtmp.mtame > rn2(Math.max(1, wilder))) mtmp.mtame = 0;
+        else {
+            mtmp.mtame = 0;
+            mtmp.mpeaceful = 0;
+        }
+    }
+}
+
 export function mon_arrive(oldMap, newMap, player, opts = {}) {
     if (!oldMap || !newMap) return false;
     const when = opts.when || MON_ARRIVE_WITH_YOU;
     const heroX = Number.isInteger(opts.heroX) ? opts.heroX : player.x;
     const heroY = Number.isInteger(opts.heroY) ? opts.heroY : player.y;
+    const currentMoves = Number.isInteger(opts.moves)
+        ? opts.moves
+        : (Number.isInteger(player?.turns) ? player.turns : 0);
     const failedArrivals = Array.isArray(opts.failedArrivals)
         ? opts.failedArrivals
         : (newMap.failedArrivals || (newMap.failedArrivals = []));
     const oldFailed = Array.isArray(oldMap.failedArrivals) ? oldMap.failedArrivals : [];
+    const oldFailedSet = new Set(oldFailed);
     const seen = new Set();
     const addUnique = (arr, mon) => {
         if (!mon || seen.has(mon)) return;
@@ -351,11 +381,9 @@ export function mon_arrive(oldMap, newMap, player, opts = {}) {
     const pets = candidates.filter((m) => {
         const tameLike = !!m?.tame || (m?.mtame || 0) > 0;
         if (!m || m.dead || !tameLike) return false;
+        if (oldFailedSet.has(m)) return true;
         // C ref: dog.c keepdogs() — pets still trapped/eating don't follow.
         if (m.mtrapped || m.meating) return false;
-        // Previously failed arrivals are already in transit; don't require
-        // source-level proximity for another retry.
-        if (oldFailed.includes(m)) return true;
         const dx = Math.abs((m.mx ?? 0) - player.x);
         const dy = Math.abs((m.my ?? 0) - player.y);
         // C ref: keepdogs() monnear(mtmp, u.ux, u.uy) on source level.
@@ -407,8 +435,19 @@ export function mon_arrive(oldMap, newMap, player, opts = {}) {
             let localeX = Number.isInteger(opts.localeX) ? opts.localeX : heroX;
             let localeY = Number.isInteger(opts.localeY) ? opts.localeY : heroY;
             const exact = !!opts.localeExact;
-            const wander = exact ? 0 : Math.max(0, Math.min(8, opts.wander || 0));
+            let wander = exact ? 0 : Math.max(0, Math.min(8, opts.wander || 0));
             const randomPlacement = !!opts.randomPlacement;
+            const shouldCatchup = Number.isInteger(pet.mlstmv)
+                && pet.mlstmv < (currentMoves - 1);
+
+            if (shouldCatchup) {
+                // C ref: dog.c mon_arrive() catch-up for time spent in limbo.
+                const nmv = (currentMoves - 1) - pet.mlstmv;
+                monCatchupElapsedTime(pet, nmv);
+                if (!exact && !Number.isInteger(opts.wander)) {
+                    wander = Math.max(0, Math.min(8, nmv));
+                }
+            }
 
             // C ref: dog.c mon_arrive() xlocale && wander path.
             // Minimal faithful subset: random perturbation within wander radius.

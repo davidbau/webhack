@@ -275,6 +275,44 @@ describe('Post-level initialization (u_init)', () => {
         assert.ok(arrived, 'queued pet should be placed on destination when space is available');
     });
 
+    it('mon_arrive does not duplicate failed queue entries across repeated retries', () => {
+        const pet = {
+            mx: 10,
+            my: 10,
+            mhp: 5,
+            dead: false,
+            tame: true,
+            mtame: 10,
+            mpeaceful: true,
+            mtrapped: false,
+            meating: 0,
+        };
+        const oldMap = { monsters: [], failedArrivals: [pet], removeMonster() {} };
+        const midMap = {
+            monsters: [],
+            failedArrivals: [],
+            at: () => ({ typ: STONE }),
+            monsterAt: () => null,
+            upstair: { x: 10, y: 10 },
+        };
+        const newMap = {
+            monsters: [],
+            failedArrivals: [],
+            at: () => ({ typ: STONE }),
+            monsterAt: () => null,
+            upstair: { x: 10, y: 10 },
+        };
+        const player = { x: 10, y: 10 };
+
+        const moved1 = mon_arrive(oldMap, midMap, player);
+        assert.equal(moved1, false);
+        assert.equal(midMap.failedArrivals.length, 1, 'first failed retry should keep one queue entry');
+
+        const moved2 = mon_arrive(midMap, newMap, player);
+        assert.equal(moved2, false);
+        assert.equal(newMap.failedArrivals.length, 1, 'second failed retry should still keep one queue entry');
+    });
+
     it('mon_arrive supports non-With_you exact locale placement', () => {
         const { player, map: oldMap } = setupSeed42Game();
         const queuedPet = {
@@ -388,6 +426,36 @@ describe('Post-level initialization (u_init)', () => {
         assert.ok(arrived, 'queued pet should arrive via random placement');
         const loc = newMap.at(arrived.mx, arrived.my);
         assert.ok(loc && ACCESSIBLE(loc.typ), 'random placement should land on an accessible tile');
+    });
+
+    it('mon_arrive catches up queued pet elapsed time in non-With_you mode', () => {
+        const { player, map: oldMap } = setupSeed42Game();
+        const queuedPet = {
+            mx: player.x + 10,
+            my: player.y + 10,
+            mhp: 5,
+            dead: false,
+            tame: true,
+            mtame: 10,
+            mpeaceful: true,
+            mtrapped: false,
+            meating: 2,
+            mlstmv: 1,
+        };
+        oldMap.failedArrivals = [queuedPet];
+        const { map: newMap } = setupSeed42Game();
+
+        const moved = mon_arrive(oldMap, newMap, player, {
+            when: 'After_you',
+            moves: 10,
+            localeX: 15,
+            localeY: 8,
+            localeExact: false,
+        });
+        assert.equal(moved, true, 'queued pet should arrive in non-With_you mode');
+        assert.equal(queuedPet.meating, 0, 'elapsed-time catch-up should finish eating');
+        const arrived = newMap.monsters.find(m => m === queuedPet);
+        assert.ok(arrived, 'queued pet should be placed on destination map');
     });
 
     it('Healer gets startup money as gold inventory object', () => {
