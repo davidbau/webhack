@@ -34,7 +34,8 @@ import {
     D_NODOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN, D_SECRET,
     COLNO, ROWNO, IS_OBSTRUCTED, IS_WALL, IS_POOL, IS_LAVA,
     A_LAWFUL, A_NEUTRAL, A_CHAOTIC,
-    MKTRAP_MAZEFLAG, MKTRAP_NOSPIDERONWEB
+    MKTRAP_MAZEFLAG, MKTRAP_NOSPIDERONWEB,
+    MAXNROFROOMS, ROOMOFFSET
 } from './config.js';
 import {
     BOULDER, SCROLL_CLASS, FOOD_CLASS, WEAPON_CLASS, ARMOR_CLASS,
@@ -49,6 +50,46 @@ const STAIRS_UP = STAIRS;
 const STAIRS_DOWN = STAIRS;
 const LADDER_UP = LADDER;
 const LADDER_DOWN = LADDER;
+
+const ROOM_TYPE_MAP = {
+    'ordinary': 0,
+    'themed': 1,
+    'throne': 2,
+    'swamp': 3,
+    'vault': 4,
+    'beehive': 5,
+    'morgue': 6,
+    'barracks': 7,
+    'zoo': 8,
+    'delphi': 9,
+    'temple': 10,
+    'anthole': 13,
+    'cocknest': 12,
+    'leprehall': 11,
+    'shop': 14,
+    'armor shop': 15,
+    'scroll shop': 16,
+    'potion shop': 17,
+    'weapon shop': 18,
+    'food shop': 19,
+    'ring shop': 20,
+    'wand shop': 21,
+    'tool shop': 22,
+    'book shop': 23,
+    'health food shop': 24,
+    'candle shop': 25
+};
+
+function parseRoomType(type, defval = 0) {
+    if (typeof type === 'number' && Number.isFinite(type)) {
+        return Math.trunc(type);
+    }
+    if (typeof type !== 'string') {
+        return defval;
+    }
+    const mapped = ROOM_TYPE_MAP[type.toLowerCase()];
+    return (mapped !== undefined) ? mapped : defval;
+}
 
 function canOverwriteTerrain(oldTyp) {
     // C ref: rm.h CAN_OVERWRITE_TERRAIN() default behavior.
@@ -2160,17 +2201,6 @@ export function room(opts = {}) {
         'random': -1
     };
 
-    // Parse room type strings
-    const roomTypeMap = {
-        'ordinary': 0,  // OROOM
-        'themed': 1,    // THEMEROOM
-        'delphi': 9,    // DELPHI
-        'temple': 10,   // TEMPLE
-        'shop': 14,     // SHOPBASE
-        'tool shop': 14, 'candle shop': 14, 'wand shop': 14,
-        'food shop': 14, 'armor shop': 14, 'weapon shop': 14,
-    };
-
     // Extract and normalize options
     const x = opts.x ?? -1;
     const y = opts.y ?? -1;
@@ -2195,7 +2225,7 @@ export function room(opts = {}) {
     // For chance=100, the roll doesn't matter (room always gets requested type),
     // but C still makes the rn2(100) call for RNG alignment.
     // Random-placement rooms (no x/y/w/h) do NOT call rn2(100) for chance check.
-    const requestedRtype = roomTypeMap[type] ?? 0;
+    const requestedRtype = parseRoomType(type, 0);
 
     // Validate x,y pair (both must be -1 or both must be specified)
     if ((x === -1 || y === -1) && x !== y) {
@@ -3293,50 +3323,82 @@ export function region(opts_or_selection, type) {
     }
 
     // Handle two formats:
-    // 1. des.region(selection.area(x1,y1,x2,y2), "lit") - old format
-    // 2. des.region({ region: [x1,y1,x2,y2], lit: true }) - new format
+    // 1. des.region(selection.area(x1,y1,x2,y2), "lit" | "unlit")
+    // 2. des.region({ region: [x1,y1,x2,y2], lit: ..., type: ..., ... })
+    let x1;
+    let y1;
+    let x2;
+    let y2;
 
-    let x1, y1, x2, y2, lit, opts;
+    const markLitRect = (lx1, ly1, lx2, ly2, litVal) => {
+        for (let x = lx1; x <= lx2; x++) {
+            for (let y = ly1; y <= ly2; y++) {
+                if (x >= 0 && x < COLNO && y >= 0 && y < ROWNO) {
+                    levelState.map.locations[x][y].lit = litVal ? 1 : 0;
+                }
+            }
+        }
+    };
 
-    let regionIsLevelCoords = false;
+    const parseLitState = (v) => {
+        if (v === undefined) return -1;
+        if (typeof v === 'boolean') return v ? 1 : 0;
+        if (typeof v === 'number' && Number.isFinite(v)) return Math.trunc(v);
+        return -1;
+    };
+
+    const normalizeRegionCoords = (ax1, ay1, ax2, ay2) => {
+        const lx1 = Math.min(ax1, ax2);
+        const ly1 = Math.min(ay1, ay2);
+        const lx2 = Math.max(ax1, ax2);
+        const ly2 = Math.max(ay1, ay2);
+        return { x1: lx1, y1: ly1, x2: lx2, y2: ly2 };
+    };
+
+    const depth = levelState.depth || levelState.levelDepth || 1;
+
     if (typeof type === 'string') {
-        // Old format: des.region(selection, "lit" | "unlit")
+        // C ref: selection-based region path returns after setting lighting.
         x1 = opts_or_selection.x1;
         y1 = opts_or_selection.y1;
         x2 = opts_or_selection.x2;
         y2 = opts_or_selection.y2;
-        lit = (type === 'lit');
-        opts = {};
-    } else {
-        // New format: des.region({ region: ..., lit: ..., type: ... })
-        opts = opts_or_selection;
-        if (opts.region) {
-            if (Array.isArray(opts.region)) {
-                [x1, y1, x2, y2] = opts.region;
-            } else {
-                x1 = opts.region.x1;
-                y1 = opts.region.y1;
-                x2 = opts.region.x2;
-                y2 = opts.region.y2;
-            }
-        } else if (
-            Number.isFinite(opts.x1) && Number.isFinite(opts.y1)
-            && Number.isFinite(opts.x2) && Number.isFinite(opts.y2)
-        ) {
-            // C ref: lspo_region accepts either x1/y1/x2/y2 fields or region table.
-            x1 = opts.x1;
-            y1 = opts.y1;
-            x2 = opts.x2;
-            y2 = opts.y2;
-        } else {
-            return; // No region specified
+        if (levelState.mapCoordMode) {
+            const c1 = toAbsoluteCoords(x1, y1);
+            const c2 = toAbsoluteCoords(x2, y2);
+            x1 = c1.x;
+            y1 = c1.y;
+            x2 = c2.x;
+            y2 = c2.y;
         }
-        lit = opts.lit !== undefined ? opts.lit : false;
-        regionIsLevelCoords = !!opts.region_islev;
+        const norm = normalizeRegionCoords(x1, y1, x2, y2);
+        markLitRect(norm.x1, norm.y1, norm.x2, norm.y2, type === 'lit');
+        return;
     }
 
-    // C ref: after des.map(), region coordinates are map-relative unless
-    // region_islev is explicitly set.
+    const opts = opts_or_selection || {};
+    if (opts.region) {
+        if (Array.isArray(opts.region)) {
+            [x1, y1, x2, y2] = opts.region;
+        } else {
+            x1 = opts.region.x1;
+            y1 = opts.region.y1;
+            x2 = opts.region.x2;
+            y2 = opts.region.y2;
+        }
+    } else if (
+        Number.isFinite(opts.x1) && Number.isFinite(opts.y1)
+        && Number.isFinite(opts.x2) && Number.isFinite(opts.y2)
+    ) {
+        x1 = opts.x1;
+        y1 = opts.y1;
+        x2 = opts.x2;
+        y2 = opts.y2;
+    } else {
+        return;
+    }
+
+    const regionIsLevelCoords = !!opts.region_islev;
     if (levelState.mapCoordMode && !regionIsLevelCoords) {
         const c1 = toAbsoluteCoords(x1, y1);
         const c2 = toAbsoluteCoords(x2, y2);
@@ -3346,17 +3408,137 @@ export function region(opts_or_selection, type) {
         y2 = c2.y;
     }
 
-    // Mark all cells in region as lit/unlit
-    for (let x = x1; x <= x2; x++) {
-        for (let y = y1; y <= y2; y++) {
-            if (x >= 0 && x < 80 && y >= 0 && y < 21) {
-                levelState.map.locations[x][y].lit = lit ? 1 : 0;
+    const rtype = parseRoomType(opts.type, 0);
+    const needfill = Number.isFinite(opts.filled) ? Math.trunc(opts.filled) : 0;
+    const joined = (opts.joined !== undefined) ? !!opts.joined : true;
+    const irregular = !!opts.irregular;
+    const doArrivalRoom = !!opts.arrival_room;
+    const rlit = litstate_rnd(parseLitState(opts.lit), depth);
+    const roomNotNeeded = (rtype === 0 && !irregular && !doArrivalRoom && !levelState.inThemerooms);
+
+    const addRegionRectRoom = (rx1, ry1, rx2, ry2) => {
+        const room = {
+            lx: rx1,
+            ly: ry1,
+            hx: rx2,
+            hy: ry2,
+            rtype,
+            rlit,
+            irregular: false,
+            nsubrooms: 0,
+            sbrooms: [],
+            needfill,
+            needjoining: joined,
+            doorct: 0,
+            fdoor: levelState.map.doorindex || 0,
+            roomnoidx: levelState.map.nroom,
+            region: { x1: rx1, y1: ry1, x2: rx2, y2: ry2 }
+        };
+        levelState.map.rooms.push(room);
+        levelState.map.nroom = (levelState.map.nroom || 0) + 1;
+
+        const roomno = room.roomnoidx + ROOMOFFSET;
+        for (let x = rx1; x <= rx2; x++) {
+            for (let y = ry1; y <= ry2; y++) {
+                if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO) continue;
+                const loc = levelState.map.locations[x][y];
+                loc.roomno = roomno;
+                if (rlit) loc.lit = 1;
+                loc.edge = (x === rx1 || x === rx2 || y === ry1 || y === ry2);
             }
         }
+
+        if (rlit) {
+            markLitRect(rx1 - 1, ry1 - 1, rx2 + 1, ry2 + 1, true);
+        }
+        return room;
+    };
+
+    const addRegionIrregularRoom = (sx, sy) => {
+        if (sx < 0 || sx >= COLNO || sy < 0 || sy >= ROWNO) return null;
+        const startTyp = levelState.map.locations[sx][sy].typ;
+        const stack = [[sx, sy]];
+        const seen = new Set();
+        let minX = sx;
+        let maxX = sx;
+        let minY = sy;
+        let maxY = sy;
+
+        const room = {
+            lx: sx,
+            ly: sy,
+            hx: sx,
+            hy: sy,
+            rtype,
+            rlit,
+            irregular: true,
+            nsubrooms: 0,
+            sbrooms: [],
+            needfill,
+            needjoining: joined,
+            doorct: 0,
+            fdoor: levelState.map.doorindex || 0,
+            roomnoidx: levelState.map.nroom
+        };
+        levelState.map.rooms.push(room);
+        levelState.map.nroom = (levelState.map.nroom || 0) + 1;
+        const roomno = room.roomnoidx + ROOMOFFSET;
+
+        while (stack.length) {
+            const [cx, cy] = stack.pop();
+            const key = `${cx},${cy}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            if (cx < 0 || cx >= COLNO || cy < 0 || cy >= ROWNO) continue;
+            const loc = levelState.map.locations[cx][cy];
+            if (!loc || loc.typ !== startTyp) continue;
+
+            loc.roomno = roomno;
+            loc.edge = false;
+            if (rlit) loc.lit = 1;
+            if (cx < minX) minX = cx;
+            if (cx > maxX) maxX = cx;
+            if (cy < minY) minY = cy;
+            if (cy > maxY) maxY = cy;
+
+            stack.push([cx + 1, cy]);
+            stack.push([cx - 1, cy]);
+            stack.push([cx, cy + 1]);
+            stack.push([cx, cy - 1]);
+        }
+
+        room.lx = minX;
+        room.ly = minY;
+        room.hx = maxX;
+        room.hy = maxY;
+        room.region = { x1: minX, y1: minY, x2: maxX, y2: maxY };
+        return room;
+    };
+
+    const norm = normalizeRegionCoords(x1, y1, x2, y2);
+    if (roomNotNeeded || (levelState.map.nroom || 0) >= MAXNROFROOMS) {
+        markLitRect(norm.x1, norm.y1, norm.x2, norm.y2, rlit);
+        return;
     }
 
-    // Other region properties (type, filled, irregular) are stubs for now
-    // They would affect room generation, monster spawning, etc.
+    let createdRoom = null;
+    if (irregular) createdRoom = addRegionIrregularRoom(norm.x1, norm.y1);
+    else createdRoom = addRegionRectRoom(norm.x1, norm.y1, norm.x2, norm.y2);
+
+    if (!createdRoom) return;
+    if (typeof opts.contents === 'function') {
+        const prevRoom = levelState.currentRoom;
+        levelState.roomStack.push(prevRoom);
+        levelState.roomDepth++;
+        levelState.currentRoom = createdRoom;
+        try {
+            opts.contents(createdRoom);
+        } finally {
+            levelState.currentRoom = levelState.roomStack.pop();
+            levelState.roomDepth--;
+        }
+    }
+    add_doors_to_room(levelState.map, createdRoom);
 }
 
 /**

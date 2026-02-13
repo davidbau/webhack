@@ -226,6 +226,33 @@ describe('sp_lev.js - des.* API', () => {
         assert.equal(map.locations[0][0].lit, 1, 'region_islev should use absolute level coordinates');
     });
 
+    it('creates room metadata for non-ordinary des.region', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: '.', lit: 0 });
+        des.region({ region: [10, 5, 12, 7], lit: true, type: 'temple', filled: 2, joined: false });
+
+        const state = getLevelState();
+        const map = state.map;
+        assert.equal(map.nroom, 1);
+        assert.equal(map.rooms.length, 1);
+        assert.equal(map.rooms[0].rtype, 10);
+        assert.equal(map.rooms[0].needfill, 2);
+        assert.equal(map.rooms[0].needjoining, false);
+        assert.equal(map.locations[11][6].roomno, 3, 'room interior should be assigned roomno');
+        assert.equal(map.locations[11][6].lit, 1, 'lit region room should be lit');
+    });
+
+    it('keeps ordinary rectangular des.region as light-only (no room)', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: '.', lit: 0 });
+        des.region({ region: [10, 5, 10, 5], lit: true, type: 'ordinary' });
+
+        const map = getLevelState().map;
+        assert.equal(map.nroom, 0);
+        assert.equal(map.rooms.length, 0);
+        assert.equal(map.locations[10][5].lit, 1);
+    });
+
     it('applies des.non_diggable coordinates relative to des.map origin', () => {
         resetLevelState();
         des.level_init({ style: 'solidfill', fg: ' ' });
