@@ -1378,8 +1378,6 @@ function add_door(map, x, y, aroom) {
 // C ref: sp_lev.c add_doors_to_room()
 // Link any doors within/bordering the room to the room
 export function add_doors_to_room(map, croom) {
-    const DOOR = 8, SDOOR = 9; // Door types from map.js
-
     for (let x = croom.lx - 1; x <= croom.hx + 1; x++) {
         for (let y = croom.ly - 1; y <= croom.hy + 1; y++) {
             if (x < 0 || y < 0 || x >= COLNO || y >= ROWNO) continue;

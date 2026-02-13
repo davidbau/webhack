@@ -170,6 +170,7 @@ export let levelState = {
     finalizeContext: null,
     branchPlaced: false,
     levRegions: [],
+    spLevMap: null,
     spLevTouched: null,
 };
 
@@ -188,10 +189,21 @@ function initSpLevTouched() {
     levelState.spLevTouched = Array.from({ length: COLNO }, () => Array(ROWNO).fill(false));
 }
 
+function initSpLevMap() {
+    if (levelState.spLevMap) return;
+    levelState.spLevMap = Array.from({ length: COLNO }, () => Array(ROWNO).fill(false));
+}
+
 function markSpLevTouched(x, y) {
     if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO) return;
     initSpLevTouched();
     levelState.spLevTouched[x][y] = true;
+}
+
+function markSpLevMap(x, y) {
+    if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO) return;
+    initSpLevMap();
+    levelState.spLevMap[x][y] = true;
 }
 
 function mkmapInitMap(map, bgTyp) {
@@ -997,6 +1009,7 @@ export function resetLevelState() {
         finalizeContext: null,
         branchPlaced: false,
         levRegions: [],
+        spLevMap: null,
         spLevTouched: null,
         // luaRngCounter is NOT initialized here - only set explicitly for levels that need it
     };
@@ -1772,6 +1785,7 @@ export function map(data) {
                 const terrain = mapchrToTerrain(ch);
                 if (terrain !== -1) {
                     levelState.map.locations[gx][gy].typ = terrain;
+                    markSpLevMap(gx, gy);
                     markSpLevTouched(gx, gy);
                     if (lit) {
                         levelState.map.locations[gx][gy].lit = 1;
@@ -1967,6 +1981,7 @@ export function terrain(x_or_opts, y_or_type, type) {
                 const pos = getLocationCoord(x_or_opts[0], x_or_opts[1], GETLOC_ANY_LOC, levelState.currentRoom || null);
                 if (pos.x >= 0 && pos.x < COLNO && pos.y >= 0 && pos.y < ROWNO) {
                     levelState.map.locations[pos.x][pos.y].typ = terrainType;
+                    markSpLevMap(pos.x, pos.y);
                     markSpLevTouched(pos.x, pos.y);
                 }
                 return;
@@ -1976,6 +1991,7 @@ export function terrain(x_or_opts, y_or_type, type) {
             for (const coord of x_or_opts) {
                 if (coord.x >= 0 && coord.x < 80 && coord.y >= 0 && coord.y < 21) {
                     levelState.map.locations[coord.x][coord.y].typ = terrainType;
+                    markSpLevMap(coord.x, coord.y);
                     markSpLevTouched(coord.x, coord.y);
                 }
             }
@@ -1987,6 +2003,7 @@ export function terrain(x_or_opts, y_or_type, type) {
             if (terrainType !== -1 && pos.x >= 0 && pos.x < 80 &&
                 pos.y >= 0 && pos.y < 21) {
                 levelState.map.locations[pos.x][pos.y].typ = terrainType;
+                markSpLevMap(pos.x, pos.y);
                 markSpLevTouched(pos.x, pos.y);
             }
         }
@@ -1999,6 +2016,7 @@ export function terrain(x_or_opts, y_or_type, type) {
             const terrainType = mapchrToTerrain(type);
             if (terrainType !== -1) {
                 levelState.map.locations[pos.x][pos.y].typ = terrainType;
+                markSpLevMap(pos.x, pos.y);
                 markSpLevTouched(pos.x, pos.y);
             }
         }
@@ -2939,6 +2957,7 @@ export function stair(direction, x, y) {
         } else {
             levelState.map.dnstair = { x: stairX, y: stairY };
         }
+        markSpLevMap(stairX, stairY);
         markSpLevTouched(stairX, stairY);
     }
 }
@@ -3852,6 +3871,7 @@ export function door(state_or_opts, x, y) {
         }
     }
     loc.flags = doorMask;
+    markSpLevMap(doorX, doorY);
     markSpLevTouched(doorX, doorY);
 }
 
@@ -3890,6 +3910,7 @@ export function ladder(direction, x, y) {
     if (x >= 0 && x < 80 && y >= 0 && y < 21) {
         // Place LADDER terrain
         levelState.map.locations[x][y].typ = LADDER;
+        markSpLevMap(x, y);
         markSpLevTouched(x, y);
 
         // Note: In C, ladders have additional metadata (up vs down)
@@ -4540,12 +4561,13 @@ function remove_boundary_syms(map) {
             }
         }
     }
-    if (!hasBounds || !levelState.spLevTouched) return;
+    const spLevMap = levelState.spLevMap || levelState.spLevTouched;
+    if (!hasBounds || !spLevMap) return;
 
     for (let x = 0; x < levelState.mazeMaxX; x++) {
         for (let y = 0; y < levelState.mazeMaxY; y++) {
             if (map.locations[x][y].typ === CROSSWALL
-                && levelState.spLevTouched[x]?.[y]) {
+                && spLevMap[x]?.[y]) {
                 map.locations[x][y].typ = ROOM;
             }
         }
@@ -5526,6 +5548,7 @@ export function drawbridge(opts) {
     const bridgeLoc = levelState.map.locations[bx][by];
     bridgeLoc.typ = isOpen ? DRAWBRIDGE_DOWN : DRAWBRIDGE_UP;
     bridgeLoc.flags = 0;
+    markSpLevMap(bx, by);
     markSpLevTouched(bx, by);
 
     // C create_drawbridge() also establishes the adjacent drawbridge wall.
@@ -5535,6 +5558,7 @@ export function drawbridge(opts) {
         const wallLoc = levelState.map.locations[wx][wy];
         wallLoc.typ = DBWALL;
         wallLoc.flags = 0;
+        markSpLevMap(wx, wy);
         markSpLevTouched(wx, wy);
     }
 }
@@ -5555,12 +5579,13 @@ function maze1xy(humidity) {
     let y = 3;
     let tryct = 2000;
     const ignoreTouched = (typeof process !== 'undefined' && process.env.WEBHACK_MAZEWALK_IGNORE_TOUCHED === '1');
+    const spLevMap = levelState.spLevMap || levelState.spLevTouched;
     do {
         x = rn1(maxX - 3, 3);
         y = rn1(maxY - 3, 3);
         if (--tryct < 0) break;
     } while ((x % 2) === 0 || (y % 2) === 0
-             || (!ignoreTouched && levelState.spLevTouched && levelState.spLevTouched[x]?.[y])
+             || (!ignoreTouched && spLevMap && spLevMap[x]?.[y])
              || !isOkLocation(x, y, humidity));
     return { x, y };
 }
@@ -5573,10 +5598,11 @@ function fillEmptyMaze() {
     let mapcountmax = (maxX - 2) * (maxY - 2);
     let mapcount = mapcountmax;
     mapcountmax = Math.floor(mapcountmax / 2);
+    const spLevMap = levelState.spLevMap || levelState.spLevTouched;
 
     for (let x = 2; x < maxX; x++) {
         for (let y = 0; y < maxY; y++) {
-            if (levelState.spLevTouched && levelState.spLevTouched[x]?.[y]) mapcount--;
+            if (spLevMap && spLevMap[x]?.[y]) mapcount--;
         }
     }
 
