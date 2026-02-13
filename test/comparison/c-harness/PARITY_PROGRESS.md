@@ -30,3 +30,15 @@ Focused on reducing high-signal Knox seed divergence and improving C/JS RNG alig
 
 - Resolve final Knox branch-local `%50` parity around throne/secret-door transformation semantics.
 - Generalize calibration logic so special-case heuristics can be removed cleanly.
+
+## Incremental checkpoint (drawbridge + runtime stability)
+
+- Fixed `des.drawbridge()` in `js/sp_lev.js` to use map-relative coordinate resolution (`getLocationCoord`) and drawbridge terrain semantics (`DRAWBRIDGE_UP`/`DRAWBRIDGE_DOWN` plus adjacent `DBWALL`) instead of the previous door/corridor stub.
+- Restored compatibility aliases on generated monsters in `js/sp_lev.js` (`id`, `x`, `y` alongside `mx`, `my`) so legacy level tests/tooling can locate named monsters without changing generation flow.
+- Fixed runtime regression in `js/makemon.js` by importing `LUCERN_HAMMER` (previously caused `ReferenceError` during mercenary weapon initialization).
+
+### Validation snapshot
+
+- `node --test test/unit/tower.test.js test/unit/wizard_levels.test.js`: pass.
+- `node test/unit/special_levels_comparison.test.js`: still `pass 9 / fail 39` overall, with Castle reduced from 69 to 67 mismatches in focused diff checks.
+- `npm test`: still failing primarily due broad special-level parity gaps, but the `LUCERN_HAMMER` runtime crash and wizard-level unit assertion regression are resolved.

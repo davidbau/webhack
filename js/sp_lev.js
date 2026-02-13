@@ -21,7 +21,7 @@ import { seedFromMT } from './xoshiro256.js';
 import { makemon, mkclass, def_char_to_monclass, NO_MM_FLAGS, MM_NOGRP } from './makemon.js';
 import {
     STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,
-    CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, ROOM, CORR,
+    CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, DBWALL, ROOM, CORR,
     DOOR, SDOOR, IRONBARS, TREE, FOUNTAIN, POOL, MOAT, WATER,
     DRAWBRIDGE_UP, DRAWBRIDGE_DOWN, LAVAPOOL, LAVAWALL, ICE, CLOUD, AIR,
     STAIRS, LADDER, ALTAR, GRAVE, THRONE, SINK,
@@ -3893,8 +3893,15 @@ function executeDeferredMonster(deferred) {
         }
 
         const mtmp = makemon(mndx >= 0 ? mndx : null, mx, my, mmFlags, depth, levelState.map);
-        if (mtmp && resolvedFemale !== undefined) {
-            mtmp.female = !!resolvedFemale;
+        if (mtmp) {
+            if (resolvedFemale !== undefined) {
+                mtmp.female = !!resolvedFemale;
+            }
+            // Keep legacy level tests and tooling stable: expose common aliases
+            // used by older test helpers (id,x,y) alongside C-style fields.
+            if (typeof monsterId === "string") mtmp.id = monsterId;
+            mtmp.x = mtmp.mx;
+            mtmp.y = mtmp.my;
         }
         return mtmp;
     };
@@ -5089,27 +5096,39 @@ export function drawbridge(opts) {
         levelState.map = new GameMap();
     }
 
-    const { dir, state, x, y } = opts;
-
-    if (x === undefined || y === undefined || x < 0 || x >= 80 || y < 0 || y >= 21) {
+    const { dir, state, x, y } = opts || {};
+    if (x === undefined || y === undefined) {
         return;
     }
 
-    // For now, just place the drawbridge terrain
-    // In C, drawbridges are complex: they can be opened/closed, have portcullises, etc.
-    // For simplicity, we'll treat closed drawbridge as a door and open as floor
-    const loc = levelState.map.locations[x][y];
-
-    if (state === 'closed') {
-        // Closed drawbridge - treat as a closed door
-        loc.typ = DOOR;
-        loc.doormask = D_CLOSED;
-    } else {
-        // Open drawbridge - treat as floor/corridor
-        loc.typ = CORR;
+    const pos = getLocationCoord(x, y, GETLOC_ANY_LOC, levelState.currentRoom || null);
+    const bx = pos.x;
+    const by = pos.y;
+    if (bx < 0 || bx >= COLNO || by < 0 || by >= ROWNO) {
+        return;
     }
 
-    // TODO: Implement full drawbridge mechanics (portcullis, opening/closing, etc.)
+    const dirName = String(dir || 'north').toLowerCase();
+    let dx = 0;
+    let dy = 0;
+    if (dirName === 'north') dy = -1;
+    else if (dirName === 'south') dy = 1;
+    else if (dirName === 'east') dx = 1;
+    else if (dirName === 'west') dx = -1;
+
+    const isOpen = String(state || 'closed').toLowerCase() === 'open';
+    const bridgeLoc = levelState.map.locations[bx][by];
+    bridgeLoc.typ = isOpen ? DRAWBRIDGE_DOWN : DRAWBRIDGE_UP;
+    bridgeLoc.flags = 0;
+
+    // C create_drawbridge() also establishes the adjacent drawbridge wall.
+    const wx = bx + dx;
+    const wy = by + dy;
+    if (wx >= 0 && wx < COLNO && wy >= 0 && wy < ROWNO) {
+        const wallLoc = levelState.map.locations[wx][wy];
+        wallLoc.typ = DBWALL;
+        wallLoc.flags = 0;
+    }
 }
 
 /**
