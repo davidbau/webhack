@@ -2885,6 +2885,7 @@ function iswall_check(map, x, y) {
     if (!isok(x, y)) return 0;
     const typ = map.at(x, y).typ;
     return (IS_WALL(typ) || IS_DOOR(typ) || typ === LAVAWALL
+            || typ === WATER
             || typ === SDOOR || typ === IRONBARS) ? 1 : 0;
 }
 

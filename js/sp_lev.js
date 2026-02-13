@@ -1578,15 +1578,15 @@ export function map(data) {
     }
 
     // Parse map string into lines.
-    // Preserve explicit leading/trailing empty lines only for object-form maps
-    // with explicit coordinates (x/y or coord), where callers expect exact text
-    // dimensions. Keep legacy trimming behavior for alignment-based maps and
-    // raw string maps used by converted level files.
+    // C ref: sp_lev.c mapfrag_fromstr() keeps leading blank lines from Lua
+    // [[...]] literals, so we preserve them here for parity.
+    // Trailing blanks after the final newline are ignored (C behavior).
+    // Explicit-coordinate object-form maps can opt into preserving trailing
+    // blank rows exactly.
     let lines = mapStr.split('\n');
     const preserveExactBlankLines = !!(data && typeof data === 'object'
         && (data.coord !== undefined || data.x !== undefined || data.y !== undefined));
     if (!preserveExactBlankLines) {
-        if (lines.length > 0 && lines[0] === '') lines = lines.slice(1);
         while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
     }
 
@@ -4290,6 +4290,30 @@ function map_cleanup(map) {
     }
 }
 
+// C ref: sp_lev.c remove_boundary_syms()
+function remove_boundary_syms(map) {
+    if (!map) return;
+    let hasBounds = false;
+    for (let x = 0; x < COLNO - 1 && !hasBounds; x++) {
+        for (let y = 0; y < ROWNO - 1; y++) {
+            if (map.locations[x][y].typ === CROSSWALL) {
+                hasBounds = true;
+                break;
+            }
+        }
+    }
+    if (!hasBounds || !levelState.spLevTouched) return;
+
+    for (let x = 0; x < levelState.mazeMaxX; x++) {
+        for (let y = 0; y < levelState.mazeMaxY; y++) {
+            if (map.locations[x][y].typ === CROSSWALL
+                && levelState.spLevTouched[x]?.[y]) {
+                map.locations[x][y].typ = ROOM;
+            }
+        }
+    }
+}
+
 export function finalize_level() {
     // CRITICAL: Execute deferred placements BEFORE wallification
     // This matches C's execution order: rooms → corridors → entities → wallify
@@ -4315,6 +4339,11 @@ export function finalize_level() {
             levelState.map.monsters = [];
         }
         levelState.map.monsters.push(...levelState.monsters);
+    }
+
+    // C ref: sp_lev.c remove_boundary_syms() runs before map_cleanup.
+    if (levelState.map) {
+        remove_boundary_syms(levelState.map);
     }
 
     // C ref: sp_lev.c map_cleanup() runs before wallification.

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {
     des, resetLevelState, getLevelState
 } from '../../js/sp_lev.js';
-import { STONE, ROOM, HWALL, VWALL, STAIRS, LAVAPOOL, PIT, MAGIC_PORTAL } from '../../js/config.js';
+import { STONE, ROOM, HWALL, VWALL, STAIRS, LAVAPOOL, PIT, MAGIC_PORTAL, CROSSWALL } from '../../js/config.js';
 import { BOULDER, DAGGER } from '../../js/objects.js';
 
 // Alias for stairs
@@ -159,6 +159,7 @@ describe('sp_lev.js - des.* API', () => {
 
         const state = getLevelState();
         const map = state.map;
+        state.coder.allow_flips = 0;
         map.locations[10][10].typ = LAVAPOOL;
         map.locations[11][10].typ = ROOM;
 
@@ -182,5 +183,23 @@ describe('sp_lev.js - des.* API', () => {
             'undestroyable trap on liquid should remain');
         assert.equal(map.traps.some(t => t.ttyp === PIT && t.tx === 11 && t.ty === 10), true,
             'trap on non-liquid terrain should remain');
+    });
+
+    it('finalize_level converts touched boundary CROSSWALL tiles to ROOM', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: ' ' });
+
+        const state = getLevelState();
+        const map = state.map;
+        state.coder.allow_flips = 0;
+        des.terrain(10, 10, 'B'); // touched CROSSWALL
+        map.locations[11][10].typ = CROSSWALL; // untouched CROSSWALL
+
+        des.finalize_level();
+
+        assert.notEqual(map.locations[10][10].typ, CROSSWALL,
+            'touched CROSSWALL should no longer remain CROSSWALL');
+        assert.equal(map.locations[11][10].typ, CROSSWALL,
+            'untouched CROSSWALL should remain CROSSWALL');
     });
 });
