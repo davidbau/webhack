@@ -404,9 +404,21 @@ export function mon_arrive(oldMap, newMap, player, opts = {}) {
         } else {
             // C ref: dog.c non-With_you paths ultimately use mnearto/rloc
             // by arrival locale/migration mode. Support locale exact/approx.
-            const localeX = Number.isInteger(opts.localeX) ? opts.localeX : heroX;
-            const localeY = Number.isInteger(opts.localeY) ? opts.localeY : heroY;
+            let localeX = Number.isInteger(opts.localeX) ? opts.localeX : heroX;
+            let localeY = Number.isInteger(opts.localeY) ? opts.localeY : heroY;
             const exact = !!opts.localeExact;
+            const wander = exact ? 0 : Math.max(0, Math.min(8, opts.wander || 0));
+
+            // C ref: dog.c mon_arrive() xlocale && wander path.
+            // Minimal faithful subset: random perturbation within wander radius.
+            if (wander > 0 && localeX > 0) {
+                const xmin = Math.max(1, localeX - wander);
+                const xmax = Math.min(COLNO - 1, localeX + wander);
+                const ymin = Math.max(0, localeY - wander);
+                const ymax = Math.min(ROWNO - 1, localeY + wander);
+                localeX = rn1(xmax - xmin + 1, xmin);
+                localeY = rn1(ymax - ymin + 1, ymin);
+            }
 
             const exactLoc = newMap.at(localeX, localeY);
             if (exact && exactLoc && ACCESSIBLE(exactLoc.typ) && !newMap.monsterAt(localeX, localeY)) {

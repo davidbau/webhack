@@ -331,6 +331,38 @@ describe('Post-level initialization (u_init)', () => {
         assert.equal(moved, true, 'With_you mode should continue to migrate nearby pets');
     });
 
+    it('mon_arrive applies wander radius for non-With_you locale arrivals', () => {
+        const { player, map: oldMap } = setupSeed42Game();
+        const queuedPet = {
+            mx: player.x + 10,
+            my: player.y + 10,
+            mhp: 5,
+            dead: false,
+            tame: true,
+            mtame: 10,
+            mpeaceful: true,
+            mtrapped: false,
+            meating: 0,
+        };
+        oldMap.failedArrivals = [queuedPet];
+        const { map: newMap } = setupSeed42Game();
+        const baseX = 20;
+        const baseY = 8;
+
+        const moved = mon_arrive(oldMap, newMap, player, {
+            when: 'After_you',
+            localeX: baseX,
+            localeY: baseY,
+            localeExact: false,
+            wander: 4,
+        });
+        assert.equal(moved, true, 'non-With_you wander arrival should place pet');
+        const arrived = newMap.monsters.find(m => m === queuedPet);
+        assert.ok(arrived, 'queued pet should arrive');
+        assert.ok(Math.abs(arrived.mx - baseX) <= 7, 'arrived x should stay within wander+mnexto neighborhood');
+        assert.ok(Math.abs(arrived.my - baseY) <= 7, 'arrived y should stay within wander+mnexto neighborhood');
+    });
+
     it('Healer gets startup money as gold inventory object', () => {
         const { player, map } = setupRoleGame(1, 'Healer');
         simulatePostLevelInit(player, map, 1);
