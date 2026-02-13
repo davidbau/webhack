@@ -197,40 +197,11 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
         return extractTypGrid(level.generator());
     };
 
-    const optimizeKnoxOffset = (initialOffset) => {
-        if (cSession.group !== 'knox') return initialOffset;
-        let bestOffset = initialOffset;
-        let bestDiff = Number.POSITIVE_INFINITY;
-        let bestAbs = Number.POSITIVE_INFINITY;
-
-        for (let off = -40; off <= 40; off++) {
-            const grid = generateTypGridForOffset(off);
-            let diff = 0;
-            for (let y = 0; y < ROWNO; y++) {
-                for (let x = 0; x < COLNO; x++) {
-                    if (grid[y][x] !== cLevel.typGrid[y][x]) diff++;
-                }
-            }
-            const absOff = Math.abs(off);
-            if (
-                diff < bestDiff
-                || (diff === bestDiff && absOff < bestAbs)
-                || (diff === bestDiff && absOff === bestAbs && off > bestOffset)
-            ) {
-                bestDiff = diff;
-                bestOffset = off;
-                bestAbs = absOff;
-            }
-        }
-        return bestOffset;
-    };
-
     // Generate JS version
     let startOffset = 0;
     if (typeof rngCallStart === 'number' && rngCallStart > 0) {
         startOffset = calibrateStartOffset();
     }
-    startOffset = optimizeKnoxOffset(startOffset);
     const jsTypGrid = generateTypGridForOffset(startOffset);
 
     // Compare terrain grids

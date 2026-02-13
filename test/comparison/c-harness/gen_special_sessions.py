@@ -15,8 +15,8 @@ capturing typGrid via #dumpmap after teleporting to each level.
 Quest capture is role-aware: quest levels are collected in separate runs using
 the matching role to avoid cross-role level contamination.
 
-Note: Elemental planes often require endgame state (Amulet possession). If
-"planes" capture returns 0 levels, run gen_planes_with_amulet.py.
+Note: "planes" capture is automatically delegated to gen_planes_with_amulet.py
+so endgame prerequisites (Amulet possession) are handled consistently.
 
 Output: test/comparison/maps/seed<N>_special_<group>.session.json
 
@@ -618,6 +618,21 @@ def generate_group(group_name, seeds, verbose=False):
         print(f"Error: unknown group '{group_name}'")
         print(f"Available: {', '.join(sorted(LEVEL_GROUPS.keys()))}")
         sys.exit(1)
+
+    # Elemental planes require endgame setup; always route through the
+    # dedicated harness so callers of this script don't accidentally produce
+    # empty plane sessions.
+    if group_name == 'planes':
+        cmd = [
+            sys.executable,
+            os.path.join(SCRIPT_DIR, 'gen_planes_with_amulet.py'),
+            '--seeds',
+            ','.join(str(s) for s in seeds),
+        ]
+        if verbose:
+            cmd.append('--verbose')
+        subprocess.run(cmd, check=True)
+        return
 
     group = LEVEL_GROUPS[group_name]
     print(f"\n=== {group['description']} ===")

@@ -102,7 +102,7 @@ export function generate() {
        des.trap("magic");
     } });
 
-    let protected_region = bounds2.negate().union(asmo1) | asmo2;
+    let protected_region = bounds2.negate().union(asmo1).union(asmo2);
     hell_tweaks(protected_region);
 
 

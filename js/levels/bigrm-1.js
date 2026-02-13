@@ -47,16 +47,16 @@ export function generate() {
           des.terrain(selection.line(10,8, 65,8), terrains[tidx]);
        } else if (choice == 1) {
           // two vertical lines
-          let sel = selection.line(15,4, 15, 13) | selection.line(59,4, 59, 13);
+          let sel = selection.line(15,4, 15, 13).union(selection.line(59,4, 59, 13));
           des.terrain(sel, terrains[tidx]);
        } else if (choice == 2) {
           // plus sign
-          sel = selection.line(10,8, 64, 8) | selection.line(37,3, 37, 14);
+          sel = selection.line(10,8, 64, 8).union(selection.line(37,3, 37, 14));
           des.terrain(sel, terrains[tidx]);
        } else if (choice == 3) {
           // brackets:  [  ]
           des.terrain(selection.rect(4,4, 70,13), terrains[tidx]);
-          sel = selection.line(25,4, 50,4) | selection.line(25,13, 50,13);
+          sel = selection.line(25,4, 50,4).union(selection.line(25,13, 50,13));
           des.terrain(sel, '.');
        } else if (choice == 4) {
           // snake
