@@ -16,7 +16,7 @@
 import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, getRngCallCount } from './rng.js';
 import { mksobj, mkobj, mkcorpstat, set_corpsenm, weight } from './mkobj.js';
-import { create_room, create_subroom, makecorridors, init_rect, rnd_rect, get_rect, split_rects, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized, wallification as dungeonWallification, fix_wall_spines, place_lregion, mktrap, enexto, somexy, sp_create_door } from './dungeon.js';
+import { create_room, create_subroom, makecorridors, init_rect, rnd_rect, get_rect, split_rects, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized, wallification as dungeonWallification, fix_wall_spines, place_lregion, mktrap, enexto, somexy, sp_create_door, floodFillAndRegister } from './dungeon.js';
 import { seedFromMT } from './xoshiro256.js';
 import { makemon, mkclass, def_char_to_monclass, NO_MM_FLAGS, MM_NOGRP } from './makemon.js';
 import {
@@ -3455,62 +3455,15 @@ export function region(opts_or_selection, type) {
 
     const addRegionIrregularRoom = (sx, sy) => {
         if (sx < 0 || sx >= COLNO || sy < 0 || sy >= ROWNO) return null;
-        const startTyp = levelState.map.locations[sx][sy].typ;
-        const stack = [[sx, sy]];
-        const seen = new Set();
-        let minX = sx;
-        let maxX = sx;
-        let minY = sy;
-        let maxY = sy;
-
-        const room = {
-            lx: sx,
-            ly: sy,
-            hx: sx,
-            hy: sy,
-            rtype,
-            rlit,
-            irregular: true,
-            nsubrooms: 0,
-            sbrooms: [],
-            needfill,
-            needjoining: joined,
-            doorct: 0,
-            fdoor: levelState.map.doorindex || 0,
-            roomnoidx: levelState.map.nroom
-        };
-        levelState.map.rooms.push(room);
-        levelState.map.nroom = (levelState.map.nroom || 0) + 1;
-        const roomno = room.roomnoidx + ROOMOFFSET;
-
-        while (stack.length) {
-            const [cx, cy] = stack.pop();
-            const key = `${cx},${cy}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            if (cx < 0 || cx >= COLNO || cy < 0 || cy >= ROWNO) continue;
-            const loc = levelState.map.locations[cx][cy];
-            if (!loc || loc.typ !== startTyp) continue;
-
-            loc.roomno = roomno;
-            loc.edge = false;
-            if (rlit) loc.lit = 1;
-            if (cx < minX) minX = cx;
-            if (cx > maxX) maxX = cx;
-            if (cy < minY) minY = cy;
-            if (cy > maxY) maxY = cy;
-
-            stack.push([cx + 1, cy]);
-            stack.push([cx - 1, cy]);
-            stack.push([cx, cy + 1]);
-            stack.push([cx, cy - 1]);
-        }
-
-        room.lx = minX;
-        room.ly = minY;
-        room.hx = maxX;
-        room.hy = maxY;
-        room.region = { x1: minX, y1: minY, x2: maxX, y2: maxY };
+        const before = levelState.map.nroom || 0;
+        floodFillAndRegister(levelState.map, sx, sy, rtype, !!rlit);
+        const after = levelState.map.nroom || 0;
+        if (after <= before) return null;
+        const room = levelState.map.rooms[after - 1];
+        if (!room) return null;
+        room.needfill = needfill;
+        room.needjoining = joined;
+        room.region = { x1: room.lx, y1: room.ly, x2: room.hx, y2: room.hy };
         return room;
     };
 

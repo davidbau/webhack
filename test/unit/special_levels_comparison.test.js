@@ -101,6 +101,11 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
         console.log(`Warning: ${levelName} not found in C session`);
         return;
     }
+    // Quest sessions are captured via role-specific #wizloaddes flows.
+    // Their rngCallStart marks command-session state, not direct
+    // getSpecialLevel(seed, dnum, dlevel) generation start. Applying the
+    // offset here would over-skip and produce false mismatches.
+    const canUseRngStart = cSession.group !== 'quest';
     const rngCallStart = (
         (typeof cLevel.rngRawCallStart === 'number'
             && typeof cLevel.rngCallStart === 'number'
@@ -118,6 +123,9 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
     };
 
     const calibrateStartOffset = () => {
+        if (!canUseRngStart) {
+            return 0;
+        }
         if (!Array.isArray(cLevel.rngFingerprint) || cLevel.rngFingerprint.length === 0) {
             return 0;
         }
@@ -180,7 +188,7 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
 
     const generateTypGridForOffset = (offset) => {
         initRng(seed);
-        if (typeof rngCallStart === 'number' && rngCallStart > 0) {
+        if (canUseRngStart && typeof rngCallStart === 'number' && rngCallStart > 0) {
             skipRng(rngCallStart + offset);
         }
         replayPrelude();
@@ -201,7 +209,7 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
 
     // Generate JS version
     let startOffset = 0;
-    if (typeof rngCallStart === 'number' && rngCallStart > 0) {
+    if (canUseRngStart && typeof rngCallStart === 'number' && rngCallStart > 0) {
         startOffset = calibrateStartOffset();
     }
     const jsTypGrid = generateTypGridForOffset(startOffset);
