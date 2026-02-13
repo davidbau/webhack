@@ -68,6 +68,7 @@ import {
     RING_CLASS, POTION_CLASS, SCROLL_CLASS, SPBOOK_CLASS,
     WAND_CLASS, COIN_CLASS, GEM_CLASS,
     GOLD_PIECE,
+    AMULET_OF_YENDOR,
     // Armor categories
     ARM_SUIT, ARM_SHIELD, ARM_HELM, ARM_GLOVES, ARM_BOOTS, ARM_CLOAK, ARM_SHIRT,
     // Filter exclusions
@@ -194,7 +195,8 @@ function peace_minded(ptr, player) {
     const alignAbuse = Number.isInteger(player.alignmentAbuse)
         ? player.alignmentAbuse
         : 0;
-    const hasAmulet = !!player.amulet;
+    const hasAmulet = Array.isArray(player.inventory)
+        && player.inventory.some(o => o?.otyp === AMULET_OF_YENDOR);
 
     if (always_peaceful(ptr)) return true;
     if (always_hostile(ptr)) return false;
