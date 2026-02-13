@@ -8,7 +8,7 @@ import { initRng, rn2, enableRngLog, getRngLog, disableRngLog } from '../../js/r
 import { initLevelGeneration, makelevel, wallification } from '../../js/dungeon.js';
 import { Player, roles } from '../../js/player.js';
 import { simulatePostLevelInit, mon_arrive, MON_ARRIVE_WITH_YOU } from '../../js/u_init.js';
-import { A_STR, A_INT, A_WIS, A_DEX, A_CON, A_CHA, NUM_ATTRS, STONE, ROOM } from '../../js/config.js';
+import { A_STR, A_INT, A_WIS, A_DEX, A_CON, A_CHA, NUM_ATTRS, STONE, ROOM, ACCESSIBLE } from '../../js/config.js';
 import { GOLD_PIECE } from '../../js/objects.js';
 
 // Helper: create a level-1 wizard-mode Valkyrie game state
@@ -387,7 +387,7 @@ describe('Post-level initialization (u_init)', () => {
         const arrived = newMap.monsters.find(m => m === queuedPet);
         assert.ok(arrived, 'queued pet should arrive via random placement');
         const loc = newMap.at(arrived.mx, arrived.my);
-        assert.ok(loc && loc.typ !== STONE, 'random placement should land on a non-stone accessible tile');
+        assert.ok(loc && ACCESSIBLE(loc.typ), 'random placement should land on an accessible tile');
     });
 
     it('Healer gets startup money as gold inventory object', () => {
