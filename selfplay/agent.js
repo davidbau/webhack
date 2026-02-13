@@ -1697,7 +1697,7 @@ export class Agent {
             opportunisticExploredPct > 0.05       // Explored at least 5% of map (~84 cells)
         );
 
-        if (level.stairsDown.length === 0 && currentCell && currentCell.walkable && shouldSearchOpportunistically) {
+        if (this.dungeon.currentDepth > 2 && level.stairsDown.length === 0 && currentCell && currentCell.walkable && shouldSearchOpportunistically) {
             const hasAdjacentWall = level._hasAdjacentWall(px, py);
             if (hasAdjacentWall && currentCell.searched < 30) {
                 // Search adjacent walls
@@ -1745,7 +1745,10 @@ export class Agent {
         );
 
         // Trigger searching if: no downstairs found AND (explored most reachable areas OR stuck)
-        const shouldSearch = level.stairsDown.length === 0 && this.turnNumber > 60 && (thoroughlyExplored || stuckExploring);
+        const shouldSearch = this.dungeon.currentDepth > 2 &&
+            level.stairsDown.length === 0 &&
+            this.turnNumber > 60 &&
+            (thoroughlyExplored || stuckExploring);
         if (shouldSearch) {
             const searchCandidates = level.getSearchCandidates();
             // Filter to candidates that haven't been heavily searched yet
