@@ -337,8 +337,7 @@ export function mon_arrive(oldMap, newMap, player) {
     });
     if (pets.length === 0) return false;
 
-    const cx = (newMap.upstair && newMap.upstair.x > 0) ? newMap.upstair.x : player.x;
-    const cy = (newMap.upstair && newMap.upstair.y > 0) ? newMap.upstair.y : player.y;
+    let migratedCount = 0;
 
     // Preserve relative pet order when prepending into newMap.monsters.
     for (let i = pets.length - 1; i >= 0; i--) {
@@ -346,14 +345,18 @@ export function mon_arrive(oldMap, newMap, player) {
         const mtame = pet.mtame || (pet.tame ? 10 : 0);
         const bound = mtame > 0 ? 10 : (pet.mpeaceful ? 5 : 2);
 
-        let petX = cx;
-        let petY = cy;
+        let petX = 0;
+        let petY = 0;
+        let foundPos = false;
         if (!newMap.monsterAt(player.x, player.y) && !rn2(bound)) {
             // C ref: dog.c mon_arrive(With_you): rloc_to(mtmp, u.ux, u.uy)
             petX = player.x;
             petY = player.y;
+            foundPos = true;
         } else {
-            const positions = collectCoordsShuffle(cx, cy, 3);
+            // C ref: dog.c mon_arrive(With_you): mnexto(mtmp, RLOC_NOMSG)
+            // In this startup path, place near hero position (not stairs fallback).
+            const positions = collectCoordsShuffle(player.x, player.y, 3);
             for (const pos of positions) {
                 const loc = newMap.at(pos.x, pos.y);
                 if (loc && ACCESSIBLE(loc.typ)
@@ -361,10 +364,12 @@ export function mon_arrive(oldMap, newMap, player) {
                     && !(pos.x === player.x && pos.y === player.y)) {
                     petX = pos.x;
                     petY = pos.y;
+                    foundPos = true;
                     break;
                 }
             }
         }
+        if (!foundPos) continue;
 
         oldMap.removeMonster(pet);
         pet.mx = petX;
@@ -372,9 +377,10 @@ export function mon_arrive(oldMap, newMap, player) {
         pet.sleeping = false;
         pet.dead = false;
         newMap.monsters.unshift(pet);
+        migratedCount++;
     }
 
-    return true;
+    return migratedCount > 0;
 }
 
 // ========================================================================
