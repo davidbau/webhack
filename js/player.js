@@ -5,6 +5,7 @@ import { A_STR, A_INT, A_WIS, A_DEX, A_CON, A_CHA, NUM_ATTRS,
          NORMAL_SPEED, A_NEUTRAL, A_LAWFUL, A_CHAOTIC,
          RACE_HUMAN, RACE_ELF, RACE_DWARF, RACE_GNOME, RACE_ORC,
          FEMALE, MALE } from './config.js';
+import { M2_HUMAN, M2_ELF, M2_DWARF, M2_GNOME, M2_ORC } from './monsters.js';
 
 // Roles table -- from role.c
 // C ref: src/role.c roles[] array
@@ -225,18 +226,23 @@ export const roles = [
 export const races = [
     { name: 'human', adj: 'human', validAligns: [A_LAWFUL, A_NEUTRAL, A_CHAOTIC],
       menuChar: 'h', hpBonus: 2, pwBonus: 1,
+      selfmask: M2_HUMAN, lovemask: 0, hatemask: M2_GNOME | M2_ORC,
       attrmin: [3,3,3,3,3,3], attrmax: [18,18,18,18,18,18] },
     { name: 'elf', adj: 'elven', validAligns: [A_CHAOTIC],
       menuChar: 'e', hpBonus: 1, pwBonus: 2,
+      selfmask: M2_ELF, lovemask: M2_ELF, hatemask: M2_ORC,
       attrmin: [3,3,3,3,3,3], attrmax: [18,18,18,18,16,18] },
     { name: 'dwarf', adj: 'dwarven', validAligns: [A_LAWFUL],
       menuChar: 'd', hpBonus: 4, pwBonus: 0,
+      selfmask: M2_DWARF, lovemask: M2_DWARF | M2_GNOME, hatemask: M2_ORC,
       attrmin: [3,3,3,3,3,3], attrmax: [18,16,18,18,20,16] },
     { name: 'gnome', adj: 'gnomish', validAligns: [A_NEUTRAL],
       menuChar: 'g', hpBonus: 1, pwBonus: 2,
+      selfmask: M2_GNOME, lovemask: M2_DWARF | M2_GNOME, hatemask: M2_HUMAN,
       attrmin: [3,3,3,3,3,3], attrmax: [18,19,18,18,18,18] },
     { name: 'orc', adj: 'orcish', validAligns: [A_CHAOTIC],
       menuChar: 'o', hpBonus: 1, pwBonus: 1,
+      selfmask: M2_ORC, lovemask: 0, hatemask: M2_HUMAN | M2_ELF | M2_DWARF,
       attrmin: [3,3,3,3,3,3], attrmax: [18,16,16,18,18,16] },
 ];
 
@@ -331,6 +337,23 @@ export function alignName(alignValue) {
     return 'neutral';
 }
 
+// C ref: role.c roles[].initrecord
+export function initialAlignmentRecordForRole(roleIndex) {
+    switch (roleIndex) {
+        case 0:  // Archeologist
+        case 1:  // Barbarian
+        case 3:  // Healer
+        case 4:  // Knight
+        case 5:  // Monk
+        case 7:  // Rogue
+        case 8:  // Ranger
+        case 9:  // Samurai
+            return 10;
+        default:
+            return 0;
+    }
+}
+
 // Lore text template -- from quest.lua
 // Substitutions: %d=deity name, %G=god/goddess, %r=rank title
 export const LORE_TEXT_TEMPLATE = `It is written in the Book of %d:
@@ -372,6 +395,8 @@ export class Player {
         this.race = RACE_HUMAN;
         this.gender = 0;
         this.alignment = A_NEUTRAL;
+        this.alignmentRecord = 0; // C ref: u.ualign.record
+        this.alignmentAbuse = 0;  // C ref: u.ualign.abuse
 
         // Vital stats
         // C ref: you.h u.uhp, u.uhpmax, u.uen, u.uenmax
@@ -465,6 +490,8 @@ export class Player {
         this.pw = role.startingPW;
         this.pwmax = role.startingPW;
         this.alignment = role.align;
+        this.alignmentRecord = initialAlignmentRecordForRole(roleIndex);
+        this.alignmentAbuse = 0;
 
         // Starting AC depends on role; default 10 = unarmored
         this.ac = 10;

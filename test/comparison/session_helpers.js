@@ -12,7 +12,7 @@ import {
 } from '../../js/config.js';
 import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1, rnl, rne, rnz, d } from '../../js/rng.js';
 import { initLevelGeneration, makelevel, setGameSeed, wallification, simulateDungeonInit } from '../../js/dungeon.js';
-import { simulatePostLevelInit } from '../../js/u_init.js';
+import { simulatePostLevelInit, mon_arrive } from '../../js/u_init.js';
 import { init_objects } from '../../js/o_init.js';
 import { Player, roles } from '../../js/player.js';
 import { NORMAL_SPEED, A_DEX, A_CON,
@@ -253,8 +253,10 @@ export function generateMapsWithRng(seed, maxDepth) {
     const grids = {};
     const maps = {};
     const rngLogs = {};
+    let harnessPlayer = null;
     let prevCount = 0;
     for (let depth = 1; depth <= maxDepth; depth++) {
+        const previousMap = depth > 1 ? maps[depth - 1] : null;
         const map = makelevel(depth);
         // Note: wallification and place_lregion are now called inside makelevel
 
@@ -265,23 +267,28 @@ export function generateMapsWithRng(seed, maxDepth) {
         // post-level init (pet creation, hero inventory, attributes, welcome).
         // Depth 2+ includes pet arrival via wizard_level_teleport.
         if (depth === 1) {
-            const player = new Player();
-            player.initRole(11); // Valkyrie
+            harnessPlayer = new Player();
+            harnessPlayer.initRole(11); // Valkyrie
             if (map.upstair) {
-                player.x = map.upstair.x;
-                player.y = map.upstair.y;
+                harnessPlayer.x = map.upstair.x;
+                harnessPlayer.y = map.upstair.y;
             }
-            simulatePostLevelInit(player, map, 1);
+            simulatePostLevelInit(harnessPlayer, map, 1);
         } else {
-            // Simulate pet arrival on level teleport (C ref: dog.c:474 mon_arrive)
-            // Pet follows player when teleporting to new level
-            // mon_arrive: rn2(10) + collect_coords sequence for pet placement (46 calls)
-            rn2(10); // C ref: dog.c:474 — !rn2(10) check for spontaneous untaming
-            // collect_coords: finds random accessible position via rn2(width/height)
-            // Pattern: rn2(8→2), rn2(16→2), rn2(24→2) = 7 + 15 + 23 = 45 calls
-            for (let i = 8; i >= 2; i--) rn2(i);
-            for (let i = 16; i >= 2; i--) rn2(i);
-            for (let i = 24; i >= 2; i--) rn2(i);
+            // C ref: dog.c:474 mon_arrive — use real migration path.
+            if (harnessPlayer && previousMap) {
+                mon_arrive(previousMap, map, harnessPlayer);
+            }
+        }
+
+        // Keep player position synchronized so subsequent level changes use
+        // C-like adjacency checks for follower migration eligibility.
+        if (harnessPlayer) {
+            if (map.upstair) {
+                harnessPlayer.x = map.upstair.x;
+                harnessPlayer.y = map.upstair.y;
+            }
+            harnessPlayer.dungeonLevel = depth;
         }
 
         const fullLog = getRngLog();
@@ -559,6 +566,7 @@ class HeadlessGame {
         if (this.map) {
             this.levels[this.player.dungeonLevel] = this.map;
         }
+        const previousMap = this.levels[this.player.dungeonLevel];
         if (this.levels[depth]) {
             this.map = this.levels[depth];
         } else {
@@ -566,8 +574,10 @@ class HeadlessGame {
             this.levels[depth] = this.map;
 
             // C ref: dog.c:474 mon_arrive — pet arrival on level change
-            // Replay mode: defer pet migration until full mon_arrive parity
-            // (migration state/eligibility) is modeled.
+            // Use real migration logic to preserve startup/replay fidelity.
+            if (depth > 1) {
+                mon_arrive(previousMap, this.map, this.player);
+            }
         }
         this.player.dungeonLevel = depth;
         this.placePlayerOnLevel();

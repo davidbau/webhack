@@ -14,8 +14,9 @@
 //   4. welcome(TRUE)           — rndencode + seer_turn
 
 import { rn2, rnd, rn1, rne, d, c_d, getRngLog } from './rng.js';
-import { mksobj, mkobj } from './mkobj.js';
+import { mksobj, mkobj, weight } from './mkobj.js';
 import { isok, NUM_ATTRS,
+         A_STR, A_CON,
          PM_ARCHEOLOGIST, PM_BARBARIAN, PM_CAVEMAN, PM_HEALER,
          PM_KNIGHT, PM_MONK, PM_PRIEST, PM_RANGER, PM_ROGUE,
          PM_SAMURAI, PM_TOURIST, PM_VALKYRIE, PM_WIZARD,
@@ -65,7 +66,9 @@ import {
     // Classes
     WEAPON_CLASS, ARMOR_CLASS, FOOD_CLASS, TOOL_CLASS,
     RING_CLASS, POTION_CLASS, SCROLL_CLASS, SPBOOK_CLASS,
-    WAND_CLASS, GEM_CLASS,
+    WAND_CLASS, COIN_CLASS, GEM_CLASS,
+    GOLD_PIECE,
+    AMULET_OF_YENDOR,
     // Armor categories
     ARM_SUIT, ARM_SHIELD, ARM_HELM, ARM_GLOVES, ARM_BOOTS, ARM_CLOAK, ARM_SHIRT,
     // Filter exclusions
@@ -78,8 +81,13 @@ import {
     // Object data for level/charged checks
     objectData,
 } from './objects.js';
-import { roles } from './player.js';
-import { mons, PM_LITTLE_DOG, PM_KITTEN, PM_PONY } from './monsters.js';
+import { roles, races, initialAlignmentRecordForRole } from './player.js';
+import { always_hostile, always_peaceful } from './mondata.js';
+import {
+    mons, PM_LITTLE_DOG, PM_KITTEN, PM_PONY, PM_ERINYS,
+    MS_LEADER, MS_NEMESIS, MS_GUARDIAN,
+    M2_MINION,
+} from './monsters.js';
 
 // ========================================================================
 // Pet Creation
@@ -161,6 +169,52 @@ function pet_type(roleIndex) {
     return rn2(2) ? PM_KITTEN : PM_LITTLE_DOG;
 }
 
+function sgn(x) {
+    return x > 0 ? 1 : (x < 0 ? -1 : 0);
+}
+
+function race_peaceful(ptr, player) {
+    const flags2 = ptr.flags2 || 0;
+    const lovemask = races[player.race]?.lovemask || 0;
+    return !!(flags2 & lovemask);
+}
+
+function race_hostile(ptr, player) {
+    const flags2 = ptr.flags2 || 0;
+    const hatemask = races[player.race]?.hatemask || 0;
+    return !!(flags2 & hatemask);
+}
+
+// C ref: makemon.c peace_minded(struct permonst *ptr)
+function peace_minded(ptr, player) {
+    const mal = ptr.align || 0;
+    const ual = player.alignment || 0;
+    const alignRecord = Number.isInteger(player.alignmentRecord)
+        ? player.alignmentRecord
+        : initialAlignmentRecordForRole(player.roleIndex);
+    const alignAbuse = Number.isInteger(player.alignmentAbuse)
+        ? player.alignmentAbuse
+        : 0;
+    const hasAmulet = Array.isArray(player.inventory)
+        && player.inventory.some(o => o?.otyp === AMULET_OF_YENDOR);
+
+    if (always_peaceful(ptr)) return true;
+    if (always_hostile(ptr)) return false;
+    if (ptr.sound === MS_LEADER || ptr.sound === MS_GUARDIAN) return true;
+    if (ptr.sound === MS_NEMESIS) return false;
+    if (ptr === mons[PM_ERINYS]) return !alignAbuse;
+
+    if (race_peaceful(ptr, player)) return true;
+    if (race_hostile(ptr, player)) return false;
+
+    if (sgn(mal) !== sgn(ual)) return false;
+    if (mal < 0 && hasAmulet) return false;
+    if ((ptr.flags2 || 0) & M2_MINION) return alignRecord >= 0;
+
+    const firstBound = 16 + (alignRecord < -15 ? -15 : alignRecord);
+    return !!rn2(firstBound) && !!rn2(2 + Math.abs(mal));
+}
+
 // C ref: dog.c makedog() → makemon.c makemon()
 // Creates the starting pet and places it on the map.
 // Returns the pet monster object. RNG consumption matches C exactly.
@@ -173,16 +227,21 @@ function makedog(map, player, depth) {
     const positions = collectCoordsShuffle(player.x, player.y, 3);
 
     // Find first valid position (accessible terrain, no existing monster)
-    let petX = player.x + 1, petY = player.y; // fallback
+    let petX = 0, petY = 0;
+    let foundPos = false;
     for (const pos of positions) {
         const loc = map.at(pos.x, pos.y);
         if (loc && ACCESSIBLE(loc.typ) && !map.monsterAt(pos.x, pos.y)
             && !(pos.x === player.x && pos.y === player.y)) {
             petX = pos.x;
             petY = pos.y;
+            foundPos = true;
             break;
         }
     }
+    // C ref: makemon.c byyou path returns NULL if enexto_core fails.
+    // No synthetic fallback placement.
+    if (!foundPos) return null;
 
     // C ref: makemon.c:1252 — mtmp->m_id = next_ident()
     rnd(2);
@@ -201,25 +260,8 @@ function makedog(map, player, depth) {
     // C ref: makemon.c:1280 — gender
     rn2(2);
 
-    // C ref: makemon.c:1295 — peace_minded(ptr)
-    // peace_minded() consumes RNG when it reaches the alignment check.
-    // For neutral-aligned players, it calls rn2(16+record) && rn2(2+abs(mal)).
-    // For lawful/chaotic players, it returns early (race_peaceful) with no RNG.
-    // Knight/pony is a special case: also no peace_minded (pony handling).
-    const playerAlign = player.alignment;
-    if (pmIdx !== PM_PONY && playerAlign === 0) {
-        // C trace parity: neutral starts use role-specific first bound:
-        //   rn2(26): Archeologist, Barbarian, Healer, Monk, Ranger
-        //   rn2(16): Caveman, Priest, Tourist, Valkyrie, Wizard
-        const highPeaceRoles = new Set([
-            PM_ARCHEOLOGIST, PM_BARBARIAN, PM_HEALER, PM_MONK, PM_RANGER,
-        ]);
-        const firstBound = highPeaceRoles.has(player.roleIndex) ? 26 : 16;
-        const peacefulFirst = rn2(firstBound);
-        if (peacefulFirst) {
-            rn2(2);
-        }
-    }
+    // C ref: makemon.c:1295 — mtmp->mpeaceful = peace_minded(ptr)
+    peace_minded(petData, player);
 
     // C ref: dog.c:264-267 — put_saddle_on_mon(NULL, mtmp) for pony
     // Creates a saddle and adds to pony's minvent
@@ -245,6 +287,8 @@ function makedog(map, player, depth) {
         attacks: petData.attacks,
         peaceful: true, // pet is peaceful
         tame: true,      // pet is tame
+        mpeaceful: true, // C-style alias used by mon_arrive logic
+        mtame: 10,       // C initedog baseline tameness for domestic pets
         flee: false,
         confused: false,
         stunned: false,
@@ -284,7 +328,8 @@ function makedog(map, player, depth) {
 export function mon_arrive(oldMap, newMap, player) {
     if (!oldMap || !newMap) return false;
     const pets = (oldMap.monsters || []).filter((m) => {
-        if (!m || m.dead || !m.tame) return false;
+        const tameLike = !!m?.tame || (m?.mtame || 0) > 0;
+        if (!m || m.dead || !tameLike) return false;
         const dx = Math.abs((m.mx ?? 0) - player.x);
         const dy = Math.abs((m.my ?? 0) - player.y);
         // C-like stair following behavior: only nearby pets can follow.
@@ -298,24 +343,26 @@ export function mon_arrive(oldMap, newMap, player) {
     // Preserve relative pet order when prepending into newMap.monsters.
     for (let i = pets.length - 1; i >= 0; i--) {
         const pet = pets[i];
-
-        // C ref: dog.c:474 — !rn2(10) chance to lose tameness in transit.
-        // C has an untaming branch here; keep RNG consumption but defer
-        // behavioral untaming until full migration state is modeled.
-        rn2(10);
-
-        const positions = collectCoordsShuffle(cx, cy, 3);
+        const mtame = pet.mtame || (pet.tame ? 10 : 0);
+        const bound = mtame > 0 ? 10 : (pet.mpeaceful ? 5 : 2);
 
         let petX = cx;
         let petY = cy;
-        for (const pos of positions) {
-            const loc = newMap.at(pos.x, pos.y);
-            if (loc && ACCESSIBLE(loc.typ)
-                && !newMap.monsterAt(pos.x, pos.y)
-                && !(pos.x === player.x && pos.y === player.y)) {
-                petX = pos.x;
-                petY = pos.y;
-                break;
+        if (!newMap.monsterAt(player.x, player.y) && !rn2(bound)) {
+            // C ref: dog.c mon_arrive(With_you): rloc_to(mtmp, u.ux, u.uy)
+            petX = player.x;
+            petY = player.y;
+        } else {
+            const positions = collectCoordsShuffle(cx, cy, 3);
+            for (const pos of positions) {
+                const loc = newMap.at(pos.x, pos.y);
+                if (loc && ACCESSIBLE(loc.typ)
+                    && !newMap.monsterAt(pos.x, pos.y)
+                    && !(pos.x === player.x && pos.y === player.y)) {
+                    petX = pos.x;
+                    petY = pos.y;
+                    break;
+                }
             }
         }
 
@@ -514,6 +561,9 @@ const Leash_inv = [
 const Towel_inv = [
     { otyp: TOWEL, spe: 0, oclass: TOOL_CLASS, qmin: 1, qmax: 1, bless: 0 },
 ];
+const Money_inv = [
+    { otyp: GOLD_PIECE, spe: 0, oclass: COIN_CLASS, qmin: 1, qmax: 1, bless: 0 },
+];
 
 // Monk spellbook options
 const Healing_book = [
@@ -606,38 +656,52 @@ function iniInv(player, table) {
         }
 
         // C ref: u_init.c ini_inv_adjust_obj()
-        obj.known = true;
-        obj.dknown = true;
-        obj.bknown = true;
-        obj.cursed = false;
-        if (obj.oclass === WEAPON_CLASS || obj.oclass === TOOL_CLASS) {
-            obj.quan = trquan(trop);
-            quan = 1; // stop flag
-        } else if (obj.oclass === GEM_CLASS && otyp !== FLINT) {
-            // Graystone (touchstone) gets quantity 1
-            // C ref: is_graystone check — for simplicity, TOUCHSTONE and similar
-            if (otyp === TOUCHSTONE) obj.quan = 1;
-        }
-
-        // C ref: u_init.c:1231-1240 — spe handling
-        if (trop.spe !== UNDEF_SPE) {
-            obj.spe = trop.spe;
-            // Magic marker: add rn2(4) to spe if < 96
-            if (trop.otyp === MAGIC_MARKER && obj.spe < 96) {
-                obj.spe += rn2(4);
-            }
+        if (trop.oclass === COIN_CLASS) {
+            obj.quan = player.umoney0 || 0;
+            obj.owt = weight(obj);
         } else {
-            // UNDEF_SPE: keep mksobj default, but fix rings with spe <= 0
-            if (obj.oclass === RING_CLASS
-                && objectData[otyp].charged && obj.spe <= 0) {
-                obj.spe = rne(3);
+            if (objectData[otyp]?.uses_known) obj.known = true;
+            obj.dknown = true;
+            obj.bknown = true;
+            obj.rknown = true;
+            if (obj.cobj || obj.contents || objectData[otyp]?.name === 'statue') {
+                obj.cknown = true;
+                obj.lknown = true;
+                obj.otrapped = 0;
             }
-        }
+            obj.cursed = false;
+            if (obj.opoisoned && player.alignment !== -1) {
+                obj.opoisoned = 0; // C ref: clear poison for non-chaotic starts
+            }
+            if (obj.oclass === WEAPON_CLASS || obj.oclass === TOOL_CLASS) {
+                obj.quan = trquan(trop);
+                quan = 1; // stop flag
+            } else if (obj.oclass === GEM_CLASS && otyp !== FLINT) {
+                // Graystone (touchstone) gets quantity 1
+                // C ref: is_graystone check — for simplicity, TOUCHSTONE and similar
+                if (otyp === TOUCHSTONE) obj.quan = 1;
+            }
 
-        // C ref: u_init.c:1243-1244 — bless handling
-        if (trop.bless !== UNDEF_BLESS) {
-            obj.blessed = trop.bless > 0;
-            obj.cursed = trop.bless < 0;
+            // C ref: u_init.c:1231-1240 — spe handling
+            if (trop.spe !== UNDEF_SPE) {
+                obj.spe = trop.spe;
+                // Magic marker: add rn2(4) to spe if < 96
+                if (trop.otyp === MAGIC_MARKER && obj.spe < 96) {
+                    obj.spe += rn2(4);
+                }
+            } else {
+                // UNDEF_SPE: keep mksobj default, but fix rings with spe <= 0
+                if (obj.oclass === RING_CLASS
+                    && objectData[otyp].charged && obj.spe <= 0) {
+                    obj.spe = rne(3);
+                }
+            }
+
+            // C ref: u_init.c:1243-1244 — bless handling
+            if (trop.bless !== UNDEF_BLESS) {
+                obj.blessed = trop.bless > 0;
+                obj.cursed = trop.bless < 0;
+            }
         }
 
         // Add to player inventory
@@ -666,6 +730,7 @@ function trquan(trop) {
 function u_init_role(player) {
     // Reset nocreate state for this role
     nocreate = nocreate2 = nocreate3 = nocreate4 = 0;
+    player.umoney0 = 0;
 
     switch (player.roleIndex) {
         case PM_ARCHEOLOGIST:
@@ -686,7 +751,7 @@ function u_init_role(player) {
             iniInv(player, Caveman_inv);
             break;
         case PM_HEALER:
-            rn1(1000, 1001); // u.umoney0 = rn1(1000, 1001)
+            player.umoney0 = rn1(1000, 1001); // u.umoney0 = rn1(1000, 1001)
             iniInv(player, Healer_inv);
             if (!rn2(25)) iniInv(player, Lamp_inv);
             break;
@@ -708,7 +773,7 @@ function u_init_role(player) {
             iniInv(player, Ranger_inv);
             break;
         case PM_ROGUE:
-            // u.umoney0 = 0 (no RNG)
+            player.umoney0 = 0; // u.umoney0 = 0 (no RNG)
             iniInv(player, Rogue_inv);
             if (!rn2(5)) iniInv(player, Blindfold_inv);
             break;
@@ -717,7 +782,7 @@ function u_init_role(player) {
             if (!rn2(5)) iniInv(player, Blindfold_inv);
             break;
         case PM_TOURIST:
-            rnd(1000); // u.umoney0 = rnd(1000)
+            player.umoney0 = rnd(1000); // u.umoney0 = rnd(1000)
             iniInv(player, Tourist_inv);
             if (!rn2(25)) iniInv(player, Tinopener_inv);
             else if (!rn2(25)) iniInv(player, Leash_inv);
@@ -733,10 +798,7 @@ function u_init_role(player) {
             if (!rn2(5)) iniInv(player, Blindfold_inv);
             break;
         default:
-            // Unknown role — use Valkyrie as fallback
-            iniInv(player, Valkyrie_inv);
-            if (!rn2(6)) iniInv(player, Lamp_inv);
-            break;
+            throw new Error(`u_init_role: unknown role index ${player.roleIndex}`);
     }
 }
 
@@ -907,9 +969,50 @@ function initAttributes(player) {
 
     // C ref: attrib.c vary_init_attr()
     varyInitAttr(player.attributes, attrmin, attrmax);
+}
 
-    // C ref: u_init.c u_init_carry_attr_boost() — no RNG, deterministic
-    // Boost STR/CON until can carry inventory — omitted for now
+// C ref: hack.c weight_cap()/inv_weight() + u_init.c u_init_carry_attr_boost()
+function startupWeightCap(player) {
+    const WT_WEIGHTCAP_STRCON = 25;
+    const WT_WEIGHTCAP_SPARE = 50;
+    const MAX_CARR_CAP = 1000;
+    const str = player.attributes[A_STR] || 3;
+    const con = player.attributes[A_CON] || 3;
+    let carrcap = WT_WEIGHTCAP_STRCON * (str + con) + WT_WEIGHTCAP_SPARE;
+    if (carrcap > MAX_CARR_CAP) carrcap = MAX_CARR_CAP;
+    return Math.max(carrcap, 1);
+}
+
+function startupInvWeight(player) {
+    let wt = 0;
+    for (const obj of player.inventory) {
+        if (!obj) continue;
+        if (obj.oclass === COIN_CLASS) {
+            wt += Math.floor(((obj.quan || 0) + 50) / 100);
+        } else {
+            wt += obj.owt || weight(obj);
+        }
+    }
+    return wt - startupWeightCap(player);
+}
+
+function startupAdjAttrib(player, ndx, incr, attrmax) {
+    if (!incr) return false;
+    const oldVal = player.attributes[ndx];
+    const newVal = Math.min(attrmax[ndx], oldVal + incr);
+    if (newVal === oldVal) return false;
+    player.attributes[ndx] = newVal;
+    return true;
+}
+
+function u_init_carry_attr_boost(player) {
+    // Boost STR and CON until hero can carry inventory, or both are capped.
+    const attrmax = RACE_ATTRMAX[player.race] || RACE_ATTRMAX[RACE_HUMAN];
+    while (startupInvWeight(player) > 0) {
+        if (startupAdjAttrib(player, A_STR, 1, attrmax)) continue;
+        if (startupAdjAttrib(player, A_CON, 1, attrmax)) continue;
+        break;
+    }
 }
 
 function equipInitialGear(player) {
@@ -962,6 +1065,41 @@ function equipInitialGear(player) {
     }
 }
 
+// C ref: shk.c contained_gold() / vault.c hidden_gold(TRUE)
+function containedGold(obj, evenIfUnknown) {
+    const children = obj?.cobj || obj?.contents || [];
+    let value = 0;
+    for (const child of children) {
+        if (!child) continue;
+        if (child.oclass === COIN_CLASS) {
+            value += child.quan || 0;
+        } else {
+            const hasContents = !!((child.cobj && child.cobj.length) || (child.contents && child.contents.length));
+            if (hasContents && (child.cknown || evenIfUnknown)) {
+                value += containedGold(child, evenIfUnknown);
+            }
+        }
+    }
+    return value;
+}
+
+function hiddenGold(player, evenIfUnknown) {
+    let value = 0;
+    for (const obj of player.inventory) {
+        const hasContents = !!((obj.cobj && obj.cobj.length) || (obj.contents && obj.contents.length));
+        if (hasContents && (obj.cknown || evenIfUnknown)) {
+            value += containedGold(obj, evenIfUnknown);
+        }
+    }
+    return value;
+}
+
+function moneyCount(player) {
+    return player.inventory
+        .filter(obj => obj.oclass === COIN_CLASS)
+        .reduce((sum, obj) => sum + (obj.quan || 0), 0);
+}
+
 // ========================================================================
 // Main Entry Point
 // ========================================================================
@@ -987,10 +1125,18 @@ export function simulatePostLevelInit(player, map, depth) {
     u_init_role(player);
     //    b. u_init_race() → race-specific inventory (instruments, food)
     u_init_race(player);
+    // C ref: u_init.c u_init_inventory_attrs() — ini_inv(Money) after role/race items.
+    if (player.umoney0 > 0) {
+        iniInv(player, Money_inv);
+    }
+    // C ref: u_init.c u.umoney0 += hidden_gold(TRUE)
+    player.umoney0 += hiddenGold(player, true);
+    player.gold = moneyCount(player) + hiddenGold(player, true);
     equipInitialGear(player);
     //    c+d. init_attr(75) + vary_init_attr()
     initAttributes(player);
     //    e. u_init_carry_attr_boost() — no RNG
+    u_init_carry_attr_boost(player);
 
     // Set HP/PW from role + race
     // C ref: u_init.c u_init_misc() — newhp() = role_hp + race_hp

@@ -296,6 +296,8 @@ describe('Player save/restore (saveYou/restYou)', () => {
         assert.equal(restored.roleIndex, 0);
         assert.equal(restored.gold, 123);
         assert.equal(restored.hunger, 800);
+        assert.equal(restored.alignmentRecord, p.alignmentRecord);
+        assert.equal(restored.alignmentAbuse, p.alignmentAbuse);
         assert.equal(restored.hp, p.hp);
         assert.equal(restored.hpmax, p.hpmax);
         assert.deepEqual(restored.attributes, p.attributes);
@@ -351,6 +353,7 @@ describe('Player save/restore (saveYou/restYou)', () => {
         p.y = 12;
         p.luck = 3;
         p.confused = true;
+        p.alignmentAbuse = 2;
 
         const json = JSON.stringify(saveYou(p));
         const restored = restYou(JSON.parse(json));
@@ -358,6 +361,8 @@ describe('Player save/restore (saveYou/restYou)', () => {
         assert.equal(restored.y, 12);
         assert.equal(restored.luck, 3);
         assert.equal(restored.confused, true);
+        assert.equal(restored.alignmentRecord, p.alignmentRecord);
+        assert.equal(restored.alignmentAbuse, 2);
         assert.equal(restored.roleName, 'Monk');
     });
 });

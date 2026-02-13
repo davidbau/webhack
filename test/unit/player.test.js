@@ -3,8 +3,9 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { Player, roles } from '../../js/player.js';
+import { Player, roles, races, initialAlignmentRecordForRole } from '../../js/player.js';
 import { initRng } from '../../js/rng.js';
+import { M2_HUMAN, M2_ELF, M2_DWARF, M2_GNOME, M2_ORC } from '../../js/monsters.js';
 
 describe('Player', () => {
     it('creates a player with default values', () => {
@@ -29,6 +30,19 @@ describe('Player', () => {
         assert.ok(roleNames.includes('Samurai'));
     });
 
+    it('race masks match C love/hostility tables', () => {
+        const [human, elf, dwarf, gnome, orc] = races;
+        assert.equal(human.selfmask, M2_HUMAN);
+        assert.equal(human.lovemask, 0);
+        assert.equal(human.hatemask, M2_GNOME | M2_ORC);
+        assert.equal(elf.selfmask, M2_ELF);
+        assert.equal(elf.lovemask, M2_ELF);
+        assert.equal(elf.hatemask, M2_ORC);
+        assert.equal(dwarf.lovemask, M2_DWARF | M2_GNOME);
+        assert.equal(gnome.hatemask, M2_HUMAN);
+        assert.equal(orc.hatemask, M2_HUMAN | M2_ELF | M2_DWARF);
+    });
+
     it('initRole sets role-specific stats', () => {
         const p = new Player();
         p.initRole(0); // Archeologist
@@ -36,6 +50,21 @@ describe('Player', () => {
         assert.ok(p.hp > 0);
         assert.ok(p.hpmax > 0);
         assert.equal(p.hp, p.hpmax);
+    });
+
+    it('initialAlignmentRecordForRole matches C role initrecord groups', () => {
+        assert.equal(initialAlignmentRecordForRole(0), 10);  // Archeologist
+        assert.equal(initialAlignmentRecordForRole(7), 10);  // Rogue
+        assert.equal(initialAlignmentRecordForRole(11), 0);  // Valkyrie
+        assert.equal(initialAlignmentRecordForRole(12), 0);  // Wizard
+    });
+
+    it('initRole applies alignment record and resets alignment abuse', () => {
+        const p = new Player();
+        p.alignmentAbuse = 99;
+        p.initRole(9); // Samurai
+        assert.equal(p.alignmentRecord, 10);
+        assert.equal(p.alignmentAbuse, 0);
     });
 
     it('each role has valid base stats', () => {

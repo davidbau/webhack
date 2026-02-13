@@ -118,10 +118,6 @@ class NetHackGame {
         const seedStr = urlOpts.seed !== null ? ` (seed:${seed})` : '';
         this.display.putstr_message(`NetHack JS -- Welcome to the Mazes of Menace!${wizStr}${seedStr}`);
 
-        // One-time level generation init (init_objects + dungeon structure)
-        // C ref: early_init() — happens once before any level generation
-        initLevelGeneration();
-
         // Player selection
         // C ref: In wizard mode, auto-selects Valkyrie/Human/Female/Neutral
         // with NO RNG consumption. In normal mode, interactive selection.
@@ -136,6 +132,11 @@ class NetHackGame {
             await this.playerSelection();
         }
 
+        // One-time level generation init (init_objects + dungeon structure)
+        // Role-dependent RNG in C startup depends on selected role.
+        // C ref: allmain.c startup ordering around role selection and init_dungeons.
+        initLevelGeneration(this.player.roleIndex);
+
         // Generate first level
         // C ref: mklev() — bones rn2(3) + makelevel
         this.changeLevel(1);
@@ -146,10 +147,8 @@ class NetHackGame {
 
         // Post-level initialization: pet, inventory, attributes, welcome
         // C ref: allmain.c newgame() — makedog through welcome(TRUE)
-        if (this.wizard) {
-            const initResult = simulatePostLevelInit(this.player, this.map, 1);
-            this.seerTurn = initResult.seerTurn;
-        }
+        const initResult = simulatePostLevelInit(this.player, this.map, 1);
+        this.seerTurn = initResult.seerTurn;
 
         // Apply flags
         this.player.showExp = this.flags.showexp;
@@ -179,7 +178,7 @@ class NetHackGame {
         this.seed = gs.seed;
         initRng(gs.seed);
         setGameSeed(gs.seed);
-        initLevelGeneration();
+        initLevelGeneration(gs.you?.roleIndex);
 
         // Now overwrite RNG state with the saved state
         const restoredCtx = deserializeRng(gs.rng);

@@ -39,13 +39,14 @@ import { roles } from './player.js';
 import {
     ARROW, DART, ROCK, BOULDER, LARGE_BOX, CHEST, GOLD_PIECE, CORPSE,
     STATUE, TALLOW_CANDLE, WAX_CANDLE, BELL, KELP_FROND,
+    POT_WATER, EXPENSIVE_CAMERA, EGG, CREAM_PIE, MELON, ACID_VENOM, BLINDING_VENOM,
     WEAPON_CLASS, TOOL_CLASS, FOOD_CLASS, GEM_CLASS, WAND_CLASS,
     ARMOR_CLASS, SCROLL_CLASS, POTION_CLASS, RING_CLASS, SPBOOK_CLASS,
     POT_HEALING, POT_EXTRA_HEALING, POT_SPEED, POT_GAIN_ENERGY,
     SCR_ENCHANT_WEAPON, SCR_ENCHANT_ARMOR, SCR_CONFUSE_MONSTER, SCR_SCARE_MONSTER,
     SCR_TELEPORTATION,
     WAN_DIGGING, SPE_HEALING, SPE_BLANK_PAPER, SPE_NOVEL,
-    objectData, bases,
+    objectData, bases, GLASS,
 } from './objects.js';
 import { RUMORS_FILE_TEXT } from './rumor_data.js';
 import { getSpecialLevel } from './special_levels.js';
@@ -89,6 +90,7 @@ import { parseEncryptedDataFile, parseRumorsFile } from './hacklib.js';
 import { EPITAPH_FILE_TEXT } from './epitaph_data.js';
 import { ENGRAVE_FILE_TEXT } from './engrave_data.js';
 import { shtypes, stock_room } from './shknam.js';
+import { obj_resists } from './objdata.js';
 
 // Module-level game seed for nameshk() — set by setGameSeed() before level gen
 let _gameSeed = 0;
@@ -2412,7 +2414,6 @@ export function mktrap(map, num, mktrapflags, croom, tm, depth) {
     }
 }
 
-// C ref: mklev.c:1804 mktrap_victim() — stub until mkobj is ported
 // C ref: mklev.c mktrap_victim() — creates corpse + items on trap
 function mktrap_victim(map, trap, depth) {
     const x = trap.tx, y = trap.ty;
@@ -2446,29 +2447,36 @@ function mktrap_victim(map, trap, depth) {
     // Random possession loop
     // C ref: mklev.c:1843-1877
     const classMap = [WEAPON_CLASS, TOOL_CLASS, FOOD_CLASS, GEM_CLASS];
-    // C ref: dothrow.c breaktest() + zap.c obj_resists().
-    // In this path, only the RNG side effect is parity-critical:
-    // obj_resists() consumes rn2(100) when checking whether a fragile
-    // item survives an exploded landmine (ttyp==PIT here).
+    // C ref: dothrow.c breaktest()
     const breaktestLike = (obj) => {
-        if (trap.ttyp !== PIT) return false;
-        // Non-artifact path used for these generated possessions.
-        const nonbreakResists = rn2(100) < 1;
-        if (nonbreakResists) return false;
-        const name = String(objectData[obj.otyp]?.name || '').toLowerCase();
-        if (obj.oclass === POTION_CLASS) return true;
+        if (trap.ttyp !== PIT) return false; // only exploded landmine path
+        const od = objectData[obj.otyp] || {};
+        let nonbreakchance = 1;
+        if (obj.oclass === ARMOR_CLASS && od.material === GLASS) {
+            nonbreakchance = 90;
+        }
+        if (obj_resists(obj, nonbreakchance, 99)) {
+            return false;
+        }
+        if (od.material === GLASS && !obj.oartifact && obj.oclass !== GEM_CLASS) {
+            return true;
+        }
+        const breakTyp = (obj.oclass === POTION_CLASS) ? POT_WATER : obj.otyp;
         return (
-            name === 'egg'
-            || name === 'cream pie'
-            || name === 'melon'
-            || name === 'acid venom'
-            || name === 'blinding venom'
+            breakTyp === EXPENSIVE_CAMERA
+            || breakTyp === POT_WATER
+            || breakTyp === EGG
+            || breakTyp === CREAM_PIE
+            || breakTyp === MELON
+            || breakTyp === ACID_VENOM
+            || breakTyp === BLINDING_VENOM
         );
     };
 
     do {
         const poss_class = classMap[rn2(4)];
         otmp = mkobj(poss_class, false);
+        otmp.blessed = false;
         otmp.cursed = true; // C ref: curse(otmp) at mklev.c:1865
         if (!breaktestLike(otmp)) {
             placeObj(otmp);
@@ -2492,8 +2500,16 @@ function mktrap_victim(map, trap, depth) {
         victim_mnum = PM_GNOME;
         if (!rn2(10)) {
             otmp = mksobj(rn2(4) ? TALLOW_CANDLE : WAX_CANDLE, true, false);
+            otmp.quan = 1;
+            otmp.owt = weight(otmp);
+            otmp.blessed = false;
             otmp.cursed = true; // C ref: curse(otmp) at mklev.c:1905
             placeObj(otmp);
+            const loc = map.at(x, y);
+            // C ref: if (!levl[x][y].lit) begin_burn(otmp, FALSE)
+            if (loc && !loc.lit) {
+                otmp.lamplit = true;
+            }
         }
     } else {
         victim_mnum = PM_HUMAN;
