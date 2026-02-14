@@ -6,7 +6,7 @@ import { COLNO, ROWNO, DOOR, STAIRS, LADDER, FOUNTAIN, SINK, THRONE, ALTAR, GRAV
          POOL, LAVAPOOL, IRONBARS, TREE, ROOM, IS_DOOR, D_CLOSED, D_LOCKED,
          D_ISOPEN, D_NODOOR, ACCESSIBLE, IS_WALL, MAXLEVEL, VERSION_STRING,
          isok, A_STR, A_DEX, A_CON } from './config.js';
-import { SQKY_BOARD } from './symbols.js';
+import { SQKY_BOARD, SLP_GAS_TRAP, FIRE_TRAP, PIT, SPIKED_PIT } from './symbols.js';
 import { rn2, rnd, rnl, d, c_d } from './rng.js';
 import { objectData, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
          TOOL_CLASS, FOOD_CLASS, POTION_CLASS, SCROLL_CLASS, SPBOOK_CLASS,
@@ -450,11 +450,26 @@ async function handleMovement(dir, player, map, display, game) {
     const mon = map.monsterAt(nx, ny);
     if (mon) {
         // C ref: hack.c domove() — check for pet displacement
-        // Simplified: tame/peaceful monsters are displaced (swap positions)
-        // BUT: 'F' prefix (forceFight) forces attack even on peaceful monsters
+        // C ref: uhitm.c do_attack() is invoked first for safemon targets.
+        // Even when displacement succeeds, it consumes rn2(7) via safemon checks.
+        // 'F' prefix (forceFight) skips safemon protection and forces attack.
         const shouldDisplace = (mon.tame || mon.peaceful) && !game.forceFight;
 
         if (shouldDisplace) {
+            // C ref: uhitm.c:473 foo = Punished || !rn2(7) || ...
+            // Early-game parity: model the rn2(7) gate before displacement.
+            if (rn2(7) === 0) {
+                if (mon.tame) {
+                    // C ref: uhitm.c monflee(mtmp, rnd(6), FALSE, FALSE)
+                    mon.flee = true;
+                    mon.fleetim = rnd(6);
+                }
+                const label = mon.name ? mon.name.charAt(0).toUpperCase() + mon.name.slice(1) : 'It';
+                display.putstr_message(`You stop. ${label} is in the way!`);
+                game.forceFight = false;
+                return { moved: false, tookTime: true };
+            }
+
             // Pet displacement: swap positions
             // C ref: hack.c:2142-2156 — remove_monster + place_monster swaps positions
             const oldPlayerX = player.x;
@@ -571,7 +586,39 @@ async function handleMovement(dir, player, map, display, game) {
         if (trap.ttyp === SQKY_BOARD) {
             display.putstr_message('A board beneath you squeaks loudly.');
         }
-        // TODO: implement other trap effects (fire, pit, etc.) with RNG
+        // C ref: trap.c trapeffect_slp_gas_trap() for hero path
+        else if (trap.ttyp === SLP_GAS_TRAP) {
+            const duration = rnd(25);
+            player.stunned = true;
+            display.putstr_message('A cloud of gas puts you to sleep!');
+            // Keep duration for future full sleep handling without changing turn loop yet.
+            player.sleepTrapTurns = Math.max(player.sleepTrapTurns || 0, duration);
+        }
+        // C ref: trap.c dofiretrap() for hero path (non-resistant baseline)
+        else if (trap.ttyp === FIRE_TRAP) {
+            const origDmg = d(2, 4);
+            const fireDmg = d(2, 4);
+            display.putstr_message('A tower of flame erupts from the floor!');
+            player.takeDamage(Math.max(0, fireDmg), 'a fire trap');
+            // C ref: burnarmor() || rn2(3)
+            rn2(3);
+            void origDmg; // kept for parity readability with C's orig_dmg handling.
+        }
+        // C ref: trap.c trapeffect_pit() — set trap timeout and apply damage.
+        else if (trap.ttyp === PIT || trap.ttyp === SPIKED_PIT) {
+            const trapTurns = rn2(6) + 2; // rn1(6,2)
+            player.pitTrapTurns = Math.max(player.pitTrapTurns || 0, trapTurns);
+            const pitDmg = rnd(trap.ttyp === SPIKED_PIT ? 10 : 6);
+            player.takeDamage(Math.max(0, pitDmg), trap.ttyp === SPIKED_PIT
+                ? 'a pit of spikes'
+                : 'a pit');
+            if (trap.ttyp === SPIKED_PIT) {
+                rn2(6); // C ref: 1-in-6 poison-spike branch gate.
+            }
+            display.putstr_message(trap.ttyp === SPIKED_PIT
+                ? 'You land on a set of sharp iron spikes!'
+                : 'You fall into a pit!');
+        }
     }
 
     // Helper function: Check if object class matches pickup_types string

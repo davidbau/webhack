@@ -1403,7 +1403,18 @@ class NetHackGame {
         this.turnCount++;
         this.player.turns = this.turnCount;
 
-        // C ref: allmain.c:221 mcalcdistress() — no RNG at startup (regen, shapeshift checks)
+        // C ref: allmain.c:221 mcalcdistress() — no RNG at startup for our subset.
+        // Keep temporary flee timers in sync with C mon.c m_calcdistress().
+        for (const mon of this.map.monsters) {
+            if (mon.dead) continue;
+            if (mon.fleetim && mon.fleetim > 0) {
+                mon.fleetim--;
+                if (mon.fleetim <= 0) {
+                    mon.fleetim = 0;
+                    mon.flee = false;
+                }
+            }
+        }
 
         // C ref: allmain.c:226-227 — reallocate movement to monsters via mcalcmove
         for (const mon of this.map.monsters) {
@@ -1411,9 +1422,11 @@ class NetHackGame {
             mon.movement += this.mcalcmove(mon);
         }
 
-        // C ref: allmain.c:232-236 — occasionally spawn a new monster
-        // rn2(70) on normal dungeon levels (rn2(25) if demigod, rn2(50) below stronghold)
-        rn2(70);
+        // C ref: allmain.c:232-236 — occasionally spawn a new monster.
+        // New monster spawns after movement allocation and therefore loses its first turn.
+        if (!rn2(70)) {
+            makemon(null, 0, 0, 0, this.player.dungeonLevel, this.map);
+        }
 
         // C ref: allmain.c:241 — svm.moves++ (already done via this.turnCount++)
 
@@ -1456,7 +1469,9 @@ class NetHackGame {
         // C ref: allmain.c:359 — engrave wipe check
         // rn2(40 + ACURR(A_DEX) * 3) — for Valkyrie with DEX ~14, this is rn2(82)
         const dex = this.player.attributes ? this.player.attributes[A_DEX] : 14;
-        rn2(40 + dex * 3);
+        if (!rn2(40 + dex * 3)) {
+            rnd(3); // C ref: u_wipe_engr(rnd(3))
+        }
 
         // --- Once-per-hero-took-time effects ---
 

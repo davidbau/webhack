@@ -25,7 +25,8 @@ export async function showPager(display, text, title) {
     const lines = wrapText(text, TERMINAL_COLS);
 
     // Save entire terminal state
-    const saved = saveTerminal(display);
+    const canSaveRestore = !!display?.grid;
+    const saved = canSaveRestore ? saveTerminal(display) : null;
 
     let topLine = 0;
     let searchTerm = null;
@@ -37,9 +38,13 @@ export async function showPager(display, text, title) {
             display.clearRow(r);
             if (lineIdx < lines.length) {
                 const line = lines[lineIdx];
-                for (let c = 0; c < line.length && c < TERMINAL_COLS; c++) {
-                    const isHighlight = searchTerm && isSearchHit(line, c, searchTerm);
-                    display.setCell(c, r, line[c], isHighlight ? CLR_CYAN : CLR_GRAY);
+                if (typeof display.setCell === 'function') {
+                    for (let c = 0; c < line.length && c < TERMINAL_COLS; c++) {
+                        const isHighlight = searchTerm && isSearchHit(line, c, searchTerm);
+                        display.setCell(c, r, line[c], isHighlight ? CLR_CYAN : CLR_GRAY);
+                    }
+                } else {
+                    display.putstr(0, r, line.substring(0, TERMINAL_COLS), CLR_GRAY);
                 }
             }
         }
@@ -109,7 +114,9 @@ export async function showPager(display, text, title) {
     }
 
     // Restore terminal
-    restoreTerminal(display, saved);
+    if (saved) {
+        restoreTerminal(display, saved);
+    }
 }
 
 // Wrap text to fit terminal width

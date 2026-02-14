@@ -6,15 +6,17 @@ import { COLNO, ROWNO, STONE, IS_WALL, IS_DOOR, IS_ROOM,
          ACCESSIBLE, CORR, DOOR, D_CLOSED, D_LOCKED, D_BROKEN,
          POOL, LAVAPOOL,
          NORMAL_SPEED, isok } from './config.js';
-import { rn2, rnd } from './rng.js';
+import { rn2, rnd, c_d } from './rng.js';
 import { monsterAttackPlayer } from './combat.js';
-import { FOOD_CLASS, BOULDER, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS } from './objects.js';
+import { FOOD_CLASS, COIN_CLASS, BOULDER, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS } from './objects.js';
 import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT,
          POISON, UNDEF, TABU } from './dog.js';
 import { couldsee, m_cansee, do_clear_area } from './vision.js';
+import { can_teleport } from './mondata.js';
 import { PM_GRID_BUG, PM_IRON_GOLEM, PM_SHOPKEEPER, mons,
+         PM_LEPRECHAUN,
          M1_FLY, M1_AMORPHOUS, M1_CLING, M1_SEE_INVIS, S_MIMIC,
-         MZ_SMALL, MR_FIRE, MR_SLEEP } from './monsters.js';
+         MZ_TINY, MZ_SMALL, MR_FIRE, MR_SLEEP, G_FREQ } from './monsters.js';
 import { STATUE_TRAP, MAGIC_TRAP, VIBRATING_SQUARE, RUST_TRAP, FIRE_TRAP,
          SLP_GAS_TRAP, BEAR_TRAP, PIT, SPIKED_PIT, HOLE, TRAPDOOR,
          WEB, ANTI_MAGIC } from './symbols.js';
@@ -69,6 +71,20 @@ const ydir = [-1, -1, 0, 1, 1, 1, 0, -1];
 // Squared distance
 function dist2(x1, y1, x2, y2) {
     return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
+}
+
+function hasGold(inv) {
+    return Array.isArray(inv)
+        && inv.some(o => o && o.oclass === COIN_CLASS && (o.quan ?? 1) > 0);
+}
+
+// C ref: mon.c:3243 corpse_chance() RNG.
+function petCorpseChanceRoll(mon) {
+    const mdat = mon?.type || {};
+    const gfreq = (mdat.geno || 0) & G_FREQ;
+    const verysmall = (mdat.size || 0) === MZ_TINY;
+    const corpsetmp = 2 + (gfreq < 2 ? 1 : 0) + (verysmall ? 1 : 0);
+    return rn2(corpsetmp);
 }
 
 // ========================================================================
@@ -148,8 +164,9 @@ function mfndpos(mon, map, player) {
                     continue;
             }
 
+            const monAtPos = map.monsterAt(nx, ny);
             // C ref: MON_AT — skip positions with other monsters (unless ALLOW_M)
-            if (map.monsterAt(nx, ny) && !allowM) continue;
+            if (monAtPos && !allowM) continue;
 
             // C ref: u_at — skip player position
             if (nx === player.x && ny === player.y) continue;
@@ -179,7 +196,12 @@ function mfndpos(mon, map, player) {
                 }
             }
 
-            positions.push({ x: nx, y: ny, allowTraps });
+            positions.push({
+                x: nx,
+                y: ny,
+                allowTraps,
+                allowM: !!(allowM && monAtPos),
+            });
         }
     }
     return positions;
@@ -359,19 +381,68 @@ function dochug(mon, map, player, display, fov) {
 
     // Phase 2: Sleep check
     // C ref: monmove.c disturb() — wake sleeping monster if player visible & close
+    function disturb(monster) {
+        // C ref: couldsee() and mdistu() <= 100 gate.
+        const canSee = fov && fov.canSee(monster.mx, monster.my);
+        if (!canSee) return false;
+        if (dist2(monster.mx, monster.my, player.x, player.y) > 100) return false;
+
+        // C ref: !Stealth || (ettin && rn2(10)).
+        // Replay player state does not yet model stealth intrinsics by default.
+        if (player.stealth) {
+            const isEttin = monster.type?.name === 'ettin';
+            if (!(isEttin && rn2(10))) return false;
+        }
+
+        // C ref: nymph/jabberwock/leprechaun: only wake 1/50.
+        const sym = monster.type?.symbol;
+        const isHardSleeper = sym === 'n' || monster.type?.name === 'jabberwock' || sym === 'l';
+        if (isHardSleeper && rn2(50)) return false;
+
+        // C ref: Aggravate_monster || dog/human || !rn2(7) (non-mimics).
+        // We do not model mimic furniture/object disguise state here.
+        const aggravate = !!player.aggravateMonster;
+        const isDogOrHuman = sym === 'd' || sym === '@';
+        if (!(aggravate || isDogOrHuman || !rn2(7))) return false;
+
+        return true;
+    }
+
     if (mon.sleeping) {
-        // C ref: disturb checks couldsee() first. If can't see: 0 RNG, return.
-        const canSee = fov && fov.canSee(mon.mx, mon.my);
-        if (!canSee) return;
-
-        const d2 = dist2(mon.mx, mon.my, player.x, player.y);
-        if (d2 > 100) return; // mdistu > 100
-
-        // Simplified wake check (C has Stealth/Aggravate/tame checks with RNG)
-        // For now, just wake without RNG to match the trace
-        // (sleeping monsters in other rooms can't be seen, so they never reach here)
-        mon.sleeping = false;
+        if (disturb(mon)) mon.sleeping = false;
         return;
+    }
+
+    // C ref: monmove.c phase-1 timeout checks.
+    // Confused monsters may recover with 1/50 chance each turn.
+    if (mon.confused && !rn2(50)) mon.confused = false;
+    // Stunned monsters may recover with 1/10 chance each turn.
+    if (mon.stunned && !rn2(10)) mon.stunned = false;
+
+    // C ref: monmove.c:759-761 — fleeing monster may regain courage.
+    if (mon.flee && !(mon.fleetim > 0)
+        && (mon.mhp ?? 0) >= (mon.mhpmax ?? 0)
+        && !rn2(25)) {
+        mon.flee = false;
+    }
+
+    // C ref: monmove.c:745-750 — fleeing teleport-capable monsters
+    // check !rn2(40) and may spend their turn teleporting away.
+    if (mon.flee && !rn2(40) && can_teleport(mon.type || {})
+        && !mon.iswiz && !(map.flags && map.flags.noteleport)) {
+            // Simplified rloc() equivalent: random accessible unoccupied square.
+            for (let tries = 0; tries < 200; tries++) {
+                const nx = 1 + rn2(COLNO - 1);
+                const ny = rn2(ROWNO);
+                const loc = map.at(nx, ny);
+                if (!loc || !ACCESSIBLE(loc.typ)) continue;
+                if (map.monsterAt(nx, ny)) continue;
+                if (nx === player.x && ny === player.y) continue;
+                mon.mx = nx;
+                mon.my = ny;
+                return;
+            }
+            return;
     }
 
     // distfleeck: always rn2(5) for every non-sleeping monster
@@ -386,6 +457,7 @@ function dochug(mon, map, player, display, fov) {
                     && Math.abs(mon.my - player.y) <= 1);
     const M2_WANDER = 0x800000;
     const isWanderer = !!(mon.type && mon.type.flags2 & M2_WANDER);
+    const monCanSee = (mon.mcansee !== false) && !mon.blind;
 
     // Short-circuit OR matching C's evaluation order
     // Each rn2() is only consumed if earlier conditions didn't short-circuit
@@ -395,10 +467,17 @@ function dochug(mon, map, player, display, fov) {
     if (!phase3Cond) phase3Cond = !!(mon.confused);
     if (!phase3Cond) phase3Cond = !!(mon.stunned);
     if (!phase3Cond && mon.minvis) phase3Cond = !rn2(3);
-    // skip leprechaun check (not relevant for early levels)
+    // C ref: monmove.c phase-three leprechaun clause:
+    // (mdat->mlet == S_LEPRECHAUN && !findgold(player_inventory)
+    //  && (findgold(mon_inventory) || rn2(2)))
+    if (!phase3Cond && mon.mndx === PM_LEPRECHAUN) {
+        const playerHasGold = hasGold(player.inventory);
+        const monHasGold = hasGold(mon.minvent);
+        if (!playerHasGold && (monHasGold || rn2(2))) phase3Cond = true;
+    }
     if (!phase3Cond && isWanderer) phase3Cond = !rn2(4);
     // skip Conflict check
-    if (!phase3Cond && mon.mcansee === false) phase3Cond = !rn2(4);
+    if (!phase3Cond && !monCanSee) phase3Cond = !rn2(4);
     if (!phase3Cond) phase3Cond = !!(mon.peaceful);
 
     if (phase3Cond) {
@@ -604,12 +683,20 @@ function best_target(mon, forced, map, player) {
 // For early game pets (dogs/cats), they have no ranged attacks,
 // but best_target still evaluates targets (consuming RNG via score_targ).
 // The actual attack path (mattackm) is not reached for melee-only pets.
-function pet_ranged_attk(mon, map, player) {
+function pet_ranged_attk(mon, map, player, display) {
     const mtarg = best_target(mon, false, map, player);
-    // C ref: dogmove.c:912 — hungry check (rn2(5) consumed only if target found)
-    // For early game: pet_ranged_attk returns MMOVE_NOTHING because
-    // mattackm returns M_ATTK_MISS for pets without ranged attacks.
-    // No additional RNG consumed after best_target for melee-only pets.
+    // C ref: dogmove.c:912-970 — if target exists, pet may attempt attack.
+    if (!mtarg) return 0;
+    if (mtarg.isPlayer) {
+        monsterAttackPlayer(mon, player, display);
+        return 1; // acted (MMOVE_DONE)
+    }
+    // For melee-only pets, mattackm is relevant only when target is adjacent.
+    const dm = Math.max(Math.abs(mon.mx - mtarg.mx), Math.abs(mon.my - mtarg.my));
+    if (dm <= 1) {
+        rnd(20); // C ref: mhitm.c mattackm() to-hit roll
+    }
+    return 0; // miss/no-ranged-action in early-game pet traces
 }
 
 // ========================================================================
@@ -809,6 +896,60 @@ function dog_move(mon, map, player, display, fov) {
     for (let i = 0; i < cnt; i++) {
         const nx = positions[i].x, ny = positions[i].y;
 
+        // C ref: dogmove.c:1088-1166 — pet melee against adjacent monster.
+        // Minimal faithful path: consume mattackm to-hit roll and stop after
+        // one melee attempt (MMOVE_DONE) like C.
+        if (positions[i].allowM) {
+            const target = map.monsterAt(nx, ny);
+            if (target && !target.dead) {
+                // C ref: dogmove.c:1114-1128 — balk if target too strong/dangerous.
+                const balk = (mon.mlevel || 1)
+                    + Math.floor((5 * (mon.mhp || 1)) / Math.max(1, mon.mhpmax || 1))
+                    - 2;
+                if ((target.mlevel || 0) >= balk
+                    || (target.tame && mon.tame)
+                    || (target.peaceful && (mon.mhp || 1) * 4 < Math.max(1, mon.mhpmax || 1))) {
+                    continue;
+                }
+
+                const roll = rnd(20); // C ref: mhitm.c mattackm to-hit roll
+
+                // C ref: mhitm.c mattackm() — strike = (find_mac(mdef) + m_lev) > dieroll.
+                const toHit = (target.mac ?? 10) + (mon.mlevel || 1);
+                const hit = toHit > roll;
+                if (hit) {
+                    const attk = mon.attacks && mon.attacks[0];
+                    const dice = (attk && attk.dice) ? attk.dice : 1;
+                    const sides = (attk && attk.sides) ? attk.sides : 1;
+                    const dmg = c_d(Math.max(1, dice), Math.max(1, sides));
+
+                    // C ref: mhitm_knockback()
+                    rn2(3);
+                    rn2(6); // C ref: mhitm_knockback
+
+                    // Minimal pet-vs-monster damage/kill handling for replay parity.
+                    // C path: mattackm -> mhitm_knockback -> mon killed -> corpse_chance -> grow_up.
+                    target.mhp -= Math.max(1, dmg);
+                    if (target.mhp <= 0) {
+                        target.dead = true;
+                        map.removeMonster(target);
+                        petCorpseChanceRoll(target);
+                        rnd(1); // C ref: makemon.c grow_up()
+                    } else {
+                        // C ref: mhitm.c passivemm() for adjacent non-lethal outcomes.
+                        rn2(3);
+                    }
+                } else {
+                    // C ref: mhitm.c passivemm() on miss/non-kill interactions.
+                    rn2(3);
+                }
+                if (roll === 20 && display && mon.name && target.name) {
+                    display.putstr_message(`The ${mon.name} misses the ${target.name}.`);
+                }
+                return 0; // MMOVE_DONE-equivalent for this simplified path
+            }
+        }
+
         // Trap avoidance — C ref: dogmove.c:1182-1204
         // Pets avoid harmful seen traps with 39/40 probability
         // Only check if mfndpos flagged this position as having a trap (ALLOW_TRAPS)
@@ -895,7 +1036,8 @@ function dog_move(mon, map, player, display, fov) {
     // Even if pet has no ranged attacks, best_target still evaluates
     // all visible monsters and calls score_targ (consuming rnd(5) each).
     if (!do_eat) {
-        pet_ranged_attk(mon, map, player);
+        const ranged = pet_ranged_attk(mon, map, player, display);
+        if (ranged) return 0;
     }
 
     // Move the dog
@@ -977,6 +1119,13 @@ function m_move(mon, map, player) {
     for (let i = 0; i < cnt; i++) {
         const nx = positions[i].x;
         const ny = positions[i].y;
+
+        // C ref: monmove.c undesirable_disp()/trap avoidance —
+        // monsters usually avoid harmful known traps (39/40 chance).
+        if (positions[i].allowTraps) {
+            const trap = map.trapAt(nx, ny);
+            if (trap && trap.tseen && rn2(40)) continue;
+        }
 
         // Track backtracking avoidance
         // C ref: monmove.c — only check when appr != 0

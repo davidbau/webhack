@@ -18,6 +18,7 @@ import { Player, roles } from '../../js/player.js';
 import { NORMAL_SPEED, A_DEX, A_CON,
          RACE_HUMAN, RACE_ELF, RACE_DWARF, RACE_GNOME, RACE_ORC } from '../../js/config.js';
 import { rhack } from '../../js/commands.js';
+import { makemon } from '../../js/makemon.js';
 import { pushInput } from '../../js/input.js';
 import { movemon, initrack, settrack } from '../../js/monmove.js';
 import { FOV } from '../../js/vision.js';
@@ -341,6 +342,18 @@ function getPreStartupRngEntries(session) {
     return [];
 }
 
+// Some keylog-derived gameplay sessions record startup RNG in step[0].rng
+// instead of startup.rng (which is empty). Detect that format so replay output
+// can be normalized for strict per-step comparison.
+export function hasStartupBurstInFirstStep(session) {
+    if (!session) return false;
+    const startupCalls = session.startup?.rngCalls ?? 0;
+    if (startupCalls !== 0) return false;
+    if ((session.startup?.rng?.length ?? 0) !== 0) return false;
+    const firstStepRngLen = session.steps?.[0]?.rng?.length ?? 0;
+    return firstStepRngLen > 0;
+}
+
 // Generate full startup (map gen + post-level init) with RNG trace capture.
 // Matches the C startup sequence: o_init → dungeon_init → makelevel → wallification
 // → player placement → simulatePostLevelInit (pet, inventory, attributes, welcome).
@@ -436,6 +449,7 @@ const nullDisplay = {
     putstr_message() {},
     putstr() {},
     clearRow() {},
+    setCell() {},
     renderMap() {},
     renderStatus() {},
     renderChargenMenu() {}, // For inventory and modal menus
@@ -492,12 +506,29 @@ class HeadlessGame {
         this.turnCount++;
         this.player.turns = this.turnCount;
 
+        // C ref: mon.c m_calcdistress() — temporary flee timeout handling.
+        for (const mon of this.map.monsters) {
+            if (mon.dead) continue;
+            if (mon.fleetim && mon.fleetim > 0) {
+                mon.fleetim--;
+                if (mon.fleetim <= 0) {
+                    mon.fleetim = 0;
+                    mon.flee = false;
+                }
+            }
+        }
+
         for (const mon of this.map.monsters) {
             if (mon.dead) continue;
             mon.movement += this.mcalcmove(mon);
         }
 
-        rn2(70);   // monster spawn check
+        // C ref: allmain.c moveloop_core() — occasional random spawn.
+        if (!rn2(70)) {
+            // Spawn at random valid location; new monster misses its first turn
+            // because movement allocation already happened above.
+            makemon(null, 0, 0, 0, this.player.dungeonLevel, this.map);
+        }
 
         // C ref: allmain.c:289-295 regen_hp()
         if (this.player.hp < this.player.hpmax) {
@@ -539,7 +570,9 @@ class HeadlessGame {
         // Status checks every 5 moves: none apply in early game (no intrinsics/conditions)
 
         const dex = this.player.attributes ? this.player.attributes[A_DEX] : 14;
-        rn2(40 + dex * 3); // engrave wipe
+        if (!rn2(40 + dex * 3)) {
+            rnd(3); // C ref: allmain.c u_wipe_engr(rnd(3))
+        }
 
         // C ref: allmain.c:414 seer_turn check
         // C's svm.moves is +1 ahead of turnCount (same offset as exerchk)
@@ -600,7 +633,7 @@ class HeadlessGame {
 
 // Replay a gameplay session and return per-step RNG results.
 // Returns { startup: { rngCalls, rng }, steps: [{ rngCalls, rng }] }
-export async function replaySession(seed, session) {
+export async function replaySession(seed, session, opts = {}) {
     initrack(); // clear hero track buffer between sessions
     enableRngLog();
     initRng(seed);
@@ -704,8 +737,14 @@ export async function replaySession(seed, session) {
     // any accumulated count prefix — consuming it. So commands always execute with
     // multi=0, and each keystroke produces at most one turn of game effects.
     // Digit keystrokes ('0'-'9') are captured as separate steps with 0 RNG.
+    const allSteps = session.steps || [];
+    const maxSteps = Number.isInteger(opts.maxSteps)
+        ? Math.max(0, Math.min(opts.maxSteps, allSteps.length))
+        : allSteps.length;
     const stepResults = [];
-    for (const step of (session.steps || [])) {
+    let pendingCommand = null;
+    for (let stepIndex = 0; stepIndex < maxSteps; stepIndex++) {
+        const step = allSteps[stepIndex];
         const prevCount = getRngLog().length;
 
         // C ref: cmd.c:4958 — digit keys start count prefix accumulation
@@ -722,25 +761,57 @@ export async function replaySession(seed, session) {
             continue;
         }
 
-        // Feed the key to the game engine
-        // For multi-char keys (e.g. "wb" = wield item b), push trailing chars
-        // into input queue so nhgetch() returns them immediately
-        if (step.key.length > 1) {
-            for (let i = 1; i < step.key.length; i++) {
+        const ch = step.key.charCodeAt(0);
+        let result = null;
+
+        if (pendingCommand) {
+            // A previous command is blocked on nhgetch(); this step's key feeds it.
+            for (let i = 0; i < step.key.length; i++) {
                 pushInput(step.key.charCodeAt(i));
             }
-        }
-        const ch = step.key.charCodeAt(0);
+            const settled = await Promise.race([
+                pendingCommand.then(v => ({ done: true, value: v })),
+                new Promise(resolve => setTimeout(() => resolve({ done: false }), 0)),
+            ]);
+            if (!settled.done) {
+                result = { moved: false, tookTime: false };
+            } else {
+                result = settled.value;
+                pendingCommand = null;
+            }
+        } else {
+            // Feed the key to the game engine
+            // For multi-char keys (e.g. "wb" = wield item b), push trailing chars
+            // into input queue so nhgetch() returns them immediately
+            if (step.key.length > 1) {
+                for (let i = 1; i < step.key.length; i++) {
+                    pushInput(step.key.charCodeAt(i));
+                }
+            }
 
-        // Modal commands (inventory, etc.) need dismissal key
-        // C ref: invent.c display_inventory() waits for nhgetch() dismissal
-        const needsDismissal = ['i', 'I'].includes(String.fromCharCode(ch));
-        if (needsDismissal) {
-            pushInput(32); // SPACE to dismiss modal display
-        }
+            // Modal commands (inventory, etc.) need dismissal key
+            // C ref: invent.c display_inventory() waits for nhgetch() dismissal
+            const needsDismissal = ['i', 'I'].includes(String.fromCharCode(ch));
+            if (needsDismissal) {
+                pushInput(32); // SPACE to dismiss modal display
+            }
 
-        // Execute the command once (one turn per keystroke)
-        let result = await rhack(ch, game);
+            // Execute the command once (one turn per keystroke)
+            const commandPromise = rhack(ch, game);
+            const settled = await Promise.race([
+                commandPromise.then(v => ({ done: true, value: v })),
+                new Promise(resolve => setTimeout(() => resolve({ done: false }), 0)),
+            ]);
+
+            if (!settled.done) {
+                // Command is waiting for additional input (direction/item/etc.).
+                // Defer resolution to subsequent captured step(s).
+                pendingCommand = commandPromise;
+                result = { moved: false, tookTime: false };
+            } else {
+                result = settled.value;
+            }
+        }
 
         // C ref: cmd.c prefix commands (F=fight, G=run, g=rush) return without
         // consuming time or reading further input. For multi-char keys like "Fh",
@@ -821,10 +892,28 @@ export async function replaySession(seed, session) {
         });
     }
 
+    // If session ends while a command is waiting for input, cancel it with ESC.
+    if (pendingCommand) {
+        pushInput(27);
+        await pendingCommand;
+    }
+
+    const startupBurstInStep0 = hasStartupBurstInFirstStep(session);
+    let normalizedStartup = { rngCalls: startupRng.length, rng: startupRng };
+    if (startupBurstInStep0) {
+        normalizedStartup = { rngCalls: 0, rng: [] };
+        if (stepResults.length > 0) {
+            stepResults[0] = {
+                rngCalls: startupRng.length + stepResults[0].rngCalls,
+                rng: startupRng.concat(stepResults[0].rng),
+            };
+        }
+    }
+
     disableRngLog();
 
     return {
-        startup: { rngCalls: startupRng.length, rng: startupRng },
+        startup: normalizedStartup,
         steps: stepResults,
     };
 }

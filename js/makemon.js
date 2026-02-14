@@ -1209,6 +1209,69 @@ function makemon_rnd_goodpos(map, ptr) {
     return null;
 }
 
+// C ref: teleport.c collect_coords() + enexto() for group placement.
+function group_collect_coords(cx, cy, maxradius) {
+    const COLNO = 80;
+    const ROWNO = 21;
+    const rowrange = (cy < Math.floor(ROWNO / 2)) ? (ROWNO - 1 - cy) : cy;
+    const colrange = (cx < Math.floor(COLNO / 2)) ? (COLNO - 1 - cx) : cx;
+    const k = Math.max(rowrange, colrange);
+    const lim = maxradius ? Math.min(maxradius, k) : k;
+    const result = [];
+
+    for (let radius = 1; radius <= lim; radius++) {
+        const ringStart = result.length;
+        const lox = cx - radius;
+        const hix = cx + radius;
+        const loy = cy - radius;
+        const hiy = cy + radius;
+        for (let y = Math.max(loy, 0); y <= hiy; y++) {
+            if (y > ROWNO - 1) break;
+            for (let x = Math.max(lox, 1); x <= hix; x++) {
+                if (x > COLNO - 1) break;
+                if (x !== lox && x !== hix && y !== loy && y !== hiy) continue;
+                result.push({ x, y });
+            }
+        }
+        let n = result.length - ringStart;
+        let passIdx = ringStart;
+        while (n > 1) {
+            const swap = rn2(n);
+            if (swap) {
+                const tmp = result[passIdx];
+                result[passIdx] = result[passIdx + swap];
+                result[passIdx + swap] = tmp;
+            }
+            passIdx++;
+            n--;
+        }
+    }
+    return result;
+}
+
+function group_sp_goodpos(x, y, map) {
+    const DOOR = 23;
+    if (x < 0 || y < 0 || x >= 80 || y >= 21) return false;
+    const loc = map.at(x, y);
+    if (!loc || loc.typ <= DOOR) return false;
+    for (const m of map.monsters || []) {
+        if (m.mx === x && m.my === y) return false;
+    }
+    return true;
+}
+
+function group_enexto(cx, cy, map) {
+    const nearCoords = group_collect_coords(cx, cy, 3);
+    for (const cc of nearCoords) {
+        if (group_sp_goodpos(cc.x, cc.y, map)) return cc;
+    }
+    const allCoords = group_collect_coords(cx, cy, 0);
+    for (let i = nearCoords.length; i < allCoords.length; i++) {
+        if (group_sp_goodpos(allCoords[i].x, allCoords[i].y, map)) return allCoords[i];
+    }
+    return null;
+}
+
 export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     let mndx;
     let anymon = false;
@@ -1217,6 +1280,14 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     const DEBUG_MAKEMON = false;
     if (DEBUG_MAKEMON && depth >= 2) {
         console.log(`\nmakemon(${ptr_or_null === null ? 'null' : ptr_or_null}, ${x}, ${y}, ${mmflags}, depth=${depth})`);
+    }
+
+    // C ref: makemon.c:1173-1178 — random position finding for (0,0)
+    // Happens before random monster selection when ptr is null.
+    if (x === 0 && y === 0 && map) {
+        const pos = makemon_rnd_goodpos(map, null);
+        if (pos) { x = pos.x; y = pos.y; }
+        else return null;
     }
 
     if (ptr_or_null === null || ptr_or_null === undefined) {
@@ -1232,13 +1303,6 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
 
     if (mndx < 0 || mndx >= mons.length) return null;
     const ptr = mons[mndx];
-
-    // C ref: makemon.c:1173-1178 — random position finding for (0,0)
-    if (x === 0 && y === 0 && map) {
-        const pos = makemon_rnd_goodpos(map, ptr);
-        if (pos) { x = pos.x; y = pos.y; }
-        else return null;
-    }
 
     // C ref: makemon.c:1252 — mtmp->m_id = next_ident()
     // next_ident() returns counter value and consumes rnd(2)
@@ -1291,50 +1355,8 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
         mksobj(mitem, true, false);
     }
 
-    // Group formation
-    // C ref: makemon.c:1427-1435 — only for anymon (random monster)
-    if (anymon && !(mmflags & MM_NOGRP)) {
-        if (ptr.geno & G_SGROUP) {
-            if (!rn2(2)) {
-                // m_initsgrp: rnd(3) for count, then makemon per group member
-                const cnt = Math.floor(rnd(3) / 4); // ulevel < 3 → divide by 4
-                for (let i = 0; i < cnt; i++) {
-                    makemon(mndx, x, y, mmflags | MM_NOGRP, depth, map);
-                }
-            }
-        } else if (ptr.geno & G_LGROUP) {
-            if (!rn2(3)) {
-                // m_initlgrp or m_initsgrp
-                if (rn2(3)) {
-                    // m_initsgrp: rnd(3)
-                    const cnt = Math.floor(rnd(3) / 4);
-                    for (let i = 0; i < cnt; i++) {
-                        makemon(mndx, x, y, mmflags | MM_NOGRP, depth, map);
-                    }
-                } else {
-                    // m_initlgrp: rnd(10)
-                    const cnt = Math.floor(rnd(10) / 4);
-                    for (let i = 0; i < cnt; i++) {
-                        makemon(mndx, x, y, mmflags | MM_NOGRP, depth, map);
-                    }
-                }
-            }
-        }
-    }
-
-    // Weapon/inventory initialization
-    // C ref: makemon.c:1438-1440
-    if (is_armed(ptr))
-        m_initweap(mndx, depth || 1);
-    m_initinv(mndx, depth || 1, m_lev);
-
-    // C ref: makemon.c:1443-1448 — saddle for domestic monsters
-    // C evaluates !rn2(100) first (always consumed), then is_domestic
-    if (!rn2(100) && is_domestic(ptr)) {
-        mksobj(SADDLE, true, false);
-    }
-
-    // Build full monster object for gameplay
+    // Build full monster object for gameplay.
+    // C ref: makemon.c creates/places monster before group and inventory setup.
     const symEntry = def_monsyms[ptr.symbol];
     const mon = {
         mndx,
@@ -1369,6 +1391,51 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     // Add to map if provided
     if (map && x !== undefined && y !== undefined) {
         map.monsters.unshift(mon); // C ref: fmon prepend (LIFO order)
+    }
+
+    // Group formation
+    // C ref: makemon.c:1427-1435 — only for anymon (random monster)
+    if (anymon && !(mmflags & MM_NOGRP)) {
+        const initgrp = (n) => {
+            const ulevel = 1;
+            let cnt = rnd(n);
+            cnt = Math.floor(cnt / ((ulevel < 3) ? 4 : (ulevel < 5) ? 2 : 1));
+            if (!cnt) cnt = 1;
+            let gx = mon.mx;
+            let gy = mon.my;
+            while (cnt-- > 0) {
+                if (peace_minded(mon.type)) continue;
+                const cc = map ? group_enexto(gx, gy, map) : null;
+                if (!cc) continue;
+                gx = cc.x;
+                gy = cc.y;
+                const mate = makemon(mndx, gx, gy, mmflags | MM_NOGRP, depth, map);
+                if (mate) {
+                    mate.peaceful = false;
+                    mate.mpeaceful = false;
+                    mate.mavenge = 0;
+                }
+            }
+        };
+
+        if ((ptr.geno & G_SGROUP) && rn2(2)) {
+            initgrp(3);
+        } else if (ptr.geno & G_LGROUP) {
+            if (rn2(3)) initgrp(10);
+            else initgrp(3);
+        }
+    }
+
+    // Weapon/inventory initialization
+    // C ref: makemon.c:1438-1440
+    if (is_armed(ptr))
+        m_initweap(mndx, depth || 1);
+    m_initinv(mndx, depth || 1, m_lev);
+
+    // C ref: makemon.c:1443-1448 — saddle for domestic monsters
+    // C evaluates !rn2(100) first (always consumed), then is_domestic
+    if (!rn2(100) && is_domestic(ptr)) {
+        mksobj(SADDLE, true, false);
     }
 
     return mon;

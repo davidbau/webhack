@@ -19,7 +19,6 @@ const session = existsSync(sessionPath)
 
 describe('C gameplay replay: seed4 valkyrie', { skip: !session }, () => {
     if (!session) return;
-    const preParityLimit = 10; // Steps 0-9 currently match exactly.
 
     it('fixture role/class is Valkyrie', () => {
         assert.equal(session.character?.role, 'Valkyrie');
@@ -37,19 +36,7 @@ describe('C gameplay replay: seed4 valkyrie', { skip: !session }, () => {
             `startup RNG diverges at ${divergence.index}: JS="${divergence.js}" session="${divergence.session}"`);
     });
 
-    it('step RNG matches C trace through opening combat window', async () => {
-        const replay = await replaySession(session.seed, session);
-        for (let i = 0; i < preParityLimit; i++) {
-            const jsStep = replay.steps[i];
-            const cStep = session.steps[i];
-            assert.ok(jsStep, `Replay missing step ${i}`);
-            const divergence = compareRng(jsStep.rng, cStep.rng);
-            assert.equal(divergence.index, -1,
-                `step ${i} (${cStep.action}) diverges at ${divergence.index}: JS="${divergence.js}" session="${divergence.session}"`);
-        }
-    });
-
-    it.skip('step RNG matches C trace for full session', async () => {
+    it('step RNG matches C trace for full session', async () => {
         const replay = await replaySession(session.seed, session);
         for (let i = 0; i < session.steps.length; i++) {
             const jsStep = replay.steps[i];

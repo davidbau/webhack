@@ -201,6 +201,14 @@ export function monsterAttackPlayer(monster, player, display) {
             handleSpecialAttack(attack.special, monster, player, display);
         }
 
+        // C ref: uhitm.c monster-vs-player electric attacks (AD_ELEC):
+        // mhitm_mgc_atk_negated() then mhitm_ad_elec() consume rn2(10), rn2(20).
+        // In monsters.js attack.damage stores adtyp numeric code (AD_ELEC=6).
+        if (attack.damage === 6) {
+            rn2(10);
+            rn2(20);
+        }
+
         if (damage > 0) {
             // Apply damage
             const died = player.takeDamage(damage, monster.name);

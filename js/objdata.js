@@ -13,6 +13,7 @@ import {
     BELL_OF_OPENING, CANDELABRUM_OF_INVOCATION,
     SPE_BOOK_OF_THE_DEAD,
 } from './objects.js';
+import { PM_DEATH, PM_PESTILENCE, PM_FAMINE } from './monsters.js';
 import { rn2 } from './rng.js';
 
 // ========================================================================
@@ -76,8 +77,11 @@ export function obj_resists(obj, ochance, achance) {
 
 // C ref: is_rider() — checks for Death, Famine, Pestilence corpses
 function is_rider_corpse(obj) {
-    // TODO: implement when rider PM_* constants are available
-    return false;
+    if (obj.otyp !== CORPSE) return false;
+    const corpsenm = obj.corpsenm;
+    return corpsenm === PM_DEATH
+        || corpsenm === PM_PESTILENCE
+        || corpsenm === PM_FAMINE;
 }
 
 // ========================================================================
