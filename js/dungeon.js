@@ -1202,8 +1202,8 @@ function populate_maze(map, depth) {
 // Helper function to create the actual maze
 function create_maze(map, corrwid, wallthick, rmdeadends) {
     // C ref: mkmaze.c create_maze()
-    const defaultMaxX = (COLNO - 1) & ~1;
-    const defaultMaxY = (ROWNO - 1) & ~1;
+    const defaultMaxX = (COLNO - 1);
+    const defaultMaxY = (ROWNO - 1);
     // C ref: save/restore gx.x_maze_max/gy.y_maze_max around temporary small-maze bounds.
     const tmpMaxX = Number.isInteger(map?._mazeMaxX) ? map._mazeMaxX : defaultMaxX;
     const tmpMaxY = Number.isInteger(map?._mazeMaxY) ? map._mazeMaxY : defaultMaxY;
