@@ -5087,6 +5087,10 @@ function put_lregion_here(map, x, y, nlx, nly, nhx, nhy, rtype, oneshot) {
         const undestroyable = (trap?.ttyp === MAGIC_PORTAL
             || trap?.ttyp === VIBRATING_SQUARE);
         if (trap && !undestroyable) {
+            const mon = map.monsterAt(x, y);
+            if (mon && mon.mtrapped) {
+                mon.mtrapped = 0;
+            }
             map.traps = map.traps.filter(t => t !== trap);
         }
         invalid = bad_location(map, x, y, nlx, nly, nhx, nhy)
@@ -5102,7 +5106,25 @@ function put_lregion_here(map, x, y, nlx, nly, nhx, nhy, rtype, oneshot) {
         case LR_TELE:
         case LR_UPTELE:
         case LR_DOWNTELE:
-            // Teleport region - not needed for basic implementation
+            // C ref: mkmaze.c put_lregion_here():
+            // if monster occupies destination, retry unless oneshot;
+            // oneshot relocates monster, and if impossible removes it from level.
+            {
+                const mon = map.monsterAt(x, y);
+                if (mon) {
+                    if (!oneshot) {
+                        return false;
+                    }
+                    const pos = enexto(x, y, map);
+                    if (pos) {
+                        mon.mx = pos.x;
+                        mon.my = pos.y;
+                    } else {
+                        map.removeMonster(mon);
+                    }
+                }
+            }
+            // C's u_on_newpos(x,y) has no levelgen-side equivalent here.
             break;
 
         case LR_PORTAL:

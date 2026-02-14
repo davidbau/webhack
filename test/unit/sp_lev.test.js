@@ -618,4 +618,30 @@ describe('sp_lev.js - des.* API', () => {
         assert.notEqual(map.trapAt(10, 10), null, 'undestroyable trap should remain');
         assert.notEqual(map.at(10, 10).typ, STAIRS, 'stairs should not overwrite undestroyable trap location');
     });
+
+    it('place_lregion oneshot teleport relocates occupying monster', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: '.' });
+        const map = getLevelState().map;
+        map.monsters.push({ mx: 10, my: 10, mhp: 10 });
+
+        // LR_TELE in js/dungeon.js constants.
+        place_lregion(map, 10, 10, 10, 10, 0, 0, 0, 0, 0);
+
+        assert.equal(map.monsterAt(10, 10), null, 'occupying monster should be displaced from teleport location');
+        assert.equal(map.monsters.length, 1, 'monster should remain on level when relocation is possible');
+    });
+
+    it('place_lregion oneshot teleport limbos occupying monster when no relocation exists', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: ' ' });
+        const map = getLevelState().map;
+        map.at(10, 10).typ = ROOM;
+        map.monsters.push({ mx: 10, my: 10, mhp: 10 });
+
+        // LR_TELE in js/dungeon.js constants.
+        place_lregion(map, 10, 10, 10, 10, 0, 0, 0, 0, 0);
+
+        assert.equal(map.monsters.length, 0, 'monster should be removed when no legal relocation exists');
+    });
 });
