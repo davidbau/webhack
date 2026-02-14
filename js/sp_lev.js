@@ -2535,6 +2535,18 @@ export function terrain(x_or_opts, y_or_type, type) {
                 markSpLevMap(pos.x, pos.y);
                 markSpLevTouched(pos.x, pos.y);
             }
+        } else if (Array.isArray(x_or_opts.coords)) {
+            // selection object format (selection.new()/area()/randline() result)
+            const terrainType = mapchrToTerrain(y_or_type);
+            if (terrainType === -1) return;
+            for (const coord of x_or_opts.coords) {
+                if (!coord) continue;
+                if (coord.x >= 0 && coord.x < COLNO && coord.y >= 0 && coord.y < ROWNO) {
+                    levelState.map.locations[coord.x][coord.y].typ = terrainType;
+                    markSpLevMap(coord.x, coord.y);
+                    markSpLevTouched(coord.x, coord.y);
+                }
+            }
         }
     } else if (typeof x_or_opts === 'number') {
         // (x, y, type) format
@@ -2575,38 +2587,53 @@ export function replace_terrain(opts) {
 
     const chance = opts.chance !== undefined ? opts.chance : 100;
 
-    // Determine region to replace in
-    let x1 = 0, y1 = 0, x2 = COLNO - 1, y2 = ROWNO - 1;
+    // C ref: spo_replace_terrain() iterates selection bounds in x-major order.
+    let minX = 0, minY = 0, maxX = COLNO - 1, maxY = ROWNO - 1;
+    let selSet = null;
 
-    if (opts.region) {
-        if (opts.region.x1 !== undefined) {
-            // Rectangle format
-            x1 = opts.region.x1;
-            y1 = opts.region.y1;
-            x2 = opts.region.x2;
-            y2 = opts.region.y2;
-        } else if (opts.region.coords) {
-            // Selection format - replace only those coords
-            for (const coord of opts.region.coords) {
-                if (coord.x >= 0 && coord.x < COLNO && coord.y >= 0 && coord.y < ROWNO) {
-                    const loc = levelState.map.locations[coord.x][coord.y];
-                    if (loc.typ === fromType && (chance >= 100 || rn2(100) < chance)) {
-                        loc.typ = toType;
-                    }
-                }
-            }
-            return;
+    if (opts.region && opts.region.coords) {
+        selSet = new Set();
+        minX = COLNO - 1;
+        minY = ROWNO - 1;
+        maxX = 0;
+        maxY = 0;
+        for (const coord of opts.region.coords) {
+            if (!coord) continue;
+            const x = Math.trunc(coord.x);
+            const y = Math.trunc(coord.y);
+            if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO) continue;
+            selSet.add(`${x},${y}`);
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
         }
+        if (selSet.size === 0) return;
+    } else if (opts.region && Array.isArray(opts.region) && opts.region.length >= 4) {
+        // des.replace_terrain({ region: [x1,y1,x2,y2], ... })
+        const p1 = getLocation(opts.region[0], opts.region[1], GETLOC_ANY_LOC, levelState.currentRoom || null);
+        const p2 = getLocation(opts.region[2], opts.region[3], GETLOC_ANY_LOC, levelState.currentRoom || null);
+        minX = Math.max(0, Math.min(p1.x, p2.x));
+        minY = Math.max(0, Math.min(p1.y, p2.y));
+        maxX = Math.min(COLNO - 1, Math.max(p1.x, p2.x));
+        maxY = Math.min(ROWNO - 1, Math.max(p1.y, p2.y));
+    } else if (opts.region && opts.region.x1 !== undefined) {
+        // C ref: rectangle args are passed through get_location(..., ANY_LOC, croom).
+        const p1 = getLocation(opts.region.x1, opts.region.y1, GETLOC_ANY_LOC, levelState.currentRoom || null);
+        const p2 = getLocation(opts.region.x2, opts.region.y2, GETLOC_ANY_LOC, levelState.currentRoom || null);
+        minX = Math.max(0, Math.min(p1.x, p2.x));
+        minY = Math.max(0, Math.min(p1.y, p2.y));
+        maxX = Math.min(COLNO - 1, Math.max(p1.x, p2.x));
+        maxY = Math.min(ROWNO - 1, Math.max(p1.y, p2.y));
     }
 
-    // Replace in rectangular region
-    for (let y = y1; y <= y2; y++) {
-        for (let x = x1; x <= x2; x++) {
-            if (x >= 0 && x < COLNO && y >= 0 && y < ROWNO) {
-                const loc = levelState.map.locations[x][y];
-                if (loc.typ === fromType && (chance >= 100 || rn2(100) < chance)) {
-                    loc.typ = toType;
-                }
+    for (let x = Math.max(1, minX); x <= maxX; x++) {
+        for (let y = minY; y <= maxY; y++) {
+            if (selSet && !selSet.has(`${x},${y}`)) continue;
+            const loc = levelState.map.locations[x][y];
+            if (loc.typ !== fromType) continue;
+            if (rn2(100) < chance) {
+                loc.typ = toType;
             }
         }
     }
@@ -6552,6 +6579,77 @@ export const selection = {
             }
         }
         return coords;
+    },
+
+    /**
+     * selection.randline(sel, x1, y1, x2, y2, roughness)
+     * selection.randline(x1, y1, x2, y2, roughness)
+     * C ref: nhlsel.c l_selection_randline(), selvar.c selection_do_randline()
+     */
+    randline: (...args) => {
+        let baseSel = selection.new();
+        let x1, y1, x2, y2, roughness;
+
+        if (args.length === 6 && args[0] && typeof args[0] === 'object') {
+            const src = args[0];
+            x1 = args[1];
+            y1 = args[2];
+            x2 = args[3];
+            y2 = args[4];
+            roughness = args[5];
+            if (Array.isArray(src.coords)) {
+                for (const c of src.coords) {
+                    if (Number.isFinite(c?.x) && Number.isFinite(c?.y)) {
+                        baseSel.set(c.x, c.y, true);
+                    }
+                }
+            }
+        } else if (args.length === 5) {
+            [x1, y1, x2, y2, roughness] = args;
+        } else {
+            return baseSel;
+        }
+
+        const p1 = selection._toAbsoluteCoord(x1, y1);
+        const p2 = selection._toAbsoluteCoord(x2, y2);
+        const out = selection.new();
+        for (const c of baseSel.coords) out.set(c.x, c.y, true);
+
+        const hasPoint = (x, y) => out.coords.some(c => c.x === x && c.y === y);
+        const setPoint = (x, y) => out.set(x, y, true);
+
+        const doRandLine = (ax1, ay1, ax2, ay2, rough, rec) => {
+            if (rec < 1 || (ax2 === ax1 && ay2 === ay1)) return;
+
+            const maxDist = Math.max(Math.abs(ax2 - ax1), Math.abs(ay2 - ay1));
+            if (rough > maxDist) rough = maxDist;
+
+            let mx, my;
+            if (rough < 2) {
+                mx = Math.trunc((ax1 + ax2) / 2);
+                my = Math.trunc((ay1 + ay2) / 2);
+            } else {
+                do {
+                    const dx = rn2(rough) - Math.trunc(rough / 2);
+                    const dy = rn2(rough) - Math.trunc(rough / 2);
+                    mx = Math.trunc((ax1 + ax2) / 2) + dx;
+                    my = Math.trunc((ay1 + ay2) / 2) + dy;
+                } while (mx > COLNO - 1 || mx < 0 || my < 0 || my > ROWNO - 1);
+            }
+
+            if (!hasPoint(mx, my)) setPoint(mx, my);
+
+            rough = Math.trunc((rough * 2) / 3);
+            rec--;
+
+            doRandLine(ax1, ay1, mx, my, rough, rec);
+            doRandLine(mx, my, ax2, ay2, rough, rec);
+
+            setPoint(ax2, ay2);
+        };
+
+        doRandLine(p1.x, p1.y, p2.x, p2.y, roughness, 12);
+        return out;
     },
 
     /**

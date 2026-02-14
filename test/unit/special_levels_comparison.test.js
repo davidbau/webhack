@@ -163,21 +163,26 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
     if (!cLevel) {
         assert.fail(`${levelName}: not found in C session`);
     }
-    // Quest sessions are captured via role-specific #wizloaddes flows and
-    // rngCallStart can be command-session aligned. For Arc locate/goal,
-    // rngRawCallStart captures the generation window more reliably.
-    const questRawStartUsable = cSession.group === 'quest'
-        && typeof cLevel.rngRawCallStart === 'number'
-        && typeof cLevel.rngCallStart === 'number'
-        && cLevel.rngRawCallStart > cLevel.rngCallStart;
-    const canUseRngStart = cSession.group !== 'quest' || questRawStartUsable;
-    const rngCallStart = (
+    const rngStartCandidates = [];
+    if (typeof cLevel.rngCallStart === 'number' && cLevel.rngCallStart > 0) {
+        rngStartCandidates.push(cLevel.rngCallStart);
+    }
+    if (typeof cLevel.rngRawCallStart === 'number' && cLevel.rngRawCallStart > 0
+        && !rngStartCandidates.includes(cLevel.rngRawCallStart)) {
+        rngStartCandidates.push(cLevel.rngRawCallStart);
+    }
+    // Keep historical default (raw when it is clearly later), then calibrate.
+    let rngCallStart = (
         (typeof cLevel.rngRawCallStart === 'number'
             && typeof cLevel.rngCallStart === 'number'
             && cLevel.rngRawCallStart > cLevel.rngCallStart)
             ? cLevel.rngRawCallStart
             : cLevel.rngCallStart
     );
+    if (!rngStartCandidates.includes(rngCallStart)) {
+        rngStartCandidates.unshift(rngCallStart);
+    }
+    const canUseRngStart = (rngStartCandidates.length > 0);
 
     const replayPrelude = () => {
         if (!canUseRngStart) return;
@@ -190,53 +195,55 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
 
     const calibrateStartOffset = () => {
         if (!canUseRngStart) {
-            return 0;
+            return { start: 0, offset: 0 };
         }
         if (!Array.isArray(cLevel.rngFingerprint) || cLevel.rngFingerprint.length === 0) {
-            return 0;
-        }
-        if (typeof rngCallStart !== 'number' || rngCallStart <= 0) {
-            return 0;
+            return { start: rngCallStart, offset: 0 };
         }
 
         let bestOffset = 0;
+        let bestStart = rngCallStart;
         let bestScore = -1;
         let bestCount = 0;
         const offsets = [];
         for (let off = -6; off <= 6; off++) offsets.push(off);
 
-        for (const off of offsets) {
-            initRng(seed);
-            skipRng(rngCallStart + off);
-            replayPrelude();
+        for (const start of rngStartCandidates) {
+            for (const off of offsets) {
+                if (!Number.isFinite(start + off) || start + off < 0) continue;
+                initRng(seed);
+                skipRng(start + off);
+                replayPrelude();
 
-            let score = 0;
-            for (const fp of cLevel.rngFingerprint) {
-                if (!fp || typeof fp.result !== 'number') continue;
-                let got = null;
-                if ((fp.fn === 'rn2' || fp.fn === 'rnd' || fp.fn === 'rne' || fp.fn === 'rnz')
-                    && typeof fp.arg !== 'number') continue;
-                if (fp.fn === 'rn2') got = rn2(fp.arg);
-                else if (fp.fn === 'rnd') got = (rn2(fp.arg) + 1);
-                else if (fp.fn === 'rne') got = rne(fp.arg);
-                else if (fp.fn === 'rnz') got = rnz(fp.arg);
-                else if (fp.fn === 'd' && Array.isArray(fp.args) && fp.args.length === 2) {
-                    got = c_d(fp.args[0], fp.args[1]);
+                let score = 0;
+                for (const fp of cLevel.rngFingerprint) {
+                    if (!fp || typeof fp.result !== 'number') continue;
+                    let got = null;
+                    if ((fp.fn === 'rn2' || fp.fn === 'rnd' || fp.fn === 'rne' || fp.fn === 'rnz')
+                        && typeof fp.arg !== 'number') continue;
+                    if (fp.fn === 'rn2') got = rn2(fp.arg);
+                    else if (fp.fn === 'rnd') got = (rn2(fp.arg) + 1);
+                    else if (fp.fn === 'rne') got = rne(fp.arg);
+                    else if (fp.fn === 'rnz') got = rnz(fp.arg);
+                    else if (fp.fn === 'd' && Array.isArray(fp.args) && fp.args.length === 2) {
+                        got = c_d(fp.args[0], fp.args[1]);
+                    }
+                    if (got === null) continue;
+                    if (got === fp.result) score++;
                 }
-                if (got === null) continue;
-                if (got === fp.result) score++;
-            }
 
-            if (
-                score > bestScore
-                || (score === bestScore && Math.abs(off) < Math.abs(bestOffset))
-                || (score === bestScore && Math.abs(off) === Math.abs(bestOffset) && off > bestOffset)
-            ) {
-                bestScore = score;
-                bestOffset = off;
-                bestCount = 1;
-            } else if (score === bestScore) {
-                bestCount++;
+                if (
+                    score > bestScore
+                    || (score === bestScore && Math.abs(off) < Math.abs(bestOffset))
+                    || (score === bestScore && Math.abs(off) === Math.abs(bestOffset) && off > bestOffset)
+                ) {
+                    bestScore = score;
+                    bestOffset = off;
+                    bestStart = start;
+                    bestCount = 1;
+                } else if (score === bestScore) {
+                    bestCount++;
+                }
             }
         }
 
@@ -244,12 +251,12 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
         // Near-matches are too weak because C logged calls can hide additional
         // underlying PRNG draws, which can produce false-positive offsets.
         if (bestScore !== cLevel.rngFingerprint.length) {
-            return 0;
+            return { start: rngCallStart, offset: 0 };
         }
         if (bestCount > 1 && bestOffset !== 0) {
-            return 0;
+            return { start: rngCallStart, offset: 0 };
         }
-        return bestOffset;
+        return { start: bestStart, offset: bestOffset };
     };
 
     const generateTypGridForOffset = (offset) => {
@@ -278,20 +285,7 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
             depthForSpecial = dlevel;
         }
         setSpecialLevelDepth(depthForSpecial);
-        if (cSession.group === 'filler' && levelName.toLowerCase() === 'minefill') {
-            // Mine filler session metadata does not carry the full branch-level
-            // context needed by mkstairs()/fixup_special parity.
-            setFinalizeContext({
-                dnum,
-                dlevel,
-                specialName: levelName,
-                branchPlacement: finalizeCtx.branchPlacement,
-                isBranchLevel: true,
-                dunlev: 1,
-                dunlevs: 99,
-                applyRoomFill: true
-            });
-        } else if (cSession.group === 'filler' && levelName.toLowerCase() === 'hellfill') {
+        if (cSession.group === 'filler' && levelName.toLowerCase() === 'hellfill') {
             // Gehennom filler capture is recorded at branch-local depth 1.
             // Use that depth for finalize context so fixup_special() can place
             // the branch stair in the same C branch window.
@@ -314,7 +308,9 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
     // Generate JS version
     let startOffset = 0;
     if (canUseRngStart && typeof rngCallStart === 'number' && rngCallStart > 0) {
-        startOffset = calibrateStartOffset();
+        const calibrated = calibrateStartOffset();
+        rngCallStart = calibrated.start;
+        startOffset = calibrated.offset;
     }
     let jsTypGrid = generateTypGridForOffset(startOffset);
     let mismatchCount = countTypGridMismatches(jsTypGrid, cLevel.typGrid);
