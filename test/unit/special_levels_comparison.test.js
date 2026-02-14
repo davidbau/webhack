@@ -12,7 +12,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { simulateDungeonInit, resolveBranchPlacementForLevel, clearBranchTopology } from '../../js/dungeon.js';
 import { resetLevelState, setFinalizeContext, setSpecialLevelDepth } from '../../js/sp_lev.js';
-import { getSpecialLevel, resetVariantCache, DUNGEONS_OF_DOOM, GEHENNOM, VLADS_TOWER, KNOX, SOKOBAN, GNOMISH_MINES, QUEST, TUTORIAL } from '../../js/special_levels.js';
+import { getSpecialLevel, resetVariantCache, DUNGEONS_OF_DOOM, GEHENNOM, VLADS_TOWER, KNOX, SOKOBAN, GNOMISH_MINES, QUEST, TUTORIAL, questLevels, otherSpecialLevels } from '../../js/special_levels.js';
 import { initRng, skipRng, rn2, c_d, rne, rnz, getRngState, setRngState, getRngCallCount, setRngCallCount } from '../../js/rng.js';
 
 const ROWNO = 21;
@@ -120,6 +120,34 @@ function countTypGridMismatches(jsGrid, cGrid, stopAfter = Number.POSITIVE_INFIN
         }
     }
     return mismatches;
+}
+
+function resolveLevelGenerator(dnum, dlevel, levelName) {
+    const byCoord = getSpecialLevel(dnum, dlevel);
+    if (byCoord) {
+        return byCoord;
+    }
+
+    const questMatch = /^([A-Za-z]{3})-(strt|loca|goal)$/i.exec(levelName);
+    if (questMatch) {
+        const rolePrefix = `${questMatch[1][0].toUpperCase()}${questMatch[1].slice(1).toLowerCase()}`;
+        const section = questLevels[rolePrefix];
+        if (section && typeof section[questMatch[2].toLowerCase()] === 'function') {
+            return {
+                generator: section[questMatch[2].toLowerCase()],
+                name: `${rolePrefix}-${questMatch[2].toLowerCase()}`,
+                dnum,
+                dlevel
+            };
+        }
+    }
+
+    const byName = otherSpecialLevels[levelName.toLowerCase()];
+    if (typeof byName === 'function') {
+        return { generator: byName, name: levelName, dnum, dlevel };
+    }
+
+    return null;
 }
 
 /**
@@ -245,9 +273,9 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
         setFinalizeContext(finalizeCtx);
         const depthForSpecial = Number.isFinite(cLevel.absDepth) ? cLevel.absDepth : dlevel;
         setSpecialLevelDepth(depthForSpecial);
-        const level = getSpecialLevel(dnum, dlevel);
+        const level = resolveLevelGenerator(dnum, dlevel, levelName);
         if (!level) {
-            assert.fail(`No special level registered at ${dnum}:${dlevel} for ${levelName}`);
+            assert.fail(`No special level generator found at ${dnum}:${dlevel} for ${levelName}`);
         }
         return extractTypGrid(level.generator());
     };
@@ -385,6 +413,18 @@ test('Orcus - seed 42', () => {
     testLevel(42, GEHENNOM, 6, 'orcus', cSession);
 });
 
+test('Fake Wizard Tower 1 - seed 42', () => {
+    const cSession = loadCReference(42, 'gehennom');
+    if (!cSession) return;
+    testLevel(42, GEHENNOM, 8, 'fakewiz1', cSession);
+});
+
+test('Fake Wizard Tower 2 - seed 42', () => {
+    const cSession = loadCReference(42, 'gehennom');
+    if (!cSession) return;
+    testLevel(42, GEHENNOM, 9, 'fakewiz2', cSession);
+});
+
 // Wizard Tower
 test('Wizard1 - seed 42', () => {
     const cSession = loadCReference(42, 'wizard');
@@ -433,7 +473,7 @@ test('Sokoban 4 - seed 42', () => {
 test('Big Room - seed 42', () => {
     const cSession = loadCReference(42, 'bigroom');
     if (!cSession) return;
-    testLevel(42, DUNGEONS_OF_DOOM, 15, 'bigroom', cSession);
+    testLevel(42, DUNGEONS_OF_DOOM, 15, 'bigrm', cSession);
 });
 
 // Oracle tests
@@ -543,36 +583,39 @@ test('Rogue Level - seed 100', () => {
     testLevel(100, DUNGEONS_OF_DOOM, 15, 'rogue', cSession);
 });
 
-// Quest levels (sample - Archeologist)
-test('Quest Start (Arc) - seed 1', () => {
-    const cSession = loadCReference(1, 'quest');
-    if (!cSession) return;
-    testLevel(1, QUEST, 1, 'arc-strt', cSession);
-});
+// Quest levels (all role triplets)
+const QUEST_ROLE_PREFIXES = ['Arc', 'Bar', 'Cav', 'Hea', 'Kni', 'Mon', 'Pri', 'Ran', 'Rog', 'Sam', 'Tou', 'Val', 'Wiz'];
+for (const role of QUEST_ROLE_PREFIXES) {
+    test(`Quest Start (${role}) - seed 1`, () => {
+        const cSession = loadCReference(1, 'quest');
+        if (!cSession) return;
+        testLevel(1, QUEST, 1, `${role}-strt`, cSession);
+    });
 
-test('Quest Locate (Arc) - seed 1', () => {
-    const cSession = loadCReference(1, 'quest');
-    if (!cSession) return;
-    testLevel(1, QUEST, 2, 'arc-loca', cSession);
-});
+    test(`Quest Locate (${role}) - seed 1`, () => {
+        const cSession = loadCReference(1, 'quest');
+        if (!cSession) return;
+        testLevel(1, QUEST, 2, `${role}-loca`, cSession);
+    });
 
-test('Quest Goal (Arc) - seed 1', () => {
-    const cSession = loadCReference(1, 'quest');
-    if (!cSession) return;
-    testLevel(1, QUEST, 5, 'arc-goal', cSession);
-});
+    test(`Quest Goal (${role}) - seed 1`, () => {
+        const cSession = loadCReference(1, 'quest');
+        if (!cSession) return;
+        testLevel(1, QUEST, 5, `${role}-goal`, cSession);
+    });
+}
 
 // Gehennom filler levels
 test('Gehennom Filler - seed 1', () => {
-    const cSession = loadCReference(1, 'gehennom');
+    const cSession = loadCReference(1, 'filler');
     if (!cSession) return;
-    testLevel(1, GEHENNOM, 3, 'gehennom', cSession);
+    testLevel(1, GEHENNOM, 3, 'hellfill', cSession);
 });
 
 test('Gehennom Filler - seed 100', () => {
-    const cSession = loadCReference(100, 'gehennom');
+    const cSession = loadCReference(100, 'filler');
     if (!cSession) return;
-    testLevel(100, GEHENNOM, 3, 'gehennom', cSession);
+    testLevel(100, GEHENNOM, 3, 'hellfill', cSession);
 });
 
 // Tutorial levels
