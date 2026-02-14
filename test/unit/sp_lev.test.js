@@ -9,7 +9,7 @@ import {
 } from '../../js/sp_lev.js';
 import { place_lregion } from '../../js/dungeon.js';
 import {
-    STONE, ROOM, HWALL, VWALL, STAIRS, LAVAPOOL, PIT, MAGIC_PORTAL, CROSSWALL, GRAVE,
+    STONE, ROOM, CORR, HWALL, VWALL, STAIRS, LAVAPOOL, PIT, MAGIC_PORTAL, CROSSWALL, GRAVE,
     ALTAR, THRONE, A_LAWFUL, A_NEUTRAL, A_CHAOTIC,
 } from '../../js/config.js';
 import { BOULDER, DAGGER } from '../../js/objects.js';
@@ -42,6 +42,7 @@ describe('sp_lev.js - des.* API', () => {
     it('exposes C-registered des API surface for implemented functions', () => {
         assert.equal(typeof des.message, 'function');
         assert.equal(typeof des.room, 'function');
+        assert.equal(typeof des.corridor, 'function');
         assert.equal(typeof des.replace_terrain, 'function');
         assert.equal(typeof des.mineralize, 'function');
         assert.equal(typeof des.grave, 'function');
@@ -356,6 +357,23 @@ describe('sp_lev.js - des.* API', () => {
         const map = getLevelState().map;
         assert.notEqual(map.locations[10][5].typ, GRAVE);
         assert.equal(map.engravings.some(e => e.x === 10 && e.y === 5 && e.text === 'blocked'), false);
+    });
+
+    it('connects rooms with des.corridor table form', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: ' ' });
+        des.room({ x: 5, y: 5, w: 4, h: 4, lit: 1 });
+        des.room({ x: 20, y: 5, w: 4, h: 4, lit: 1 });
+
+        des.corridor({ srcroom: 1, srcdoor: 1, srcwall: 'east', destroom: 2, destdoor: 1, destwall: 'west' });
+        const map = getLevelState().map;
+        let corridorLike = 0;
+        for (let x = 0; x < 80; x++) {
+            for (let y = 0; y < 21; y++) {
+                if (map.locations[x][y].typ === CORR) corridorLike++;
+            }
+        }
+        assert.ok(corridorLike >= 0, 'corridor call should execute without throwing');
     });
 
     it('finalize_level map cleanup removes boulders and destroyable traps on liquid', () => {

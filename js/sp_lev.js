@@ -16,7 +16,7 @@
 import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, getRngCallCount } from './rng.js';
 import { mksobj, mkobj, mkcorpstat, set_corpsenm, weight } from './mkobj.js';
-import { create_room, create_subroom, makecorridors, init_rect, rnd_rect, get_rect, split_rects, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize as dungeonMineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized, wallification as dungeonWallification, wallify_region as dungeonWallifyRegion, fix_wall_spines, place_lregion, mktrap, enexto, somexy, sp_create_door, floodFillAndRegister, resolveBranchPlacementForLevel, random_epitaph_text } from './dungeon.js';
+import { create_room, create_subroom, makecorridors, create_corridor, init_rect, rnd_rect, get_rect, split_rects, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize as dungeonMineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized, wallification as dungeonWallification, wallify_region as dungeonWallifyRegion, fix_wall_spines, place_lregion, mktrap, enexto, somexy, sp_create_door, floodFillAndRegister, resolveBranchPlacementForLevel, random_epitaph_text } from './dungeon.js';
 import { seedFromMT } from './xoshiro256.js';
 import { makemon, mkclass, def_char_to_monclass, NO_MM_FLAGS, MM_NOGRP } from './makemon.js';
 import {
@@ -4972,6 +4972,48 @@ export function random_corridors() {
 }
 
 /**
+ * des.corridor(opts)
+ *
+ * Create a corridor between two rooms.
+ * C ref: sp_lev.c lspo_corridor()
+ *
+ * @param {Object} opts - {srcroom, srcdoor, srcwall, destroom, destdoor, destwall}
+ */
+export function corridor(opts) {
+    if (!levelState.map || !opts || typeof opts !== 'object') return;
+
+    const wallMap = {
+        all: 15,
+        random: -1,
+        north: 1,
+        west: 8,
+        east: 4,
+        south: 2
+    };
+    const parseWall = (name, def = 'all') => {
+        const key = String(name ?? def).toLowerCase();
+        return (wallMap[key] !== undefined) ? wallMap[key] : wallMap[def];
+    };
+    const parseIntOr = (value, fallback) => (Number.isFinite(value) ? Math.trunc(value) : fallback);
+
+    const spec = {
+        src: {
+            room: parseIntOr(opts.srcroom, -1),
+            door: parseIntOr(opts.srcdoor, -1),
+            wall: parseWall(opts.srcwall, 'all')
+        },
+        dest: {
+            room: parseIntOr(opts.destroom, -1),
+            door: parseIntOr(opts.destdoor, -1),
+            wall: parseWall(opts.destwall, 'all')
+        }
+    };
+
+    const depth = levelState.levelDepth || 1;
+    create_corridor(levelState.map, spec, depth);
+}
+
+/**
  * des.mineralize(opts)
  *
  * Deposit minerals in walls with optional C-style probability overrides.
@@ -6889,6 +6931,7 @@ export const des = {
     map,
     replace_terrain,
     room,
+    corridor,
     terrain,
     stair,
     ladder,
