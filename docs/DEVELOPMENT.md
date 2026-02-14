@@ -169,6 +169,16 @@ node --test test/comparison/session_runner.test.js
 
 ## Common Development Tasks
 
+## C Parity Policy
+
+When working on C-vs-JS parity, follow this rule:
+
+- Use failing unit/session tests to decide what to work on next.
+- Use C source code (`nethack-c/src/*.c`) as the behavior spec.
+- Do not "fix to the trace" with JS-only heuristics when C code disagrees.
+- If a test reveals missing behavior, port the corresponding C logic path.
+- Keep changes incremental and keep tests green after each port batch.
+
 ### Modifying the dungeon generator
 
 1. Make your changes in `js/dungeon.js` (or related modules)

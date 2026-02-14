@@ -119,6 +119,15 @@ export class GameMap {
 
         // Trap list
         this.traps = [];
+
+        // Engraving list
+        this.engravings = [];
+
+        // Gas cloud regions
+        this.gasClouds = [];
+
+        // Exclusion zones (teleport / monster-generation restrictions)
+        this.exclusionZones = [];
     }
 
     // Get location at (x,y) -- shorthand for the C's levl[x][y]
@@ -155,6 +164,9 @@ export class GameMap {
         this.monsters = [];
         this.objects = [];
         this.traps = [];
+        this.engravings = [];
+        this.gasClouds = [];
+        this.exclusionZones = [];
     }
 
     // Add a room to the rooms array

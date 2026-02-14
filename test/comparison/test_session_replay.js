@@ -76,8 +76,8 @@ const DEC_FROM_UNICODE = {
     '\u00b7': 'a',
 };
 
-function normalizeCapturedLine(line, row, screenMode, isMapScreen, prependMissingCol0 = true) {
-    let out = (line || '').replace(/\r$/, '');
+function normalizeCapturedLine(line, row, screenMode, isMapScreen, mapConvertEnd = null, prependMissingCol0 = true) {
+    let out = (line || '').replace(/\r$/, '').replace(/[\x0e\x0f]/g, '');
     if (screenMode === 'decgraphics' && row >= 1 && prependMissingCol0) {
         // tmux capture drops terminal column 0 for non-top rows.
         out = ` ${out}`;
@@ -89,15 +89,19 @@ function normalizeCapturedLine(line, row, screenMode, isMapScreen, prependMissin
         out = [...out].map(ch => DEC_FROM_UNICODE[ch] || ch).join('');
     }
     if (isMapScreen && screenMode === 'decgraphics' && row >= 1 && row <= 21) {
-        out = [...out].map(ch => DEC_TO_UNICODE[ch] || ch).join('');
+        const chars = [...out];
+        const end = Number.isInteger(mapConvertEnd) ? mapConvertEnd : chars.length;
+        out = chars.map((ch, idx) => (idx < end ? (DEC_TO_UNICODE[ch] || ch) : ch)).join('');
     }
     return out.padEnd(80);
 }
 
-function normalizeJsLine(line, row, screenMode, isMapScreen) {
-    let out = (line || '');
+function normalizeJsLine(line, row, screenMode, isMapScreen, mapConvertEnd = null) {
+    let out = (line || '').replace(/[\x0e\x0f]/g, '');
     if (screenMode === 'decgraphics' && isMapScreen && row >= 1 && row <= 21) {
-        out = [...out].map(ch => DEC_TO_UNICODE[ch] || ch).join('');
+        const chars = [...out];
+        const end = Number.isInteger(mapConvertEnd) ? mapConvertEnd : chars.length;
+        out = chars.map((ch, idx) => (idx < end ? (DEC_TO_UNICODE[ch] || ch) : ch)).join('');
     }
     return out.padEnd(80);
 }
@@ -134,21 +138,57 @@ function compareStepScreen(jsScreen, capturedScreen, screenMode, strictMessageRo
     const isMapScreen = capturedScreen.some(line => typeof line === 'string' && line.includes('Dlvl:'));
     const rowStart = strictMessageRow ? 0 : 1;
     for (let row = rowStart; row < 24; row++) {
+        const rawCaptured = (capturedScreen[row] || '').replace(/\r$/, '').replace(/[\x0e\x0f]/g, '');
+        const rawJs = (jsScreen?.[row] || '').replace(/[\x0e\x0f]/g, '');
+        const detectedTextCol = (() => {
+            if (!isMapScreen || row < 1 || row > 21) return null;
+            for (const line of [rawCaptured, rawJs]) {
+                const rel = line.slice(30).search(/[A-Za-z]/);
+                if (rel >= 0) {
+                    const idx = 30 + rel;
+                    const right = line.slice(idx);
+                    if (right.includes(' - ')
+                        || /Weapons|Armor|Comestibles|Scrolls|Spellbooks|Potions|Rings|Wands|Tools|\(end\)/.test(right)) {
+                        return idx;
+                    }
+                }
+            }
+            return null;
+        })();
         const cLineWithPad = normalizeStatusLine(
-            normalizeCapturedLine(capturedScreen[row], row, screenMode, isMapScreen),
+            normalizeCapturedLine(capturedScreen[row], row, screenMode, isMapScreen, detectedTextCol),
             row
         );
         const cLineNoPad = normalizeStatusLine(
-            normalizeCapturedLine(capturedScreen[row], row, screenMode, isMapScreen, false),
+            normalizeCapturedLine(capturedScreen[row], row, screenMode, isMapScreen, detectedTextCol, false),
             row
         );
         const jLine = normalizeStatusLine(
-            normalizeJsLine(jsScreen?.[row], row, screenMode, isMapScreen),
+            normalizeJsLine(jsScreen?.[row], row, screenMode, isMapScreen, detectedTextCol),
             row
         );
         // Some captured sessions already include terminal column 0 while others
         // reflect tmux's dropped column for non-top rows. Accept either.
         if (cLineWithPad !== jLine && cLineNoPad !== jLine) {
+            // Some mixed map+menu rows in captured sessions (notably inventory
+            // overlays) can have map cells aligned like padded rows while the
+            // right-side text block aligns like unpadded rows. Handle only this
+            // narrow artifact by trying a split at the first right-side word.
+            const textCol = detectedTextCol;
+            if (Number.isInteger(textCol) && textCol >= 30) {
+                const hybridPadLeft = cLineWithPad.slice(0, textCol) + cLineNoPad.slice(textCol);
+                const hybridNoPadLeft = cLineNoPad.slice(0, textCol) + cLineWithPad.slice(textCol);
+                const hybridPadLeftShift = cLineWithPad.slice(0, textCol + 1) + cLineNoPad.slice(textCol + 1);
+                const hybridNoPadLeftShift = cLineNoPad.slice(0, textCol + 1) + cLineWithPad.slice(textCol + 1);
+                if (
+                    hybridPadLeft === jLine
+                    || hybridNoPadLeft === jLine
+                    || hybridPadLeftShift === jLine
+                    || hybridNoPadLeftShift === jLine
+                ) {
+                    continue;
+                }
+            }
             return { ok: false, row, js: jLine, c: cLineWithPad };
         }
     }

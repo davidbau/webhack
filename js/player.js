@@ -6,6 +6,7 @@ import { A_STR, A_INT, A_WIS, A_DEX, A_CON, A_CHA, NUM_ATTRS,
          RACE_HUMAN, RACE_ELF, RACE_DWARF, RACE_GNOME, RACE_ORC,
          FEMALE, MALE } from './config.js';
 import { M2_HUMAN, M2_ELF, M2_DWARF, M2_GNOME, M2_ORC } from './monsters.js';
+import { objectData, COIN_CLASS, FOOD_CLASS } from './objects.js';
 
 // Roles table -- from role.c
 // C ref: src/role.c roles[] array
@@ -554,6 +555,40 @@ export class Player {
     // Add an item to inventory, assigning an inventory letter
     // C ref: invent.c addinv()
     addToInventory(obj) {
+        // C ref: invent.c mergable() — merge before assigning a new invlet.
+        const canMerge = (a, b) => {
+            if (!a || !b || a === b) return false;
+            if (a.otyp !== b.otyp) return false;
+            const od = objectData[a.otyp];
+            if (!od?.merge || a.nomerge || b.nomerge) return false;
+            if (a.oclass === COIN_CLASS) return true;
+            if (!!a.cursed !== !!b.cursed || !!a.blessed !== !!b.blessed) return false;
+            if ((a.spe ?? 0) !== (b.spe ?? 0)) return false;
+            if (!!a.no_charge !== !!b.no_charge) return false;
+            if (!!a.obroken !== !!b.obroken || !!a.otrapped !== !!b.otrapped) return false;
+            if (!!a.lamplit !== !!b.lamplit) return false;
+            if (a.oclass === FOOD_CLASS
+                && ((a.oeaten ?? 0) !== (b.oeaten ?? 0) || !!a.orotten !== !!b.orotten)) {
+                return false;
+            }
+            if (!!a.dknown !== !!b.dknown || !!a.bknown !== !!b.bknown) return false;
+            if ((a.oeroded ?? 0) !== (b.oeroded ?? 0) || (a.oeroded2 ?? 0) !== (b.oeroded2 ?? 0)) {
+                return false;
+            }
+            if (!!a.greased !== !!b.greased) return false;
+            if (!!a.oerodeproof !== !!b.oerodeproof || !!a.rknown !== !!b.rknown) return false;
+            if ((a.corpsenm ?? -1) !== (b.corpsenm ?? -1)) return false;
+            if (!!a.opoisoned !== !!b.opoisoned) return false;
+            if (!!a.known !== !!b.known) return false;
+            return true;
+        };
+
+        const existing = this.inventory.find(it => canMerge(it, obj));
+        if (existing) {
+            existing.quan = (existing.quan || 1) + (obj.quan || 1);
+            return existing;
+        }
+
         // Find first unused inventory letter
         const usedLetters = new Set(this.inventory.map(o => o.invlet));
         const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';

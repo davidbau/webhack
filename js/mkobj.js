@@ -3,6 +3,7 @@
 // C ref: mkobj.c — object creation, class initialization, containers
 
 import { rn2, rnd, rn1, rne, rnz, d } from './rng.js';
+import { isObjectNameKnown } from './discovery.js';
 import {
     objectData, bases, oclass_prob_totals, mkobjprobs, NUM_OBJECTS,
     ILLOBJ_CLASS, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
@@ -744,89 +745,146 @@ export function mkobj(oclass, artif, skipErosion) {
 // RANDOM_CLASS constant (matches C's RANDOM_CLASS = 0)
 export const RANDOM_CLASS = 0;
 
+// C ref: objnam.c just_an()
+function just_an(str) {
+    const s = String(str || '').trimStart();
+    if (!s) return 'a';
+    const c = s[0].toLowerCase();
+    return 'aeiou'.includes(c) ? 'an' : 'a';
+}
+
+// C ref: objnam.c makeplural() (limited JS port for inventory naming)
+function makeplural(word) {
+    const w = String(word || '');
+    if (!w) return w;
+    if (w.endsWith('s') || w.endsWith('x') || w.endsWith('z')
+        || w.endsWith('ch') || w.endsWith('sh')) {
+        return `${w}es`;
+    }
+    if (w.endsWith('y') && w.length > 1 && !'aeiou'.includes(w[w.length - 2].toLowerCase())) {
+        return `${w.slice(0, -1)}ies`;
+    }
+    return `${w}s`;
+}
+
+// C ref: objnam.c xname() pluralize path + makeplural()
+function pluralizeName(name) {
+    const s = String(name || '');
+    if (!s) return s;
+    if (s.startsWith('pair of ')) return `pairs of ${s.slice(8)}`;
+    const ofIdx = s.indexOf(' of ');
+    if (ofIdx > 0) {
+        const head = s.slice(0, ofIdx);
+        const tail = s.slice(ofIdx + 4);
+        return `${makeplural(head)} of ${tail}`;
+    }
+    return makeplural(s);
+}
+
+// C ref: objnam.c xname() (subset used by current JS engine)
+function xname_for_doname(obj, dknown = true, known = true, bknown = false) {
+    const od = objectData[obj.otyp];
+    const nameKnown = isObjectNameKnown(obj.otyp) || !!known;
+    let base = od.name;
+    switch (obj.oclass) {
+    case RING_CLASS:
+        base = !dknown ? 'ring'
+            : nameKnown ? `ring of ${od.name}`
+                : `${od.desc || od.name} ring`;
+        break;
+    case AMULET_CLASS:
+        base = !dknown ? 'amulet'
+            : nameKnown ? od.name
+                : `${od.desc || od.name} amulet`;
+        break;
+    case POTION_CLASS:
+        base = !dknown ? 'potion'
+            : nameKnown ? `potion of ${od.name}`
+                : `${od.desc || od.name} potion`;
+        if (dknown && nameKnown && obj.otyp && od.name === 'water'
+            && bknown && (obj.blessed || obj.cursed)) {
+            base = `potion of ${obj.blessed ? 'holy' : 'unholy'} water`;
+        }
+        break;
+    case SCROLL_CLASS:
+        if (!dknown) base = 'scroll';
+        else if (nameKnown) base = `scroll of ${od.name}`;
+        else if (od.desc) base = `scroll labeled ${od.desc}`;
+        else base = `scroll of ${od.name}`;
+        break;
+    case SPBOOK_CLASS:
+        base = !dknown ? 'spellbook'
+            : nameKnown ? `spellbook of ${od.name}`
+                : `${od.desc || od.name} spellbook`;
+        break;
+    case WAND_CLASS:
+        if (!dknown) base = 'wand';
+        else if (nameKnown) base = `wand of ${od.name}`;
+        else if (od.desc) base = `${od.desc} wand`;
+        else base = `wand of ${od.name}`;
+        break;
+    case FOOD_CLASS:
+        if (obj.otyp === CORPSE) {
+            const corpseIdx = Number.isInteger(obj.corpsenm) ? obj.corpsenm : obj.corpsem;
+            if (Number.isInteger(corpseIdx) && mons[corpseIdx]) {
+                base = `${mons[corpseIdx].name} corpse`;
+            } else {
+                base = 'corpse';
+            }
+        } else {
+            base = od.name;
+        }
+        break;
+    default:
+        base = od.name;
+        break;
+    }
+    if ((obj.quan || 1) !== 1) base = pluralizeName(base);
+    return base;
+}
+
 // C ref: objnam.c doname() — format an object name for display
 // Produces strings like "a blessed +1 quarterstaff (weapon in hands)"
 export function doname(obj, player) {
     const od = objectData[obj.otyp];
-    const parts = [];
-
-    // Determine if charges will be displayed
-    const showCharges = obj.known && od.charged
+    const known = !!obj.known;
+    const dknown = !!obj.dknown || known;
+    const bknown = !!obj.bknown;
+    const quan = obj.quan || 1;
+    const showCharges = known && od.charged
         && (obj.oclass === WAND_CLASS || obj.oclass === TOOL_CLASS);
+    let prefix = '';
 
-    // BUC prefix (C ref: objnam.c xname() BUC handling)
-    if (obj.bknown && obj.oclass !== COIN_CLASS) {
-        if (obj.blessed) {
-            parts.push('blessed');
-        } else if (obj.cursed) {
-            parts.push('cursed');
-        } else if (!showCharges) {
-            // Show "uncursed" for most classes, but not when charges are displayed
-            parts.push('uncursed');
+    // C ref: objnam.c doname_base() quantity/article prefix
+    if (quan !== 1) {
+        prefix = `${quan} `;
+    }
+
+    // C ref: objnam.c doname_base() BUC logic
+    if (bknown && obj.oclass !== COIN_CLASS) {
+        if (obj.cursed) prefix += 'cursed ';
+        else if (obj.blessed) prefix += 'blessed ';
+        else if (!(known && od.charged && obj.oclass !== ARMOR_CLASS
+            && obj.oclass !== RING_CLASS) && !showCharges) {
+            prefix += 'uncursed ';
         }
     }
 
-    // Enchantment (C ref: objnam.c xname() — spe for weapon/armor/ring)
-    if (obj.known && (obj.oclass === WEAPON_CLASS || obj.oclass === ARMOR_CLASS
+    // C ref: objnam.c doname_base() weapon poison marker
+    if (obj.oclass === WEAPON_CLASS && obj.opoisoned) {
+        prefix += 'poisoned ';
+    }
+
+    // C ref: objnam.c doname_base() known enchantment
+    if (known && (obj.oclass === WEAPON_CLASS || obj.oclass === ARMOR_CLASS
         || (obj.oclass === RING_CLASS && od.charged))) {
-        parts.push((obj.spe >= 0 ? '+' : '') + obj.spe);
+        prefix += `${obj.spe >= 0 ? '+' : ''}${obj.spe} `;
     }
 
-    // Base name (C ref: objnam.c xname() — class-specific prefixes)
-    switch (obj.oclass) {
-    case RING_CLASS:
-        parts.push('ring of ' + od.name);
-        break;
-    case AMULET_CLASS:
-        parts.push('amulet of ' + od.name);
-        break;
-    case POTION_CLASS:
-        parts.push('potion of ' + od.name);
-        break;
-    case SCROLL_CLASS:
-        if (!obj.known && od.desc) {
-            parts.push(`scroll labeled ${od.desc}`);
-        } else {
-            parts.push('scroll of ' + od.name);
-        }
-        break;
-    case SPBOOK_CLASS:
-        parts.push('spellbook of ' + od.name);
-        break;
-    case WAND_CLASS:
-        if (!obj.known && od.desc) {
-            parts.push(`${od.desc} wand`);
-        } else {
-            parts.push('wand of ' + od.name);
-        }
-        break;
-    case FOOD_CLASS:
-        if (obj.otyp === CORPSE) {
-            const corpseIdx = Number.isInteger(obj.corpsem) ? obj.corpsem : obj.corpsenm;
-            if (Number.isInteger(corpseIdx) && mons[corpseIdx]) {
-                parts.push(`${mons[corpseIdx].name} corpse`);
-                break;
-            }
-        }
-        if (obj.otyp === CORPSE) {
-            parts.push('corpse');
-        } else {
-            parts.push(od.name);
-        }
-        break;
-    default:
-        parts.push(od.name);
-        break;
-    }
-
-    let result = parts.join(' ');
-
-    // Article (C ref: objnam.c an() / doname())
-    const firstChar = result[0];
-    if ('aeiouAEIOU'.includes(firstChar)) {
-        result = 'an ' + result;
-    } else {
-        result = 'a ' + result;
+    const baseName = xname_for_doname(obj, dknown, known, bknown);
+    let result = `${prefix}${baseName}`.trimStart();
+    if (quan === 1 && obj.otyp !== CORPSE && !result.startsWith('the ')) {
+        result = `${just_an(result)} ${result}`;
     }
 
     // Suffix: worn/wielded/charges
@@ -837,7 +895,14 @@ export function doname(obj, player) {
             } else {
                 result += ' (wielded)';
             }
-        } else if (player.armor === obj) {
+        } else if (
+            player.armor === obj
+            || player.shield === obj
+            || player.helmet === obj
+            || player.gloves === obj
+            || player.boots === obj
+            || player.cloak === obj
+        ) {
             result += ' (being worn)';
         }
     }

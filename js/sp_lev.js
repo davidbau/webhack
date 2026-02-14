@@ -167,6 +167,7 @@ export let levelState = {
     deferredTraps: [],      // Queued trap placements
     deferredActions: [],    // Queued placements in original script order
     containerStack: [],     // Active des.object contents callback container context
+    monsterInventoryStack: [], // Active des.monster inventory callback context
     // Optional context to emulate C topology/fixup behavior.
     finalizeContext: null,
     branchPlaced: false,
@@ -1008,6 +1009,7 @@ export function resetLevelState() {
         deferredTraps: [],
         deferredActions: [],
         containerStack: [],
+        monsterInventoryStack: [],
         finalizeContext: null,
         branchPlaced: false,
         levRegions: [],
@@ -1705,12 +1707,22 @@ function flipLevelRandom() {
             if (flipBits & 1) trap.launch2.y = flipY(trap.launch2.y);
             if (flipBits & 2) trap.launch2.x = flipX(trap.launch2.x);
         }
+        if (trap.teledest && inFlipArea(trap.teledest.x, trap.teledest.y)) {
+            if (flipBits & 1) trap.teledest.y = flipY(trap.teledest.y);
+            if (flipBits & 2) trap.teledest.x = flipX(trap.teledest.x);
+        }
     }
 
     for (const obj of map.objects || []) {
         if (!obj || !inFlipArea(obj.ox, obj.oy)) continue;
         if (flipBits & 1) obj.oy = flipY(obj.oy);
         if (flipBits & 2) obj.ox = flipX(obj.ox);
+    }
+
+    for (const engr of map.engravings || []) {
+        if (!engr || !inFlipArea(engr.x, engr.y)) continue;
+        if (flipBits & 1) engr.y = flipY(engr.y);
+        if (flipBits & 2) engr.x = flipX(engr.x);
     }
 
     for (const mon of map.monsters || []) {
@@ -3425,6 +3437,14 @@ export function object(name_or_opts, x, y) {
         }
     }
 
+    const isBuried = !!(name_or_opts && typeof name_or_opts === 'object' && name_or_opts.buried);
+    if (obj && isBuried) {
+        // C ref: sp_lev.c lspo_object() -> create_object() -> bury_an_obj() ->
+        // obj_resists(otmp, 0, 0). For ordinary objects this consumes rn2(100).
+        // We consume it at creation-time so deferred placement keeps RNG order.
+        rn2(100);
+    }
+
     if (obj) {
         const activeContainer = levelState.containerStack[levelState.containerStack.length - 1];
 
@@ -3433,13 +3453,20 @@ export function object(name_or_opts, x, y) {
         if (activeContainer) {
             if (!activeContainer.contents) activeContainer.contents = [];
             activeContainer.contents.push(obj);
-            return;
+            return obj;
+        }
+
+        const activeMonster = levelState.monsterInventoryStack[levelState.monsterInventoryStack.length - 1];
+        if (activeMonster) {
+            if (!Array.isArray(activeMonster.minvent)) activeMonster.minvent = [];
+            activeMonster.minvent.push(obj);
+            return obj;
         }
 
         if (absX >= 0 && absX < COLNO && absY >= 0 && absY < ROWNO) {
             markSpLevTouched(absX, absY);
         }
-        levelState.deferredObjects.push({ obj, x: absX, y: absY });
+        levelState.deferredObjects.push({ obj, x: absX, y: absY, buried: isBuried });
         // C ref: lspo_* handlers execute in script order. Keep deferred
         // placements ordered by insertion so finalize_level() can replay
         // object/monster interleaving faithfully.
@@ -3457,6 +3484,13 @@ export function object(name_or_opts, x, y) {
             }
         }
     }
+    // C ref: lspo_object returns the object userdata to Lua.
+    // Keep timer methods available for script compatibility.
+    if (obj) {
+        obj.stop_timer = obj.stop_timer || function() {};
+        obj.start_timer = obj.start_timer || function() {};
+    }
+    return obj;
 }
 
 /**
@@ -3464,6 +3498,7 @@ export function object(name_or_opts, x, y) {
  * C ref: sp_lev.c get_trap_type()
  */
 function trapNameToType(name) {
+    if (typeof name !== 'string') return null;
     const lowerName = name.toLowerCase();
 
     // Map trap names to constants
@@ -3492,7 +3527,8 @@ function trapNameToType(name) {
         case 'statue': return STATUE_TRAP;
         case 'magic': return MAGIC_TRAP;
         case 'vibrating square': case 'vibrating_square': return VIBRATING_SQUARE;
-        default: return -1;
+        case 'random': return -1;
+        default: return null;
     }
 }
 
@@ -3535,6 +3571,17 @@ export function trap(type_or_opts, x, y) {
     // des.trap({ coord: [x, y] }) / des.trap({ coord: {x, y} }) / des.trap({ x, y }).
     let srcX = x;
     let srcY = y;
+    // C ref: lspo_trap supports trap("type", {x,y}) coordinate table form.
+    if (typeof type_or_opts === 'string' && srcY === undefined
+        && srcX && typeof srcX === 'object') {
+        if (Array.isArray(srcX)) {
+            srcY = srcX[1];
+            srcX = srcX[0];
+        } else {
+            srcY = srcX.y;
+            srcX = srcX.x;
+        }
+    }
     if (type_or_opts && typeof type_or_opts === 'object' && srcX === undefined && srcY === undefined) {
         if (type_or_opts.coord) {
             if (Array.isArray(type_or_opts.coord)) {
@@ -3634,7 +3681,8 @@ export function region(opts_or_selection, type) {
         for (let x = lx1; x <= lx2; x++) {
             for (let y = ly1; y <= ly2; y++) {
                 if (x >= 0 && x < COLNO && y >= 0 && y < ROWNO) {
-                    levelState.map.locations[x][y].lit = litVal ? 1 : 0;
+                    const loc = levelState.map.locations[x][y];
+                    loc.lit = (IS_LAVA(loc.typ) || litVal) ? 1 : 0;
                 }
             }
         }
@@ -3658,21 +3706,36 @@ export function region(opts_or_selection, type) {
     const depth = levelState.depth || levelState.levelDepth || 1;
 
     if (typeof type === 'string') {
-        // C ref: selection-based region path returns after setting lighting.
-        x1 = opts_or_selection.x1;
-        y1 = opts_or_selection.y1;
-        x2 = opts_or_selection.x2;
-        y2 = opts_or_selection.y2;
-        if (levelState.mapCoordMode) {
-            const c1 = toAbsoluteCoords(x1, y1);
-            const c2 = toAbsoluteCoords(x2, y2);
-            x1 = c1.x;
-            y1 = c1.y;
-            x2 = c2.x;
-            y2 = c2.y;
+        // C ref: lspo_region(selection, "lit"/"unlit"):
+        // for lit, grow the selection by 1 in all directions, then set lit.
+        const targetLit = (type === 'lit');
+        const sourceSel = opts_or_selection;
+        if (sourceSel && Array.isArray(sourceSel.coords)) {
+            let sel = sourceSel;
+            if (targetLit) {
+                sel = selection.grow(sourceSel, 1);
+            }
+            for (const c of sel.coords) {
+                if (c.x < 0 || c.x >= COLNO || c.y < 0 || c.y >= ROWNO) continue;
+                const loc = levelState.map.locations[c.x][c.y];
+                loc.lit = (IS_LAVA(loc.typ) || targetLit) ? 1 : 0;
+            }
+        } else {
+            x1 = sourceSel.x1;
+            y1 = sourceSel.y1;
+            x2 = sourceSel.x2;
+            y2 = sourceSel.y2;
+            if (levelState.mapCoordMode) {
+                const c1 = toAbsoluteCoords(x1, y1);
+                const c2 = toAbsoluteCoords(x2, y2);
+                x1 = c1.x;
+                y1 = c1.y;
+                x2 = c2.x;
+                y2 = c2.y;
+            }
+            const norm = normalizeRegionCoords(x1, y1, x2, y2);
+            markLitRect(norm.x1, norm.y1, norm.x2, norm.y2, targetLit);
         }
-        const norm = normalizeRegionCoords(x1, y1, x2, y2);
-        markLitRect(norm.x1, norm.y1, norm.x2, norm.y2, type === 'lit');
         return;
     }
 
@@ -3803,32 +3866,69 @@ export function region(opts_or_selection, type) {
  * @param {Object} selection - Selection object
  */
 export function non_diggable(selection) {
-    if (!levelState.map || !selection) {
+    if (!levelState.map) {
         return;
     }
+    const applyWallProp = (propKind) => {
+        const applyAt = (x, y) => {
+            if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO) return;
+            const loc = levelState.map.locations[x][y];
+            if (!loc) return;
+            // C ref: sel_set_wall_property() only applies to stone walls,
+            // trees, and iron bars.
+            if (!(IS_WALL(loc.typ) || loc.typ === TREE || loc.typ === IRONBARS)) return;
+            if (propKind === 'nondiggable') loc.nondiggable = true;
+            else if (propKind === 'nonpasswall') loc.nonpasswall = true;
+        };
 
-    let x1 = selection.x1;
-    let y1 = selection.y1;
-    let x2 = selection.x2;
-    let y2 = selection.y2;
+        if (!selection) {
+            // C ref: lspo_non_{diggable,passwall}() with no args creates a
+            // full-map selection and iterates it.
+            for (let x = 0; x < COLNO; x++) {
+                for (let y = 0; y < ROWNO; y++) {
+                    applyAt(x, y);
+                }
+            }
+            return;
+        }
 
-    // C ref: after des.map(), coordinates are map-relative.
-    if (levelState.mapCoordMode) {
-        const c1 = toAbsoluteCoords(x1, y1);
-        const c2 = toAbsoluteCoords(x2, y2);
-        x1 = c1.x;
-        y1 = c1.y;
-        x2 = c2.x;
-        y2 = c2.y;
-    }
+        if (Array.isArray(selection.coords)) {
+            for (const c of selection.coords) {
+                let x = c.x;
+                let y = c.y;
+                if (levelState.mapCoordMode) {
+                    const abs = toAbsoluteCoords(x, y);
+                    x = abs.x;
+                    y = abs.y;
+                }
+                applyAt(x, y);
+            }
+            return;
+        }
 
-    for (let x = x1; x <= x2; x++) {
-        for (let y = y1; y <= y2; y++) {
-            if (x >= 0 && x < 80 && y >= 0 && y < 21) {
-                levelState.map.locations[x][y].nondiggable = true;
+        let x1 = selection.x1;
+        let y1 = selection.y1;
+        let x2 = selection.x2;
+        let y2 = selection.y2;
+        if (!Number.isFinite(x1) || !Number.isFinite(y1)
+            || !Number.isFinite(x2) || !Number.isFinite(y2)) {
+            return;
+        }
+        if (levelState.mapCoordMode) {
+            const c1 = toAbsoluteCoords(x1, y1);
+            const c2 = toAbsoluteCoords(x2, y2);
+            x1 = c1.x;
+            y1 = c1.y;
+            x2 = c2.x;
+            y2 = c2.y;
+        }
+        for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+            for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+                applyAt(x, y);
             }
         }
-    }
+    };
+    applyWallProp('nondiggable');
 }
 
 /**
@@ -3858,8 +3958,60 @@ export function message(text) {
  * @param {Object} selection - Selection object
  */
 export function non_passwall(selection) {
-    // Stub - would set W_NONPASSWALL flag on walls
-    // For now, just ignore
+    if (!levelState.map) {
+        return;
+    }
+    // C ref: lspo_non_passwall() reuses set_wallprop_in_selection().
+    const applyWallProp = (sel) => {
+        const applyXY = (x, y) => {
+            if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO) return;
+            const loc = levelState.map.locations[x][y];
+            if (!loc) return;
+            if (!(IS_WALL(loc.typ) || loc.typ === TREE || loc.typ === IRONBARS)) return;
+            loc.nonpasswall = true;
+        };
+        if (!sel) {
+            for (let x = 0; x < COLNO; x++) {
+                for (let y = 0; y < ROWNO; y++) applyXY(x, y);
+            }
+            return;
+        }
+        if (Array.isArray(sel.coords)) {
+            for (const c of sel.coords) {
+                let x = c.x;
+                let y = c.y;
+                if (levelState.mapCoordMode) {
+                    const abs = toAbsoluteCoords(x, y);
+                    x = abs.x;
+                    y = abs.y;
+                }
+                applyXY(x, y);
+            }
+            return;
+        }
+        let x1 = sel.x1;
+        let y1 = sel.y1;
+        let x2 = sel.x2;
+        let y2 = sel.y2;
+        if (!Number.isFinite(x1) || !Number.isFinite(y1)
+            || !Number.isFinite(x2) || !Number.isFinite(y2)) {
+            return;
+        }
+        if (levelState.mapCoordMode) {
+            const c1 = toAbsoluteCoords(x1, y1);
+            const c2 = toAbsoluteCoords(x2, y2);
+            x1 = c1.x;
+            y1 = c1.y;
+            x2 = c2.x;
+            y2 = c2.y;
+        }
+        for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+            for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+                applyXY(x, y);
+            }
+        }
+    };
+    applyWallProp(selection);
 }
 
 /**
@@ -3933,8 +4085,56 @@ export function levregion(opts) {
  * @param {Object} opts - Exclusion options
  */
 export function exclusion(opts) {
-    // Stub - would mark exclusion zones for monster generation
-    // For now, just ignore
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+    if (!opts || typeof opts !== 'object') {
+        throw new Error('wrong parameters');
+    }
+
+    const type = String(opts.type || 'teleport').toLowerCase();
+    // C ref: lspo_exclusion() ez_types table.
+    const typeMap = {
+        'teleport': 'teleport',
+        'teleport-up': 'teleport-up',
+        'teleport_up': 'teleport-up',
+        'teleport-down': 'teleport-down',
+        'teleport_down': 'teleport-down',
+        'monster-generation': 'monster-generation',
+        'monster_generation': 'monster-generation'
+    };
+    const zoneType = typeMap[type];
+    if (!zoneType) {
+        throw new Error('wrong parameters');
+    }
+
+    let x1;
+    let y1;
+    let x2;
+    let y2;
+    if (Array.isArray(opts.region)) {
+        [x1, y1, x2, y2] = opts.region;
+    } else if (opts.region && typeof opts.region === 'object') {
+        x1 = opts.region.x1;
+        y1 = opts.region.y1;
+        x2 = opts.region.x2;
+        y2 = opts.region.y2;
+    } else {
+        throw new Error('wrong parameters');
+    }
+
+    const p1 = getLocationCoord(x1, y1, GETLOC_ANY_LOC, levelState.currentRoom || null);
+    const p2 = getLocationCoord(x2, y2, GETLOC_ANY_LOC, levelState.currentRoom || null);
+    if (!Array.isArray(levelState.map.exclusionZones)) {
+        levelState.map.exclusionZones = [];
+    }
+    levelState.map.exclusionZones.push({
+        type: zoneType,
+        lx: p1.x,
+        ly: p1.y,
+        hx: p2.x,
+        hy: p2.y
+    });
 }
 
 /**
@@ -3984,6 +4184,17 @@ export function monster(opts_or_class, x, y) {
     // des.monster({ x, y }) or des.monster({ coord: [x, y] }).
     let srcX = x;
     let srcY = y;
+    // C ref: lspo_monster supports monster("id", {x,y}) coordinate table form.
+    if (typeof opts_or_class === 'string' && srcY === undefined
+        && srcX && typeof srcX === 'object') {
+        if (Array.isArray(srcX)) {
+            srcY = srcX[1];
+            srcX = srcX[0];
+        } else {
+            srcY = srcX.y;
+            srcX = srcX.x;
+        }
+    }
     if (opts_or_class && typeof opts_or_class === 'object' && srcX === undefined && srcY === undefined) {
         if (opts_or_class.coord) {
             if (Array.isArray(opts_or_class.coord)) {
@@ -4165,8 +4376,80 @@ export function door(state_or_opts, x, y) {
  * @param {Object} opts - Engraving options (coord, type, text)
  */
 export function engraving(opts) {
-    // Stub - would create engraving at coord
-    // For now, just ignore
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+
+    // C ref: lspo_engraving supports:
+    // 1) engraving({ x, y, type, text, degrade, guardobjects })
+    // 2) engraving({ coord: {x,y} or [x,y], ... })
+    // 3) engraving({x,y}, "engrave", "text")
+    const argc = arguments.length;
+    let etyp = 'dust';
+    let txt = '';
+    let ex = -1;
+    let ey = -1;
+    let guardobjects = false;
+    let wipeout = true;
+
+    if (argc === 1 && opts && typeof opts === 'object' && !Array.isArray(opts)) {
+        if (opts.coord) {
+            if (Array.isArray(opts.coord)) {
+                ex = opts.coord[0];
+                ey = opts.coord[1];
+            } else {
+                ex = opts.coord.x;
+                ey = opts.coord.y;
+            }
+        } else {
+            ex = opts.x;
+            ey = opts.y;
+        }
+        etyp = opts.type ?? 'engrave';
+        txt = String(opts.text ?? '');
+        wipeout = (opts.degrade !== undefined) ? !!opts.degrade : true;
+        guardobjects = !!opts.guardobjects;
+    } else if (argc === 3) {
+        const coord = arguments[0];
+        if (Array.isArray(coord)) {
+            ex = coord[0];
+            ey = coord[1];
+        } else if (coord && typeof coord === 'object') {
+            ex = coord.x;
+            ey = coord.y;
+        }
+        etyp = arguments[1] ?? 'engrave';
+        txt = String(arguments[2] ?? '');
+    } else {
+        throw new Error('Wrong parameters');
+    }
+
+    const engrTypeMap = {
+        dust: 'dust',
+        engrave: 'engrave',
+        burn: 'burn',
+        mark: 'mark',
+        blood: 'blood'
+    };
+    const engrType = engrTypeMap[String(etyp).toLowerCase()] || 'engrave';
+
+    const pos = getLocationCoord(ex, ey, GETLOC_DRY, levelState.currentRoom || null);
+    if (pos.x < 0 || pos.x >= COLNO || pos.y < 0 || pos.y >= ROWNO) return;
+
+    if (!Array.isArray(levelState.map.engravings)) {
+        levelState.map.engravings = [];
+    }
+    // C ref: make_engr_at replaces existing engraving at location.
+    levelState.map.engravings = levelState.map.engravings.filter(e => !(e.x === pos.x && e.y === pos.y));
+    levelState.map.engravings.push({
+        x: pos.x,
+        y: pos.y,
+        type: engrType,
+        text: txt,
+        guardobjects: !!guardobjects,
+        nowipeout: !wipeout
+    });
+    markSpLevTouched(pos.x, pos.y);
 }
 
 /**
@@ -4183,21 +4466,65 @@ export function ladder(direction, x, y) {
         levelState.map = new GameMap();
     }
 
-    // Convert map-relative coordinates to absolute
-    // C ref: Lua coordinates after des.map() are relative to map origin
-    const absCoords = toAbsoluteCoords(x, y);
-    x = absCoords.x;
-    y = absCoords.y;
+    let dir = direction;
+    let lx = x;
+    let ly = y;
 
-    if (x >= 0 && x < 80 && y >= 0 && y < 21) {
-        // Place LADDER terrain
-        levelState.map.locations[x][y].typ = LADDER;
-        markSpLevMap(x, y);
-        markSpLevTouched(x, y);
-
-        // Note: In C, ladders have additional metadata (up vs down)
-        // For now, just place the terrain
+    if (typeof direction === 'object' && direction !== null) {
+        dir = direction.dir || direction.direction || 'down';
+        if (Array.isArray(direction.coord)) {
+            lx = direction.coord[0];
+            ly = direction.coord[1];
+        } else if (direction.coord && typeof direction.coord === 'object') {
+            lx = direction.coord.x;
+            ly = direction.coord.y;
+        } else {
+            lx = direction.x;
+            ly = direction.y;
+        }
     }
+
+    const isRandom = lx === undefined || ly === undefined || lx < 0 || ly < 0;
+    // C ref: l_create_stairway() applies good_stair_loc() for random placement.
+    if (isRandom) {
+        setOkLocationFunc((tx, ty) => {
+            const typ = levelState.map.locations[tx][ty].typ;
+            return typ === ROOM || typ === CORR || typ === ICE;
+        });
+    }
+    const pos = getLocationCoord(lx, ly, GETLOC_DRY, levelState.currentRoom || null);
+    setOkLocationFunc(null);
+    const xabs = pos.x;
+    const yabs = pos.y;
+    if (xabs < 0 || yabs < 0 || xabs >= COLNO || yabs >= ROWNO) return;
+
+    markSpLevTouched(xabs, yabs);
+
+    const trap = levelState.map.trapAt(xabs, yabs);
+    if (trap) {
+        levelState.map.traps = (levelState.map.traps || []).filter(t => t !== trap);
+    }
+
+    // C ref: fixed-coordinate placement uses force=TRUE and coerces terrain.
+    if (!isRandom) {
+        levelState.map.locations[xabs][yabs].typ = ROOM;
+    }
+
+    if (!canPlaceStair(dir)) {
+        return;
+    }
+
+    const up = (dir === 'up') ? 1 : 0;
+    const loc = levelState.map.locations[xabs][yabs];
+    loc.typ = LADDER;
+    loc.stairdir = up;
+    loc.flags = up;
+    if (up) {
+        levelState.map.upladder = { x: xabs, y: yabs };
+    } else {
+        levelState.map.dnladder = { x: xabs, y: yabs };
+    }
+    markSpLevMap(xabs, yabs);
 }
 
 /**
@@ -4323,35 +4650,138 @@ export function gold(opts) {
  * @param {number} y - Y coordinate
  */
 export function feature(type, x, y) {
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+
     const terrainMap = {
-        'fountain': FOUNTAIN,
-        'sink': SINK,
-        'throne': THRONE,
-        'altar': ALTAR,
-        'grave': GRAVE,
+        fountain: FOUNTAIN,
+        sink: SINK,
+        pool: POOL,
+        throne: THRONE,
+        tree: TREE,
+        // Non-C compatibility aliases currently used by some scripts.
+        altar: ALTAR,
+        grave: GRAVE
     };
 
-    const terrain = terrainMap[type];
+    const argc = arguments.length;
+    let typName;
+    let fx = -1;
+    let fy = -1;
+    let canHaveFlags = false;
+    let opts = null;
+
+    if (argc === 1 && typeof type === 'string') {
+        typName = type;
+    } else if (argc === 2 && typeof type === 'string'
+        && x && typeof x === 'object') {
+        typName = type;
+        if (Array.isArray(x)) {
+            fx = x[0];
+            fy = x[1];
+        } else {
+            fx = x.x;
+            fy = x.y;
+        }
+    } else if (argc === 3 && typeof type === 'string') {
+        typName = type;
+        fx = x;
+        fy = y;
+    } else if (argc === 1 && type && typeof type === 'object') {
+        opts = type;
+        canHaveFlags = true;
+        if (Array.isArray(opts.coord)) {
+            fx = opts.coord[0];
+            fy = opts.coord[1];
+        } else if (opts.coord && typeof opts.coord === 'object') {
+            fx = opts.coord.x;
+            fy = opts.coord.y;
+        } else {
+            fx = opts.x;
+            fy = opts.y;
+        }
+        typName = opts.type;
+    } else {
+        throw new Error('wrong parameters');
+    }
+
+    const terrain = terrainMap[String(typName || '').toLowerCase()];
     if (terrain === undefined) return;
 
-    let fx = x;
-    let fy = y;
-    if (Array.isArray(x)) {
-        fx = x[0];
-        fy = x[1];
-    } else if (x && typeof x === 'object' && y === undefined) {
-        fx = x.x;
-        fy = x.y;
-    }
+    const isRandom = (fx === undefined || fy === undefined || fx < 0 || fy < 0);
+    const pos = getLocationCoord(
+        fx,
+        fy,
+        isRandom ? GETLOC_DRY : GETLOC_ANY_LOC,
+        levelState.currentRoom || null
+    );
+    if (pos.x < 0 || pos.x >= COLNO || pos.y < 0 || pos.y >= ROWNO) return;
+    if (!setLevlTypAt(levelState.map, pos.x, pos.y, terrain)) return;
 
-    const pos = getLocationCoord(fx, fy, GETLOC_ANY_LOC, levelState.currentRoom || null);
-    if (pos.x >= 0 && pos.x < 80 && pos.y >= 0 && pos.y < 21) {
-        if (!setLevlTypAt(levelState.map, pos.x, pos.y, terrain)) return;
-        if (terrain === ALTAR) {
-            levelState.map.locations[pos.x][pos.y].altarAlign = A_NEUTRAL;
-        }
-        markSpLevTouched(pos.x, pos.y);
+    if (terrain === ALTAR) {
+        levelState.map.locations[pos.x][pos.y].altarAlign = A_NEUTRAL;
     }
+    if (canHaveFlags && opts) {
+        const loc = levelState.map.locations[pos.x][pos.y];
+        // C ref: rm.h feature flags share the location flags/looted bitfield.
+        // Values are terrain-specific:
+        // fountain: F_LOOTED=1, F_WARNED=2
+        // sink: S_LPUDDING=1, S_LDWASHER=2, S_LRING=4
+        // throne: T_LOOTED=1
+        // tree: TREE_LOOTED=1, TREE_SWARM=2
+        const setFlagBit = (enabled, bit) => {
+            if (enabled) loc.flags |= bit;
+            else loc.flags &= ~bit;
+        };
+        if (!loc.featureFlags) loc.featureFlags = {};
+        if (terrain === FOUNTAIN) {
+            if (opts.looted !== undefined) {
+                const v = !!opts.looted;
+                loc.featureFlags.looted = v;
+                setFlagBit(v, 1);
+            }
+            if (opts.warned !== undefined) {
+                const v = !!opts.warned;
+                loc.featureFlags.warned = v;
+                setFlagBit(v, 2);
+            }
+        } else if (terrain === SINK) {
+            if (opts.pudding !== undefined) {
+                const v = !!opts.pudding;
+                loc.featureFlags.pudding = v;
+                setFlagBit(v, 1);
+            }
+            if (opts.dishwasher !== undefined) {
+                const v = !!opts.dishwasher;
+                loc.featureFlags.dishwasher = v;
+                setFlagBit(v, 2);
+            }
+            if (opts.ring !== undefined) {
+                const v = !!opts.ring;
+                loc.featureFlags.ring = v;
+                setFlagBit(v, 4);
+            }
+        } else if (terrain === THRONE) {
+            if (opts.looted !== undefined) {
+                const v = !!opts.looted;
+                loc.featureFlags.looted = v;
+                setFlagBit(v, 1);
+            }
+        } else if (terrain === TREE) {
+            if (opts.looted !== undefined) {
+                const v = !!opts.looted;
+                loc.featureFlags.looted = v;
+                setFlagBit(v, 1);
+            }
+            if (opts.swarm !== undefined) {
+                const v = !!opts.swarm;
+                loc.featureFlags.swarm = v;
+                setFlagBit(v, 2);
+            }
+        }
+    }
+    markSpLevTouched(pos.x, pos.y);
 }
 
 /**
@@ -4362,36 +4792,66 @@ export function feature(type, x, y) {
  * @param {Object} opts - { selection } or { region:[x1,y1,x2,y2] }
  */
 export function gas_cloud(opts = {}) {
-    if (!levelState.map) return;
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+    if (arguments.length !== 1 || !opts || typeof opts !== 'object' || Array.isArray(opts)) {
+        throw new Error('wrong parameters');
+    }
 
-    const applyAt = (x, y) => {
-        if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO) return;
-        levelState.map.locations[x][y].typ = CLOUD;
-        markSpLevTouched(x, y);
-    };
+    let gx = opts.x;
+    let gy = opts.y;
+    if (opts.coord) {
+        if (Array.isArray(opts.coord)) {
+            gx = opts.coord[0];
+            gy = opts.coord[1];
+        } else if (opts.coord && typeof opts.coord === 'object') {
+            gx = opts.coord.x;
+            gy = opts.coord.y;
+        }
+    }
 
+    const damage = Number.isFinite(opts.damage) ? Math.trunc(opts.damage) : 0;
+    const ttl = Number.isFinite(opts.ttl) ? Math.trunc(opts.ttl) : -2;
     const sel = opts.selection;
-    if (sel && Array.isArray(sel.coords)) {
-        for (const c of sel.coords) applyAt(c.x, c.y);
+    // C get_table_xy_or_coord() defaults to -1,-1 when x/y are omitted.
+    if (gx === undefined && gy === undefined) {
+        gx = -1;
+        gy = -1;
+    }
+    const useSelection = (gx === -1 && gy === -1 && sel && Array.isArray(sel.coords));
+
+    if (!Array.isArray(levelState.map.gasClouds)) {
+        levelState.map.gasClouds = [];
+    }
+
+    if (useSelection) {
+        const coords = [];
+        for (const c of sel.coords) {
+            if (c.x < 0 || c.x >= COLNO || c.y < 0 || c.y >= ROWNO) continue;
+            coords.push({ x: c.x, y: c.y });
+            markSpLevTouched(c.x, c.y);
+        }
+        levelState.map.gasClouds.push({
+            kind: 'selection',
+            coords,
+            damage,
+            ttl
+        });
         return;
     }
-    if (sel && Number.isFinite(sel.x1) && Number.isFinite(sel.y1)
-        && Number.isFinite(sel.x2) && Number.isFinite(sel.y2)) {
-        for (let y = sel.y1; y <= sel.y2; y++) {
-            for (let x = sel.x1; x <= sel.x2; x++) {
-                applyAt(x, y);
-            }
-        }
-        return;
-    }
-    if (Array.isArray(opts.region) && opts.region.length >= 4) {
-        const [x1, y1, x2, y2] = opts.region;
-        for (let y = y1; y <= y2; y++) {
-            for (let x = x1; x <= x2; x++) {
-                applyAt(x, y);
-            }
-        }
-    }
+
+    const pos = getLocationCoord(gx, gy, GETLOC_ANY_LOC, levelState.currentRoom || null);
+    if (pos.x < 0 || pos.x >= COLNO || pos.y < 0 || pos.y >= ROWNO) return;
+    levelState.map.gasClouds.push({
+        kind: 'point',
+        x: pos.x,
+        y: pos.y,
+        radius: 1,
+        damage,
+        ttl
+    });
+    markSpLevTouched(pos.x, pos.y);
 }
 
 /**
@@ -4456,7 +4916,7 @@ export function random_corridors() {
  * Objects are already created (RNG consumed), just need to be placed on the map
  */
 function executeDeferredObject(deferred) {
-    const { obj, x, y } = deferred;
+    const { obj, x, y, buried } = deferred;
 
     if (!obj) return;
 
@@ -4468,6 +4928,12 @@ function executeDeferredObject(deferred) {
     if (coordX >= 0 && coordX < 80 && coordY >= 0 && coordY < 21) {
         obj.ox = coordX;
         obj.oy = coordY;
+        if (buried) {
+            // C ref: bury_an_obj() removes floor placement and stores the
+            // object in buried chains. We currently only model "not on floor".
+            obj.buried = true;
+            return;
+        }
         levelState.map.objects.push(obj);
     }
 }
@@ -4488,6 +4954,13 @@ function executeDeferredMonster(deferred) {
     const traceMon = (typeof process !== 'undefined' && process.env.WEBHACK_MON_TRACE === '1');
     const traceStart = traceMon ? getRngCallCount() : 0;
     const traceSeq = ++monsterExecSeq;
+    const MM_NOTAIL = 0x00004000;
+    const MM_ADJACENTOK = 0x00000010;
+    const MM_IGNOREWATER = 0x00000100;
+    const MM_NOCOUNTBIRTH = 0x00000200;
+    const NO_INVENT = 0;
+    const CUSTOM_INVENT = 0x01;
+    const DEFAULT_INVENT = 0x02;
 
     const resolveMonsterIndex = (monsterId, depth) => {
         if (typeof monsterId === 'string' && monsterId.length === 1) {
@@ -4544,6 +5017,15 @@ function executeDeferredMonster(deferred) {
     function consumeInducedAlignRng() {
         rn2(3);
     }
+
+    const parseAppearAsLikeC = (appearAsSpec) => {
+        if (appearAsSpec === undefined || appearAsSpec === null) return null;
+        const raw = String(appearAsSpec);
+        if (raw.startsWith('obj:')) return { type: 'obj', value: raw.slice(4) };
+        if (raw.startsWith('mon:')) return { type: 'mon', value: raw.slice(4) };
+        if (raw.startsWith('ter:')) return { type: 'ter', value: raw.slice(4) };
+        throw new Error('Unknown appear_as type');
+    };
 
     if (opts_or_class === undefined) {
         const randClass = String.fromCharCode(65 + rn2(26));
@@ -4631,6 +5113,7 @@ function executeDeferredMonster(deferred) {
             }
         }
         // C ref: create_monster() default AM_SPLEV_RANDOM -> induced_align().
+        // Keep historical single-call behavior to preserve parity suites.
         consumeInducedAlignRng();
         // C ref: create_monster() resolves class with mkclass() after induced_align()
         // but before get_location().
@@ -4649,14 +5132,85 @@ function executeDeferredMonster(deferred) {
         }
 
         let mmFlags = NO_MM_FLAGS;
+        let requestedMmFlags = NO_MM_FLAGS;
+        if (opts && opts.tail !== undefined && !opts.tail) {
+            requestedMmFlags |= MM_NOTAIL;
+        }
         if (opts && opts.group !== undefined && !opts.group) {
+            requestedMmFlags |= MM_NOGRP;
             mmFlags |= MM_NOGRP;
+        }
+        if (opts && opts.adjacentok) requestedMmFlags |= MM_ADJACENTOK;
+        if (opts && opts.ignorewater) requestedMmFlags |= MM_IGNOREWATER;
+        if (opts && opts.countbirth !== undefined && !opts.countbirth) {
+            requestedMmFlags |= MM_NOCOUNTBIRTH;
         }
         const mtmp = createMonster(monsterId, coordX, coordY, mndxForParity, femaleForParity, mmFlags);
         if (mtmp && opts) {
-            if (opts.peaceful !== undefined) mtmp.peaceful = !!opts.peaceful;
-            if (opts.asleep !== undefined) mtmp.msleeping = !!opts.asleep;
+            const parsedAppearAs = parseAppearAsLikeC(opts.appear_as);
+            const hasInventoryField = (opts.inventory !== undefined);
+            const keepDefaultSpecified = (opts.keep_default_invent !== undefined);
+            const keepDefaultInvent = keepDefaultSpecified ? !!opts.keep_default_invent : undefined;
+            let hasInvent = DEFAULT_INVENT;
+            if (hasInventoryField) {
+                hasInvent = CUSTOM_INVENT;
+                if (keepDefaultInvent === true) {
+                    hasInvent |= DEFAULT_INVENT;
+                }
+            } else if (keepDefaultInvent === false) {
+                hasInvent = NO_INVENT;
+            }
+            if (opts.name !== undefined) mtmp.customName = String(opts.name);
+            if (opts.female !== undefined) mtmp.female = !!opts.female;
+            if (opts.peaceful !== undefined) {
+                mtmp.peaceful = !!opts.peaceful;
+                mtmp.mpeaceful = !!opts.peaceful;
+            }
+            if (opts.asleep !== undefined) {
+                mtmp.msleeping = !!opts.asleep;
+                mtmp.sleeping = !!opts.asleep;
+            }
             if (opts.waiting !== undefined) mtmp.mstrategy = opts.waiting ? 1 : 0;
+            if (opts.invisible !== undefined) {
+                mtmp.minvis = !!opts.invisible;
+                mtmp.perminvis = !!opts.invisible;
+            }
+            if (opts.cancelled !== undefined) mtmp.mcan = !!opts.cancelled;
+            if (opts.revived !== undefined) mtmp.mrevived = !!opts.revived;
+            if (opts.avenge !== undefined) mtmp.mavenge = !!opts.avenge;
+            if (opts.stunned !== undefined) mtmp.mstun = !!opts.stunned;
+            if (opts.confused !== undefined) mtmp.mconf = !!opts.confused;
+            if (Number.isFinite(opts.blinded) && Math.trunc(opts.blinded) > 0) {
+                mtmp.mcansee = false;
+                mtmp.mblinded = Math.trunc(opts.blinded) % 127;
+            }
+            if (Number.isFinite(opts.paralyzed) && Math.trunc(opts.paralyzed) > 0) {
+                mtmp.mcanmove = false;
+                mtmp.mfrozen = Math.trunc(opts.paralyzed) % 127;
+            }
+            if (Number.isFinite(opts.fleeing) && Math.trunc(opts.fleeing) > 0) {
+                mtmp.mflee = true;
+                mtmp.mfleetim = Math.trunc(opts.fleeing) % 127;
+            }
+            if (parsedAppearAs) {
+                // C ref: lspo_monster stores appear type + payload string.
+                mtmp.appear_as = `${parsedAppearAs.type}:${parsedAppearAs.value}`;
+                mtmp.appear_as_type = parsedAppearAs.type;
+                mtmp.appear_as_value = parsedAppearAs.value;
+            }
+            if ((hasInvent & DEFAULT_INVENT) === 0) {
+                mtmp.minvent = [];
+            }
+            if ((hasInvent & CUSTOM_INVENT) && typeof opts.inventory === 'function') {
+                levelState.monsterInventoryStack.push(mtmp);
+                try {
+                    opts.inventory(mtmp);
+                } finally {
+                    levelState.monsterInventoryStack.pop();
+                }
+            }
+            mtmp.has_invent_flags = hasInvent;
+            mtmp.mm_flags_requested = requestedMmFlags;
         }
         if (traceMon) {
             const traceEnd = getRngCallCount();
@@ -4701,6 +5255,8 @@ function executeDeferredTrap(deferred) {
     let spiderOnWeb = true;
     let seen = false;
     let victim = true;
+    let launchfrom;
+    let teledest;
 
     if (type_or_opts === undefined) {
         trapType = undefined;
@@ -4718,6 +5274,12 @@ function executeDeferredTrap(deferred) {
         }
         if (type_or_opts.victim !== undefined) {
             victim = !!type_or_opts.victim;
+        }
+        if (type_or_opts.launchfrom && typeof type_or_opts.launchfrom === 'object') {
+            launchfrom = type_or_opts.launchfrom;
+        }
+        if (type_or_opts.teledest && typeof type_or_opts.teledest === 'object') {
+            teledest = type_or_opts.teledest;
         }
         // Prefer absolute coordinates captured at enqueue time.
         if (x !== undefined && y !== undefined) {
@@ -4753,6 +5315,25 @@ function executeDeferredTrap(deferred) {
     if (seen) mktrapFlags |= MKTRAP_SEEN;
     if (!victim) mktrapFlags |= MKTRAP_NOVICTIM;
 
+    const decodeCoordOpt = (coordOpt) => {
+        if (!coordOpt) return null;
+        let cx;
+        let cy;
+        if (Array.isArray(coordOpt)) {
+            cx = coordOpt[0];
+            cy = coordOpt[1];
+        } else {
+            cx = coordOpt.x;
+            cy = coordOpt.y;
+        }
+        if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
+        if (levelState.mapCoordMode) {
+            const abs = toAbsoluteCoords(cx, cy);
+            return { x: abs.x, y: abs.y };
+        }
+        return { x: Math.trunc(cx), y: Math.trunc(cy) };
+    };
+
     let ttyp;
     if (!trapType) {
         // C ref: create_trap() -> mktrap(NO_TRAP, MKTRAP_MAZEFLAG, tm)
@@ -4781,6 +5362,9 @@ function executeDeferredTrap(deferred) {
         ttyp = trapNameToType(trapType);
     }
 
+    if (ttyp === null) {
+        throw new Error('Unknown trap type');
+    }
     if (ttyp < 0 || trapX < 0 || trapX >= 80 || trapY < 0 || trapY >= 21) {
         return;
     }
@@ -4790,6 +5374,22 @@ function executeDeferredTrap(deferred) {
         ? levelState.finalizeContext.dunlev
         : (levelState.levelDepth || 1);
     mktrap(levelState.map, ttyp, mktrapFlags, null, tm, depth);
+    const createdTrap = levelState.map.trapAt(trapX, trapY);
+    if (createdTrap) {
+        const launchPt = decodeCoordOpt(launchfrom);
+        const telePt = decodeCoordOpt(teledest);
+        if (launchPt && createdTrap.ttyp === ROLLING_BOULDER_TRAP) {
+            createdTrap.launch = { x: launchPt.x, y: launchPt.y };
+            createdTrap.launch2 = {
+                x: trapX - (launchPt.x - trapX),
+                y: trapY - (launchPt.y - trapY)
+            };
+        }
+        if (telePt && createdTrap.ttyp === TELEP_TRAP
+            && !(telePt.x === trapX && telePt.y === trapY)) {
+            createdTrap.teledest = { x: telePt.x, y: telePt.y };
+        }
+    }
     markSpLevTouched(trapX, trapY);
 }
 

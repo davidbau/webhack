@@ -732,6 +732,27 @@ export class Display {
         return offx;
     }
 
+    // Display a right-side menu overlay while preserving existing left-side map.
+    renderOverlayMenu(lines) {
+        let maxcol = 0;
+        for (const line of lines) {
+            if (line.length > maxcol) maxcol = line.length;
+        }
+        const offx = Math.max(10, Math.min(41, this.cols - maxcol - 2));
+
+        // Clear only the overlay area.
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = offx; c < this.cols; c++) {
+                this.setCell(c, r, ' ', CLR_GRAY, 0);
+            }
+        }
+
+        for (let i = 0; i < lines.length && i < this.rows; i++) {
+            this.putstr(offx, i, lines[i], CLR_WHITE, 0);
+        }
+        return offx;
+    }
+
     // Display lore text overlaid on the map area
     // C ref: The lore text is displayed starting at a calculated column offset
     renderLoreText(lines, offx) {
@@ -800,9 +821,12 @@ export class Display {
         if (E && W && S && !N) return TDWALL;     // T pointing down
         if (N && S && E && W) return CROSSWALL;   // Cross
 
-        // Straight walls: walls in opposite directions or one direction
-        if ((N || S) && !E && !W) return VWALL;   // Vertical wall
-        if ((E || W) && !N && !S) return HWALL;   // Horizontal wall
+        // Straight walls:
+        // C parity: wall orientation tracks rm.horizontal convention used for
+        // doors/secret doors. E/W neighbors imply a vertical glyph ('|'),
+        // N/S neighbors imply a horizontal glyph ('-').
+        if ((N || S) && !E && !W) return HWALL;
+        if ((E || W) && !N && !S) return VWALL;
 
         // Default to vertical wall if unclear
         return VWALL;

@@ -37,4 +37,6 @@ Scope: replace simulation/stub behavior with faithful C NetHack logic while keep
 - Make small, reviewable commits.
 - Keep replay tests and unit tests green after each batch.
 - Prefer direct C behavior over synthetic RNG consumption.
+- Use tests to prioritize, not to define behavior.
+- For visible behavior changes, port from `nethack-c/src` first; avoid trace-only heuristics.
 - For each completed item: record what changed and which tests verified it.

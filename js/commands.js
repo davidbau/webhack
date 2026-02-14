@@ -16,6 +16,7 @@ import { playerAttackMonster } from './combat.js';
 import { makemon, setMakemonPlayerContext } from './makemon.js';
 import { mons } from './monsters.js';
 import { doname } from './mkobj.js';
+import { observeObject, getDiscoveriesMenuLines } from './discovery.js';
 import { showPager } from './pager.js';
 import { handleZap } from './zap.js';
 import { saveGame, saveFlags } from './storage.js';
@@ -224,7 +225,17 @@ export async function rhack(ch, game) {
     // Discoveries (\)
     // C ref: o_init.c dodiscovered()
     if (c === '\\') {
-        display.putstr_message("You haven't discovered anything yet.");
+        const lines = getDiscoveriesMenuLines();
+        if (!lines.length) {
+            display.putstr_message("You haven't discovered anything yet.");
+            return { moved: false, tookTime: false };
+        }
+        if (typeof display.renderOverlayMenu === 'function') {
+            display.renderOverlayMenu(lines.concat([' (end)']));
+        } else {
+            display.renderChargenMenu(lines.concat([' (end)']), false);
+        }
+        await nhgetch();
         return { moved: false, tookTime: false };
     }
 
@@ -495,6 +506,7 @@ async function handleMovement(dir, player, map, display, game) {
                     const plural = count === 1 ? '' : 's';
                     display.putstr_message(`You see here ${count} gold piece${plural}.`);
                 } else {
+                    observeObject(seen);
                     display.putstr_message(`You see here ${doname(seen, null)}.`);
                 }
             } else {
@@ -724,6 +736,7 @@ async function handleMovement(dir, player, map, display, game) {
                 const article = /^[aeiou]/i.test(seen.name) ? 'an' : 'a';
                 display.putstr_message(`You see here ${article} ${seen.name}.`);
             } else {
+                observeObject(seen);
                 display.putstr_message(`You see here ${doname(seen, null)}.`);
             }
         } else {
@@ -1025,7 +1038,11 @@ async function handleInventory(player, display) {
     }
     lines.push(' (end)');
 
-    display.renderChargenMenu(lines, false);
+    if (typeof display.renderOverlayMenu === 'function') {
+        display.renderOverlayMenu(lines);
+    } else {
+        display.renderChargenMenu(lines, false);
+    }
     await nhgetch(); // wait for dismissal
 
     return { moved: false, tookTime: false };

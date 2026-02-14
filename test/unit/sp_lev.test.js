@@ -275,11 +275,12 @@ describe('sp_lev.js - des.* API', () => {
     it('applies des.non_diggable coordinates relative to des.map origin', () => {
         resetLevelState();
         des.level_init({ style: 'solidfill', fg: ' ' });
-        des.map({ map: '..\n..', x: 10, y: 5 });
+        des.map({ map: '--\n..', x: 10, y: 5 });
 
         des.non_diggable({ x1: 0, y1: 0, x2: 0, y2: 0 });
         const map = getLevelState().map;
         assert.equal(map.locations[10][5].nondiggable, true, 'relative non_diggable should target map origin');
+        assert.equal(map.locations[10][6].nondiggable, false, 'non-wall tiles should remain diggable');
         assert.equal(map.locations[0][0].nondiggable, false, 'absolute origin should remain diggable');
     });
 
