@@ -54,3 +54,15 @@ strict no-screen RNG parity for:
 
 This is a further improvement from the earlier step-654 frontier and points to
 remaining state divergence in later tutorial movement flow.
+
+## Fixture Generation Update (2026-02-14, later)
+
+- `test/comparison/c-harness/keylog_to_session.py` now supports
+  `--startup-mode auto|ready|from-keylog`.
+- `auto` detects manual keylogs containing startup keys (`in_moveloop=0`) and
+  replays startup from the keylog instead of auto-advancing startup prompts.
+- Seed5 fixture was regenerated from raw keylog with this mode, removing
+  incorrect `Tutorial:` status labeling in the generated session screen rows.
+- Resulting fixture is more faithful to capture setup, even though current JS
+  strict no-screen parity frontier is now earlier (`step 59`) and needs further
+  C-faithful gameplay logic porting from that new baseline.

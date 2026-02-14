@@ -64,6 +64,12 @@ def parse_args():
         choices=['auto', 'plain', 'ansi', 'both'],
         help='Screen capture mode: plain=text only, ansi=ANSI only, both=both fields, auto=ansi for DECgraphics else plain'
     )
+    p.add_argument(
+        '--startup-mode',
+        default='auto',
+        choices=['auto', 'ready', 'from-keylog'],
+        help='Startup handling: ready=auto-advance to map before replay, from-keylog=replay startup keys exactly, auto=detect from keylog in_moveloop'
+    )
     return p.parse_args()
 
 
@@ -77,6 +83,7 @@ def setup_home(character, symset):
         f.write(f'OPTIONS=gender:{character["gender"]}\n')
         f.write(f'OPTIONS=align:{character["align"]}\n')
         f.write('OPTIONS=!autopickup\n')
+        f.write('OPTIONS=!tutorial\n')
         f.write('OPTIONS=suppress_alert:3.4.3\n')
         if symset == 'DECgraphics':
             f.write('OPTIONS=symset:DECgraphics\n')
@@ -173,7 +180,7 @@ def capture_screens(session_name, mode):
     return out
 
 
-def run_from_keylog(events, seed, character, symset, output_json, screen_capture_mode):
+def run_from_keylog(events, seed, character, symset, output_json, screen_capture_mode, startup_mode):
     setup_home(character, symset)
     output_json = os.path.abspath(output_json)
 
@@ -201,17 +208,28 @@ def run_from_keylog(events, seed, character, symset, output_json, screen_capture
         )
         time.sleep(1.0)
 
-        wait_for_game_ready(session_name, rng_log_file)
-        time.sleep(0.1)
-        clear_more_prompts(session_name)
-        time.sleep(0.1)
+        keylog_has_startup = any(int(e.get('in_moveloop', 1)) == 0 for e in events[:64])
+        replay_startup_from_keylog = (
+            startup_mode == 'from-keylog'
+            or (startup_mode == 'auto' and keylog_has_startup)
+        )
+        if replay_startup_from_keylog:
+            # Keylog traces captured via c_manual_record already include startup/chargen keys.
+            # Do not auto-advance prompts here or we will double-apply startup.
+            time.sleep(0.5)
+        else:
+            wait_for_game_ready(session_name, rng_log_file)
+            time.sleep(0.1)
+            clear_more_prompts(session_name)
+            time.sleep(0.1)
 
         startup_screens = capture_screens(session_name, screen_capture_mode)
         startup_rng_count, startup_rng_lines = read_rng_log(rng_log_file)
         startup_rng_entries = parse_rng_lines(startup_rng_lines)
         startup_actual_rng = sum(1 for e in startup_rng_entries if e[0] not in ('>', '<'))
         startup_typ_grid = execute_dumpmap(session_name, dumpmap_file)
-        clear_more_prompts(session_name)
+        if not replay_startup_from_keylog:
+            clear_more_prompts(session_name)
 
         session_data = {
             'version': 1,
@@ -239,8 +257,9 @@ def run_from_keylog(events, seed, character, symset, output_json, screen_capture
             code = int(e['key'])
             send_keycode(session_name, code)
             time.sleep(0.05)
-            clear_more_prompts(session_name)
-            time.sleep(0.05)
+            if not replay_startup_from_keylog:
+                clear_more_prompts(session_name)
+                time.sleep(0.05)
 
             screens = capture_screens(session_name, screen_capture_mode)
             rng_count, rng_lines = read_rng_log(rng_log_file)
@@ -250,6 +269,17 @@ def run_from_keylog(events, seed, character, symset, output_json, screen_capture
             depth_lines = screens.get('screen') or screens.get('screenAnsi') or []
             depth = int(e.get('dlevel', detect_depth(depth_lines)))
             turn = max(0, int(e.get('moves', 0)) - keylog_moves_base)
+
+            # Guard against startup-state mismatch: if status says Tutorial while
+            # keylog dnum says otherwise, abort instead of producing a bad fixture.
+            if depth_lines:
+                status_line = depth_lines[23] if len(depth_lines) > 23 else ''
+                ev_dnum = e.get('dnum')
+                if isinstance(ev_dnum, int) and 'Tutorial:' in status_line and ev_dnum != 8:
+                    raise RuntimeError(
+                        f'Keylog/session mismatch at seq={e.get("seq")}: '
+                        f'status shows Tutorial but keylog dnum={ev_dnum}'
+                    )
 
             step = {
                 'key': key_repr(code),
@@ -304,7 +334,7 @@ def main():
     }
 
     screen_capture_mode = resolve_screen_capture_mode(args.screen_capture, args.symset)
-    run_from_keylog(events, seed, character, args.symset, args.output_json, screen_capture_mode)
+    run_from_keylog(events, seed, character, args.symset, args.output_json, screen_capture_mode, args.startup_mode)
 
 
 if __name__ == '__main__':

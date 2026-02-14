@@ -44,3 +44,17 @@ Replay JSON contains:
 - `events` with key context (`moves`, `x`, `y`, `dlevel`, flags)
 
 Use `keys` for deterministic input replay and `events` for state-aligned diffing.
+
+## 3) Convert JSONL trace to C-comparison session fixture
+
+```bash
+python3 test/comparison/c-harness/keylog_to_session.py \
+  --in=/tmp/seed5_manual.jsonl \
+  --out=test/comparison/sessions/seed5_gnomish_mines_gameplay.session.json \
+  --name=wizard --role=Valkyrie --race=human --gender=female --align=neutral \
+  --startup-mode=auto
+```
+
+- `--startup-mode=auto` is the safe default for manual keylogs.
+- It detects startup keys in the keylog (`in_moveloop=0`) and replays startup
+  exactly from the log instead of auto-advancing prompts.
