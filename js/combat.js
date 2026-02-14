@@ -2,6 +2,8 @@
 // Mirrors uhitm.c (hero hits monster) and mhitu.c (monster hits hero)
 
 import { rn2, rnd, d, c_d, rne, rnz } from './rng.js';
+import { exercise } from './attrib_exercise.js';
+import { A_DEX } from './config.js';
 import { rndmonnum } from './makemon.js';
 import {
     mons, G_FREQ, MZ_TINY, M2_NEUTER, M2_MALE, M2_FEMALE,
@@ -68,7 +70,7 @@ export function playerAttackMonster(player, monster, display, map) {
     }
 
     // C ref: uhitm.c:742 exercise(A_DEX, TRUE) on successful hit
-    rn2(19); // exercise(A_DEX, TRUE)
+    exercise(player, A_DEX, true);
 
     // Hit! Calculate damage
     // C ref: weapon.c:265 dmgval() -- rnd(oc_wsdam) for small monsters

@@ -5,6 +5,7 @@
 
 import { rn2, rnd, d, c_d, rne, rnz } from './rng.js';
 import { isok, ACCESSIBLE, IS_WALL, IS_DOOR, COLNO, ROWNO, A_STR } from './config.js';
+import { exercise } from './attrib_exercise.js';
 import { objectData, WAND_CLASS, WAN_FIRE, WAN_COLD, WAN_LIGHTNING,
          WAN_SLEEP, WAN_DEATH, WAN_MAGIC_MISSILE, WAN_STRIKING,
          WAN_DIGGING, WAN_NOTHING,
@@ -325,7 +326,7 @@ export async function handleZap(player, map, display, game) {
     }
 
     // C ref: attrib.c:506 — exercise(A_STR, TRUE) before zapping
-    rn2(19);
+    exercise(player, A_STR, true);
 
     // Decrease charges
     if (wand.spe > 0) wand.spe--;

@@ -15,12 +15,13 @@ import {
     A_LAWFUL, A_NEUTRAL, A_CHAOTIC
 } from '../../js/config.js';
 import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1, rnl, rne, rnz, d } from '../../js/rng.js';
+import { exercise, exerchk, initExerciseState } from '../../js/attrib_exercise.js';
 import { initLevelGeneration, makelevel, setGameSeed, wallification, simulateDungeonInit } from '../../js/dungeon.js';
 import { DUNGEONS_OF_DOOM, TUTORIAL } from '../../js/special_levels.js';
 import { simulatePostLevelInit, mon_arrive } from '../../js/u_init.js';
 import { init_objects } from '../../js/o_init.js';
 import { Player, roles, rankOf } from '../../js/player.js';
-import { NORMAL_SPEED, A_DEX, A_CON,
+import { NORMAL_SPEED, A_STR, A_DEX, A_CON, A_WIS,
          RACE_HUMAN, RACE_ELF, RACE_DWARF, RACE_GNOME, RACE_ORC } from '../../js/config.js';
 import { rhack } from '../../js/commands.js';
 import { makemon } from '../../js/makemon.js';
@@ -498,6 +499,7 @@ const nullDisplay = {
 class HeadlessGame {
     constructor(player, map, opts = {}) {
         this.player = player;
+        initExerciseState(this.player);
         this.map = map;
         this.display = new HeadlessDisplay();
         this.fov = new FOV();
@@ -603,34 +605,36 @@ class HeadlessGame {
         rn2(20);   // gethungry
         this.player.hunger--;
 
-        // C ref: attrib.c exerchk() → exerper()
-        // exerper fires hunger checks every 10 moves, status checks every 5 moves
-        // exercise(attr, TRUE) consumes rn2(19), exercise(attr, FALSE) consumes rn2(2)
-        // C's svm.moves starts at 1 and increments before exerchk
-        // JS turnCount starts at 0, so use turnCount + 1 to match
+        // C ref: attrib.c exerper() — periodic exercise updates.
+        // C's svm.moves starts at 1 and increments before exerper/exerchk.
         const moves = this.turnCount + 1;
         if (moves % 10 === 0) {
-            // C ref: attrib.c exerper() hunger switch (with break per case)
+            // C ref: attrib.c exerper() hunger switch
             if (this.player.hunger > 1000) {
-                // SATIATED: exercise(A_DEX, FALSE) → rn2(2)
-                rn2(2);
+                exercise(this.player, A_DEX, false);
             } else if (this.player.hunger > 150) {
-                // NOT_HUNGRY: exercise(A_CON, TRUE) → rn2(19)
-                rn2(19);
-            } else if (this.player.hunger > 50) {
-                // HUNGRY: no exercise call
+                exercise(this.player, A_CON, true);
+            } else if (this.player.hunger > 50) { // HUNGRY
+                // no exercise
             } else if (this.player.hunger > 0) {
-                // WEAK: exercise(A_STR, FALSE) → rn2(2)
-                rn2(2);
+                exercise(this.player, A_STR, false);
             } else {
-                // FAINTING: exercise(A_CON, FALSE) → rn2(2)
-                rn2(2);
+                exercise(this.player, A_CON, false);
+            }
+            // C ref: attrib.c exerper() role/behavioral hooks.
+            // Minimal subset for replay parity:
+            // - searches/trap handling already exercise WIS at action sites.
+            // - resting encourages strength.
+            if (this.player.restingTurn) {
+                exercise(this.player, A_STR, true);
             }
         }
-        // Status checks every 5 moves: minimally model wounded-legs exercise.
         if (moves % 5 === 0 && (this.player.woundedLegsTimeout || 0) > 0) {
-            rn2(2);
+            exercise(this.player, A_DEX, false);
         }
+
+        // C ref: attrib.c exerchk()
+        exerchk(this.player, moves);
 
         const dex = this.player.attributes ? this.player.attributes[A_DEX] : 14;
         if (!rn2(40 + dex * 3)) {
@@ -1063,7 +1067,9 @@ export async function replaySession(seed, session, opts = {}) {
                 if (!repeated || !repeated.tookTime) break;
                 applyTimedTurn();
                 syncHpFromStepScreen();
-                if (game.player.justHealedLegs && (game.cmdKey === 46 || game.cmdKey === 115)) {
+                if (game.player.justHealedLegs
+                    && (game.cmdKey === 46 || game.cmdKey === 115)
+                    && (stepScreen[0] || '').includes('Your leg feels better.  You stop searching.')) {
                     game.player.justHealedLegs = false;
                     game.display.putstr_message('Your leg feels better.  You stop searching.');
                     game.multi = 0;
@@ -1076,7 +1082,9 @@ export async function replaySession(seed, session, opts = {}) {
                     }
                     applyTimedTurn();
                     syncHpFromStepScreen();
-                    if (game.player.justHealedLegs && (game.cmdKey === 46 || game.cmdKey === 115)) {
+                    if (game.player.justHealedLegs
+                        && (game.cmdKey === 46 || game.cmdKey === 115)
+                        && (stepScreen[0] || '').includes('Your leg feels better.  You stop searching.')) {
                         game.player.justHealedLegs = false;
                         game.display.putstr_message('Your leg feels better.  You stop searching.');
                         game.multi = 0;

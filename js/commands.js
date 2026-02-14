@@ -5,9 +5,10 @@
 import { COLNO, ROWNO, DOOR, STAIRS, LADDER, FOUNTAIN, SINK, THRONE, ALTAR, GRAVE,
          POOL, LAVAPOOL, IRONBARS, TREE, ROOM, IS_DOOR, D_CLOSED, D_LOCKED,
          D_ISOPEN, D_NODOOR, ACCESSIBLE, IS_WALL, MAXLEVEL, VERSION_STRING,
-         isok, A_STR, A_DEX, A_CON } from './config.js';
+         isok, A_STR, A_DEX, A_CON, A_WIS } from './config.js';
 import { SQKY_BOARD, SLP_GAS_TRAP, FIRE_TRAP, PIT, SPIKED_PIT } from './symbols.js';
 import { rn2, rnd, rnl, d, c_d } from './rng.js';
+import { exercise } from './attrib_exercise.js';
 import { objectData, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
          TOOL_CLASS, FOOD_CLASS, POTION_CLASS, SCROLL_CLASS, SPBOOK_CLASS,
          WAND_CLASS, COIN_CLASS, GEM_CLASS, ROCK_CLASS } from './objects.js';
@@ -107,7 +108,7 @@ export async function rhack(ch, game) {
     if (c === '.' || c === 's') {
         // C ref: do.c cmd_safety_prevention() — prevent wait/search when hostile adjacent
         // Gated on flags.safe_wait (default true) and !multi (always 0 for non-counted)
-        if (game && game.flags && game.flags.safe_wait && !game.menuRequested) {
+        if (game && game.flags && game.flags.safe_wait && !game.menuRequested && !(game.multi > 0)) {
             let monNearby = false;
             for (let dx = -1; dx <= 1 && !monNearby; dx++) {
                 for (let dy = -1; dy <= 1 && !monNearby; dy++) {
@@ -584,7 +585,7 @@ async function handleMovement(dir, player, map, display, game) {
         // C ref: hack.c:3036 overexertion() unconditionally calls gethungry() -> rn2(20)
         rn2(20); // overexertion/gethungry before attack
         // C ref: uhitm.c:550 exercise(A_STR, TRUE) before hitum()
-        rn2(19); // exercise(A_STR)
+        exercise(player, A_STR, true);
         const killed = playerAttackMonster(player, mon, display, map);
         if (killed) {
             map.removeMonster(mon);
@@ -618,7 +619,7 @@ async function handleMovement(dir, player, map, display, game) {
             loc.flags = (loc.flags & ~D_CLOSED) | D_ISOPEN;
             display.putstr_message("The door opens.");
         } else {
-            rn2(19); // exercise(A_STR, TRUE) — C ref: attrib.c:506
+            exercise(player, A_STR, true);
             display.putstr_message("The door resists!");
         }
         return { moved: false, tookTime: false };
@@ -1005,7 +1006,7 @@ async function handleOpen(player, map, display, game) {
             loc.flags = D_ISOPEN;
             display.putstr_message("The door opens.");
         } else {
-            rn2(19); // exercise(A_STR, TRUE)
+            exercise(player, A_STR, true);
             display.putstr_message("The door resists!");
         }
         return { moved: false, tookTime: true };
@@ -1403,7 +1404,7 @@ function drinkfountain(player, map, display) {
         rn2(6); // rn2(A_MAX) — random starting attribute
         // adjattrib loop — simplified, no RNG for basic case
         display.putstr_message('A wisp of vapor escapes the fountain...');
-        rn2(19); // exercise(A_WIS, TRUE)
+        exercise(player, A_WIS, true);
         if (loc) loc.blessedftn = 0;
         return; // NO dryup on blessed jackpot path
     }
@@ -1418,7 +1419,7 @@ function drinkfountain(player, map, display) {
         switch (fate) {
         case 19:
             display.putstr_message('You feel self-knowledgeable...');
-            rn2(19); // exercise(A_WIS, TRUE)
+            exercise(player, A_WIS, true);
             break;
         case 20:
             display.putstr_message('The water is foul!  You gag and vomit.');
@@ -1428,7 +1429,7 @@ function drinkfountain(player, map, display) {
             display.putstr_message('The water is contaminated!');
             rn2(4) + 3; // rn1(4, 3) for poison_strdmg
             rnd(10);    // damage
-            rn2(19);    // exercise(A_CON, FALSE)
+            exercise(player, A_CON, false);
             break;
         // cases 22-30: complex effects with sub-functions
         // TODO: implement dowatersnakes, dowaterdemon, etc.
@@ -1553,8 +1554,8 @@ async function handleKick(player, map, display, game) {
         || loc.typ === SINK) {
         display.putstr_message("Ouch!  That hurts!");
         // C ref: exercise(A_DEX, FALSE), exercise(A_STR, FALSE)
-        rn2(2);
-        rn2(2);
+        exercise(player, A_DEX, false);
+        exercise(player, A_STR, false);
         // C ref: if (!rn2(3)) set_wounded_legs(..., 5 + rnd(5))
         if (rn2(3) === 0) {
             const timeout = 5 + rnd(5);
@@ -1572,13 +1573,13 @@ async function handleKick(player, map, display, game) {
     }
 
     // C ref: dokick.c kick_dumb() for kicking empty/non-solid space.
-    rn2(2); // exercise(A_DEX, FALSE)
+    exercise(player, A_DEX, false);
     const dex = player.attributes?.[A_DEX] || 10;
     if (dex >= 16 || rn2(3) !== 0) {
         display.putstr_message("You kick at empty space.");
     } else {
         display.putstr_message("Dumb move!  You strain a muscle.");
-        rn2(2); // exercise(A_STR, FALSE)
+        exercise(player, A_STR, false);
         rnd(5); // set_wounded_legs timeout component
     }
     return { moved: false, tookTime: true };
@@ -2026,7 +2027,7 @@ export function dosearch0(player, map, display) {
         // No message on search failure (matches C behavior)
     } else {
         // C ref: detect.c successful search exercises wisdom positively.
-        rn2(19);
+        exercise(player, A_WIS, true);
     }
 }
 
