@@ -20,7 +20,8 @@ Optional flags:
 - `--symset=ASCII|DECgraphics`
 - `--tmux-socket=selfplay|default|<name>`
 - `--session=<tmux-session-name>`
-- `--keep-session`
+- `--keep-session` (default)
+- `--no-keep-session`
 
 To run in your normal (default) tmux server:
 

@@ -1,0 +1,24 @@
+diff --git a/src/calendar.c b/src/calendar.c
+index 5a5287b2a..479d2df06 100644
+--- a/src/calendar.c
++++ b/src/calendar.c
+@@ -31,8 +31,14 @@ staticfn struct tm *getlt(void);
+ time_t
+ getnow(void)
+ {
++    const char *fixed_dt = nh_getenv("NETHACK_FIXED_DATETIME");
+     time_t datetime = 0;
+ 
++    if (fixed_dt && *fixed_dt) {
++        time_t parsed = time_from_yyyymmddhhmmss((char *) fixed_dt);
++        if (parsed != (time_t) 0)
++            return parsed;
++    }
+     (void) time((TIME_type) &datetime);
+     return datetime;
+ }
+@@ -226,4 +232,3 @@ midnight(void)
+ }
+ 
+ /* calendar.c */
+-

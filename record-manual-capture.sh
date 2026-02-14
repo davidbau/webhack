@@ -18,8 +18,11 @@ Common options:
   --seed=N                 RNG seed (default: 1)
   --keylog=PATH            Output JSONL path (default: /tmp/nethack_keylog_seed...)
   --tmux-socket=SOCKET     default | selfplay | custom-name (default: default)
+  --datetime=YYYYMMDDhhmmss Fixed in-game datetime (default: 20000110090000)
+  --real-time              Use real wall-clock datetime (no override)
   --session=NAME           tmux session name (default: auto timestamped)
-  --keep-session           Keep session alive after detach
+  --keep-session           Keep session alive after detach (default: on)
+  --no-keep-session        Auto-kill session after detach
   --role=ROLE              Character role (default: Valkyrie)
   --race=RACE              Character race (default: human)
   --gender=GENDER          Character gender (default: female)
@@ -44,4 +47,3 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
 fi
 
 exec node selfplay/runner/c_manual_record.js "$@"
-

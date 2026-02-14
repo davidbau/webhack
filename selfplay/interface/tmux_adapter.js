@@ -187,6 +187,9 @@ export class TmuxAdapter extends GameAdapter {
         if (process.env.NETHACK_KEYLOG) {
             env.NETHACK_KEYLOG = process.env.NETHACK_KEYLOG;
         }
+        if (process.env.NETHACK_FIXED_DATETIME) {
+            env.NETHACK_FIXED_DATETIME = process.env.NETHACK_FIXED_DATETIME;
+        }
 
         const envStr = Object.entries(env).map(([k, v]) => `${k}=${v}`).join(' ');
         execSync(`${this.tmuxBaseCmd} new-session -d -s ${this.sessionName} -x ${TERMINAL_COLS} -y ${TERMINAL_ROWS} "env ${envStr} ${NETHACK_BINARY} -u ${name} -D"`);

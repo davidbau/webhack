@@ -20,13 +20,17 @@ function parseArgs(argv) {
         tmuxSocket: process.env.SELFPLAY_TMUX_SOCKET || 'default',
         session: `nethack-manual-${Date.now()}`,
         keylog: null,
-        keepSession: false,
+        keepSession: true,
+        fixedDatetime: process.env.NETHACK_FIXED_DATETIME || '20000110090000',
     };
 
     for (let i = 2; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--keep-session') opts.keepSession = true;
+        else if (a === '--no-keep-session') opts.keepSession = false;
+        else if (a === '--real-time') opts.fixedDatetime = '';
         else if (a.startsWith('--seed=')) opts.seed = Number(a.slice(7));
+        else if (a.startsWith('--datetime=')) opts.fixedDatetime = a.slice(11);
         else if (a.startsWith('--role=')) opts.role = a.slice(7);
         else if (a.startsWith('--race=')) opts.race = a.slice(7);
         else if (a.startsWith('--gender=')) opts.gender = a.slice(9);
@@ -56,8 +60,11 @@ function printUsage() {
     console.log('  --name=NAME         player name (default: Recorder)');
     console.log('  --symset=ASCII|DECgraphics');
     console.log('  --tmux-socket=selfplay|default|NAME');
+    console.log('  --datetime=YYYYMMDDhhmmss   fixed in-game datetime (default: 20000110090000)');
+    console.log('  --real-time         use actual wall-clock datetime (no override)');
     console.log('  --session=NAME      tmux session name');
-    console.log('  --keep-session      do not auto-kill session after detach');
+    console.log('  --keep-session      keep session alive after detach (default: on)');
+    console.log('  --no-keep-session   auto-kill session after detach');
 }
 
 async function main() {
@@ -68,6 +75,8 @@ async function main() {
 
     const opts = parseArgs(process.argv);
     process.env.NETHACK_KEYLOG = opts.keylog;
+    if (opts.fixedDatetime) process.env.NETHACK_FIXED_DATETIME = opts.fixedDatetime;
+    else delete process.env.NETHACK_FIXED_DATETIME;
 
     const adapter = new TmuxAdapter({
         sessionName: opts.session,
@@ -81,6 +90,7 @@ async function main() {
     console.log(`  tmuxSocket=${opts.tmuxSocket}`);
     console.log(`  session=${opts.session}`);
     console.log(`  keylog=${opts.keylog}`);
+    console.log(`  datetime=${opts.fixedDatetime || 'real-time'}`);
 
     await adapter.start({
         seed: opts.seed,
