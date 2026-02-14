@@ -13,9 +13,9 @@ import { FOV } from '../../js/vision.js';
 import { pushInput, clearInputQueue } from '../../js/input.js';
 import { doname, mksobj } from '../../js/mkobj.js';
 import { initDiscoveryState, discoverObject } from '../../js/discovery.js';
-import { WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, WAND_CLASS, TOOL_CLASS,
+import { WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, WAND_CLASS, TOOL_CLASS, FOOD_CLASS,
     POTION_CLASS, SCROLL_CLASS, SPBOOK_CLASS, SCR_EARTH,
-    LEATHER_GLOVES, LOW_BOOTS, LENSES, GRAY_DRAGON_SCALES, SHIELD_OF_REFLECTION,
+    LEATHER_GLOVES, LOW_BOOTS, LENSES, GRAY_DRAGON_SCALES, SHIELD_OF_REFLECTION, CORPSE,
     oclass_prob_totals, initObjectData, objectData } from '../../js/objects.js';
 import { Player } from '../../js/player.js';
 import { simulatePostLevelInit } from '../../js/u_init.js';
@@ -534,6 +534,17 @@ describe('doname', () => {
             known: false, dknown: false, bknown: true,
         };
         assert.equal(doname(obj, null), 'an uncursed smooth shield');
+    });
+
+    it('plural corpse naming handles trailing noun correctly', () => {
+        const obj = {
+            otyp: CORPSE,
+            oclass: FOOD_CLASS,
+            corpsenm: -1,
+            quan: 2,
+            known: true, dknown: true, bknown: false,
+        };
+        assert.equal(doname(obj, null), '2 corpses');
     });
 });
 

@@ -760,6 +760,10 @@ function just_an(str) {
 function makeplural(word) {
     const w = String(word || '');
     if (!w) return w;
+    if (w.includes(' ')) {
+        const idx = w.lastIndexOf(' ');
+        return `${w.slice(0, idx + 1)}${makeplural(w.slice(idx + 1))}`;
+    }
     const irregular = new Map([
         ['corpse', 'corpses'],
         ['knife', 'knives'],
