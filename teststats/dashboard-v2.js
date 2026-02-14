@@ -184,32 +184,52 @@ function updateChart() {
       });
     });
   } else if (currentView === 'sessions') {
-    // Show session coverage percentage
-    const sessionNames = new Set();
-    filteredData.forEach(d => {
-      if (d.sessions) {
-        Object.keys(d.sessions).forEach(s => sessionNames.add(s));
-      }
+    // Show aggregate session metrics: total steps passing across all gameplay sessions
+    // Use null for commits without session data (Chart.js will skip them)
+    datasets.push({
+      label: 'Gameplay Steps Passing',
+      data: filteredData.map(d => {
+        if (!d.sessions || Object.keys(d.sessions).length === 0) return null;
+        let totalSteps = 0;
+        let passedSteps = 0;
+        Object.entries(d.sessions).forEach(([name, session]) => {
+          if (name.includes('gameplay')) {
+            totalSteps += session.totalSteps || 0;
+            passedSteps += session.passedSteps || 0;
+          }
+        });
+        return passedSteps;
+      }),
+      borderColor: COLORS.pass,
+      backgroundColor: COLORS.passFill,
+      borderWidth: 2,
+      fill: true,
+      tension: 0.3,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      spanGaps: true,  // Connect points across missing data
     });
-
-    // Pick a few interesting sessions to show
-    const interestingSessions = Array.from(sessionNames)
-      .filter(s => s.includes('gameplay'))
-      .slice(0, 5);
-
-    interestingSessions.forEach((session, i) => {
-      const hue = (i * 60) % 360;
-      datasets.push({
-        label: session.replace('seed', 's').replace('_gameplay', ''),
-        data: filteredData.map(d => d.sessions?.[session]?.coveragePercent || 0),
-        borderColor: `hsla(${hue}, 60%, 60%, 0.8)`,
-        backgroundColor: `hsla(${hue}, 60%, 60%, 0.2)`,
-        borderWidth: 1,
-        fill: false,
-        tension: 0.1,
-        pointRadius: 1,
-        pointHoverRadius: 4,
-      });
+    datasets.push({
+      label: 'Gameplay Steps Total',
+      data: filteredData.map(d => {
+        if (!d.sessions || Object.keys(d.sessions).length === 0) return null;
+        let totalSteps = 0;
+        Object.entries(d.sessions).forEach(([name, session]) => {
+          if (name.includes('gameplay')) {
+            totalSteps += session.totalSteps || 0;
+          }
+        });
+        return totalSteps;
+      }),
+      borderColor: COLORS.rate,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderDash: [5, 5],
+      fill: false,
+      tension: 0.3,
+      pointRadius: 2,
+      pointHoverRadius: 5,
+      spanGaps: true,
     });
   } else if (currentView === 'code') {
     datasets.push({
