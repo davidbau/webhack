@@ -1341,7 +1341,9 @@ function create_maze(map, corrwid, wallthick, rmdeadends) {
 
     // C scales the reduced maze up when scale > 2.
     if (scale > 2) {
-        const tmp = Array.from({ length: COLNO }, () => Array(ROWNO).fill(STONE));
+        // Copy only the C-backed source rectangle. Any source outside this
+        // coverage must not influence writes during scaling.
+        const tmp = Array.from({ length: COLNO }, () => Array(ROWNO));
         for (let x = 1; x < tmpMaxX; x++) {
             for (let y = 1; y < tmpMaxY; y++) {
                 tmp[x][y] = map.at(x, y)?.typ ?? STONE;
@@ -1358,8 +1360,11 @@ function create_maze(map, corrwid, wallthick, rmdeadends) {
                 for (let dx = 0; dx < mx; dx++) {
                     for (let dy = 0; dy < my; dy++) {
                         if (rx + dx >= tmpMaxX || ry + dy >= tmpMaxY) break;
+                        if (!(x >= 1 && x < tmpMaxX && y >= 1 && y < tmpMaxY)) continue;
+                        const srcTyp = tmp[x][y];
+                        if (srcTyp === undefined) continue;
                         const loc = map.at(rx + dx, ry + dy);
-                        if (loc) loc.typ = tmp[x][y];
+                        if (loc) loc.typ = srcTyp;
                     }
                 }
                 ry += my;
