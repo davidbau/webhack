@@ -1222,7 +1222,127 @@ function fixupSpecialLevel() {
             withBranchHint('stair-down', () => place_lregion(levelState.map, 0, 0, 0, 0, 0, 0, 0, 0, LR_BRANCH));
         }
     }
+
+    const specialName = (typeof ctx.specialName === 'string') ? ctx.specialName.toLowerCase() : '';
+    if (specialName === 'baalz') {
+        baalz_fixup(levelState.map);
+    }
+
     levelState.branchPlaced = true;
+}
+
+// C ref: mkmaze.c baalz_fixup()
+// Preserve the beetle-leg wall geometry by wallifying with an inarea guard.
+function baalz_fixup(map) {
+    if (!map) return;
+
+    const midY = Math.trunc(ROWNO / 2);
+    let lastX = 0;
+    let inX1 = COLNO;
+    for (let x = 0; x < COLNO; x++) {
+        const loc = map.at(x, midY);
+        if (loc && loc.nondiggable) {
+            if (!lastX) inX1 = x + 1;
+            lastX = x;
+        }
+    }
+    const inX2 = ((lastX > inX1) ? lastX : COLNO) - 1;
+
+    let lastY = 0;
+    let inY1 = ROWNO;
+    const probeX = Math.min(Math.max(inX1, 0), COLNO - 1);
+    for (let y = 0; y < ROWNO; y++) {
+        const loc = map.at(probeX, y);
+        if (loc && loc.nondiggable) {
+            if (!lastY) inY1 = y + 1;
+            lastY = y;
+        }
+    }
+    const inY2 = ((lastY > inY1) ? lastY : ROWNO) - 1;
+
+    let delX1 = COLNO, delY1 = ROWNO, delX2 = 0, delY2 = 0;
+
+    for (let x = inX1; x <= inX2; x++) {
+        for (let y = inY1; y <= inY2; y++) {
+            const loc = map.at(x, y);
+            if (!loc) continue;
+            if (loc.typ === POOL) {
+                loc.typ = HWALL;
+                if (delX1 === COLNO) {
+                    delX1 = x;
+                    delY1 = y;
+                } else {
+                    delX2 = x;
+                    delY2 = y;
+                }
+            } else if (loc.typ === IRONBARS) {
+                const left = map.at(x - 1, y);
+                const right = map.at(x + 1, y);
+                if (left && left.nondiggable) {
+                    left.nondiggable = false;
+                    const left2 = map.at(x - 2, y);
+                    if (left2) left2.nondiggable = false;
+                } else if (right && right.nondiggable) {
+                    right.nondiggable = false;
+                    const right2 = map.at(x + 2, y);
+                    if (right2) right2.nondiggable = false;
+                }
+            }
+        }
+    }
+
+    const wx1 = Math.max(inX1 - 2, 1);
+    const wy1 = Math.max(inY1 - 2, 0);
+    const wx2 = Math.min(inX2 + 2, COLNO - 1);
+    const wy2 = Math.min(inY2 + 2, ROWNO - 1);
+
+    // Temporarily enable bughack inarea semantics for wall_cleanup/fix_wall_spines.
+    map._wallifyProtectedArea = { x1: inX1, y1: inY1, x2: inX2, y2: inY2 };
+    try {
+        dungeonWallifyRegion(map, wx1, wy1, wx2, wy2);
+    } finally {
+        delete map._wallifyProtectedArea;
+    }
+
+    // Rear-leg corrective tweak after wallification.
+    let x = delX1, y = delY1;
+    if (x >= 0 && x < COLNO && y >= 0 && y < ROWNO) {
+        const loc = map.at(x, y);
+        const down = map.at(x, y + 1);
+        if (loc && (loc.typ === TLWALL || loc.typ === TRWALL)
+            && down && down.typ === TUWALL) {
+            loc.typ = (loc.typ === TLWALL) ? BRCORNER : BLCORNER;
+            down.typ = HWALL;
+            const m = map.monsterAt(x, y);
+            if (m) {
+                const pos = enexto(x, y, map);
+                if (pos) {
+                    m.mx = pos.x;
+                    m.my = pos.y;
+                }
+            }
+        }
+    }
+
+    x = delX2;
+    y = delY2;
+    if (x >= 0 && x < COLNO && y >= 0 && y < ROWNO) {
+        const loc = map.at(x, y);
+        const up = map.at(x, y - 1);
+        if (loc && (loc.typ === TLWALL || loc.typ === TRWALL)
+            && up && up.typ === TDWALL) {
+            loc.typ = (loc.typ === TLWALL) ? TRCORNER : TLCORNER;
+            up.typ = HWALL;
+            const m = map.monsterAt(x, y);
+            if (m) {
+                const pos = enexto(x, y, map);
+                if (pos) {
+                    m.mx = pos.x;
+                    m.my = pos.y;
+                }
+            }
+        }
+    }
 }
 
 /**
