@@ -8,12 +8,13 @@ import { COLNO, ROWNO, STONE, IS_WALL, IS_DOOR, IS_ROOM,
          NORMAL_SPEED, isok } from './config.js';
 import { rn2, rnd, c_d } from './rng.js';
 import { monsterAttackPlayer } from './combat.js';
-import { FOOD_CLASS, BOULDER, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS } from './objects.js';
+import { FOOD_CLASS, COIN_CLASS, BOULDER, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS } from './objects.js';
 import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT,
          POISON, UNDEF, TABU } from './dog.js';
 import { couldsee, m_cansee, do_clear_area } from './vision.js';
 import { can_teleport } from './mondata.js';
 import { PM_GRID_BUG, PM_IRON_GOLEM, PM_SHOPKEEPER, mons,
+         PM_LEPRECHAUN,
          M1_FLY, M1_AMORPHOUS, M1_CLING, M1_SEE_INVIS, S_MIMIC,
          MZ_TINY, MZ_SMALL, MR_FIRE, MR_SLEEP, G_FREQ } from './monsters.js';
 import { STATUE_TRAP, MAGIC_TRAP, VIBRATING_SQUARE, RUST_TRAP, FIRE_TRAP,
@@ -70,6 +71,11 @@ const ydir = [-1, -1, 0, 1, 1, 1, 0, -1];
 // Squared distance
 function dist2(x1, y1, x2, y2) {
     return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
+}
+
+function hasGold(inv) {
+    return Array.isArray(inv)
+        && inv.some(o => o && o.oclass === COIN_CLASS && (o.quan ?? 1) > 0);
 }
 
 // C ref: mon.c:3243 corpse_chance() RNG.
@@ -421,6 +427,7 @@ function dochug(mon, map, player, display, fov) {
                     && Math.abs(mon.my - player.y) <= 1);
     const M2_WANDER = 0x800000;
     const isWanderer = !!(mon.type && mon.type.flags2 & M2_WANDER);
+    const monCanSee = (mon.mcansee !== false) && !mon.blind;
 
     // Short-circuit OR matching C's evaluation order
     // Each rn2() is only consumed if earlier conditions didn't short-circuit
@@ -430,10 +437,17 @@ function dochug(mon, map, player, display, fov) {
     if (!phase3Cond) phase3Cond = !!(mon.confused);
     if (!phase3Cond) phase3Cond = !!(mon.stunned);
     if (!phase3Cond && mon.minvis) phase3Cond = !rn2(3);
-    // skip leprechaun check (not relevant for early levels)
+    // C ref: monmove.c phase-three leprechaun clause:
+    // (mdat->mlet == S_LEPRECHAUN && !findgold(player_inventory)
+    //  && (findgold(mon_inventory) || rn2(2)))
+    if (!phase3Cond && mon.mndx === PM_LEPRECHAUN) {
+        const playerHasGold = hasGold(player.inventory);
+        const monHasGold = hasGold(mon.minvent);
+        if (!playerHasGold && (monHasGold || rn2(2))) phase3Cond = true;
+    }
     if (!phase3Cond && isWanderer) phase3Cond = !rn2(4);
     // skip Conflict check
-    if (!phase3Cond && mon.mcansee === false) phase3Cond = !rn2(4);
+    if (!phase3Cond && !monCanSee) phase3Cond = !rn2(4);
     if (!phase3Cond) phase3Cond = !!(mon.peaceful);
 
     if (phase3Cond) {
