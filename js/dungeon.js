@@ -1738,6 +1738,87 @@ export function makecorridors(map, depth) {
     }
 }
 
+function wallMaskToDir(mask) {
+    switch (mask) {
+    case W_NORTH: return DIR_N;
+    case W_SOUTH: return DIR_S;
+    case W_WEST: return DIR_W;
+    case W_EAST: return DIR_E;
+    default: return -1;
+    }
+}
+
+function pickDirFromWallMask(mask) {
+    if (mask === -1 || mask === W_ANY) {
+        return rn2(4);
+    }
+    if (mask === W_NORTH || mask === W_SOUTH || mask === W_WEST || mask === W_EAST) {
+        return wallMaskToDir(mask);
+    }
+    const dirs = [];
+    if (mask & W_NORTH) dirs.push(DIR_N);
+    if (mask & W_SOUTH) dirs.push(DIR_S);
+    if (mask & W_WEST) dirs.push(DIR_W);
+    if (mask & W_EAST) dirs.push(DIR_E);
+    if (!dirs.length) return rn2(4);
+    return dirs[rn2(dirs.length)];
+}
+
+function dirVector(dir) {
+    switch (dir) {
+    case DIR_N: return { dx: 0, dy: -1 };
+    case DIR_S: return { dx: 0, dy: 1 };
+    case DIR_W: return { dx: -1, dy: 0 };
+    case DIR_E: return { dx: 1, dy: 0 };
+    default: return { dx: 0, dy: 0 };
+    }
+}
+
+// C ref: sp_lev.c create_corridor() as used by lspo_corridor().
+// src/dest room fields are 1-based room indices from des scripts.
+export function create_corridor(map, spec, depth) {
+    const srcRoomN = Number.isFinite(spec?.src?.room) ? Math.trunc(spec.src.room) : -1;
+    const destRoomN = Number.isFinite(spec?.dest?.room) ? Math.trunc(spec.dest.room) : -1;
+
+    if (srcRoomN < 0 || destRoomN < 0) {
+        makecorridors(map, depth);
+        return;
+    }
+
+    const srcIdx = srcRoomN - 1;
+    const destIdx = destRoomN - 1;
+    if (srcIdx < 0 || destIdx < 0 || srcIdx >= map.nroom || destIdx >= map.nroom) return;
+    if (srcIdx === destIdx) return;
+
+    if (!Array.isArray(map.smeq) || map.smeq.length < map.nroom) {
+        map.smeq = new Array(MAXNROFROOMS + 1);
+        for (let i = 0; i < map.nroom; i++) map.smeq[i] = i;
+    }
+
+    const srcRoom = map.rooms[srcIdx];
+    const destRoom = map.rooms[destIdx];
+    if (!srcRoom || !destRoom) return;
+
+    const srcDir = pickDirFromWallMask(Number.isFinite(spec?.src?.wall) ? spec.src.wall : W_ANY);
+    const destDir = pickDirFromWallMask(Number.isFinite(spec?.dest?.wall) ? spec.dest.wall : W_ANY);
+    const cc = finddpos(map, srcDir, srcRoom);
+    const tt = finddpos(map, destDir, destRoom);
+    if (!cc || !tt) return;
+
+    const svec = dirVector(srcDir);
+    const dvec = dirVector(destDir);
+    const org = { x: cc.x + svec.dx, y: cc.y + svec.dy };
+    const dest = { x: tt.x - dvec.dx, y: tt.y - dvec.dy };
+
+    const result = dig_corridor(map, org, dest, false, depth);
+    if (result.npoints > 0 && okdoor(map, cc.x, cc.y)) dodoor(map, cc.x, cc.y, srcRoom, depth);
+    if (!result.success) return;
+    if (okdoor(map, tt.x, tt.y)) dodoor(map, tt.x, tt.y, destRoom, depth);
+
+    if (map.smeq[srcIdx] < map.smeq[destIdx]) map.smeq[destIdx] = map.smeq[srcIdx];
+    else map.smeq[srcIdx] = map.smeq[destIdx];
+}
+
 // ========================================================================
 // Stairs, room filling, niches
 // ========================================================================
