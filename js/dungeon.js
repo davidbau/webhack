@@ -1038,7 +1038,7 @@ export function setMtInitialized(val) {
 
 // C ref: mkmaze.c makemaz()
 // Generate a maze level (used in Gehennom and deep dungeon past Medusa)
-function makemaz(map, protofile) {
+function makemaz(map, protofile, dnum, dlevel) {
     // C ref: mkmaze.c:1127-1204
     // If protofile specified, try to load special level
     // For now, we only handle the procedural case (protofile === "")
@@ -1082,8 +1082,19 @@ function makemaz(map, protofile) {
     const downstair = mazexy(map);
     mkstairs(map, downstair.x, downstair.y, false); // down stairs
 
-    // C ref: mkmaze.c:1211 — place_branch() for branch stairs
-    // Skip for now - needs branch detection logic
+    // C ref: mkmaze.c:1211 — place_branch(Is_branchlev(&u.uz), 0, 0)
+    // Only invoke placement when this exact level is a branch endpoint.
+    const branchPlacement = resolveBranchPlacementForLevel(dnum, dlevel).placement;
+    if (branchPlacement && branchPlacement !== 'none') {
+        const prev = map._branchPlacementHint;
+        map._branchPlacementHint = branchPlacement;
+        try {
+            place_lregion(map, 0, 0, 0, 0, 0, 0, 0, 0, LR_BRANCH);
+        } finally {
+            if (prev === undefined) delete map._branchPlacementHint;
+            else map._branchPlacementHint = prev;
+        }
+    }
 
     // C ref: mkmaze.c:1213 — populate_maze()
     // Skip for now - this would add monsters/traps/items
@@ -4332,7 +4343,7 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
 
     if (shouldMakeMaze) {
         // C ref: mklev.c:1278 makemaz("")
-        makemaz(map, "");
+        makemaz(map, "", dnum, dlevel);
     } else {
         // C ref: mklev.c:1287 makerooms()
         // Initialize rectangle pool for BSP room placement
