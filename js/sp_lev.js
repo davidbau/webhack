@@ -4329,21 +4329,65 @@ export function ladder(direction, x, y) {
         levelState.map = new GameMap();
     }
 
-    // Convert map-relative coordinates to absolute
-    // C ref: Lua coordinates after des.map() are relative to map origin
-    const absCoords = toAbsoluteCoords(x, y);
-    x = absCoords.x;
-    y = absCoords.y;
+    let dir = direction;
+    let lx = x;
+    let ly = y;
 
-    if (x >= 0 && x < 80 && y >= 0 && y < 21) {
-        // Place LADDER terrain
-        levelState.map.locations[x][y].typ = LADDER;
-        markSpLevMap(x, y);
-        markSpLevTouched(x, y);
-
-        // Note: In C, ladders have additional metadata (up vs down)
-        // For now, just place the terrain
+    if (typeof direction === 'object' && direction !== null) {
+        dir = direction.dir || direction.direction || 'down';
+        if (Array.isArray(direction.coord)) {
+            lx = direction.coord[0];
+            ly = direction.coord[1];
+        } else if (direction.coord && typeof direction.coord === 'object') {
+            lx = direction.coord.x;
+            ly = direction.coord.y;
+        } else {
+            lx = direction.x;
+            ly = direction.y;
+        }
     }
+
+    const isRandom = lx === undefined || ly === undefined || lx < 0 || ly < 0;
+    // C ref: l_create_stairway() applies good_stair_loc() for random placement.
+    if (isRandom) {
+        setOkLocationFunc((tx, ty) => {
+            const typ = levelState.map.locations[tx][ty].typ;
+            return typ === ROOM || typ === CORR || typ === ICE;
+        });
+    }
+    const pos = getLocationCoord(lx, ly, GETLOC_DRY, levelState.currentRoom || null);
+    setOkLocationFunc(null);
+    const xabs = pos.x;
+    const yabs = pos.y;
+    if (xabs < 0 || yabs < 0 || xabs >= COLNO || yabs >= ROWNO) return;
+
+    markSpLevTouched(xabs, yabs);
+
+    const trap = levelState.map.trapAt(xabs, yabs);
+    if (trap) {
+        levelState.map.traps = (levelState.map.traps || []).filter(t => t !== trap);
+    }
+
+    // C ref: fixed-coordinate placement uses force=TRUE and coerces terrain.
+    if (!isRandom) {
+        levelState.map.locations[xabs][yabs].typ = ROOM;
+    }
+
+    if (!canPlaceStair(dir)) {
+        return;
+    }
+
+    const up = (dir === 'up') ? 1 : 0;
+    const loc = levelState.map.locations[xabs][yabs];
+    loc.typ = LADDER;
+    loc.stairdir = up;
+    loc.flags = up;
+    if (up) {
+        levelState.map.upladder = { x: xabs, y: yabs };
+    } else {
+        levelState.map.dnladder = { x: xabs, y: yabs };
+    }
+    markSpLevMap(xabs, yabs);
 }
 
 /**
