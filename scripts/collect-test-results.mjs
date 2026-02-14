@@ -22,16 +22,18 @@ import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const REPO_ROOT = join(__dirname, '..');
+// Allow REPO_ROOT to be overridden via environment variable or use cwd
+const REPO_ROOT = process.env.REPO_ROOT || process.cwd();
 
 const SUMMARY_ONLY = process.argv.includes('--summary');
 
 // Parse test output line to extract test info
 function parseTestLine(line) {
     // Match: ✔ test name (duration)  or  ✖ test name (duration)
-    const passMatch = line.match(/^✔\s+(.+?)\s+\([\d.]+(?:ms|s)\)$/);
-    const failMatch = line.match(/^✖\s+(.+?)\s+\([\d.]+(?:ms|s)\)$/);
-    const skipMatch = line.match(/^-\s+(.+?)\s+\([\d.]+(?:ms|s)\)$/);
+    // Allow leading whitespace for nested tests
+    const passMatch = line.match(/^\s*✔\s+(.+?)\s+\([\d.]+(?:ms|s)\)$/);
+    const failMatch = line.match(/^\s*✖\s+(.+?)\s+\([\d.]+(?:ms|s)\)$/);
+    const skipMatch = line.match(/^\s*-\s+(.+?)\s+\([\d.]+(?:ms|s)\)$/);
 
     if (passMatch) return { status: 'pass', name: passMatch[1].trim() };
     if (failMatch) return { status: 'fail', name: failMatch[1].trim() };
