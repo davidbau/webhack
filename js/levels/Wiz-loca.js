@@ -59,16 +59,16 @@ export function generate() {
 
     des.region({ region: [41,8,46,12], lit: 1, type: "ordinary", irregular: 1,
                  contents: function() {
-                    let walls = [ "north", "south", "west" ]
-                    let widx = (rn2((walls.length) - (1) + 1) + (1))
+                    const walls = [ "north", "south", "west" ];
+                    const widx = rn2(walls.length);
                     des.door({ state: "secret", wall: walls[widx] });
                  }
     })
 
     des.region({ region: [56,8,61,12], lit: 1, type: "ordinary", irregular: 1,
                  contents: function() {
-                    walls = [ "north", "south", "east" ]
-                    widx = (rn2((walls.length) - (1) + 1) + (1))
+                    const walls = [ "north", "south", "east" ];
+                    const widx = rn2(walls.length);
                     des.door({ state: "secret", wall: walls[widx] });
                  }
     })

@@ -165,6 +165,24 @@ export class Agent {
         return null;
     }
 
+    _pickRandomWalkableMove(level, px, py) {
+        const directions = [
+            { dx: -1, dy: 0, key: 'h' }, { dx: 1, dy: 0, key: 'l' },
+            { dx: 0, dy: -1, key: 'k' }, { dx: 0, dy: 1, key: 'j' },
+            { dx: -1, dy: -1, key: 'y' }, { dx: 1, dy: -1, key: 'u' },
+            { dx: -1, dy: 1, key: 'b' }, { dx: 1, dy: 1, key: 'n' },
+        ];
+        const walkable = [];
+        for (const dir of directions) {
+            const nx = px + dir.dx;
+            const ny = py + dir.dy;
+            const cell = level.at(nx, ny);
+            if (cell && cell.walkable) walkable.push(dir.key);
+        }
+        if (walkable.length === 0) return null;
+        return walkable[Math.floor(this._rng() * walkable.length)];
+    }
+
     /**
      * Reset RNG seed for new turn (called at start of each turn).
      */
@@ -2125,9 +2143,11 @@ export class Agent {
             }
 
             // Try a random direction to unstick
-            const dirs = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
-            const randomDir = dirs[Math.floor(this._rng() * dirs.length)];
-            return { type: 'random_move', key: randomDir, reason: 'stuck, trying random direction' };
+            const randomDir = this._pickRandomWalkableMove(level, px, py);
+            if (randomDir) {
+                return { type: 'random_move', key: randomDir, reason: 'stuck, trying random direction' };
+            }
+            return { type: 'wait', key: '.', reason: 'stuck, no walkable move found' };
         }
 
         // 8. Explore: move toward nearest unexplored area
@@ -2225,9 +2245,11 @@ export class Agent {
 
         // 11. Last resort: random walk
         this.consecutiveWaits++;
-        const dirs = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
-        const randomDir = dirs[Math.floor(this._rng() * dirs.length)];
-        return { type: 'random_move', key: randomDir, reason: 'fully explored, random walk' };
+        const randomDir = this._pickRandomWalkableMove(level, px, py);
+        if (randomDir) {
+            return { type: 'random_move', key: randomDir, reason: 'fully explored, random walk' };
+        }
+        return { type: 'wait', key: '.', reason: 'fully explored, no walkable move found' };
     }
 
     /**

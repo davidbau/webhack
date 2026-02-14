@@ -164,6 +164,10 @@ export function setMakemonRoleContext(roleIndex) {
     _makemonPlayerCtx = normalizePlayerContext({ roleIndex });
 }
 
+export function getMakemonRoleIndex() {
+    return _makemonPlayerCtx.roleIndex;
+}
+
 export function setMakemonLevelContext(levelCtx = {}) {
     _makemonLevelCtx = {
         dungeonAlign: Number.isInteger(levelCtx.dungeonAlign)

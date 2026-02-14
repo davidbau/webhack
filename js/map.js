@@ -44,6 +44,7 @@ export function makeRoom() {
         lx: 0, ly: 0,     // lower-left corner
         hx: 0, hy: 0,     // upper-right corner
         rtype: 0,          // room type (OROOM, SHOP, etc.)
+        orig_rtype: 0,     // C ref: mklev.c orig_rtype snapshot post-topology
         rlit: false,       // is the room lit?
         needjoining: true, // does this room need corridors?
         needfill: FILL_NONE, // C ref: mkroom.h — needs filling? default 0
@@ -100,6 +101,7 @@ export class GameMap {
             has_morgue: false,
             has_barracks: false,
             has_zoo: false,
+            has_town: false,
             noteleport: false,
             hardfloor: false,
             nommap: false,

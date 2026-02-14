@@ -16,9 +16,9 @@
 import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, getRngCallCount } from './rng.js';
 import { mksobj, mkobj, mkcorpstat, set_corpsenm, weight } from './mkobj.js';
-import { create_room, create_subroom, makecorridors, create_corridor, init_rect, rnd_rect, get_rect, split_rects, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize as dungeonMineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized, wallification as dungeonWallification, wallify_region as dungeonWallifyRegion, fix_wall_spines, place_lregion, mktrap, enexto, somexy, sp_create_door, floodFillAndRegister, resolveBranchPlacementForLevel, random_epitaph_text, induced_align, DUNGEON_ALIGN_BY_DNUM } from './dungeon.js';
+import { create_room, create_subroom, makecorridors, create_corridor, init_rect, rnd_rect, get_rect, split_rects, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize as dungeonMineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized, wallification as dungeonWallification, wallify_region as dungeonWallifyRegion, fix_wall_spines, set_wall_state, place_lregion, mktrap, enexto, somexy, sp_create_door, floodFillAndRegister, resolveBranchPlacementForLevel, random_epitaph_text, induced_align, DUNGEON_ALIGN_BY_DNUM } from './dungeon.js';
 import { seedFromMT } from './xoshiro256.js';
-import { makemon, mkclass, def_char_to_monclass, NO_MM_FLAGS, MM_NOGRP } from './makemon.js';
+import { makemon, mkclass, def_char_to_monclass, NO_MM_FLAGS, MM_NOGRP, rndmonnum, getMakemonRoleIndex } from './makemon.js';
 import {
     STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,
     CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, DBWALL, ROOM, CORR,
@@ -26,7 +26,7 @@ import {
     DRAWBRIDGE_UP, DRAWBRIDGE_DOWN, LAVAPOOL, LAVAWALL, ICE, CLOUD, AIR,
     STAIRS, LADDER, ALTAR, GRAVE, THRONE, SINK,
     SCORR, MAX_TYPE,
-    PIT, SPIKED_PIT, HOLE, TRAPDOOR, ARROW_TRAP, DART_TRAP,
+    PIT, SPIKED_PIT, HOLE, TRAPDOOR, ARROW_TRAP, DART_TRAP, ROCKTRAP,
     SQKY_BOARD, BEAR_TRAP, LANDMINE, ROLLING_BOULDER_TRAP,
     SLP_GAS_TRAP, RUST_TRAP, FIRE_TRAP, TELEP_TRAP, LEVEL_TELEP,
     MAGIC_PORTAL, WEB, ANTI_MAGIC, POLY_TRAP, STATUE_TRAP, MAGIC_TRAP,
@@ -35,15 +35,16 @@ import {
     COLNO, ROWNO, IS_OBSTRUCTED, IS_WALL, IS_STWALL, IS_POOL, IS_LAVA,
     A_NONE, A_LAWFUL, A_NEUTRAL, A_CHAOTIC,
     MKTRAP_SEEN, MKTRAP_MAZEFLAG, MKTRAP_NOSPIDERONWEB, MKTRAP_NOVICTIM,
-    MAXNROFROOMS, ROOMOFFSET
+    MAXNROFROOMS, ROOMOFFSET,
+    PM_PRIEST as ROLE_PRIEST
 } from './config.js';
 import {
     BOULDER, SCROLL_CLASS, FOOD_CLASS, WEAPON_CLASS, ARMOR_CLASS,
     POTION_CLASS, RING_CLASS, WAND_CLASS, TOOL_CLASS, AMULET_CLASS,
     GEM_CLASS, SPBOOK_CLASS, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS, VENOM_CLASS,
-    SCR_EARTH, objectData, GOLD_PIECE
+    SCR_EARTH, objectData, GOLD_PIECE, STATUE
 } from './objects.js';
-import { mons, M2_FEMALE, M2_MALE, G_NOGEN, PM_MINOTAUR } from './monsters.js';
+import { mons, M2_FEMALE, M2_MALE, G_NOGEN, PM_MINOTAUR, MR_STONE } from './monsters.js';
 
 // Aliases for compatibility with C naming
 const STAIRS_UP = STAIRS;
@@ -1224,7 +1225,205 @@ function fixupSpecialLevel() {
             withBranchHint('stair-down', () => place_lregion(levelState.map, 0, 0, 0, 0, 0, 0, 0, 0, LR_BRANCH));
         }
     }
+
+    const specialName = (typeof ctx.specialName === 'string') ? ctx.specialName.toLowerCase() : '';
+    if (specialName === 'baalz') {
+        baalz_fixup(levelState.map);
+    }
+    if (specialName.startsWith('medusa')) {
+        medusa_fixup(levelState.map);
+    }
+    // C ref: mkmaze.c fixup_special():
+    // Role_if(PM_CLERIC) && In_quest(&u.uz) => level.flags.graveyard = 1
+    // In JS, role context is tracked via makemon role context; quest dnum is 3.
+    const roleIndex = Number.isInteger(ctx.roleIndex) ? ctx.roleIndex : getMakemonRoleIndex();
+    if (roleIndex === ROLE_PRIEST && ctx.dnum === 3) {
+        levelState.map.flags.graveyard = true;
+    }
+    // C ref: mkmaze.c fixup_special():
+    // - Is_stronghold(&u.uz) => level.flags.graveyard = 1
+    // - Is_special(&u.uz)->flags.town (Mine Town variants) => has_town = 1
+    if (specialName === 'castle') {
+        levelState.map.flags.graveyard = true;
+    }
+    if (specialName.startsWith('minetn')) {
+        levelState.map.flags.has_town = true;
+    }
+
     levelState.branchPlaced = true;
+}
+
+// C ref: mkmaze.c fixup_special() Medusa branch
+function medusa_fixup(map) {
+    if (!map || !Array.isArray(map.rooms) || map.rooms.length === 0) return;
+    const croom = map.rooms[0]; // first room defined on Medusa level
+    if (!croom) return;
+
+    const randRoomPos = () => ({
+        x: rn1(croom.hx - croom.lx + 1, croom.lx),
+        y: rn1(croom.hy - croom.ly + 1, croom.ly),
+    });
+    const medusaGoodpos = (x, y) => {
+        const loc = map.at(x, y);
+        return !!loc && loc.typ > DOOR && !map.monsterAt(x, y);
+    };
+    const polyWhenStoned = (_mnum) => false; // TODO: port full polymorph-on-stone table
+    const statueNeedsReroll = (obj) => {
+        if (!obj || !Number.isInteger(obj.corpsenm)) return false;
+        if (obj.corpsenm < 0 || obj.corpsenm >= mons.length) return false;
+        const m = mons[obj.corpsenm];
+        if (!m) return false;
+        return !!(m.mr1 & MR_STONE) || polyWhenStoned(obj.corpsenm);
+    };
+    const mk_tt_statue = (x, y) => {
+        const otmp = mksobj(STATUE, true, false);
+        if (!otmp) return null;
+        placeObjectAt(otmp, x, y);
+        return otmp;
+    };
+
+    // for (tryct = rnd(4); tryct; tryct--) { ... }
+    for (let tryct = rnd(4); tryct > 0; tryct--) {
+        const { x, y } = randRoomPos();
+        if (!medusaGoodpos(x, y)) continue;
+        let tryct2 = 0;
+        let otmp = mk_tt_statue(x, y);
+        while (++tryct2 < 100 && otmp && statueNeedsReroll(otmp)) {
+            set_corpsenm(otmp, rndmonnum(levelState.levelDepth || 1));
+        }
+    }
+
+    let otmp = null;
+    {
+        const { x, y } = randRoomPos();
+        if (rn2(2)) {
+            otmp = mk_tt_statue(x, y);
+        } else {
+            // Medusa statues don't contain books in this branch.
+            otmp = mkcorpstat(STATUE, -1, false);
+            if (otmp) placeObjectAt(otmp, x, y);
+        }
+    }
+    if (otmp) {
+        let tryct = 0;
+        while (++tryct < 100 && statueNeedsReroll(otmp)) {
+            set_corpsenm(otmp, rndmonnum(levelState.levelDepth || 1));
+        }
+    }
+}
+
+// C ref: mkmaze.c baalz_fixup()
+// Preserve the beetle-leg wall geometry by wallifying with an inarea guard.
+function baalz_fixup(map) {
+    if (!map) return;
+
+    const midY = Math.trunc(ROWNO / 2);
+    let lastX = 0;
+    let inX1 = COLNO;
+    for (let x = 0; x < COLNO; x++) {
+        const loc = map.at(x, midY);
+        if (loc && loc.nondiggable) {
+            if (!lastX) inX1 = x + 1;
+            lastX = x;
+        }
+    }
+    const inX2 = ((lastX > inX1) ? lastX : COLNO) - 1;
+
+    let lastY = 0;
+    let inY1 = ROWNO;
+    const probeX = Math.min(Math.max(inX1, 0), COLNO - 1);
+    for (let y = 0; y < ROWNO; y++) {
+        const loc = map.at(probeX, y);
+        if (loc && loc.nondiggable) {
+            if (!lastY) inY1 = y + 1;
+            lastY = y;
+        }
+    }
+    const inY2 = ((lastY > inY1) ? lastY : ROWNO) - 1;
+
+    let delX1 = COLNO, delY1 = ROWNO, delX2 = 0, delY2 = 0;
+
+    for (let x = inX1; x <= inX2; x++) {
+        for (let y = inY1; y <= inY2; y++) {
+            const loc = map.at(x, y);
+            if (!loc) continue;
+            if (loc.typ === POOL) {
+                loc.typ = HWALL;
+                if (delX1 === COLNO) {
+                    delX1 = x;
+                    delY1 = y;
+                } else {
+                    delX2 = x;
+                    delY2 = y;
+                }
+            } else if (loc.typ === IRONBARS) {
+                const left = map.at(x - 1, y);
+                const right = map.at(x + 1, y);
+                if (left && left.nondiggable) {
+                    left.nondiggable = false;
+                    const left2 = map.at(x - 2, y);
+                    if (left2) left2.nondiggable = false;
+                } else if (right && right.nondiggable) {
+                    right.nondiggable = false;
+                    const right2 = map.at(x + 2, y);
+                    if (right2) right2.nondiggable = false;
+                }
+            }
+        }
+    }
+
+    const wx1 = Math.max(inX1 - 2, 1);
+    const wy1 = Math.max(inY1 - 2, 0);
+    const wx2 = Math.min(inX2 + 2, COLNO - 1);
+    const wy2 = Math.min(inY2 + 2, ROWNO - 1);
+
+    // Temporarily enable bughack inarea semantics for wall_cleanup/fix_wall_spines.
+    map._wallifyProtectedArea = { x1: inX1, y1: inY1, x2: inX2, y2: inY2 };
+    try {
+        dungeonWallifyRegion(map, wx1, wy1, wx2, wy2);
+    } finally {
+        delete map._wallifyProtectedArea;
+    }
+
+    // Rear-leg corrective tweak after wallification.
+    let x = delX1, y = delY1;
+    if (x >= 0 && x < COLNO && y >= 0 && y < ROWNO) {
+        const loc = map.at(x, y);
+        const down = map.at(x, y + 1);
+        if (loc && (loc.typ === TLWALL || loc.typ === TRWALL)
+            && down && down.typ === TUWALL) {
+            loc.typ = (loc.typ === TLWALL) ? BRCORNER : BLCORNER;
+            down.typ = HWALL;
+            const m = map.monsterAt(x, y);
+            if (m) {
+                const pos = enexto(x, y, map);
+                if (pos) {
+                    m.mx = pos.x;
+                    m.my = pos.y;
+                }
+            }
+        }
+    }
+
+    x = delX2;
+    y = delY2;
+    if (x >= 0 && x < COLNO && y >= 0 && y < ROWNO) {
+        const loc = map.at(x, y);
+        const up = map.at(x, y - 1);
+        if (loc && (loc.typ === TLWALL || loc.typ === TRWALL)
+            && up && up.typ === TDWALL) {
+            loc.typ = (loc.typ === TLWALL) ? TRCORNER : TLCORNER;
+            up.typ = HWALL;
+            const m = map.monsterAt(x, y);
+            if (m) {
+                const pos = enexto(x, y, map);
+                if (pos) {
+                    m.mx = pos.x;
+                    m.my = pos.y;
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -1544,7 +1743,7 @@ export function level_flags(...flags) {
  * This matches C's flip_level_rnd() which is called at the end of level loading.
  * C ref: sp_lev.c flip_level_rnd() and flip_level()
  */
-function flipLevelRandom() {
+function flipLevelRandom(extras = false) {
     const allowFlips = levelState.coder.allow_flips;
     const DEBUG_FLIP = typeof process !== 'undefined' && process.env.DEBUG_FLIP === '1';
     const rngBefore = DEBUG_FLIP && typeof getRngCallCount === 'function' ? getRngCallCount() : null;
@@ -1768,6 +1967,11 @@ function flipLevelRandom() {
         if (Number.isInteger(mon.y)) mon.y = fy;
     }
 
+    // C ref: sp_lev.c flip_level(): when extras && flp, set_wall_state().
+    // In normal generation extras is false.
+    if (extras && flipBits) {
+        set_wall_state(map);
+    }
     return true;
 }
 
@@ -3370,6 +3574,7 @@ function objectClassToType(classChar) {
         case '(': return TOOL_CLASS;
         case '"': return AMULET_CLASS;
         case '*': return GEM_CLASS;
+        case '`': return ROCK_CLASS;
         default: return -1;
     }
 }
@@ -3447,11 +3652,18 @@ export function object(name_or_opts, x, y) {
         obj = mkobj(0, artif);  // RANDOM_CLASS = 0
     } else if (typeof name_or_opts === 'string') {
         // Single-character strings are object class codes (!, ?, +, etc.)
-        // C ref: sp_lev.c spo_object() handles single chars as class selection
+        // C ref: sp_lev.c spo_object() first attempts class-char mapping, then
+        // falls back to object-name lookup for non-class single-char ids.
         if (name_or_opts.length === 1) {
             const objClass = objectClassToType(name_or_opts);
             if (objClass >= 0) {
                 obj = mkobj(objClass, artif);  // Random object from class
+            } else {
+                const otyp = objectNameToType(name_or_opts);
+                if (otyp >= 0) {
+                    obj = mksobj(otyp, true, artif);
+                    if (obj) obj.id = name_or_opts;
+                }
             }
         } else {
             // Multi-character strings are object names
@@ -3550,7 +3762,7 @@ function trapNameToType(name) {
     switch (lowerName) {
         case 'arrow': return ARROW_TRAP;
         case 'dart': return DART_TRAP;
-        // Note: FALLING_ROCK_TRAP (type 3) not exported from config.js
+        case 'falling rock': case 'falling_rock': case 'rock': return ROCKTRAP;
         case 'squeaky board': case 'squeaky_board': case 'board': return SQKY_BOARD;
         case 'bear': return BEAR_TRAP;
         case 'land mine': case 'landmine': return LANDMINE;
@@ -5881,9 +6093,11 @@ export function finalize_level() {
         }
     }
 
-    // Apply wallification first (before flipping)
-    // C ref: sp_lev.c line 6028 - wallification before flip
-    if (levelState.map) {
+    // Apply wallification first (before flipping).
+    // C ref: sp_lev.c lspo_finalize_level()/load_special() wallify only when
+    // !svl.level.flags.corrmaze (corrmaze is overloaded to suppress wallify
+    // for levels with handcrafted wall geometry such as Baalz).
+    if (levelState.map && !levelState.flags.corrmaze) {
         wallification(levelState.map);
     }
 
