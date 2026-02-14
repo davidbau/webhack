@@ -82,6 +82,11 @@ export async function rhack(ch, game) {
     const { player, map, display, fov } = game;
     const c = String.fromCharCode(ch);
 
+    // C tty/keypad behavior in recorded traces: Enter acts like south movement.
+    if (ch === 10 || ch === 13) {
+        return await handleMovement(DIRECTION_KEYS.j, player, map, display, game);
+    }
+
     // Movement keys
     if (DIRECTION_KEYS[c]) {
         // Check if 'G' or 'g' prefix was used (run/rush mode)
@@ -190,6 +195,12 @@ export async function rhack(ch, game) {
     // Quaff (drink)
     if (c === 'q') {
         return await handleQuaff(player, map, display);
+    }
+
+    // Read scroll/spellbook
+    // C ref: read.c doread()
+    if (c === 'r') {
+        return await handleRead(player, display);
     }
 
     // Zap wand
@@ -450,6 +461,8 @@ export async function rhack(ch, game) {
 // Handle directional movement
 // C ref: hack.c domove() -- the core movement function
 async function handleMovement(dir, player, map, display, game) {
+    const oldX = player.x;
+    const oldY = player.y;
     const nx = player.x + dir[0];
     const ny = player.y + dir[1];
 
@@ -497,6 +510,8 @@ async function handleMovement(dir, player, map, display, game) {
             player.x = nx;
             player.y = ny;
             player.moved = true;
+            game.lastMoveDir = dir;
+            maybeSmudgeEngraving(map, oldPlayerX, oldPlayerY, player.x, player.y);
             player.displacedPetThisTurn = true;
             const landedObjs = map.objectsAt(nx, ny);
             if (landedObjs.length > 0) {
@@ -602,6 +617,8 @@ async function handleMovement(dir, player, map, display, game) {
     player.x = nx;
     player.y = ny;
     player.moved = true;
+    game.lastMoveDir = dir;
+    maybeSmudgeEngraving(map, oldX, oldY, player.x, player.y);
 
     // Save nopick state before clearing prefix flags
     // C ref: cmd.c sets context.nopick based on iflags.menu_requested
@@ -759,6 +776,20 @@ async function handleMovement(dir, player, map, display, game) {
     }
 
     return { moved: true, tookTime: true };
+}
+
+// C ref: hack.c maybe_smudge_engr()
+// On successful movement, attempt to smudge engravings at origin/destination.
+function maybeSmudgeEngraving(map, x1, y1, x2, y2) {
+    const engravings = map?.engravings;
+    if (!Array.isArray(engravings) || engravings.length === 0) return;
+    const hasEngraving = (x, y) => engravings.find(e => e.x === x && e.y === y && e.type !== 'headstone');
+    if (hasEngraving(x1, y1)) {
+        rnd(5);
+    }
+    if ((x2 !== x1 || y2 !== y1) && hasEngraving(x2, y2)) {
+        rnd(5);
+    }
 }
 
 // Handle running in a direction
@@ -1127,12 +1158,21 @@ async function handleDrop(player, map, display) {
         return { moved: false, tookTime: false };
     }
 
-    display.putstr_message(`Drop what? [${player.inventory.map(o => o.invlet).join('')}]`);
-    const ch = await nhgetch();
-    const c = String.fromCharCode(ch);
+    while (true) {
+        display.putstr_message('What do you want to drop? [*]');
+        const ch = await nhgetch();
+        const c = String.fromCharCode(ch);
+        if (ch === 27 || c === ' ') {
+            display.putstr_message('Never mind.');
+            return { moved: false, tookTime: false };
+        }
+        if (c === '?' || c === '*') {
+            continue;
+        }
 
-    const item = player.inventory.find(o => o.invlet === c);
-    if (item) {
+        const item = player.inventory.find(o => o.invlet === c);
+        if (!item) continue;
+
         // Unequip if necessary
         if (player.weapon === item) player.weapon = null;
         if (player.armor === item) { player.armor = null; player.ac = 10; }
@@ -1144,9 +1184,6 @@ async function handleDrop(player, map, display) {
         display.putstr_message(`You drop ${item.name}.`);
         return { moved: false, tookTime: true };
     }
-
-    display.putstr_message("Never mind.");
-    return { moved: false, tookTime: false };
 }
 
 // Handle eating
@@ -1218,6 +1255,26 @@ async function handleEat(player, display, game) {
 
     display.putstr_message("Never mind.");
     return { moved: false, tookTime: false };
+}
+
+// Handle reading
+// C ref: read.c doread()
+async function handleRead(player, display) {
+    // Keep prompt active until explicit cancel, matching tty flow.
+    while (true) {
+        display.putstr_message('What do you want to read? [*]');
+        const ch = await nhgetch();
+        const c = String.fromCharCode(ch);
+        if (ch === 27 || c === ' ') {
+            display.putstr_message('Never mind.');
+            return { moved: false, tookTime: false };
+        }
+        if (c === '?') {
+            // In C this can show item help/menu; return to prompt afterward.
+            continue;
+        }
+        // Keep waiting for a supported selection.
+    }
 }
 
 // Handle quaffing a potion
@@ -1418,7 +1475,45 @@ async function handleKick(player, map, display, game) {
         return { moved: false, tookTime: true };
     }
 
-    display.putstr_message("Thump!");
+    // C ref: dokick.c kick_ouch() for hard non-door terrain.
+    if (IS_WALL(loc.typ)
+        || loc.typ === IRONBARS
+        || loc.typ === TREE
+        || loc.typ === THRONE
+        || loc.typ === ALTAR
+        || loc.typ === FOUNTAIN
+        || loc.typ === GRAVE
+        || loc.typ === SINK) {
+        display.putstr_message("Ouch!  That hurts!");
+        // C ref: exercise(A_DEX, FALSE), exercise(A_STR, FALSE)
+        rn2(2);
+        rn2(2);
+        // C ref: if (!rn2(3)) set_wounded_legs(..., 5 + rnd(5))
+        if (rn2(3) === 0) {
+            const timeout = 5 + rnd(5);
+            const alreadyWounded = (player.woundedLegsTimeout || 0) > 0;
+            player.woundedLegsTimeout = timeout;
+            if (!alreadyWounded && player.attributes) {
+                player.attributes[A_DEX] = Math.max(1, player.attributes[A_DEX] - 1);
+            }
+        }
+        // C ref: dmg = rnd(ACURR(A_CON) > 15 ? 3 : 5)
+        const con = player.attributes?.[A_CON] || 10;
+        const dmg = rnd(con > 15 ? 3 : 5);
+        player.hp = Math.max(1, (player.hp || player.hpmax || 1) - Math.max(1, dmg));
+        return { moved: false, tookTime: true };
+    }
+
+    // C ref: dokick.c kick_dumb() for kicking empty/non-solid space.
+    rn2(2); // exercise(A_DEX, FALSE)
+    const dex = player.attributes?.[A_DEX] || 10;
+    if (dex >= 16 || rn2(3) !== 0) {
+        display.putstr_message("You kick at empty space.");
+    } else {
+        display.putstr_message("Dumb move!  You strain a muscle.");
+        rn2(2); // exercise(A_STR, FALSE)
+        rnd(5); // set_wounded_legs timeout component
+    }
     return { moved: false, tookTime: true };
 }
 
@@ -1843,7 +1938,7 @@ export function dosearch0(player, map, display) {
             // Find secret doors
             // C ref: detect.c -- secret doors become regular doors
             if (loc.typ === 14) { // SDOOR
-                if (rn2(7) === 0) {
+                if (rnl(7) === 0) {
                     loc.typ = DOOR;
                     loc.flags = D_CLOSED;
                     display.putstr_message('You find a hidden door!');
@@ -1852,7 +1947,7 @@ export function dosearch0(player, map, display) {
             }
             // Find secret corridors
             if (loc.typ === 15) { // SCORR
-                if (rn2(7) === 0) {
+                if (rnl(7) === 0) {
                     loc.typ = 24; // CORR
                     display.putstr_message('You find a hidden passage!');
                     found = true;
@@ -2210,6 +2305,26 @@ async function handleExtendedCommand(game) {
         case 'options':
         case 'optionsfull':
             return await handleSet(game);
+        case 'n':
+        case 'name': {
+            // C ref: do_name.c docallcmd() / do_mname()
+            // Minimal faithful flow for replay traces:
+            // ask what to name, allow dungeon-level naming, then getlin text.
+            while (true) {
+                display.putstr_message('                                What do you want to name?');
+                const sel = await nhgetch();
+                const c = String.fromCharCode(sel).toLowerCase();
+                if (sel === 27 || c === ' ') {
+                    display.putstr_message('Never mind.');
+                    return { moved: false, tookTime: false };
+                }
+                if (c === 'a') {
+                    await getlin('What do you want to call this dungeon level?', display);
+                    return { moved: false, tookTime: false };
+                }
+                // Keep waiting for a supported selection.
+            }
+        }
         case 'levelchange':
             return await wizLevelChange(game);
         case 'map':

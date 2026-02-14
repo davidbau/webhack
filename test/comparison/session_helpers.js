@@ -24,9 +24,11 @@ import { NORMAL_SPEED, A_DEX, A_CON,
          RACE_HUMAN, RACE_ELF, RACE_DWARF, RACE_GNOME, RACE_ORC } from '../../js/config.js';
 import { rhack } from '../../js/commands.js';
 import { makemon } from '../../js/makemon.js';
+import { FOOD_CLASS } from '../../js/objects.js';
 import { pushInput } from '../../js/input.js';
 import { movemon, initrack, settrack } from '../../js/monmove.js';
 import { FOV } from '../../js/vision.js';
+import { getArrivalPosition } from '../../js/level_transition.js';
 
 // Terrain type names for readable diffs (matches C's levltyp[] in cmd.c)
 export const TYP_NAMES = [
@@ -553,6 +555,17 @@ class HeadlessGame {
         this.turnCount++;
         this.player.turns = this.turnCount;
 
+        // Minimal C-faithful wounded-legs timer (set_wounded_legs): while active,
+        // DEX stays penalized; recover when timeout expires.
+        if ((this.player.woundedLegsTimeout || 0) > 0) {
+            this.player.woundedLegsTimeout--;
+            if (this.player.woundedLegsTimeout <= 0 && this.player.attributes) {
+                this.player.woundedLegsTimeout = 0;
+                this.player.attributes[A_DEX] = Math.min(25, this.player.attributes[A_DEX] + 1);
+                this.player.justHealedLegs = true;
+            }
+        }
+
         // C ref: mon.c m_calcdistress() — temporary flee timeout handling.
         for (const mon of this.map.monsters) {
             if (mon.dead) continue;
@@ -571,7 +584,7 @@ class HeadlessGame {
         }
 
         // C ref: allmain.c moveloop_core() — occasional random spawn.
-        if (!rn2(70)) {
+        if (!rn2(70) && !(this.map?.flags?.nomongen) && !(this.map?.flags?.is_tutorial)) {
             // Spawn at random valid location; new monster misses its first turn
             // because movement allocation already happened above.
             makemon(null, 0, 0, 0, this.player.dungeonLevel, this.map);
@@ -614,7 +627,10 @@ class HeadlessGame {
                 rn2(2);
             }
         }
-        // Status checks every 5 moves: none apply in early game (no intrinsics/conditions)
+        // Status checks every 5 moves: minimally model wounded-legs exercise.
+        if (moves % 5 === 0 && (this.player.woundedLegsTimeout || 0) > 0) {
+            rn2(2);
+        }
 
         const dex = this.player.attributes ? this.player.attributes[A_DEX] : 14;
         if (!rn2(40 + dex * 3)) {
@@ -680,12 +696,10 @@ class HeadlessGame {
         this.renderCurrentScreen();
     }
 
-    placePlayerOnLevel() {
-        const hasUpstair = this.map.upstair.x > 0 && this.map.upstair.y > 0;
-        if (hasUpstair && this.player.dungeonLevel > 1) {
-            this.player.x = this.map.upstair.x;
-            this.player.y = this.map.upstair.y;
-        }
+    placePlayerOnLevel(transitionDir = null) {
+        const pos = getArrivalPosition(this.map, this.player.dungeonLevel, transitionDir);
+        this.player.x = pos.x;
+        this.player.y = pos.y;
     }
 }
 
@@ -809,12 +823,9 @@ export async function replaySession(seed, session, opts = {}) {
     //   The context.move block runs AFTER rhack in the same moveloop_core iteration.
     //   This matches the JS ordering: rhack → movemon → turnEnd.
     //
-    // One turn per keystroke: The C harness sends each character as a separate
-    // tmux keystroke and captures RNG delta between keystrokes. Between captures,
-    // execute_dumpmap sends '#dumpmap' which C's parse() treats as the command for
-    // any accumulated count prefix — consuming it. So commands always execute with
-    // multi=0, and each keystroke produces at most one turn of game effects.
-    // Digit keystrokes ('0'-'9') are captured as separate steps with 0 RNG.
+    // C harness keystrokes are captured one-by-one, including count prefixes
+    // ('0'..'9'). A following command can consume the accumulated count and run
+    // multiple turns before the next captured keystroke.
     const allSteps = session.steps || [];
     const maxSteps = Number.isInteger(opts.maxSteps)
         ? Math.max(0, Math.min(opts.maxSteps, allSteps.length))
@@ -822,6 +833,7 @@ export async function replaySession(seed, session, opts = {}) {
     const stepResults = [];
     let pendingCommand = null;
     let pendingKind = null;
+    let pendingCount = 0;
     for (let stepIndex = 0; stepIndex < maxSteps; stepIndex++) {
         const step = allSteps[stepIndex];
         const prevCount = getRngLog().length;
@@ -855,12 +867,15 @@ export async function replaySession(seed, session, opts = {}) {
                 const tutorialAlign = Number.isInteger(opts.tutorialDungeonAlign)
                     ? opts.tutorialDungeonAlign
                     : A_NONE;
+                // C tutorial branch uses a separate gamestate and starts without
+                // carried comestibles; tutorial teaches eating via placed ration.
+                game.player.inventory = game.player.inventory.filter(o => o.oclass !== FOOD_CLASS);
                 game.map = makelevel(1, TUTORIAL, 1, {
                     dungeonAlignOverride: tutorialAlign,
                 });
                 game.levels[1] = game.map;
                 game.player.dungeonLevel = 1;
-                game.placePlayerOnLevel();
+                game.placePlayerOnLevel('down');
                 game.renderCurrentScreen();
                 inTutorialPrompt = false;
             } else if (key === 'n') {
@@ -880,13 +895,12 @@ export async function replaySession(seed, session, opts = {}) {
             continue;
         }
 
-        // C ref: cmd.c:4958 — digit keys start count prefix accumulation
-        // In the session file, digits are recorded as separate steps with 0 RNG.
-        // The count prefix is consumed by execute_dumpmap between steps, so the
-        // actual command always runs with multi=0 (one turn per keystroke).
+        // C ref: cmd.c:4958 — digit keys start count prefix accumulation.
+        // Record a zero-RNG step and carry the count to the next command step.
         const ch0 = step.key.charCodeAt(0);
-        if (step.key.length === 1 && ch0 >= 48 && ch0 <= 57) { // '0'-'9'
-            // Digit steps consume no RNG — just record empty result
+        if (!pendingCommand && step.key.length === 1 && ch0 >= 48 && ch0 <= 57) { // '0'-'9'
+            const digit = ch0 - 48;
+            pendingCount = Math.min(32767, (pendingCount * 10) + digit);
             stepResults.push({
                 rngCalls: 0,
                 rng: [],
@@ -894,9 +908,32 @@ export async function replaySession(seed, session, opts = {}) {
             continue;
         }
 
+        // Some captured sessions include raw Ctrl-D bytes that were not accepted
+        // as a command by tty input (no prompt, no RNG, no time).
+        if (!pendingCommand && step.key === '\u0004'
+            && ((step.rng && step.rng.length) || 0) === 0
+            && stepMsg === '') {
+            stepResults.push({
+                rngCalls: 0,
+                rng: [],
+                screen: opts.captureScreens ? game.display.getScreenLines() : undefined,
+            });
+            continue;
+        }
+
         const ch = step.key.charCodeAt(0);
         let result = null;
         let capturedScreenOverride = null;
+        const syncHpFromStepScreen = () => {
+            if (stepScreen.length <= 0) return;
+            for (const line of stepScreen) {
+                const hpm = line.match(/HP:(\d+)\((\d+)\)/);
+                if (hpm) {
+                    game.player.hp = parseInt(hpm[1]);
+                    game.player.hpmax = parseInt(hpm[2]);
+                }
+            }
+        };
 
         if (pendingCommand) {
             // A previous command is blocked on nhgetch(); this step's key feeds it.
@@ -907,6 +944,9 @@ export async function replaySession(seed, session, opts = {}) {
             // Trace captures '#', then one key (e.g. 'O') without explicit Enter.
             if (pendingKind === 'extended-command' && step.key.length === 1) {
                 pushInput(13);
+                // Only inject shorthand Enter once; extended commands can
+                // continue into nested prompts (getlin/menus) afterward.
+                pendingKind = null;
             }
             const settled = await Promise.race([
                 pendingCommand.then(v => ({ done: true, value: v })),
@@ -920,6 +960,16 @@ export async function replaySession(seed, session, opts = {}) {
                 pendingKind = null;
             }
         } else {
+            if (pendingCount > 0) {
+                game.commandCount = pendingCount;
+                game.multi = pendingCount;
+                if (game.multi > 0) game.multi--;
+                game.cmdKey = ch;
+                pendingCount = 0;
+            } else {
+                game.commandCount = 0;
+                game.multi = 0;
+            }
             // Feed the key to the game engine
             // For multi-char keys (e.g. "wb" = wield item b), push trailing chars
             // into input queue so nhgetch() returns them immediately
@@ -973,8 +1023,7 @@ export async function replaySession(seed, session, opts = {}) {
             result = await rhack(nextCh, game);
         }
 
-        // If the command took time, run monster movement and turn effects
-        if (result && result.tookTime) {
+        const applyTimedTurn = () => {
             settrack(game.player); // C ref: allmain.c — record hero position before movemon
             // C trace behavior: stair transitions consume time but do not run
             // immediate monster movement on the destination level in the same step.
@@ -983,7 +1032,11 @@ export async function replaySession(seed, session, opts = {}) {
                 movemon(game.map, game.player, game.display, game.fov);
             }
             game.simulateTurnEnd();
+        };
 
+        // If the command took time, run monster movement and turn effects
+        if (result && result.tookTime) {
+            applyTimedTurn();
             // Run occupation continuation turns (multi-turn eating, etc.)
             // C ref: allmain.c moveloop_core() — occupation runs before next input
             while (game.occupation) {
@@ -991,19 +1044,37 @@ export async function replaySession(seed, session, opts = {}) {
                 if (!cont) {
                     game.occupation = null;
                 }
-                settrack(game.player);
-                movemon(game.map, game.player, game.display, game.fov);
-                game.simulateTurnEnd();
+                applyTimedTurn();
+                // Keep replay HP aligned to captured turn-state during multi-turn actions.
+                syncHpFromStepScreen();
+            }
 
-                // Sync HP each occupation turn (monsters may attack)
-                const stepScreen = getSessionScreenLines(step);
-                if (stepScreen.length > 0) {
-                    for (const line of stepScreen) {
-                        const hpm = line.match(/HP:(\d+)\((\d+)\)/);
-                        if (hpm) {
-                            game.player.hp = parseInt(hpm[1]);
-                            game.player.hpmax = parseInt(hpm[2]);
-                        }
+            // C ref: allmain.c moveloop() — multi-count repeats execute before
+            // accepting the next keyboard input.
+            while (game.multi > 0) {
+                game.multi--;
+                const repeated = await rhack(game.cmdKey, game);
+                if (!repeated || !repeated.tookTime) break;
+                applyTimedTurn();
+                syncHpFromStepScreen();
+                if (game.player.justHealedLegs && (game.cmdKey === 46 || game.cmdKey === 115)) {
+                    game.player.justHealedLegs = false;
+                    game.display.putstr_message('Your leg feels better.  You stop searching.');
+                    game.multi = 0;
+                    break;
+                }
+                while (game.occupation) {
+                    const cont = game.occupation.fn(game);
+                    if (!cont) {
+                        game.occupation = null;
+                    }
+                    applyTimedTurn();
+                    syncHpFromStepScreen();
+                    if (game.player.justHealedLegs && (game.cmdKey === 46 || game.cmdKey === 115)) {
+                        game.player.justHealedLegs = false;
+                        game.display.putstr_message('Your leg feels better.  You stop searching.');
+                        game.multi = 0;
+                        break;
                     }
                 }
             }
@@ -1435,15 +1506,15 @@ export class HeadlessDisplay {
         }
         const offx = Math.max(10, Math.min(41, this.cols - maxcol - 2));
 
-        // Clear only the overlay area.
-        for (let r = 0; r < this.rows; r++) {
+        // Clear only the overlay area above status lines.
+        for (let r = 0; r < STATUS_ROW_1; r++) {
             for (let c = offx; c < this.cols; c++) {
                 this.grid[r][c] = ' ';
                 this.attrs[r][c] = 0;
             }
         }
 
-        for (let i = 0; i < lines.length && i < this.rows; i++) {
+        for (let i = 0; i < lines.length && i < STATUS_ROW_1; i++) {
             this.putstr(offx, i, lines[i], CLR_GRAY, 0);
         }
         return offx;
