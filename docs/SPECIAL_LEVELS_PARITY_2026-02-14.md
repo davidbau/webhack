@@ -48,3 +48,24 @@ In `test/unit/special_levels_comparison.test.js`:
   - trace first writer for first differing tile neighborhood,
   - fix upstream terrain-state divergence,
   - rerun special-level parity and full unit tests.
+
+## Update (Later 2026-02-14)
+
+### Stability + coverage improvements landed
+- Added `selection.randline(...)` in `js/sp_lev.js` with C-style recursive rough-line generation semantics.
+- Fixed `des.terrain(selectionObj, typ)` handling for selection objects carrying `.coords`.
+- Tightened `des.replace_terrain(...)` parity in `js/sp_lev.js`:
+  - x-major iteration order like C,
+  - `rn2(100)` chance gating on each candidate tile,
+  - support for `region: [x1,y1,x2,y2]`,
+  - region coordinate resolution via `get_location(..., ANY_LOC, croom)`.
+- Improved RNG-start calibration robustness in `test/unit/special_levels_comparison.test.js`:
+  - evaluates both `rngCallStart` and `rngRawCallStart` candidates against fingerprint matching and picks the best exact match.
+
+### Measured impact
+- `test/unit/special_levels_comparison.test.js` improved from `16 pass / 70 fail` to `18 pass / 68 fail`.
+- `npm test -- --runInBand` is stable at `91/92` passing (only `special_levels_comparison` failing).
+
+### Key finding from C trace review
+- Minefill mismatch is not primarily a stair API issue; it is upstream map-state divergence at the time random stair coordinates are validated.
+- C and JS consume the same early `get_location()` RNG candidates for minefill, but acceptance differs, which points to terrain-state parity differences at candidate cells.
