@@ -1515,6 +1515,10 @@ export class HeadlessDisplay {
                 if (!fov || !fov.canSee(x, y)) {
                     const loc = gameMap.at(x, y);
                     if (loc && loc.seenv) {
+                        if (loc.mem_obj) {
+                            this.setCell(col, row, loc.mem_obj, CLR_BLACK);
+                            continue;
+                        }
                         const sym = this.terrainSymbol(loc, gameMap, x, y);
                         this.setCell(col, row, sym.ch, CLR_BLACK);
                     } else {
@@ -1545,9 +1549,11 @@ export class HeadlessDisplay {
                 const objs = gameMap.objectsAt(x, y);
                 if (objs.length > 0) {
                     const topObj = objs[objs.length - 1];
+                    loc.mem_obj = topObj.displayChar || 0;
                     this.setCell(col, row, topObj.displayChar, topObj.displayColor);
                     continue;
                 }
+                loc.mem_obj = 0;
 
                 const trap = gameMap.trapAt(x, y);
                 if (trap && trap.tseen) {

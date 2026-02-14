@@ -217,6 +217,8 @@ function xkilled(mon, map, player, display) {
                 oclass: FOOD_CLASS,
                 material: FLESH,
                 corpsenm: mon.mndx || 0,
+                displayChar: '%',
+                displayColor: 7,
                 ox: mon.mx,
                 oy: mon.my,
                 cursed: false,
