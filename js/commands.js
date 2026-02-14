@@ -1013,22 +1013,19 @@ async function handleInventory(player, display) {
         groups[cls].push(item);
     }
 
-    const centered = (text) => {
-        const start = Math.max(0, Math.floor((80 - text.length) / 2) - 2);
-        return `${' '.repeat(start)}${text}`;
-    };
-
     const lines = [];
     for (const cls of INV_ORDER) {
         if (!groups[cls]) continue;
-        lines.push(centered(CLASS_NAMES[cls] || 'Other'));
+        lines.push(` ${CLASS_NAMES[cls] || 'Other'}`);
         for (const item of groups[cls]) {
-            lines.push(` ${item.invlet} - ${doname(item, player)}`);
+            const invName = doname(item, player)
+                .replace('(wielded)', '(weapon in right hand)');
+            lines.push(` ${item.invlet} - ${invName}`);
         }
     }
     lines.push(' (end)');
 
-    display.renderChargenMenu(lines, true);
+    display.renderChargenMenu(lines, false);
     await nhgetch(); // wait for dismissal
 
     return { moved: false, tookTime: false };

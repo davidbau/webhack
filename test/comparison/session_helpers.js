@@ -896,6 +896,7 @@ export async function replaySession(seed, session, opts = {}) {
 
         const ch = step.key.charCodeAt(0);
         let result = null;
+        let capturedScreenOverride = null;
 
         if (pendingCommand) {
             // A previous command is blocked on nhgetch(); this step's key feeds it.
@@ -928,13 +929,6 @@ export async function replaySession(seed, session, opts = {}) {
                 }
             }
 
-            // Inventory display is dismissed by harness-side input after capture.
-            // Mirror that by auto-queuing SPACE so the command resolves this step.
-            const needsDismissal = ['i', 'I'].includes(String.fromCharCode(ch));
-            if (needsDismissal) {
-                pushInput(32);
-            }
-
             // Execute the command once (one turn per keystroke)
             const commandPromise = rhack(ch, game);
             const settled = await Promise.race([
@@ -943,11 +937,23 @@ export async function replaySession(seed, session, opts = {}) {
             ]);
 
             if (!settled.done) {
-                // Command is waiting for additional input (direction/item/etc.).
-                // Defer resolution to subsequent captured step(s).
-                pendingCommand = commandPromise;
-                pendingKind = (ch === 35) ? 'extended-command' : null;
-                result = { moved: false, tookTime: false };
+                // Inventory display: capture shown menu screen for this step,
+                // then dismiss it with SPACE like the C harness does after capture.
+                const needsDismissal = ['i', 'I'].includes(String.fromCharCode(ch));
+                if (needsDismissal) {
+                    if (opts.captureScreens) {
+                        capturedScreenOverride = game.display.getScreenLines();
+                    }
+                    pushInput(32);
+                    const dismissed = await commandPromise;
+                    result = dismissed || { moved: false, tookTime: false };
+                } else {
+                    // Command is waiting for additional input (direction/item/etc.).
+                    // Defer resolution to subsequent captured step(s).
+                    pendingCommand = commandPromise;
+                    pendingKind = (ch === 35) ? 'extended-command' : null;
+                    result = { moved: false, tookTime: false };
+                }
             } else {
                 result = settled.value;
             }
@@ -1036,12 +1042,16 @@ export async function replaySession(seed, session, opts = {}) {
 
         game.renderCurrentScreen();
 
+        if (typeof opts.onStep === 'function') {
+            opts.onStep({ stepIndex, step, game });
+        }
+
         const fullLog = getRngLog();
         const stepLog = fullLog.slice(prevCount);
         stepResults.push({
             rngCalls: stepLog.length,
             rng: stepLog.map(toCompactRng),
-            screen: opts.captureScreens ? game.display.getScreenLines() : undefined,
+            screen: opts.captureScreens ? (capturedScreenOverride || game.display.getScreenLines()) : undefined,
         });
     }
 

@@ -399,6 +399,13 @@ export class Display {
                     // Show remembered terrain or nothing
                     const loc = gameMap.at(x, y);
                     if (loc && loc.seenv) {
+                        // C-like memory: remembered object glyph overlays
+                        // remembered terrain when out of sight.
+                        if (loc.mem_obj) {
+                            this.setCell(col, row, loc.mem_obj, CLR_BLACK);
+                            this.cellInfo[row][col] = { name: 'remembered object', desc: '(remembered)', color: CLR_BLACK };
+                            continue;
+                        }
                         // Show remembered (dimmed)
                         const sym = this.terrainSymbol(loc, gameMap, x, y);
                         this.setCell(col, row, sym.ch, CLR_BLACK);
@@ -442,6 +449,7 @@ export class Display {
                 const objs = gameMap.objectsAt(x, y);
                 if (objs.length > 0) {
                     const topObj = objs[objs.length - 1];
+                    loc.mem_obj = topObj.displayChar || 0;
                     this.setCell(col, row, topObj.displayChar, topObj.displayColor);
                     const classInfo = this._objectClassDesc(topObj.oc_class);
                     const extra = objs.length > 1 ? ` (+${objs.length - 1} more)` : '';
@@ -449,6 +457,7 @@ export class Display {
                     this.cellInfo[row][col] = { name: topObj.name + extra, desc: classInfo, stats: stats, color: topObj.displayColor };
                     continue;
                 }
+                loc.mem_obj = 0;
 
                 // Check for traps
                 const trap = gameMap.trapAt(x, y);

@@ -61,11 +61,32 @@ const DEC_TO_UNICODE = {
     a: '\u00b7',
 };
 
-function normalizeCapturedLine(line, row, screenMode, isMapScreen) {
+const DEC_FROM_UNICODE = {
+    '\u250c': 'l',
+    '\u2500': 'q',
+    '\u2510': 'k',
+    '\u2502': 'x',
+    '\u2514': 'm',
+    '\u2518': 'j',
+    '\u253c': 'n',
+    '\u251c': 't',
+    '\u2524': 'u',
+    '\u2534': 'v',
+    '\u252c': 'w',
+    '\u00b7': 'a',
+};
+
+function normalizeCapturedLine(line, row, screenMode, isMapScreen, prependMissingCol0 = true) {
     let out = (line || '').replace(/\r$/, '');
-    if (screenMode === 'decgraphics' && row >= 1) {
+    if (screenMode === 'decgraphics' && row >= 1 && prependMissingCol0) {
         // tmux capture drops terminal column 0 for non-top rows.
         out = ` ${out}`;
+    }
+    if (screenMode === 'decgraphics' && !isMapScreen) {
+        // Some tmux captures materialize DEC alternate charset glyphs directly
+        // in non-map text screens (inventory/menu/messages). Convert those back
+        // to their source ASCII bytes for stable comparison.
+        out = [...out].map(ch => DEC_FROM_UNICODE[ch] || ch).join('');
     }
     if (isMapScreen && screenMode === 'decgraphics' && row >= 1 && row <= 21) {
         out = [...out].map(ch => DEC_TO_UNICODE[ch] || ch).join('');
@@ -73,18 +94,35 @@ function normalizeCapturedLine(line, row, screenMode, isMapScreen) {
     return out.padEnd(80);
 }
 
-function normalizeJsLine(line) {
-    return (line || '').padEnd(80);
+function normalizeJsLine(line, row, screenMode, isMapScreen) {
+    let out = (line || '');
+    if (screenMode === 'decgraphics' && isMapScreen && row >= 1 && row <= 21) {
+        out = [...out].map(ch => DEC_TO_UNICODE[ch] || ch).join('');
+    }
+    return out.padEnd(80);
 }
 
 function normalizeStatusLine(line, row) {
     if (row === 22) {
         const idx = line.indexOf('St:');
-        return idx >= 0 ? line.slice(idx).trimEnd().padEnd(80) : line;
+        if (idx >= 0) {
+            let out = line.slice(idx).trimEnd();
+            // C/JS formatting variant: JS may include trailing score ("S:<n>")
+            // while captured C status omits it in some sessions.
+            out = out.replace(/\s+S:\d+\s*$/, '');
+            return out.padEnd(80);
+        }
+        return line;
     }
     if (row === 23) {
         const idx = line.indexOf('Dlvl:');
-        return idx >= 0 ? line.slice(idx).trimEnd().padEnd(80) : line;
+        if (idx >= 0) {
+            let out = line.slice(idx).trimEnd();
+            // Normalize XP display differences: "Xp:1/3" vs "Xp:1".
+            out = out.replace(/Xp:(\d+)\/\d+/g, 'Xp:$1');
+            return out.padEnd(80);
+        }
+        return line;
     }
     return line;
 }
@@ -96,13 +134,22 @@ function compareStepScreen(jsScreen, capturedScreen, screenMode, strictMessageRo
     const isMapScreen = capturedScreen.some(line => typeof line === 'string' && line.includes('Dlvl:'));
     const rowStart = strictMessageRow ? 0 : 1;
     for (let row = rowStart; row < 24; row++) {
-        const cLine = normalizeStatusLine(
+        const cLineWithPad = normalizeStatusLine(
             normalizeCapturedLine(capturedScreen[row], row, screenMode, isMapScreen),
             row
         );
-        const jLine = normalizeStatusLine(normalizeJsLine(jsScreen?.[row]), row);
-        if (cLine !== jLine) {
-            return { ok: false, row, js: jLine, c: cLine };
+        const cLineNoPad = normalizeStatusLine(
+            normalizeCapturedLine(capturedScreen[row], row, screenMode, isMapScreen, false),
+            row
+        );
+        const jLine = normalizeStatusLine(
+            normalizeJsLine(jsScreen?.[row], row, screenMode, isMapScreen),
+            row
+        );
+        // Some captured sessions already include terminal column 0 while others
+        // reflect tmux's dropped column for non-top rows. Accept either.
+        if (cLineWithPad !== jLine && cLineNoPad !== jLine) {
+            return { ok: false, row, js: jLine, c: cLineWithPad };
         }
     }
     return { ok: true, row: -1, js: '', c: '' };

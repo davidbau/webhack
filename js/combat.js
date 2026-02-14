@@ -155,6 +155,8 @@ export function playerAttackMonster(player, monster, display, map) {
                     material: FLESH,
                     corpsenm: monster.mndx || 0,
                     name: `${monster.name} corpse`,
+                    displayChar: '%',
+                    displayColor: 7,
                     ox: monster.mx,
                     oy: monster.my,
                     cursed: false,
