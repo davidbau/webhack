@@ -342,6 +342,18 @@ function getPreStartupRngEntries(session) {
     return [];
 }
 
+// Some keylog-derived gameplay sessions record startup RNG in step[0].rng
+// instead of startup.rng (which is empty). Detect that format so replay output
+// can be normalized for strict per-step comparison.
+export function hasStartupBurstInFirstStep(session) {
+    if (!session) return false;
+    const startupCalls = session.startup?.rngCalls ?? 0;
+    if (startupCalls !== 0) return false;
+    if ((session.startup?.rng?.length ?? 0) !== 0) return false;
+    const firstStepRngLen = session.steps?.[0]?.rng?.length ?? 0;
+    return firstStepRngLen > 0;
+}
+
 // Generate full startup (map gen + post-level init) with RNG trace capture.
 // Matches the C startup sequence: o_init → dungeon_init → makelevel → wallification
 // → player placement → simulatePostLevelInit (pet, inventory, attributes, welcome).
@@ -886,10 +898,22 @@ export async function replaySession(seed, session, opts = {}) {
         await pendingCommand;
     }
 
+    const startupBurstInStep0 = hasStartupBurstInFirstStep(session);
+    let normalizedStartup = { rngCalls: startupRng.length, rng: startupRng };
+    if (startupBurstInStep0) {
+        normalizedStartup = { rngCalls: 0, rng: [] };
+        if (stepResults.length > 0) {
+            stepResults[0] = {
+                rngCalls: startupRng.length + stepResults[0].rngCalls,
+                rng: startupRng.concat(stepResults[0].rng),
+            };
+        }
+    }
+
     disableRngLog();
 
     return {
-        startup: { rngCalls: startupRng.length, rng: startupRng },
+        startup: normalizedStartup,
         steps: stepResults,
     };
 }

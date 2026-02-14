@@ -396,6 +396,19 @@ function dochug(mon, map, player, display, fov) {
         return;
     }
 
+    // C ref: monmove.c phase-1 timeout checks.
+    // Confused monsters may recover with 1/50 chance each turn.
+    if (mon.confused && !rn2(50)) mon.confused = false;
+    // Stunned monsters may recover with 1/10 chance each turn.
+    if (mon.stunned && !rn2(10)) mon.stunned = false;
+
+    // C ref: monmove.c:759-761 — fleeing monster may regain courage.
+    if (mon.flee && !(mon.fleetim > 0)
+        && (mon.mhp ?? 0) >= (mon.mhpmax ?? 0)
+        && !rn2(25)) {
+        mon.flee = false;
+    }
+
     // C ref: monmove.c:745-750 — fleeing teleport-capable monsters
     // check !rn2(40) and may spend their turn teleporting away.
     if (mon.flee && !rn2(40) && can_teleport(mon.type || {})

@@ -9,7 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import { compareRng, replaySession, generateStartupWithRng } from './session_helpers.js';
+import { compareRng, replaySession, generateStartupWithRng, hasStartupBurstInFirstStep } from './session_helpers.js';
 
 function loadSession(filepath) {
     return JSON.parse(fs.readFileSync(filepath, 'utf8'));
@@ -50,7 +50,7 @@ async function main() {
 
     let failures = 0;
 
-    if (session.startup?.rng) {
+    if (session.startup?.rng && !hasStartupBurstInFirstStep(session)) {
         const startup = generateStartupWithRng(seed, session);
         const div = compareRng(startup.rng, session.startup.rng);
         if (div.index === -1) {
@@ -62,6 +62,8 @@ async function main() {
                 process.exit(1);
             }
         }
+    } else if (hasStartupBurstInFirstStep(session)) {
+        console.log('startup: skipped (keylog trace stores startup RNG in step 0)');
     }
 
     const replay = await replaySession(seed, session);
