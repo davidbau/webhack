@@ -993,17 +993,16 @@ export class Agent {
             // No food available - continue exploring (might find food)
         }
 
-        // 2b. Check equipment at game start and after picking up items
-        // Wield best weapon and wear armor for better combat survival
-        if (!this.equipment.hasCheckedStarting && this.turnNumber >= 5 && this.turnNumber <= 20) {
-            // Check starting equipment early in game
-            if (this.inventory.lastUpdate === 0) {
+        // 2b. Early equipment setup: ensure both weapon and armor are handled.
+        // Previous one-shot gating could wield a weapon and then skip wearing armor.
+        if (this.turnNumber >= 5 && this.turnNumber <= 40 &&
+            (!this.equipment.currentWeapon || !this.equipment.currentArmor)) {
+            if (this.inventory.lastUpdate === 0 || this.turnNumber - this.inventory.lastUpdate > 30) {
                 await this._refreshInventory();
             }
 
             const weapon = this.equipment.shouldWieldWeapon(this.inventory);
             if (weapon) {
-                this.equipment.hasCheckedStarting = true;
                 this.equipment.recordWield(weapon.name);
                 this.pendingWieldLetter = weapon.letter;
                 return { type: 'wield', key: 'w', reason: `wielding ${weapon.name}` };
@@ -1011,13 +1010,10 @@ export class Agent {
 
             const armor = this.equipment.shouldWearArmor(this.inventory);
             if (armor) {
-                this.equipment.hasCheckedStarting = true;
                 this.equipment.recordWear(armor.name);
                 this.pendingWearLetter = armor.letter;
                 return { type: 'wear', key: 'W', reason: `wearing ${armor.name}` };
             }
-
-            this.equipment.hasCheckedStarting = true;
         }
 
         // --- Tactical checks ---

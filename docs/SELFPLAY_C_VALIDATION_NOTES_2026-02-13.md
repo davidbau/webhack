@@ -60,3 +60,22 @@ All candidates below were tested on C development seeds and then held-out where 
   - depth outcomes held constant
   - survival improved on held-out seeds
   - no regression on aggregate depth metrics
+
+## 2026-02-15 Update
+### What changed
+- `selfplay/agent.js`
+  - Reworked early equipment setup so weapon and armor are both pursued during early turns.
+  - Removed one-shot gating that could wield a weapon and then skip armor setup entirely.
+
+### Why
+- In previous policy, startup equipment logic set `hasCheckedStarting` as soon as one action fired.
+- On many runs, this allowed wielding but prevented early armor wear, reducing survivability and depth progression.
+
+### Held-out paired validation (C runner, 1200 turns, seeds 11-20, timeout-guarded)
+- Baseline (`origin/main`): `avg_depth=1.80`, `lvl3+=3/10`, `survived=5/10`
+- Candidate (equipment fix): `avg_depth=2.10`, `lvl3+=4/10`, `survived=5/10`
+
+### Decision
+- Keep this change set:
+  - meaningful depth improvement on held-out seeds
+  - survival rate held constant (no regression)
