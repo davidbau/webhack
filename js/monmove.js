@@ -381,18 +381,35 @@ function dochug(mon, map, player, display, fov) {
 
     // Phase 2: Sleep check
     // C ref: monmove.c disturb() — wake sleeping monster if player visible & close
+    function disturb(monster) {
+        // C ref: couldsee() and mdistu() <= 100 gate.
+        const canSee = fov && fov.canSee(monster.mx, monster.my);
+        if (!canSee) return false;
+        if (dist2(monster.mx, monster.my, player.x, player.y) > 100) return false;
+
+        // C ref: !Stealth || (ettin && rn2(10)).
+        // Replay player state does not yet model stealth intrinsics by default.
+        if (player.stealth) {
+            const isEttin = monster.type?.name === 'ettin';
+            if (!(isEttin && rn2(10))) return false;
+        }
+
+        // C ref: nymph/jabberwock/leprechaun: only wake 1/50.
+        const sym = monster.type?.symbol;
+        const isHardSleeper = sym === 'n' || monster.type?.name === 'jabberwock' || sym === 'l';
+        if (isHardSleeper && rn2(50)) return false;
+
+        // C ref: Aggravate_monster || dog/human || !rn2(7) (non-mimics).
+        // We do not model mimic furniture/object disguise state here.
+        const aggravate = !!player.aggravateMonster;
+        const isDogOrHuman = sym === 'd' || sym === '@';
+        if (!(aggravate || isDogOrHuman || !rn2(7))) return false;
+
+        return true;
+    }
+
     if (mon.sleeping) {
-        // C ref: disturb checks couldsee() first. If can't see: 0 RNG, return.
-        const canSee = fov && fov.canSee(mon.mx, mon.my);
-        if (!canSee) return;
-
-        const d2 = dist2(mon.mx, mon.my, player.x, player.y);
-        if (d2 > 100) return; // mdistu > 100
-
-        // Simplified wake check (C has Stealth/Aggravate/tame checks with RNG)
-        // For now, just wake without RNG to match the trace
-        // (sleeping monsters in other rooms can't be seen, so they never reach here)
-        mon.sleeping = false;
+        if (disturb(mon)) mon.sleeping = false;
         return;
     }
 
