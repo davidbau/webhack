@@ -3996,8 +3996,56 @@ export function levregion(opts) {
  * @param {Object} opts - Exclusion options
  */
 export function exclusion(opts) {
-    // Stub - would mark exclusion zones for monster generation
-    // For now, just ignore
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+    if (!opts || typeof opts !== 'object') {
+        throw new Error('wrong parameters');
+    }
+
+    const type = String(opts.type || 'teleport').toLowerCase();
+    // C ref: lspo_exclusion() ez_types table.
+    const typeMap = {
+        'teleport': 'teleport',
+        'teleport-up': 'teleport-up',
+        'teleport_up': 'teleport-up',
+        'teleport-down': 'teleport-down',
+        'teleport_down': 'teleport-down',
+        'monster-generation': 'monster-generation',
+        'monster_generation': 'monster-generation'
+    };
+    const zoneType = typeMap[type];
+    if (!zoneType) {
+        throw new Error('wrong parameters');
+    }
+
+    let x1;
+    let y1;
+    let x2;
+    let y2;
+    if (Array.isArray(opts.region)) {
+        [x1, y1, x2, y2] = opts.region;
+    } else if (opts.region && typeof opts.region === 'object') {
+        x1 = opts.region.x1;
+        y1 = opts.region.y1;
+        x2 = opts.region.x2;
+        y2 = opts.region.y2;
+    } else {
+        throw new Error('wrong parameters');
+    }
+
+    const p1 = getLocationCoord(x1, y1, GETLOC_ANY_LOC, levelState.currentRoom || null);
+    const p2 = getLocationCoord(x2, y2, GETLOC_ANY_LOC, levelState.currentRoom || null);
+    if (!Array.isArray(levelState.map.exclusionZones)) {
+        levelState.map.exclusionZones = [];
+    }
+    levelState.map.exclusionZones.push({
+        type: zoneType,
+        lx: p1.x,
+        ly: p1.y,
+        hx: p2.x,
+        hy: p2.y
+    });
 }
 
 /**
