@@ -9,7 +9,7 @@ import {
 } from '../../js/sp_lev.js';
 import { place_lregion } from '../../js/dungeon.js';
 import {
-    STONE, ROOM, CORR, HWALL, VWALL, STAIRS, LAVAPOOL, PIT, MAGIC_PORTAL, CROSSWALL, GRAVE,
+    STONE, ROOM, CORR, DOOR, HWALL, VWALL, STAIRS, LAVAPOOL, PIT, MAGIC_PORTAL, CROSSWALL, GRAVE,
     ALTAR, THRONE, A_LAWFUL, A_NEUTRAL, A_CHAOTIC,
 } from '../../js/config.js';
 import { BOULDER, DAGGER } from '../../js/objects.js';
@@ -362,18 +362,23 @@ describe('sp_lev.js - des.* API', () => {
     it('connects rooms with des.corridor table form', () => {
         resetLevelState();
         des.level_init({ style: 'solidfill', fg: ' ' });
-        des.room({ x: 5, y: 5, w: 4, h: 4, lit: 1 });
-        des.room({ x: 20, y: 5, w: 4, h: 4, lit: 1 });
-
-        des.corridor({ srcroom: 1, srcdoor: 1, srcwall: 'east', destroom: 2, destdoor: 1, destwall: 'west' });
         const map = getLevelState().map;
+        map.rooms = [
+            { lx: 5, ly: 5, hx: 8, hy: 8, needjoining: true },
+            { lx: 20, ly: 5, hx: 23, hy: 8, needjoining: true }
+        ];
+        map.nroom = 2;
+        map.locations[9][5].typ = DOOR;   // east wall door for room 0
+        map.locations[19][5].typ = DOOR;  // west wall door for room 1
+
+        des.corridor({ srcroom: 0, srcdoor: 0, srcwall: 'east', destroom: 1, destdoor: 0, destwall: 'west' });
         let corridorLike = 0;
         for (let x = 0; x < 80; x++) {
             for (let y = 0; y < 21; y++) {
                 if (map.locations[x][y].typ === CORR) corridorLike++;
             }
         }
-        assert.ok(corridorLike >= 0, 'corridor call should execute without throwing');
+        assert.ok(corridorLike > 0, 'corridor call should carve at least one corridor tile');
     });
 
     it('finalize_level map cleanup removes boulders and destroyable traps on liquid', () => {

@@ -1748,22 +1748,6 @@ function wallMaskToDir(mask) {
     }
 }
 
-function pickDirFromWallMask(mask) {
-    if (mask === -1 || mask === W_ANY) {
-        return rn2(4);
-    }
-    if (mask === W_NORTH || mask === W_SOUTH || mask === W_WEST || mask === W_EAST) {
-        return wallMaskToDir(mask);
-    }
-    const dirs = [];
-    if (mask & W_NORTH) dirs.push(DIR_N);
-    if (mask & W_SOUTH) dirs.push(DIR_S);
-    if (mask & W_WEST) dirs.push(DIR_W);
-    if (mask & W_EAST) dirs.push(DIR_E);
-    if (!dirs.length) return rn2(4);
-    return dirs[rn2(dirs.length)];
-}
-
 function dirVector(dir) {
     switch (dir) {
     case DIR_N: return { dx: 0, dy: -1 };
@@ -1774,8 +1758,47 @@ function dirVector(dir) {
     }
 }
 
+function searchDoor(room, wall, doorIndex, map) {
+    let dx;
+    let dy;
+    let xx;
+    let yy;
+
+    switch (wall) {
+    case W_SOUTH:
+        dy = 0; dx = 1;
+        xx = room.lx; yy = room.hy + 1;
+        break;
+    case W_NORTH:
+        dy = 0; dx = 1;
+        xx = room.lx; yy = room.ly - 1;
+        break;
+    case W_EAST:
+        dy = 1; dx = 0;
+        xx = room.hx + 1; yy = room.ly;
+        break;
+    case W_WEST:
+        dy = 1; dx = 0;
+        xx = room.lx - 1; yy = room.ly;
+        break;
+    default:
+        return null;
+    }
+
+    let cnt = doorIndex;
+    while (xx <= room.hx + 1 && yy <= room.hy + 1) {
+        const loc = map.at(xx, yy);
+        if (loc && (IS_DOOR(loc.typ) || loc.typ === SDOOR)) {
+            if (cnt-- <= 0) return { x: xx, y: yy };
+        }
+        xx += dx;
+        yy += dy;
+    }
+    return null;
+}
+
 // C ref: sp_lev.c create_corridor() as used by lspo_corridor().
-// src/dest room fields are 1-based room indices from des scripts.
+// src/dest room fields are 0-based room indices (svr.rooms[] indexing).
 export function create_corridor(map, spec, depth) {
     const srcRoomN = Number.isFinite(spec?.src?.room) ? Math.trunc(spec.src.room) : -1;
     const destRoomN = Number.isFinite(spec?.dest?.room) ? Math.trunc(spec.dest.room) : -1;
@@ -1785,9 +1808,10 @@ export function create_corridor(map, spec, depth) {
         return;
     }
 
-    const srcIdx = srcRoomN - 1;
-    const destIdx = destRoomN - 1;
-    if (srcIdx < 0 || destIdx < 0 || srcIdx >= map.nroom || destIdx >= map.nroom) return;
+    const srcIdx = srcRoomN;
+    const destIdx = destRoomN;
+    if (srcIdx < 0 || srcIdx >= map.nroom) return;
+    if (destIdx < 0 || destIdx >= map.nroom) return;
     if (srcIdx === destIdx) return;
 
     if (!Array.isArray(map.smeq) || map.smeq.length < map.nroom) {
@@ -1799,21 +1823,25 @@ export function create_corridor(map, spec, depth) {
     const destRoom = map.rooms[destIdx];
     if (!srcRoom || !destRoom) return;
 
-    const srcDir = pickDirFromWallMask(Number.isFinite(spec?.src?.wall) ? spec.src.wall : W_ANY);
-    const destDir = pickDirFromWallMask(Number.isFinite(spec?.dest?.wall) ? spec.dest.wall : W_ANY);
-    const cc = finddpos(map, srcDir, srcRoom);
-    const tt = finddpos(map, destDir, destRoom);
+    const srcWall = Number.isFinite(spec?.src?.wall) ? Math.trunc(spec.src.wall) : W_ANY;
+    const destWall = Number.isFinite(spec?.dest?.wall) ? Math.trunc(spec.dest.wall) : W_ANY;
+    // C ref: create_corridor() rejects random/any walls for des.corridor().
+    if (srcWall === W_ANY || srcWall === -1 || destWall === W_ANY || destWall === -1) return;
+
+    const srcDoor = Number.isFinite(spec?.src?.door) ? Math.trunc(spec.src.door) : 0;
+    const destDoor = Number.isFinite(spec?.dest?.door) ? Math.trunc(spec.dest.door) : 0;
+
+    const cc = searchDoor(srcRoom, srcWall, srcDoor, map);
+    const tt = searchDoor(destRoom, destWall, destDoor, map);
     if (!cc || !tt) return;
 
-    const svec = dirVector(srcDir);
-    const dvec = dirVector(destDir);
+    const svec = dirVector(wallMaskToDir(srcWall));
+    const dvec = dirVector(wallMaskToDir(destWall));
     const org = { x: cc.x + svec.dx, y: cc.y + svec.dy };
     const dest = { x: tt.x - dvec.dx, y: tt.y - dvec.dy };
 
     const result = dig_corridor(map, org, dest, false, depth);
-    if (result.npoints > 0 && okdoor(map, cc.x, cc.y)) dodoor(map, cc.x, cc.y, srcRoom, depth);
     if (!result.success) return;
-    if (okdoor(map, tt.x, tt.y)) dodoor(map, tt.x, tt.y, destRoom, depth);
 
     if (map.smeq[srcIdx] < map.smeq[destIdx]) map.smeq[destIdx] = map.smeq[srcIdx];
     else map.smeq[srcIdx] = map.smeq[destIdx];
