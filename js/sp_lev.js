@@ -5879,9 +5879,11 @@ export function finalize_level() {
         }
     }
 
-    // Apply wallification first (before flipping)
-    // C ref: sp_lev.c line 6028 - wallification before flip
-    if (levelState.map) {
+    // Apply wallification first (before flipping).
+    // C ref: sp_lev.c lspo_finalize_level()/load_special() wallify only when
+    // !svl.level.flags.corrmaze (corrmaze is overloaded to suppress wallify
+    // for levels with handcrafted wall geometry such as Baalz).
+    if (levelState.map && !levelState.flags.corrmaze) {
         wallification(levelState.map);
     }
 
