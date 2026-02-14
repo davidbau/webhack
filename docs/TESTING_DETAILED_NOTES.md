@@ -264,6 +264,41 @@ Existing notes (version 1) remain valid. The collection script:
 3. Sets version to 2
 4. Preserves all v1 data
 
+## Pilot Run Findings
+
+A pilot run on 5 representative commits (#50, #300, #650, #1000, #1300) revealed:
+
+### Test Evolution
+
+| Commit | Date | Tests | Pass Rate | Categories |
+|--------|------|-------|-----------|------------|
+| #50 | Feb 8 | 464 | 96% | map, unit |
+| #300 | Feb 11 | 1,978 | 90% | chargen, map, special, unit |
+| #650 | Feb 12 | 2,662 | 66% | +gameplay, options |
+| #1000 | Feb 13 | 6,289 | 64% | all categories |
+| #1300 | Feb 14 | 15,321 | 56% | all categories |
+
+**Key observations:**
+1. Test count grew 33x over the project's life (464 → 15,321)
+2. Pass rate declined from 96% to 56% as more complex session tests were added
+3. New test categories were introduced: chargen at #300, special at #300, gameplay at #650
+4. Each test run takes 30-60 seconds per commit
+
+### Timing Estimates for Full Backfill
+
+| Strategy | Commits | Time per commit | Total time |
+|----------|---------|-----------------|------------|
+| Code metrics only | 1,345 | ~1 second | ~25 minutes |
+| Full tests (all) | 1,345 | ~45 seconds | ~17 hours |
+| Sampled tests (every 20th) | 67 | ~45 seconds | ~50 minutes |
+| Recent full tests (last 100) | 100 | ~45 seconds | ~75 minutes |
+
+**Recommended strategy:**
+1. Code metrics for all 1,345 commits (~25 min)
+2. Full tests on sampled commits every 20th (~50 min)
+3. Full tests on last 100 commits (~75 min)
+4. Total: ~2.5 hours
+
 ## File Locations
 
 | File | Purpose |
