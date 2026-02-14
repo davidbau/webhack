@@ -21,7 +21,7 @@ function parseArgs(argv) {
         session: `nethack-manual-${Date.now()}`,
         keylog: null,
         keepSession: true,
-        fixedDatetime: process.env.NETHACK_FIXED_DATETIME || '20000110090000',
+        fixedDatetime: '20000110090000',
     };
 
     for (let i = 2; i < argv.length; i++) {
