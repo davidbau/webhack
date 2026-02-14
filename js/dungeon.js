@@ -5129,7 +5129,15 @@ function put_lregion_here(map, x, y, nlx, nly, nhx, nhy, rtype, oneshot) {
 
         case LR_PORTAL:
             // C parity: branch portal does not alter terrain, it adds MAGIC_PORTAL.
-            maketrap(map, x, y, MAGIC_PORTAL);
+            {
+                const trap = maketrap(map, x, y, MAGIC_PORTAL);
+                if (trap && map?._portalDestOverride) {
+                    trap.dst = {
+                        dnum: map._portalDestOverride.dnum,
+                        dlevel: map._portalDestOverride.dlevel
+                    };
+                }
+            }
             break;
 
         case LR_DOWNSTAIR:

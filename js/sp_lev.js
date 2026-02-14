@@ -45,6 +45,7 @@ import {
     SCR_EARTH, objectData, GOLD_PIECE, STATUE
 } from './objects.js';
 import { mons, M2_FEMALE, M2_MALE, G_NOGEN, PM_MINOTAUR, MR_STONE } from './monsters.js';
+import { findSpecialLevelByName } from './special_levels.js';
 
 // Aliases for compatibility with C naming
 const STAIRS_UP = STAIRS;
@@ -1128,6 +1129,50 @@ function fixupSpecialLevel() {
             }
         }
     };
+    const withPortalDest = (dest, fn) => {
+        const map = levelState.map;
+        const prev = map._portalDestOverride;
+        if (dest) {
+            map._portalDestOverride = { dnum: dest.dnum, dlevel: dest.dlevel };
+        } else {
+            delete map._portalDestOverride;
+        }
+        try {
+            fn();
+        } finally {
+            if (prev === undefined) {
+                delete map._portalDestOverride;
+            } else {
+                map._portalDestOverride = prev;
+            }
+        }
+    };
+    const resolvePortalDest = (region, ctx) => {
+        if (region?.rtype !== LR_PORTAL) return null;
+        const rname = (typeof region.rname === 'string') ? region.rname.trim() : '';
+        if (!rname) return null;
+
+        // C ref: mkmaze.c fixup_special() LR_PORTAL:
+        // numeric rname keeps current dungeon and sets destination dlevel.
+        if (/^\d+$/.test(rname)) {
+            const dlevel = Number.parseInt(rname, 10);
+            if (Number.isFinite(ctx?.dnum) && Number.isFinite(dlevel)) {
+                return { dnum: ctx.dnum, dlevel };
+            }
+            return null;
+        }
+
+        // Named portal destination: resolve by registered special-level name.
+        return findSpecialLevelByName(rname);
+    };
+    const placeRegion = (region, explicitType = region.rtype) => {
+        const ctx = levelState.finalizeContext || {};
+        const portalDest = resolvePortalDest(region, ctx);
+        withPortalDest(portalDest, () => place_lregion(levelState.map,
+            region.inarea.x1, region.inarea.y1, region.inarea.x2, region.inarea.y2,
+            region.delarea.x1, region.delarea.y1, region.delarea.x2, region.delarea.y2,
+            explicitType));
+    };
     for (const region of levelState.levRegions || []) {
         switch (region.rtype) {
             case LR_BRANCH:
@@ -1139,17 +1184,11 @@ function fixupSpecialLevel() {
                     break;
                 }
                 if (explicit === 'portal') {
-                    withBranchHint('portal', () => place_lregion(levelState.map,
-                        region.inarea.x1, region.inarea.y1, region.inarea.x2, region.inarea.y2,
-                        region.delarea.x1, region.delarea.y1, region.delarea.x2, region.delarea.y2,
-                        LR_BRANCH));
+                    withBranchHint('portal', () => placeRegion(region, LR_BRANCH));
                     break;
                 }
                 if (explicit === 'stairs') {
-                    withBranchHint('stair-down', () => place_lregion(levelState.map,
-                        region.inarea.x1, region.inarea.y1, region.inarea.x2, region.inarea.y2,
-                        region.delarea.x1, region.delarea.y1, region.delarea.x2, region.delarea.y2,
-                        LR_BRANCH));
+                    withBranchHint('stair-down', () => placeRegion(region, LR_BRANCH));
                     break;
                 }
 
@@ -1159,24 +1198,15 @@ function fixupSpecialLevel() {
                     break;
                 }
                 if (branch.placement === 'portal') {
-                    withBranchHint('portal', () => place_lregion(levelState.map,
-                        region.inarea.x1, region.inarea.y1, region.inarea.x2, region.inarea.y2,
-                        region.delarea.x1, region.delarea.y1, region.delarea.x2, region.delarea.y2,
-                        LR_BRANCH));
+                    withBranchHint('portal', () => placeRegion(region, LR_BRANCH));
                     break;
                 }
                 if (branch.placement === 'stair-up') {
-                    withBranchHint('stair-up', () => place_lregion(levelState.map,
-                        region.inarea.x1, region.inarea.y1, region.inarea.x2, region.inarea.y2,
-                        region.delarea.x1, region.delarea.y1, region.delarea.x2, region.delarea.y2,
-                        LR_BRANCH));
+                    withBranchHint('stair-up', () => placeRegion(region, LR_BRANCH));
                     break;
                 }
                 if (branch.placement === 'stair-down') {
-                    withBranchHint('stair-down', () => place_lregion(levelState.map,
-                        region.inarea.x1, region.inarea.y1, region.inarea.x2, region.inarea.y2,
-                        region.delarea.x1, region.delarea.y1, region.delarea.x2, region.delarea.y2,
-                        LR_BRANCH));
+                    withBranchHint('stair-down', () => placeRegion(region, LR_BRANCH));
                     break;
                 }
                 // Fallback for unknown resolver states.
@@ -1184,10 +1214,7 @@ function fixupSpecialLevel() {
             case LR_PORTAL:
             case LR_UPSTAIR:
             case LR_DOWNSTAIR:
-                place_lregion(levelState.map,
-                    region.inarea.x1, region.inarea.y1, region.inarea.x2, region.inarea.y2,
-                    region.delarea.x1, region.delarea.y1, region.delarea.x2, region.delarea.y2,
-                    region.rtype);
+                placeRegion(region);
                 break;
             case LR_TELE:
             case LR_UPTELE:

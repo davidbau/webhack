@@ -5,7 +5,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    des, resetLevelState, getLevelState
+    des, resetLevelState, getLevelState, setFinalizeContext
 } from '../../js/sp_lev.js';
 import { place_lregion } from '../../js/dungeon.js';
 import {
@@ -643,5 +643,35 @@ describe('sp_lev.js - des.* API', () => {
         place_lregion(map, 10, 10, 10, 10, 0, 0, 0, 0, 0);
 
         assert.equal(map.monsters.length, 0, 'monster should be removed when no legal relocation exists');
+    });
+
+    it('fixup_special LR_PORTAL resolves named destination level', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: '.' });
+        setFinalizeContext({ dnum: 0, dlevel: 1, specialName: 'portal-test' });
+        des.levregion({ region: [10, 10, 10, 10], region_islev: 1, type: 'portal', name: 'fire' });
+        getLevelState().coder.allow_flips = 0;
+
+        const map = des.finalize_level();
+        const portal = map.trapAt(10, 10);
+        assert.ok(portal, 'portal trap should be placed');
+        assert.equal(portal.ttyp, MAGIC_PORTAL, 'trap should be MAGIC_PORTAL');
+        assert.equal(portal.dst.dnum, 0, 'named destination should resolve destination dungeon');
+        assert.equal(portal.dst.dlevel, -3, 'named destination should resolve destination level');
+    });
+
+    it('fixup_special LR_PORTAL resolves numeric destination level in current dungeon', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: '.' });
+        setFinalizeContext({ dnum: 6, dlevel: 2, specialName: 'portal-test' });
+        des.levregion({ region: [12, 10, 12, 10], region_islev: 1, type: 'portal', name: '7' });
+        getLevelState().coder.allow_flips = 0;
+
+        const map = des.finalize_level();
+        const portal = map.trapAt(12, 10);
+        assert.ok(portal, 'portal trap should be placed');
+        assert.equal(portal.ttyp, MAGIC_PORTAL, 'trap should be MAGIC_PORTAL');
+        assert.equal(portal.dst.dnum, 6, 'numeric destination should keep current dungeon');
+        assert.equal(portal.dst.dlevel, 7, 'numeric destination should set destination level');
     });
 });

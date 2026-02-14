@@ -577,3 +577,20 @@ export function listSpecialLevels() {
         };
     });
 }
+
+/**
+ * Resolve a special level by its textual name used in des.levregion portal specs.
+ * Returns { dnum, dlevel } or null when unknown.
+ */
+export function findSpecialLevelByName(levelName) {
+    if (typeof levelName !== 'string' || !levelName.length) return null;
+    const target = levelName.toLowerCase();
+
+    for (const entry of specialLevels.values()) {
+        const names = Array.isArray(entry.name) ? entry.name : [entry.name];
+        if (names.some(n => typeof n === 'string' && n.toLowerCase() === target)) {
+            return { dnum: entry.dnum, dlevel: entry.dlevel };
+        }
+    }
+    return null;
+}
