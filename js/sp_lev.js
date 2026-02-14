@@ -1950,6 +1950,13 @@ export function map(data) {
         if ((x % 2) === 0) x++;
         if ((y % 2) === 0) y++;
 
+        // C ref: sp_lev.c horizontal fallback when placement overflows.
+        if (x < 0 || x + width > COLNO) {
+            x += (x > 0) ? -2 : 2;
+            if (width === COLNO) x = 0;
+            if (x < 0 || x + width > COLNO) x = 0;
+        }
+
         // C ref: sp_lev.c vertical fallback when placement overflows.
         if (y < 0 || y + height > ROWNO) {
             y += (y > 0) ? -2 : 2;

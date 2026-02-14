@@ -270,7 +270,7 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
         let bestGrid = jsTypGrid;
         let bestMismatch = mismatchCount;
 
-        for (let off = -20; off <= 20; off++) {
+        for (let off = -120; off <= 120; off++) {
             if (off === startOffset) continue;
             const candidate = generateTypGridForOffset(off);
             const candidateMismatch = countTypGridMismatches(candidate, cLevel.typGrid, bestMismatch);
