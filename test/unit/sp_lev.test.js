@@ -381,6 +381,28 @@ describe('sp_lev.js - des.* API', () => {
         assert.ok(corridorLike > 0, 'corridor call should carve at least one corridor tile');
     });
 
+    it('ignores incomplete des.corridor table', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: ' ' });
+        const map = getLevelState().map;
+        map.rooms = [
+            { lx: 5, ly: 5, hx: 8, hy: 8, needjoining: true },
+            { lx: 20, ly: 5, hx: 23, hy: 8, needjoining: true }
+        ];
+        map.nroom = 2;
+        map.locations[9][5].typ = DOOR;
+        map.locations[19][5].typ = DOOR;
+
+        des.corridor({ srcroom: 0, srcwall: 'east', destroom: 1, destwall: 'west' });
+        let corridorLike = 0;
+        for (let x = 0; x < 80; x++) {
+            for (let y = 0; y < 21; y++) {
+                if (map.locations[x][y].typ === CORR) corridorLike++;
+            }
+        }
+        assert.equal(corridorLike, 0, 'incomplete corridor spec should not carve');
+    });
+
     it('finalize_level map cleanup removes boulders and destroyable traps on liquid', () => {
         resetLevelState();
         des.level_init({ style: 'solidfill', fg: ' ' });

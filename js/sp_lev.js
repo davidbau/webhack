@@ -4994,17 +4994,21 @@ export function corridor(opts) {
         const key = String(name ?? def).toLowerCase();
         return (wallMap[key] !== undefined) ? wallMap[key] : wallMap[def];
     };
-    const parseIntOr = (value, fallback) => (Number.isFinite(value) ? Math.trunc(value) : fallback);
+    const hasRequiredNumbers = Number.isFinite(opts.srcroom)
+        && Number.isFinite(opts.srcdoor)
+        && Number.isFinite(opts.destroom)
+        && Number.isFinite(opts.destdoor);
+    if (!hasRequiredNumbers) return;
 
     const spec = {
         src: {
-            room: parseIntOr(opts.srcroom, -1),
-            door: parseIntOr(opts.srcdoor, -1),
+            room: Math.trunc(opts.srcroom),
+            door: Math.trunc(opts.srcdoor),
             wall: parseWall(opts.srcwall, 'all')
         },
         dest: {
-            room: parseIntOr(opts.destroom, -1),
-            door: parseIntOr(opts.destdoor, -1),
+            room: Math.trunc(opts.destroom),
+            door: Math.trunc(opts.destdoor),
             wall: parseWall(opts.destwall, 'all')
         }
     };
