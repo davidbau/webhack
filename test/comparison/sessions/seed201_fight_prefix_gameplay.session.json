@@ -2262,6 +2262,32 @@
       "",
       "Wizard the Stripling           St:18/02 Dx:12 Co:18 In:8 Wi:7 Ch:10 Neutral",
       "Dlvl:1 $:0 HP:16(16) Pw:2(2) AC:6 Xp:1"
+    ],
+    "screenAnsi": [
+      "                                                                                ",
+      "                                        ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                        ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                        ",
+      "                                                                   \u000elqqq~qk\u000f      ",
+      "                                                                   \u000ex~~~~~x\u000f      ",
+      "                                                                   \u000e~~~~~\u001b[97m\u000fd\u001b[39m\u000ex\u000f      ",
+      "                                                                   \u000ex~~~\u001b[97m\u000f@\u001b[39m\u000e~x\u000f      ",
+      "                                                                   \u000emqqqqqj\u000f      ",
+      "                                        ",
+      "",
+      "",
+      "",
+      "",
+      "Wizard the Stripling           St:18/02 Dx:12 Co:18 In:8 Wi:7 Ch:10 Neutral     ",
+      "Dlvl:1 $:0 HP:16(16) Pw:2(2) AC:6 Xp:1  "
     ]
   },
   "steps": [
@@ -2296,6 +2322,32 @@
         "",
         "Wizard the Stripling           St:18/02 Dx:12 Co:18 In:8 Wi:7 Ch:10 Neutral",
         "Dlvl:1 $:0 HP:16(16) Pw:2(2) AC:6 Xp:1"
+      ],
+      "screenAnsi": [
+        "There is a staircase up out of the dungeon here.                                ",
+        "                                        ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                        ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                        ",
+        "                                                                   \u000elqqq~qk\u000f      ",
+        "                                                                   \u000ex~~~~~x\u000f      ",
+        "                                                                   \u000e~~~~~\u001b[97m\u000fd\u001b[39m\u000ex\u000f      ",
+        "                                                                   \u000ex~~~\u001b[97m\u000f@\u001b[39m\u000e~x\u000f      ",
+        "                                                                   \u000emqqqqqj\u000f      ",
+        "                                        ",
+        "",
+        "",
+        "",
+        "",
+        "Wizard the Stripling           St:18/02 Dx:12 Co:18 In:8 Wi:7 Ch:10 Neutral     ",
+        "Dlvl:1 $:0 HP:16(16) Pw:2(2) AC:6 Xp:1  "
       ]
     },
     {
@@ -2335,6 +2387,32 @@
         "",
         "Wizard the Stripling           St:18/02 Dx:12 Co:18 In:8 Wi:7 Ch:10 Neutral",
         "Dlvl:1 $:0 HP:16(16) Pw:2(2) AC:6 Xp:1"
+      ],
+      "screenAnsi": [
+        "You attack thin air.                    ",
+        "                                        ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                        ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                        ",
+        "                                                                   \u000elqqq~qk\u000f      ",
+        "                                                                   \u000ex~~~~~x\u000f      ",
+        "                                                                   \u000e~~~~~\u001b[97m\u000fd\u001b[39m\u000ex\u000f      ",
+        "                                                                   \u000ex~~~\u001b[97m\u000f@\u001b[39m\u000e~x\u000f      ",
+        "                                                                   \u000emqqqqqj\u000f      ",
+        "                                        ",
+        "",
+        "",
+        "",
+        "",
+        "Wizard the Stripling           St:18/02 Dx:12 Co:18 In:8 Wi:7 Ch:10 Neutral     ",
+        "Dlvl:1 $:0 HP:16(16) Pw:2(2) AC:6 Xp:1  "
       ]
     }
   ]

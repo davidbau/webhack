@@ -182,6 +182,27 @@ def capture_screen_lines(session):
     return lines[:24]
 
 
+def capture_screen_ansi_lines(session):
+    """Capture tmux screen with ANSI escapes preserved; return as 24 lines."""
+    result = subprocess.run(
+        ['tmux', 'capture-pane', '-t', session, '-p', '-e', '-J', '-S', '0', '-E', '30'],
+        capture_output=True, text=True, check=True
+    )
+    lines = result.stdout.split('\n')
+    while len(lines) < 24:
+        lines.append('')
+    return lines[:24]
+
+
+def capture_screen_payload(session, include_ansi=False):
+    payload = {
+        'screen': capture_screen_lines(session)
+    }
+    if include_ansi:
+        payload['screenAnsi'] = capture_screen_ansi_lines(session)
+    return payload
+
+
 def read_typ_grid(dumpmap_file):
     """Read a dumpmap file and return 21x80 grid of ints."""
     if not os.path.exists(dumpmap_file):
@@ -353,6 +374,24 @@ def parse_moves(move_str):
     i = 0
     while i < len(move_str):
         ch = move_str[i]
+        # Escaped byte form from session key concatenation (e.g. "\\x01")
+        if ch == '\\' and i + 3 < len(move_str) and move_str[i + 1] == 'x':
+            hex_part = move_str[i + 2:i + 4]
+            try:
+                code = int(hex_part, 16)
+                decoded = chr(code)
+                if 1 <= code <= 26:
+                    moves.append((decoded, f'key-ctrl-{chr(code + 96)}'))
+                elif code == 27:
+                    moves.append((decoded, 'key-escape'))
+                elif code in (10, 13):
+                    moves.append((decoded, 'key-enter'))
+                else:
+                    moves.append((decoded, f'keycode-{code}'))
+                i += 4
+                continue
+            except ValueError:
+                pass
         if ch == 'F' and i + 1 < len(move_str):
             moves.append(('F' + move_str[i+1], f'fight-{describe_key(move_str[i+1])}'))
             i += 2
@@ -555,7 +594,9 @@ def run_session(seed, output_json, move_str):
         time.sleep(0.1)
 
         # Capture startup state
-        startup_screen = capture_screen_lines(session_name)
+        include_ansi = True
+        startup_payload = capture_screen_payload(session_name, include_ansi=include_ansi)
+        startup_screen = startup_payload['screen']
         startup_rng_count, startup_rng_lines = read_rng_log(rng_log_file)
         print(f'Startup: {startup_rng_count} RNG calls')
 
@@ -583,7 +624,7 @@ def run_session(seed, output_json, move_str):
                 'rngCalls': startup_actual_rng,
                 'rng': startup_rng_entries,
                 'typGrid': startup_typ_grid,
-                'screen': startup_screen,
+                **startup_payload,
             },
             'steps': [],
         }
@@ -614,7 +655,8 @@ def run_session(seed, output_json, move_str):
             time.sleep(0.1)
 
             # Capture state after this step
-            screen = capture_screen_lines(session_name)
+            screen_payload = capture_screen_payload(session_name, include_ansi=include_ansi)
+            screen = screen_payload['screen']
             rng_count, rng_lines = read_rng_log(rng_log_file)
             delta_lines = rng_lines[prev_rng_count:rng_count]
             rng_entries = parse_rng_lines(delta_lines)
@@ -635,7 +677,7 @@ def run_session(seed, output_json, move_str):
                 'turn': turn,
                 'depth': depth,
                 'rng': rng_entries,
-                'screen': screen,
+                **screen_payload,
             }
 
             # Capture typ grid after every step; include if it changed

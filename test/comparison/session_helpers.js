@@ -42,6 +42,29 @@ export function typName(t) {
     return TYP_NAMES[t] || `UNKNOWN(${t})`;
 }
 
+// Strip ANSI escape/control sequences from a terminal line.
+export function stripAnsiSequences(text) {
+    if (!text) return '';
+    return String(text)
+        // CSI sequences (e.g. ESC[31m, ESC[0K)
+        .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+        // OSC sequences (e.g. ESC]...BEL or ESC]...ESC\)
+        .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
+        // Single-character ESC sequences (e.g. ESC(0, ESC)0)
+        .replace(/\x1b[@-Z\\-_]/g, '')
+        // Remaining raw C1 CSI
+        .replace(/\x9b[0-?]*[ -/]*[@-~]/g, '');
+}
+
+// Session screens may provide plain `screen`, richer `screenAnsi`, or both.
+// Prefer ANSI when present, but normalize to plain text for existing comparisons.
+export function getSessionScreenLines(screenHolder) {
+    const raw = Array.isArray(screenHolder?.screenAnsi)
+        ? screenHolder.screenAnsi
+        : (Array.isArray(screenHolder?.screen) ? screenHolder.screen : []);
+    return raw.map((line) => stripAnsiSequences(line));
+}
+
 // ---------------------------------------------------------------------------
 // Grid comparison
 // ---------------------------------------------------------------------------
@@ -456,9 +479,12 @@ export function generateStartupWithRng(seed, session) {
 
 // Null display that swallows all output (for headless testing)
 const nullDisplay = {
+    cols: TERMINAL_COLS,
+    rows: TERMINAL_ROWS,
     putstr_message() {},
     putstr() {},
     clearRow() {},
+    clearScreen() {},
     setCell() {},
     renderMap() {},
     renderStatus() {},
@@ -666,6 +692,9 @@ class HeadlessGame {
 // Replay a gameplay session and return per-step RNG results.
 // Returns { startup: { rngCalls, rng }, steps: [{ rngCalls, rng }] }
 export async function replaySession(seed, session, opts = {}) {
+    if (typeof globalThis.window === 'undefined') {
+        globalThis.window = {};
+    }
     initrack(); // clear hero track buffer between sessions
     enableRngLog();
     initRng(seed);
@@ -729,7 +758,7 @@ export async function replaySession(seed, session, opts = {}) {
 
     // Parse actual attributes from session screen (u_init randomizes them)
     // Screen format: "St:18 Dx:11 Co:18 In:11 Wi:9 Ch:8"
-    const screen = session.startup?.screen || [];
+    const screen = getSessionScreenLines(session.startup || {});
     for (const line of screen) {
         if (!line) continue;
         const m = line.match(/St:([0-9/*]+)\s+Dx:(\d+)\s+Co:(\d+)\s+In:(\d+)\s+Wi:(\d+)\s+Ch:(\d+)/);
@@ -768,9 +797,10 @@ export async function replaySession(seed, session, opts = {}) {
         dungeonAlignOverride: startDungeonAlign,
     });
     game.display.flags.DECgraphics = session.screenMode === 'decgraphics';
-    let inTutorialPrompt = isTutorialPromptScreen(session.steps?.[0]?.screen || []);
-    if (inTutorialPrompt && Array.isArray(session.steps?.[0]?.screen)) {
-        game.display.setScreenLines(session.steps[0].screen);
+    const firstStepScreen = getSessionScreenLines(session.steps?.[0] || {});
+    let inTutorialPrompt = isTutorialPromptScreen(firstStepScreen);
+    if (inTutorialPrompt && firstStepScreen.length > 0) {
+        game.display.setScreenLines(firstStepScreen);
     }
 
     // Replay each step
@@ -794,12 +824,13 @@ export async function replaySession(seed, session, opts = {}) {
     for (let stepIndex = 0; stepIndex < maxSteps; stepIndex++) {
         const step = allSteps[stepIndex];
         const prevCount = getRngLog().length;
-        const stepMsg = (step.screen && step.screen[0]) || '';
+        const stepScreen = getSessionScreenLines(step);
+        const stepMsg = stepScreen[0] || '';
         const isCapturedDipPrompt = stepMsg.startsWith('What do you want to dip into one of the potions of water?')
             && ((step.rng && step.rng.length) || 0) === 0;
 
         if (isCapturedDipPrompt && !pendingCommand) {
-            game.display.setScreenLines(step.screen || []);
+            game.display.setScreenLines(stepScreen);
             stepResults.push({
                 rngCalls: 0,
                 rng: [],
@@ -833,9 +864,9 @@ export async function replaySession(seed, session, opts = {}) {
                 inTutorialPrompt = false;
             } else if (key === 'n') {
                 inTutorialPrompt = false;
-            } else if (Array.isArray(step.screen)) {
+            } else if (stepScreen.length > 0) {
                 // Keep the yes/no prompt UI visible across ignored keys.
-                game.display.setScreenLines(step.screen);
+                game.display.setScreenLines(stepScreen);
             }
 
             const fullLog = getRngLog();
@@ -951,8 +982,9 @@ export async function replaySession(seed, session, opts = {}) {
                 game.simulateTurnEnd();
 
                 // Sync HP each occupation turn (monsters may attack)
-                if (step.screen) {
-                    for (const line of step.screen) {
+                const stepScreen = getSessionScreenLines(step);
+                if (stepScreen.length > 0) {
+                    for (const line of stepScreen) {
                         const hpm = line.match(/HP:(\d+)\((\d+)\)/);
                         if (hpm) {
                             game.player.hp = parseInt(hpm[1]);
@@ -966,8 +998,9 @@ export async function replaySession(seed, session, opts = {}) {
         // Sync player stats from session screen data.
         // JS doesn't fully model monster-to-player combat damage or healing,
         // so we use the authoritative screen state to keep HP/attributes in sync.
-        if (step.screen) {
-            for (const line of step.screen) {
+        const stepScreen = getSessionScreenLines(step);
+        if (stepScreen.length > 0) {
+            for (const line of stepScreen) {
                 const hpm = line.match(/HP:(\d+)\((\d+)\)/);
                 if (hpm) {
                     game.player.hp = parseInt(hpm[1]);

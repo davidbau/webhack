@@ -3036,6 +3036,32 @@
       "",
       "Wizard the Evoker              St:10 Dx:12 Co:17 In:17 Wi:9 Ch:10 Neutral",
       "Dlvl:1 $:0 HP:12(12) Pw:7(7) AC:9 Xp:1"
+    ],
+    "screenAnsi": [
+      "                                                                                ",
+      "                                        ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                            \u000elqq\u001b[33m\u000f+\u001b[39m\u000eqqqqqqqk\u000f                        ",
+      "                                            \u000ex~~~~\u001b[97m\u000ff\u001b[39m\u000e~~~~~~\u000f                        ",
+      "                                            \u000ex~~~~\u001b[97m\u000f@\u001b[39m\u000e~~~~~x\u000f                        ",
+      "                                            \u000ex~~~~~~~~~~x\u000f                        ",
+      "                                            \u000ex~~~~~~~~~~x\u000f                        ",
+      "                                            \u000ex~~~~~~~~~~x\u000f                        ",
+      "                                            \u000emqqqq~qqqqqj\u000f                        ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                                                                ",
+      "                                        ",
+      "",
+      "",
+      "",
+      "",
+      "Wizard the Evoker              St:10 Dx:12 Co:17 In:17 Wi:9 Ch:10 Neutral       ",
+      "Dlvl:1 $:0 HP:12(12) Pw:7(7) AC:9 Xp:1  "
     ]
   },
   "steps": [
@@ -3070,6 +3096,32 @@
         "                     (end)",
         "Wizard the Evoker              St:10 Dx:12 Co:17 In:17 Wi:9 Ch:10 Neutral",
         "Dlvl:1 $:0 HP:12(12) Pw:7(7) AC:9 Xp:1"
+      ],
+      "screenAnsi": [
+        "                     \u001b[7mWeapons\u001b[0m\u001b[39m\u001b[49m            ",
+        "                     a - a blessed +1 quarterstaff (weapon in hands)            ",
+        "                     \u001b[7mArmor\u001b[0m\u001b[39m\u001b[49m                                                      ",
+        "                     b - an uncursed +0 cloak of magic resistance (being worn)  ",
+        "                     \u001b[7mScrolls\u001b[0m\u001b[39m\u001b[49m                                                    ",
+        "                     h - an uncursed scroll of scare monster                    ",
+        "                     i - an uncursed scroll of teleportation                    ",
+        "                     j - an uncursed scroll of charging                         ",
+        "                     \u001b[7mSpellbooks\u001b[0m\u001b[39m\u001b[49m                                                 ",
+        "                     k - a blessed spellbook of force bolt                      ",
+        "                     l - an uncursed spellbook of remove curse                  ",
+        "                     \u001b[7mPotions\u001b[0m\u001b[39m\u001b[49m                                                    ",
+        "                     f - an uncursed potion of gain energy                      ",
+        "                     g - 2 uncursed potions of levitation                       ",
+        "                     \u001b[7mRings\u001b[0m\u001b[39m\u001b[49m                                                      ",
+        "                     d - an uncursed +1 ring of gain strength                   ",
+        "                     e - an uncursed ring of stealth                            ",
+        "                     \u001b[7mWands\u001b[0m\u001b[39m\u001b[49m              ",
+        "                     c - a wand of undead turning (0:4)                         ",
+        "                     \u001b[7mTools\u001b[0m\u001b[39m\u001b[49m              ",
+        "                     m - a magic marker (0:21)                                  ",
+        "                     (end)              ",
+        "Wizard the Evoker              St:10 Dx:12 Co:17 In:17 Wi:9 Ch:10 Neutral       ",
+        "Dlvl:1 $:0 HP:12(12) Pw:7(7) AC:9 Xp:1  "
       ]
     },
     {
@@ -3103,6 +3155,32 @@
         "",
         "Wizard the Evoker              St:10 Dx:12 Co:17 In:17 Wi:9 Ch:10 Neutral",
         "Dlvl:1 $:0 HP:12(12) Pw:7(7) AC:9 Xp:1"
+      ],
+      "screenAnsi": [
+        "There is a staircase up out of the dungeon here.                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                            \u000elqq\u001b[33m\u000f+\u001b[39m\u000eqqqqqqqk\u000f                        ",
+        "                                            \u000ex~~~~\u001b[97m\u000ff\u001b[39m\u000e~~~~~~\u000f                        ",
+        "                                            \u000ex~~~~\u001b[97m\u000f@\u001b[39m\u000e~~~~~x\u000f                        ",
+        "                                            \u000ex~~~~~~~~~~x\u000f                        ",
+        "                                            \u000ex~~~~~~~~~~x\u000f                        ",
+        "                                            \u000ex~~~~~~~~~~x\u000f                        ",
+        "                                            \u000emqqqq~qqqqqj\u000f                        ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                        ",
+        "                                                                                ",
+        "                                        ",
+        "                                                                                ",
+        "                                        ",
+        "Wizard the Evoker              St:10 Dx:12 Co:17 In:17 Wi:9 Ch:10 Neutral       ",
+        "Dlvl:1 $:0 HP:12(12) Pw:7(7) AC:9 Xp:1  "
       ]
     }
   ]

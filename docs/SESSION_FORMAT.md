@@ -146,6 +146,14 @@ of player actions with per-step RNG traces, screens, and terrain grids.
       "                                                       x~%~~~~x",
       "                                                       ~~@~~~~x",
       "... 24 lines total ..."
+    ],
+
+    // Optional ANSI-preserving screen capture (24 lines).
+    // Contains escape sequences for colors/attributes/charset shifts.
+    // Present in newer DECgraphics captures for richer fidelity checks.
+    "screenAnsi": [
+      "\u001b[0m...",
+      "... 24 lines total ..."
     ]
   },
 
@@ -174,6 +182,12 @@ of player actions with per-step RNG traces, screens, and terrain grids.
         "There is a staircase up out of the dungeon here.",
         "                                                       lqqqqqqk",
         "..."
+      ],
+
+      // Optional ANSI-preserving screen capture after this step.
+      "screenAnsi": [
+        "\u001b[0m...",
+        "... 24 lines total ..."
       ]
     },
     {

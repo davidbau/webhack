@@ -35,6 +35,7 @@ _spec.loader.exec_module(_session)
 tmux_send = _session.tmux_send
 tmux_send_special = _session.tmux_send_special
 capture_screen_lines = _session.capture_screen_lines
+capture_screen_ansi_lines = _session.capture_screen_ansi_lines
 clear_more_prompts = _session.clear_more_prompts
 wait_for_game_ready = _session.wait_for_game_ready
 read_rng_log = _session.read_rng_log
@@ -57,6 +58,12 @@ def parse_args():
     p.add_argument('--gender', default='female')
     p.add_argument('--align', default='neutral')
     p.add_argument('--symset', default='ASCII', choices=['ASCII', 'DECgraphics'])
+    p.add_argument(
+        '--screen-capture',
+        default='auto',
+        choices=['auto', 'plain', 'ansi', 'both'],
+        help='Screen capture mode: plain=text only, ansi=ANSI only, both=both fields, auto=ansi for DECgraphics else plain'
+    )
     return p.parse_args()
 
 
@@ -149,7 +156,24 @@ def send_keycode(session_name, code):
     tmux_send(session_name, chr(code), 0.05)
 
 
-def run_from_keylog(events, seed, character, symset, output_json):
+def resolve_screen_capture_mode(screen_capture, symset):
+    if screen_capture != 'auto':
+        return screen_capture
+    # Keep plain `screen` for compatibility while adding ANSI fidelity in DECgraphics mode.
+    return 'both' if symset.lower() == 'decgraphics' else 'plain'
+
+
+def capture_screens(session_name, mode):
+    """Capture screen fields according to mode and return dict."""
+    out = {}
+    if mode in ('plain', 'both'):
+        out['screen'] = capture_screen_lines(session_name)
+    if mode in ('ansi', 'both'):
+        out['screenAnsi'] = capture_screen_ansi_lines(session_name)
+    return out
+
+
+def run_from_keylog(events, seed, character, symset, output_json, screen_capture_mode):
     setup_home(character, symset)
     output_json = os.path.abspath(output_json)
 
@@ -182,7 +206,7 @@ def run_from_keylog(events, seed, character, symset, output_json):
         clear_more_prompts(session_name)
         time.sleep(0.1)
 
-        startup_screen = capture_screen_lines(session_name)
+        startup_screens = capture_screens(session_name, screen_capture_mode)
         startup_rng_count, startup_rng_lines = read_rng_log(rng_log_file)
         startup_rng_entries = parse_rng_lines(startup_rng_lines)
         startup_actual_rng = sum(1 for e in startup_rng_entries if e[0] not in ('>', '<'))
@@ -200,16 +224,17 @@ def run_from_keylog(events, seed, character, symset, output_json):
                 'rngCalls': startup_actual_rng,
                 'rng': startup_rng_entries,
                 'typGrid': startup_typ_grid,
-                'screen': startup_screen,
+                **startup_screens,
             },
             'steps': [],
         }
 
         prev_rng_count = startup_rng_count
-        prev_depth = detect_depth(startup_screen)
+        startup_depth_lines = startup_screens.get('screen') or startup_screens.get('screenAnsi') or []
+        prev_depth = detect_depth(startup_depth_lines)
         prev_typ_grid = startup_typ_grid
 
-        print(f'=== Replaying {len(events)} keylog events (seed={seed}) ===')
+        print(f'=== Replaying {len(events)} keylog events (seed={seed}, screenCapture={screen_capture_mode}) ===')
         for i, e in enumerate(events):
             code = int(e['key'])
             send_keycode(session_name, code)
@@ -217,12 +242,13 @@ def run_from_keylog(events, seed, character, symset, output_json):
             clear_more_prompts(session_name)
             time.sleep(0.05)
 
-            screen = capture_screen_lines(session_name)
+            screens = capture_screens(session_name, screen_capture_mode)
             rng_count, rng_lines = read_rng_log(rng_log_file)
             delta_lines = rng_lines[prev_rng_count:rng_count]
             rng_entries = parse_rng_lines(delta_lines)
 
-            depth = int(e.get('dlevel', detect_depth(screen)))
+            depth_lines = screens.get('screen') or screens.get('screenAnsi') or []
+            depth = int(e.get('dlevel', detect_depth(depth_lines)))
             turn = max(0, int(e.get('moves', 0)) - keylog_moves_base)
 
             step = {
@@ -231,7 +257,7 @@ def run_from_keylog(events, seed, character, symset, output_json):
                 'turn': turn,
                 'depth': depth,
                 'rng': rng_entries,
-                'screen': screen,
+                **screens,
             }
 
             # For long manual traces, #dumpmap on every key is too expensive.
@@ -277,7 +303,8 @@ def main():
         'align': args.align,
     }
 
-    run_from_keylog(events, seed, character, args.symset, args.output_json)
+    screen_capture_mode = resolve_screen_capture_mode(args.screen_capture, args.symset)
+    run_from_keylog(events, seed, character, args.symset, args.output_json, screen_capture_mode)
 
 
 if __name__ == '__main__':

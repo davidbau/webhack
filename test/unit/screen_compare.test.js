@@ -50,6 +50,15 @@ const DEC_TO_UNICODE = {
     '~': '\u00b7', // room floor (middle dot)
 };
 
+function stripAnsiSequences(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+        .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
+        .replace(/\x1b[@-Z\\-_]/g, '')
+        .replace(/\x9b[0-?]*[ -/]*[@-~]/g, '');
+}
+
 // ========================================================================
 // Headless terrain symbol (matches display.js terrainSymbol)
 // ========================================================================
@@ -169,7 +178,7 @@ function parseCScreenFromSession(screenLines) {
     // so prepend a space to each map row to realign.
     const result = [];
     for (let row = 0; row < 24; row++) {
-        let line = (screenLines[row] || '').replace(/\r$/, '');
+        let line = stripAnsiSequences((screenLines[row] || '').replace(/\r$/, ''));
         if (row >= 1 && row <= 21) {
             line = ' ' + line;
         }
@@ -276,8 +285,8 @@ describe('Screen comparison (seed 42)', () => {
 
         // Compare startup screen + all steps
         const allStates = [
-            { screen: session.startup.screen, label: 'startup', key: null },
-            ...session.steps.map((s, i) => ({ screen: s.screen, label: `step ${i + 1} (${s.key}/${s.action})`, key: s.key, step: s })),
+            { screen: (session.startup.screenAnsi || session.startup.screen), label: 'startup', key: null },
+            ...session.steps.map((s, i) => ({ screen: (s.screenAnsi || s.screen), label: `step ${i + 1} (${s.key}/${s.action})`, key: s.key, step: s })),
         ];
 
         for (const state of allStates) {

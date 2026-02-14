@@ -40,6 +40,7 @@ import {
     replaySession, extractTypGrid, compareGrids, formatDiffs, compareRng,
     checkWallCompleteness, checkConnectivity, checkStairs,
     checkDimensions, checkValidTypValues,
+    getSessionScreenLines,
     HeadlessDisplay,
 } from './session_helpers.js';
 
@@ -745,14 +746,13 @@ function runChargenSession(file, session) {
     const menuActions = new Set(['decline-autopick', 'pick-role', 'pick-race', 'pick-gender', 'pick-align']);
     for (let i = 0; i < session.steps.length; i++) {
         const step = session.steps[i];
-        if (!menuActions.has(step.action) || !step.screen) continue;
+        const cScreen = getSessionScreenLines(step);
+        if (!menuActions.has(step.action) || cScreen.length === 0) continue;
 
         it(`screen matches at step ${i} (${step.action})`, () => {
             const state = deriveChargenState(session, i);
             const jsScreen = buildChargenScreen(step, state, session);
             assert.ok(jsScreen, `Could not build screen for step ${i} (${step.action})`);
-
-            const cScreen = step.screen;
             // Compare only lines that the chargen menu controls (up to the content area)
             // The C screen has 24 lines; our JS screen also has 24 lines.
             // Right-trim both for comparison.
