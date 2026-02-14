@@ -4920,22 +4920,31 @@ export function gas_cloud(opts = {}) {
             kind: 'selection',
             coords,
             damage,
-            ttl
+            ...(ttl > -2 ? { ttl } : {})
         });
         return;
     }
 
-    const pos = getLocationCoord(gx, gy, GETLOC_ANY_LOC, levelState.currentRoom || null);
-    if (pos.x < 0 || pos.x >= COLNO || pos.y < 0 || pos.y >= ROWNO) return;
+    // C ref: lspo_gas_cloud() passes x/y directly to create_gas_cloud()
+    // (no get_location_coord offsetting), with -1/-1 meaning random.
+    let px = gx;
+    let py = gy;
+    if (px === -1 && py === -1) {
+        const pos = getLocation(-1, -1, GETLOC_ANY_LOC, null);
+        px = pos.x;
+        py = pos.y;
+    }
+    if (!Number.isFinite(px) || !Number.isFinite(py)) return;
+    if (px < 0 || px >= COLNO || py < 0 || py >= ROWNO) return;
     levelState.map.gasClouds.push({
         kind: 'point',
-        x: pos.x,
-        y: pos.y,
+        x: px,
+        y: py,
         radius: 1,
         damage,
-        ttl
+        ...(ttl > -2 ? { ttl } : {})
     });
-    markSpLevTouched(pos.x, pos.y);
+    markSpLevTouched(px, py);
 }
 
 /**

@@ -202,6 +202,25 @@ describe('sp_lev.js - des.* API', () => {
         assert.equal((loc.flags & 2) !== 0, loc.featureFlags.warned);
     });
 
+    it('des.gas_cloud uses absolute x/y and C-style ttl override semantics', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: ' ' });
+        des.map({ map: '..\n..', x: 10, y: 5 });
+
+        des.gas_cloud({ x: 1, y: 1, damage: 3 });
+        let clouds = getLevelState().map.gasClouds;
+        assert.equal(clouds.length, 1);
+        assert.equal(clouds[0].x, 1, 'gas_cloud x should be absolute (not map-relative)');
+        assert.equal(clouds[0].y, 1, 'gas_cloud y should be absolute (not map-relative)');
+        assert.equal(clouds[0].damage, 3);
+        assert.equal('ttl' in clouds[0], false, 'ttl should not be forced when omitted');
+
+        des.gas_cloud({ x: 2, y: 2, damage: 1, ttl: 9 });
+        clouds = getLevelState().map.gasClouds;
+        assert.equal(clouds.length, 2);
+        assert.equal(clouds[1].ttl, 9, 'explicit ttl should be preserved');
+    });
+
     it('des.map parses backslash as THRONE terrain', () => {
         resetLevelState();
         des.level_init({ style: 'solidfill', fg: ' ' });
