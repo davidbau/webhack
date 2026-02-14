@@ -30,3 +30,33 @@ All candidates below were tested on C development seeds and then held-out where 
 ## Process Notes
 - Continue using dev-seed tuning first, then held-out aggregate check.
 - Keep strict acceptance rule: no commit of agent policy changes unless held-out average improves.
+
+## 2026-02-14 Update
+### What changed
+- `selfplay/perception/map_tracker.js`
+  - Dungeon memory is now keyed by `branch:depth` instead of just depth.
+  - Added branch-epoch rollover when action/depth transitions are impossible for same-branch numbering:
+    - `descend` with numeric depth decrease
+    - `ascend` with numeric depth increase
+- `selfplay/agent.js`
+  - Added descend-loop guard for repeated no-op `>` decisions at the same stair tile.
+  - Suppressed immediate descend shortcuts while a stair tile is temporarily blocked by the guard.
+  - Fixed locked-door handling loop:
+    - Do not immediately abandon `pendingLockedDoor` just because the agent is not adjacent yet.
+    - Track non-adjacent age and only give up after sustained failure.
+
+### Why
+- We observed pathological loops on C seed `16`:
+  - repeated `>` at one tile without progress
+  - repeated locked-door retries with "giving up after 0 attempts"
+- These loops consumed large turn budgets and inflated timeout risk.
+
+### Held-out paired validation (C runner, 1200 turns, seeds 11-20, timeout-guarded)
+- Baseline (`origin/main`): `avg_depth=1.80`, `lvl3+=3/10`, `survived=4/10`
+- Candidate (changes above): `avg_depth=1.80`, `lvl3+=3/10`, `survived=5/10`
+
+### Decision
+- Keep this change set:
+  - depth outcomes held constant
+  - survival improved on held-out seeds
+  - no regression on aggregate depth metrics

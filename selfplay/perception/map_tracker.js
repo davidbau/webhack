@@ -729,20 +729,26 @@ export class LevelMap {
  */
 export class DungeonTracker {
     constructor() {
-        this.levels = {};       // depth → LevelMap
+        this.levels = {};       // "branch:depth" → LevelMap
         this.currentDepth = 1;
+        this.currentBranch = 0;
         this.maxDepthReached = 1;
         this.turnCount = 0;
+    }
+
+    _levelKey(depth, branch = this.currentBranch) {
+        return `${branch}:${depth}`;
     }
 
     /**
      * Get or create the map for a given depth.
      */
-    getLevel(depth) {
-        if (!this.levels[depth]) {
-            this.levels[depth] = new LevelMap(depth);
+    getLevel(depth, branch = this.currentBranch) {
+        const key = this._levelKey(depth, branch);
+        if (!this.levels[key]) {
+            this.levels[key] = new LevelMap(depth);
         }
-        return this.levels[depth];
+        return this.levels[key];
     }
 
     /**
@@ -756,13 +762,23 @@ export class DungeonTracker {
      * Update the tracker with a new screen observation.
      * Automatically detects level changes via dungeon level in status.
      */
-    update(screen, status) {
+    update(screen, status, lastAction = null) {
         if (status && status.valid) {
             const newDepth = status.dungeonLevel;
-            if (newDepth > 0 && newDepth !== this.currentDepth) {
-                this.currentDepth = newDepth;
-                if (newDepth > this.maxDepthReached) {
-                    this.maxDepthReached = newDepth;
+            if (newDepth > 0) {
+                // Detect branch transitions where Dlvl numbering reverses relative
+                // to the action taken (e.g., descend but numeric Dlvl decreases).
+                if (lastAction && lastAction.type === 'descend' && newDepth < this.currentDepth) {
+                    this.currentBranch++;
+                } else if (lastAction && lastAction.type === 'ascend' && newDepth > this.currentDepth) {
+                    this.currentBranch++;
+                }
+
+                if (newDepth !== this.currentDepth) {
+                    this.currentDepth = newDepth;
+                    if (newDepth > this.maxDepthReached) {
+                        this.maxDepthReached = newDepth;
+                    }
                 }
             }
             this.turnCount = status.turns;

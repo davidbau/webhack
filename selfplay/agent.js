@@ -80,13 +80,17 @@ export class Agent {
         this.lastCommittedDistance = null; // track distance for progress detection
         this.failedTargets = new Set(); // targets we've failed to reach (blacklisted)
         this.abandonedLevels = new Map(); // depth → turn when abandoned (to prevent immediate re-descent)
+        this.lastDescendAttempt = null; // {x, y, depth, turn} for detecting descend no-op loops
+        this.failedDescendCounts = new Map(); // depth:x,y -> consecutive failed descends
+        this.blockedDescendStairs = new Map(); // depth:x,y -> cooldown turn
+        this.descendDecisionStreaks = new Map(); // depth:x,y -> {count, lastTurn}
 
         // Deterministic RNG for agent decisions (seeded by game seed + turn)
         this.rngState = 0; // Will be seeded on first use
         this.consecutiveFailedMoves = 0; // consecutive turns where movement failed
         this.restTurns = 0; // consecutive turns spent resting
         this.lastHP = null; // track HP to detect healing progress
-        this.pendingLockedDoor = null; // {x, y, attempts} for locked door we're trying to kick
+        this.pendingLockedDoor = null; // {x, y, attempts, nonAdjacentTurns} for locked door we're trying to kick
         this.secretDoorSearch = null; // {position: {x,y}, searchesNeeded: 20, searchesDone: 0, wallCandidates: []}
 
         // Search loop prevention
@@ -135,6 +139,29 @@ export class Agent {
         this.rngState = x >>> 0; // Keep unsigned 32-bit
 
         return (this.rngState >>> 0) / 0x100000000; // [0, 1)
+    }
+
+    _downstairsKey(depth, x, y) {
+        return `${depth}:${x},${y}`;
+    }
+
+    _pickAdjacentWalkableMove(level, px, py) {
+        const directions = [
+            { dx: -1, dy: 0, key: 'h' }, { dx: 1, dy: 0, key: 'l' },
+            { dx: 0, dy: -1, key: 'k' }, { dx: 0, dy: 1, key: 'j' },
+            { dx: -1, dy: -1, key: 'y' }, { dx: 1, dy: -1, key: 'u' },
+            { dx: -1, dy: 1, key: 'b' }, { dx: 1, dy: 1, key: 'n' },
+        ];
+
+        for (const dir of directions) {
+            const nx = px + dir.dx;
+            const ny = py + dir.dy;
+            const cell = level.at(nx, ny);
+            if (cell && cell.walkable) {
+                return dir.key;
+            }
+        }
+        return null;
     }
 
     /**
@@ -220,7 +247,7 @@ export class Agent {
             this._detectPetDisplacement();
 
             // Update map knowledge
-            this.dungeon.update(this.screen, this.status);
+            this.dungeon.update(this.screen, this.status, this.lastAction);
 
             // Fix door that just opened (screen might show it as wall due to rendering lag)
             if (this.justOpenedDoor) {
@@ -546,6 +573,44 @@ export class Agent {
         this.recentPositionsList.push(posKey);
         if (this.recentPositionsList.length > 30) {
             this.recentPositions.delete(this.recentPositionsList.shift());
+        }
+
+        // Prune expired downstairs cooldowns
+        for (const [key, untilTurn] of this.blockedDescendStairs.entries()) {
+            if (this.turnNumber >= untilTurn) {
+                this.blockedDescendStairs.delete(key);
+            }
+        }
+        for (const [key, streak] of this.descendDecisionStreaks.entries()) {
+            if (this.turnNumber - streak.lastTurn > 5) {
+                this.descendDecisionStreaks.delete(key);
+            }
+        }
+
+        // Detect descend no-op loops (e.g., repeatedly sending '>' but staying put)
+        if (this.lastAction && this.lastAction.type === 'descend' && this.lastDescendAttempt) {
+            const attempt = this.lastDescendAttempt;
+            const currentDepth = this.status?.dungeonLevel || this.dungeon.currentDepth;
+            const sameDepth = currentDepth === attempt.depth;
+            const samePos = px === attempt.x && py === attempt.y;
+            const attemptKey = this._downstairsKey(attempt.depth, attempt.x, attempt.y);
+
+            if (sameDepth && samePos) {
+                const failures = (this.failedDescendCounts.get(attemptKey) || 0) + 1;
+                this.failedDescendCounts.set(attemptKey, failures);
+
+                if (failures >= 3) {
+                    const cooldown = this.turnNumber + 120;
+                    this.blockedDescendStairs.set(attemptKey, cooldown);
+                    console.log(`[DESCEND-GUARD] Blocking stairs (${attempt.x},${attempt.y}) on Dlvl ${attempt.depth} for ${cooldown - this.turnNumber} turns after ${failures} failed descends`);
+                }
+            } else if (currentDepth > attempt.depth) {
+                // Successful descent: clear any historical failure state at old tile
+                this.failedDescendCounts.delete(attemptKey);
+                this.blockedDescendStairs.delete(attemptKey);
+            }
+
+            this.lastDescendAttempt = null;
         }
 
         // Detect and blacklist permanently stuck targets
@@ -886,6 +951,7 @@ export class Agent {
             }
             // If adjacent and haven't tried too many times, kick it
             else if (isAdjacent && door.attempts < 10) {
+                this.pendingLockedDoor.nonAdjacentTurns = 0;
                 this.pendingLockedDoor.attempts++;
                 // NetHack kick: Ctrl+D, then direction
                 const dx = door.x - px;
@@ -896,8 +962,17 @@ export class Agent {
                     return { type: 'kick', key: '\x04', reason: `kicking locked door at (${door.x},${door.y}) [attempt ${door.attempts}/10]` };
                 }
             }
-            // If tried too many times or not adjacent, give up and mark as unwalkable
-            else if (door.attempts >= 10 || !isAdjacent) {
+            // If not adjacent, keep trying to approach for a while before giving up.
+            else if (!isAdjacent) {
+                this.pendingLockedDoor.nonAdjacentTurns = (this.pendingLockedDoor.nonAdjacentTurns || 0) + 1;
+                if (this.pendingLockedDoor.nonAdjacentTurns >= 25) {
+                    console.log(`[DOOR KICK] Giving up on distant door at (${door.x},${door.y}) after ${this.pendingLockedDoor.nonAdjacentTurns} non-adjacent turns`);
+                    if (doorCell) doorCell.walkable = false;
+                    this.pendingLockedDoor = null;
+                }
+            }
+            // If tried too many times, give up and mark as unwalkable
+            else if (door.attempts >= 10) {
                 console.log(`[DOOR KICK] Giving up on door at (${door.x},${door.y}) after ${door.attempts} attempts`);
                 if (doorCell) doorCell.walkable = false;
                 this.pendingLockedDoor = null;
@@ -1106,15 +1181,38 @@ export class Agent {
 
         // 5. If on downstairs, evaluate whether it's safe to descend
         //    Check both cell type and registered features (player '@' overrides '>' on screen)
+        const downstairsBlockedHere = this.blockedDescendStairs.has(this._downstairsKey(this.dungeon.currentDepth, px, py));
         const onDownstairs = (currentCell && currentCell.type === 'stairs_down') ||
             level.stairsDown.some(s => s.x === px && s.y === py);
-        if (onDownstairs) {
+        if (onDownstairs && !downstairsBlockedHere) {
             // Evaluate if it's safe/wise to descend
             const descendDecision = this._shouldDescendStairs();
 
             if (descendDecision.shouldDescend) {
-                console.log(`[DEBUG] At downstairs, descending: ${descendDecision.reason}`);
-                return { type: 'descend', key: '>', reason: descendDecision.reason };
+                const descendSig = this._downstairsKey(this.dungeon.currentDepth, px, py);
+                const streak = this.descendDecisionStreaks.get(descendSig);
+                let repeated = 1;
+                if (streak && (this.turnNumber - streak.lastTurn) <= 3) {
+                    repeated = streak.count + 1;
+                }
+                this.descendDecisionStreaks.set(descendSig, { count: repeated, lastTurn: this.turnNumber });
+
+                if (repeated >= 3) {
+                    const cooldown = this.turnNumber + 120;
+                    this.blockedDescendStairs.set(descendSig, cooldown);
+                    this.descendDecisionStreaks.delete(descendSig);
+                    console.log(`[DESCEND-GUARD] Blocking stairs (${px},${py}) on Dlvl ${this.dungeon.currentDepth} for ${cooldown - this.turnNumber} turns after repeated descend decisions`);
+                    const stepOffKey = this._pickAdjacentWalkableMove(level, px, py);
+                    if (stepOffKey) {
+                        return { type: 'avoid_descend_blocked', key: stepOffKey, reason: 'descend loop detected, stepping off blocked stairs' };
+                    }
+                    const directions = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
+                    const randomDir = directions[Math.floor(this._rng() * directions.length)];
+                    return { type: 'avoid_descend_blocked', key: randomDir, reason: 'descend loop detected, moving away' };
+                } else {
+                    console.log(`[DEBUG] At downstairs, descending: ${descendDecision.reason}`);
+                    return { type: 'descend', key: '>', reason: descendDecision.reason };
+                }
             } else {
                 // Not safe to descend - move away from stairs and heal/prepare
                 console.log(`[DEBUG] At downstairs but not safe to descend: ${descendDecision.reason}`);
@@ -1123,6 +1221,10 @@ export class Agent {
                 const randomDir = directions[Math.floor(this._rng() * directions.length)];
                 return { type: 'avoid_descend', key: randomDir, reason: `not safe to descend: ${descendDecision.reason}` };
             }
+        }
+
+        if (onDownstairs && downstairsBlockedHere && this.turnNumber % 20 === 0) {
+            console.log(`[DESCEND-GUARD] Suppressing descend at blocked stairs (${px},${py}) on Dlvl ${this.dungeon.currentDepth}`);
         }
 
         // 5b. Check for obvious dead-end situations needing secret door search
@@ -1186,7 +1288,7 @@ export class Agent {
 
                 // Check if path to stairs is short (if so, worth going even with more frontier)
                 const stairs = level.stairsDown[0];
-                if (px === stairs.x && py === stairs.y) {
+                if (px === stairs.x && py === stairs.y && !downstairsBlockedHere) {
                     console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: `descending (explored ${Math.round(exploredPercent*100)}%)` };
                 }
 
@@ -1233,7 +1335,7 @@ export class Agent {
             if (level.stairsDown.length > 0 && this.levelStuckCounter <= 30) {
                 const stairs = level.stairsDown[0];
                 // If we're already at the downstairs, descend immediately
-                if (px === stairs.x && py === stairs.y) {
+                if (px === stairs.x && py === stairs.y && !downstairsBlockedHere) {
                     console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: `descending (stuck ${this.levelStuckCounter})` };
                 }
                 const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
@@ -1890,7 +1992,7 @@ export class Agent {
                 if (level.stairsDown.length > 0) {
                     const stairs = level.stairsDown[0];
                     // If we're already at the downstairs, descend immediately
-                    if (px === stairs.x && py === stairs.y) {
+                    if (px === stairs.x && py === stairs.y && !downstairsBlockedHere) {
                         console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: 'descending (stuck)' };
                     }
                     const path = findPath(level, px, py, stairs.x, stairs.y, { allowUnexplored: true });
@@ -2076,7 +2178,7 @@ export class Agent {
         if (level.stairsDown.length > 0) {
             const stairs = level.stairsDown[0];
             // If we're already at the downstairs, descend immediately
-            if (px === stairs.x && py === stairs.y) {
+            if (px === stairs.x && py === stairs.y && !downstairsBlockedHere) {
                 console.log(`[DEBUG] At downstairs (${px},${py}), attempting descent with '>'`);
                 console.log(`[DEBUG] At downstairs, descending`); return { type: 'descend', key: '>', reason: 'descending (exploration complete)' };
             }
@@ -2112,6 +2214,14 @@ export class Agent {
      */
     async _act(action) {
         this.lastAction = action.type;
+        if (action.type === 'descend' && this.screen && this.status) {
+            this.lastDescendAttempt = {
+                x: this.screen.playerX,
+                y: this.screen.playerY,
+                depth: this.status.dungeonLevel,
+                turn: this.turnNumber,
+            };
+        }
         // Reset rest counter when taking non-rest actions
         if (action.type !== 'rest') {
             this.restTurns = 0;
@@ -2674,7 +2784,7 @@ export class Agent {
                                 // Locked door - kick it
                                 console.log(`[DOOR-SYSTEMATIC] kicking locked door at (${door.x},${door.y}) [adjacent]`);
                                 if (!this.pendingLockedDoor) {
-                                    this.pendingLockedDoor = { x: door.x, y: door.y, attempts: 0 };
+                                    this.pendingLockedDoor = { x: door.x, y: door.y, attempts: 0, nonAdjacentTurns: 0 };
                                 }
                                 // pendingLockedDoor logic will handle the kicking
                             } else {
@@ -2716,7 +2826,7 @@ export class Agent {
                                     console.log(`[DOOR-${mode}] navigating to ${targetType} (${adjPos.x},${adjPos.y}) adjacent to ${door.type} door at (${door.x},${door.y})`);
 
                                     if (door.type === 'door_locked' && !this.pendingLockedDoor) {
-                                        this.pendingLockedDoor = { x: door.x, y: door.y, attempts: 0 };
+                                        this.pendingLockedDoor = { x: door.x, y: door.y, attempts: 0, nonAdjacentTurns: 0 };
                                     }
 
                                     return this._followPath(path, 'navigate', `approaching door at (${door.x},${door.y})`);
@@ -2974,7 +3084,7 @@ export class Agent {
 
                     // Store locked door position for potential kicking
                     if (!this.pendingLockedDoor) {
-                        this.pendingLockedDoor = { x: tx, y: ty, attempts: 0 };
+                        this.pendingLockedDoor = { x: tx, y: ty, attempts: 0, nonAdjacentTurns: 0 };
                     }
 
                     // Clear committed target since current path is blocked
