@@ -5817,7 +5817,10 @@ export function finalize_level() {
 
     // C ref: lspo_finalize_level() calls link_doors_rooms() before cleanup.
     if (levelState.map && Array.isArray(levelState.map.rooms)) {
-        for (let i = 0; i < levelState.map.rooms.length; i++) {
+        const roomCount = Number.isInteger(levelState.map.nroom)
+            ? Math.min(levelState.map.nroom, levelState.map.rooms.length)
+            : levelState.map.rooms.length;
+        for (let i = 0; i < roomCount; i++) {
             const room = levelState.map.rooms[i];
             if (!room || room.hx < 0) continue;
             add_doors_to_room(levelState.map, room);
@@ -6085,7 +6088,7 @@ export const selection = {
         // and checks !edge && roomno == rmno
         const sel = selection.new();
         const rmno = currentRoom.roomnoidx !== undefined
-            ? currentRoom.roomnoidx + 3  // ROOMOFFSET = 3
+            ? currentRoom.roomnoidx + ROOMOFFSET
             : 0;
         for (let y = currentRoom.ly; y <= currentRoom.hy; y++) {
             for (let x = currentRoom.lx; x <= currentRoom.hx; x++) {
