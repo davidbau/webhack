@@ -4,11 +4,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { COLNO, ROWNO, STONE, ROOM, CORR, DOOR, STAIRS, HWALL, VWALL,
-         SDOOR, SCORR, IRONBARS, VAULT,
+         SDOOR, SCORR, IRONBARS, VAULT, VIBRATING_SQUARE,
          IS_WALL, IS_DOOR, ACCESSIBLE, isok } from '../../js/config.js';
 function REACHABLE(typ) { return ACCESSIBLE(typ) || typ === SDOOR || typ === SCORR; }
 import { initRng } from '../../js/rng.js';
 import { initLevelGeneration, makelevel, wallification, fix_wall_spines } from '../../js/dungeon.js';
+import { GEHENNOM } from '../../js/special_levels.js';
 
 describe('Dungeon generation', () => {
     it('generates a level with rooms', () => {
@@ -191,5 +192,17 @@ describe('Dungeon generation', () => {
 
         wallification(map);
         assert.equal(map.at(40, 10).typ, STONE, 'full wallification should clean isolated wall');
+    });
+
+    it('invocation maze places vibrating square trap', () => {
+        initRng(123);
+        initLevelGeneration();
+        const invMap = makelevel(30, GEHENNOM, 9, { invocationLevel: true });
+        const nonInvMap = makelevel(30, GEHENNOM, 8, { invocationLevel: false });
+
+        assert.equal(invMap.traps.some(t => t.ttyp === VIBRATING_SQUARE), true,
+            'invocation level should place vibrating square trap');
+        assert.equal(nonInvMap.traps.some(t => t.ttyp === VIBRATING_SQUARE), false,
+            'non-invocation counterpart should not place vibrating square trap');
     });
 });
