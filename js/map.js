@@ -119,6 +119,9 @@ export class GameMap {
 
         // Trap list
         this.traps = [];
+
+        // Engraving list
+        this.engravings = [];
     }
 
     // Get location at (x,y) -- shorthand for the C's levl[x][y]
@@ -155,6 +158,7 @@ export class GameMap {
         this.monsters = [];
         this.objects = [];
         this.traps = [];
+        this.engravings = [];
     }
 
     // Add a room to the rooms array

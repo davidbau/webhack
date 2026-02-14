@@ -1719,6 +1719,12 @@ function flipLevelRandom() {
         if (flipBits & 2) obj.ox = flipX(obj.ox);
     }
 
+    for (const engr of map.engravings || []) {
+        if (!engr || !inFlipArea(engr.x, engr.y)) continue;
+        if (flipBits & 1) engr.y = flipY(engr.y);
+        if (flipBits & 2) engr.x = flipX(engr.x);
+    }
+
     for (const mon of map.monsters || []) {
         if (!mon) continue;
         const mx = Number.isInteger(mon.mx) ? mon.mx : mon.x;
@@ -4233,8 +4239,80 @@ export function door(state_or_opts, x, y) {
  * @param {Object} opts - Engraving options (coord, type, text)
  */
 export function engraving(opts) {
-    // Stub - would create engraving at coord
-    // For now, just ignore
+    if (!levelState.map) {
+        levelState.map = new GameMap();
+    }
+
+    // C ref: lspo_engraving supports:
+    // 1) engraving({ x, y, type, text, degrade, guardobjects })
+    // 2) engraving({ coord: {x,y} or [x,y], ... })
+    // 3) engraving({x,y}, "engrave", "text")
+    const argc = arguments.length;
+    let etyp = 'dust';
+    let txt = '';
+    let ex = -1;
+    let ey = -1;
+    let guardobjects = false;
+    let wipeout = true;
+
+    if (argc === 1 && opts && typeof opts === 'object' && !Array.isArray(opts)) {
+        if (opts.coord) {
+            if (Array.isArray(opts.coord)) {
+                ex = opts.coord[0];
+                ey = opts.coord[1];
+            } else {
+                ex = opts.coord.x;
+                ey = opts.coord.y;
+            }
+        } else {
+            ex = opts.x;
+            ey = opts.y;
+        }
+        etyp = opts.type ?? 'engrave';
+        txt = String(opts.text ?? '');
+        wipeout = (opts.degrade !== undefined) ? !!opts.degrade : true;
+        guardobjects = !!opts.guardobjects;
+    } else if (argc === 3) {
+        const coord = arguments[0];
+        if (Array.isArray(coord)) {
+            ex = coord[0];
+            ey = coord[1];
+        } else if (coord && typeof coord === 'object') {
+            ex = coord.x;
+            ey = coord.y;
+        }
+        etyp = arguments[1] ?? 'engrave';
+        txt = String(arguments[2] ?? '');
+    } else {
+        throw new Error('Wrong parameters');
+    }
+
+    const engrTypeMap = {
+        dust: 'dust',
+        engrave: 'engrave',
+        burn: 'burn',
+        mark: 'mark',
+        blood: 'blood'
+    };
+    const engrType = engrTypeMap[String(etyp).toLowerCase()] || 'engrave';
+
+    const pos = getLocationCoord(ex, ey, GETLOC_DRY, levelState.currentRoom || null);
+    if (pos.x < 0 || pos.x >= COLNO || pos.y < 0 || pos.y >= ROWNO) return;
+
+    if (!Array.isArray(levelState.map.engravings)) {
+        levelState.map.engravings = [];
+    }
+    // C ref: make_engr_at replaces existing engraving at location.
+    levelState.map.engravings = levelState.map.engravings.filter(e => !(e.x === pos.x && e.y === pos.y));
+    levelState.map.engravings.push({
+        x: pos.x,
+        y: pos.y,
+        type: engrType,
+        text: txt,
+        guardobjects: !!guardobjects,
+        nowipeout: !wipeout
+    });
+    markSpLevTouched(pos.x, pos.y);
 }
 
 /**
