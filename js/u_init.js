@@ -35,7 +35,7 @@ import {
     APPLE, CARROT, FOOD_RATION, CRAM_RATION, ORANGE, FORTUNE_COOKIE,
     CLOVE_OF_GARLIC, SPRIG_OF_WOLFSBANE,
     // Potions
-    POT_HEALING, POT_EXTRA_HEALING, POT_SICKNESS, POT_WATER,
+    POT_HEALING, POT_EXTRA_HEALING, POT_SICKNESS, POT_WATER, POT_OIL,
     // Scrolls
     SCR_MAGIC_MAPPING,
     // Spellbooks
@@ -83,6 +83,7 @@ import {
 } from './objects.js';
 import { roles, races, initialAlignmentRecordForRole } from './player.js';
 import { always_hostile, always_peaceful } from './mondata.js';
+import { discoverObject } from './discovery.js';
 import {
     mons, PM_LITTLE_DOG, PM_KITTEN, PM_PONY, PM_ERINYS,
     MS_LEADER, MS_NEMESIS, MS_GUARDIAN,
@@ -1204,6 +1205,21 @@ function equipInitialGear(player) {
     }
 }
 
+// C ref: u_init.c ini_inv_use_obj() discovery side effects.
+function applyStartupDiscoveries(player) {
+    for (const obj of player.inventory) {
+        if (!obj) continue;
+        // Startup inventory is effectively identified in our baseline traces.
+        // Mark descriptor-bearing types as known+encountered.
+        if (objectData[obj.otyp]?.desc && obj.dknown) {
+            discoverObject(obj.otyp, true, true);
+        }
+        if (obj.otyp === OIL_LAMP) {
+            discoverObject(POT_OIL, true, true);
+        }
+    }
+}
+
 // C ref: shk.c contained_gold() / vault.c hidden_gold(TRUE)
 function containedGold(obj, evenIfUnknown) {
     const children = obj?.cobj || obj?.contents || [];
@@ -1272,6 +1288,7 @@ export function simulatePostLevelInit(player, map, depth) {
     player.umoney0 += hiddenGold(player, true);
     player.gold = moneyCount(player) + hiddenGold(player, true);
     equipInitialGear(player);
+    applyStartupDiscoveries(player);
     //    c+d. init_attr(75) + vary_init_attr()
     initAttributes(player);
     //    e. u_init_carry_attr_boost() — no RNG

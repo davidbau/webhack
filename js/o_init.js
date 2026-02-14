@@ -8,6 +8,7 @@
 
 import { rn2 } from './rng.js';
 import { resetIdentCounter } from './mkobj.js';
+import { initDiscoveryState } from './discovery.js';
 import {
     objectData, initObjectData, bases,
     AMULET_CLASS, POTION_CLASS, RING_CLASS, SCROLL_CLASS,
@@ -203,6 +204,7 @@ function shuffle_all() {
 export function init_objects() {
     // Compute bases[] and probability totals first
     initObjectData();
+    initDiscoveryState();
 
     // Save/restore canonical descriptions so repeated calls are deterministic
     save_originals();

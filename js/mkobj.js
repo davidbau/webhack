@@ -3,6 +3,7 @@
 // C ref: mkobj.c — object creation, class initialization, containers
 
 import { rn2, rnd, rn1, rne, rnz, d } from './rng.js';
+import { isObjectNameKnown } from './discovery.js';
 import {
     objectData, bases, oclass_prob_totals, mkobjprobs, NUM_OBJECTS,
     ILLOBJ_CLASS, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
@@ -783,32 +784,42 @@ function pluralizeName(name) {
 // C ref: objnam.c xname() (subset used by current JS engine)
 function xname_for_doname(obj, dknown = true, known = true, bknown = false) {
     const od = objectData[obj.otyp];
+    const nameKnown = isObjectNameKnown(obj.otyp) || !!known;
     let base = od.name;
     switch (obj.oclass) {
     case RING_CLASS:
-        base = dknown ? `ring of ${od.name}` : 'ring';
+        base = !dknown ? 'ring'
+            : nameKnown ? `ring of ${od.name}`
+                : `${od.desc || od.name} ring`;
         break;
     case AMULET_CLASS:
-        base = dknown ? `amulet of ${od.name}` : 'amulet';
+        base = !dknown ? 'amulet'
+            : nameKnown ? od.name
+                : `${od.desc || od.name} amulet`;
         break;
     case POTION_CLASS:
-        base = dknown ? `potion of ${od.name}` : 'potion';
-        if (dknown && obj.otyp && od.name === 'water' && bknown && (obj.blessed || obj.cursed)) {
+        base = !dknown ? 'potion'
+            : nameKnown ? `potion of ${od.name}`
+                : `${od.desc || od.name} potion`;
+        if (dknown && nameKnown && obj.otyp && od.name === 'water'
+            && bknown && (obj.blessed || obj.cursed)) {
             base = `potion of ${obj.blessed ? 'holy' : 'unholy'} water`;
         }
         break;
     case SCROLL_CLASS:
         if (!dknown) base = 'scroll';
-        else if (known) base = `scroll of ${od.name}`;
+        else if (nameKnown) base = `scroll of ${od.name}`;
         else if (od.desc) base = `scroll labeled ${od.desc}`;
         else base = `scroll of ${od.name}`;
         break;
     case SPBOOK_CLASS:
-        base = dknown ? `spellbook of ${od.name}` : 'spellbook';
+        base = !dknown ? 'spellbook'
+            : nameKnown ? `spellbook of ${od.name}`
+                : `${od.desc || od.name} spellbook`;
         break;
     case WAND_CLASS:
         if (!dknown) base = 'wand';
-        else if (known) base = `wand of ${od.name}`;
+        else if (nameKnown) base = `wand of ${od.name}`;
         else if (od.desc) base = `${od.desc} wand`;
         else base = `wand of ${od.name}`;
         break;
