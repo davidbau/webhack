@@ -29,12 +29,12 @@ import {
     PIT, SPIKED_PIT, HOLE, TRAPDOOR, ARROW_TRAP, DART_TRAP,
     SQKY_BOARD, BEAR_TRAP, LANDMINE, ROLLING_BOULDER_TRAP,
     SLP_GAS_TRAP, RUST_TRAP, FIRE_TRAP, TELEP_TRAP, LEVEL_TELEP,
-    MAGIC_PORTAL, ANTI_MAGIC, POLY_TRAP, STATUE_TRAP, MAGIC_TRAP,
+    MAGIC_PORTAL, WEB, ANTI_MAGIC, POLY_TRAP, STATUE_TRAP, MAGIC_TRAP,
     VIBRATING_SQUARE,
     D_NODOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN, D_SECRET,
     COLNO, ROWNO, IS_OBSTRUCTED, IS_WALL, IS_POOL, IS_LAVA,
     A_LAWFUL, A_NEUTRAL, A_CHAOTIC,
-    MKTRAP_MAZEFLAG, MKTRAP_NOSPIDERONWEB,
+    MKTRAP_SEEN, MKTRAP_MAZEFLAG, MKTRAP_NOSPIDERONWEB, MKTRAP_NOVICTIM,
     MAXNROFROOMS, ROOMOFFSET
 } from './config.js';
 import {
@@ -3430,6 +3430,7 @@ function trapNameToType(name) {
         case 'teleport': case 'teleportation': return TELEP_TRAP;
         case 'level teleport': case 'level_teleport': return LEVEL_TELEP;
         case 'magic portal': case 'magic_portal': return MAGIC_PORTAL;
+        case 'web': return WEB;
         case 'anti-magic': case 'anti_magic': case 'anti magic': return ANTI_MAGIC;
         case 'polymorph': case 'poly': return POLY_TRAP;
         case 'statue': return STATUE_TRAP;
@@ -4631,6 +4632,9 @@ function executeDeferredTrap(deferred) {
     // Execute the original trap() logic
     let trapType, trapX = x, trapY = y;
     let randomRequested = false;
+    let spiderOnWeb = true;
+    let seen = false;
+    let victim = true;
 
     if (type_or_opts === undefined) {
         trapType = undefined;
@@ -4640,6 +4644,15 @@ function executeDeferredTrap(deferred) {
         trapY = y;
     } else if (type_or_opts && typeof type_or_opts === 'object') {
         trapType = type_or_opts.type;
+        if (type_or_opts.spider_on_web !== undefined) {
+            spiderOnWeb = !!type_or_opts.spider_on_web;
+        }
+        if (type_or_opts.seen !== undefined) {
+            seen = !!type_or_opts.seen;
+        }
+        if (type_or_opts.victim !== undefined) {
+            victim = !!type_or_opts.victim;
+        }
         // Prefer absolute coordinates captured at enqueue time.
         if (x !== undefined && y !== undefined) {
             trapX = x;
@@ -4669,6 +4682,11 @@ function executeDeferredTrap(deferred) {
         trapY = rn2(15) + 3;
     }
 
+    let mktrapFlags = 0;
+    if (!spiderOnWeb) mktrapFlags |= MKTRAP_NOSPIDERONWEB;
+    if (seen) mktrapFlags |= MKTRAP_SEEN;
+    if (!victim) mktrapFlags |= MKTRAP_NOVICTIM;
+
     let ttyp;
     if (!trapType) {
         // C ref: create_trap() -> mktrap(NO_TRAP, MKTRAP_MAZEFLAG, tm)
@@ -4690,9 +4708,7 @@ function executeDeferredTrap(deferred) {
         const depth = (levelState.finalizeContext && Number.isFinite(levelState.finalizeContext.dunlev))
             ? levelState.finalizeContext.dunlev
             : (levelState.levelDepth || 1);
-        mktrap(levelState.map, 0,
-               MKTRAP_MAZEFLAG | MKTRAP_NOSPIDERONWEB,
-               null, tm, depth);
+        mktrap(levelState.map, 0, MKTRAP_MAZEFLAG | mktrapFlags, null, tm, depth);
         markSpLevTouched(trapX, trapY);
         return;
     } else {
@@ -4707,7 +4723,7 @@ function executeDeferredTrap(deferred) {
     const depth = (levelState.finalizeContext && Number.isFinite(levelState.finalizeContext.dunlev))
         ? levelState.finalizeContext.dunlev
         : (levelState.levelDepth || 1);
-    mktrap(levelState.map, ttyp, MKTRAP_NOSPIDERONWEB, null, tm, depth);
+    mktrap(levelState.map, ttyp, mktrapFlags, null, tm, depth);
     markSpLevTouched(trapX, trapY);
 }
 

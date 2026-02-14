@@ -2488,21 +2488,25 @@ export function mktrap(map, num, mktrapflags, croom, tm, depth) {
     // WEB: create giant spider (needs makemon — skip for now)
     // At depth < 7, WEB can't generate anyway
 
-    // C ref: mklev.c mktrap() victim gate uses strict less-than.
-    // Called for ARROW_TRAP, DART_TRAP, ROCKTRAP, BEAR_TRAP, MAGIC_TRAP
-    const victimRoll = rnd(4);
-    const victimGate = (map.flags && map.flags.is_maze_lev)
-        ? (lvl <= victimRoll)
-        : (lvl < victimRoll);
-    if (!(mktrapflags & MKTRAP_NOVICTIM) && victimGate
-        && kind !== SQKY_BOARD && kind !== RUST_TRAP
-        && !is_pit(kind) && (kind < HOLE || kind === MAGIC_TRAP)) {
-        // LANDMINE: convert to PIT (exploded)
-        if (kind === LANDMINE) {
-            t.ttyp = PIT;
-            t.tseen = true;
+    // C ref: mklev.c victim-predecessor gate ordering:
+    // rnd(4) is skipped only when MKTRAP_NOVICTIM is set, but is otherwise
+    // consumed before later trap-kind exclusions.
+    if (!(mktrapflags & MKTRAP_NOVICTIM)) {
+        const victimRoll = rnd(4);
+        const victimGate = (map.flags && map.flags.is_maze_lev)
+            ? (lvl <= victimRoll)
+            : (lvl < victimRoll);
+        if (!victimGate) return;
+
+        if (kind !== SQKY_BOARD && kind !== RUST_TRAP
+            && !is_pit(kind) && (kind < HOLE || kind === MAGIC_TRAP)) {
+            // LANDMINE: convert to PIT (exploded)
+            if (kind === LANDMINE) {
+                t.ttyp = PIT;
+                t.tseen = true;
+            }
+            mktrap_victim(map, t, depth);
         }
-        mktrap_victim(map, t, depth);
     }
 }
 
