@@ -1204,6 +1204,9 @@ function create_maze(map, corrwid, wallthick, rmdeadends) {
     // C ref: mkmaze.c create_maze()
     const defaultMaxX = (COLNO - 1) & ~1;
     const defaultMaxY = (ROWNO - 1) & ~1;
+    // C ref: save/restore gx.x_maze_max/gy.y_maze_max around temporary small-maze bounds.
+    const tmpMaxX = Number.isInteger(map?._mazeMaxX) ? map._mazeMaxX : defaultMaxX;
+    const tmpMaxY = Number.isInteger(map?._mazeMaxY) ? map._mazeMaxY : defaultMaxY;
 
     if (corrwid === -1) corrwid = rnd(4);
     if (wallthick === -1) wallthick = rnd(4) - corrwid;
@@ -1213,8 +1216,8 @@ function create_maze(map, corrwid, wallthick, rmdeadends) {
     else if (corrwid > 5) corrwid = 5;
 
     const scale = corrwid + wallthick;
-    const rdx = Math.trunc(defaultMaxX / scale);
-    const rdy = Math.trunc(defaultMaxY / scale);
+    const rdx = Math.trunc(tmpMaxX / scale);
+    const rdy = Math.trunc(tmpMaxY / scale);
     const smallMaxX = rdx * 2;
     const smallMaxY = rdy * 2;
     const carveType = map.flags?.corrmaze ? CORR : ROOM;
@@ -1339,22 +1342,22 @@ function create_maze(map, corrwid, wallthick, rmdeadends) {
     // C scales the reduced maze up when scale > 2.
     if (scale > 2) {
         const tmp = Array.from({ length: COLNO }, () => Array(ROWNO).fill(STONE));
-        for (let x = 1; x < defaultMaxX; x++) {
-            for (let y = 1; y < defaultMaxY; y++) {
+        for (let x = 1; x < tmpMaxX; x++) {
+            for (let y = 1; y < tmpMaxY; y++) {
                 tmp[x][y] = map.at(x, y)?.typ ?? STONE;
             }
         }
         let rx = 2;
         let x = 2;
-        while (rx < defaultMaxX) {
+        while (rx < tmpMaxX) {
             const mx = (x % 2) ? corrwid : (x === 2 || x === rdx * 2) ? 1 : wallthick;
             let ry = 2;
             let y = 2;
-            while (ry < defaultMaxY) {
+            while (ry < tmpMaxY) {
                 const my = (y % 2) ? corrwid : (y === 2 || y === rdy * 2) ? 1 : wallthick;
                 for (let dx = 0; dx < mx; dx++) {
                     for (let dy = 0; dy < my; dy++) {
-                        if (rx + dx >= defaultMaxX || ry + dy >= defaultMaxY) break;
+                        if (rx + dx >= tmpMaxX || ry + dy >= tmpMaxY) break;
                         const loc = map.at(rx + dx, ry + dy);
                         if (loc) loc.typ = tmp[x][y];
                     }
@@ -1368,8 +1371,8 @@ function create_maze(map, corrwid, wallthick, rmdeadends) {
     }
 
     // C restores gx/gy bounds after create_maze().
-    map._mazeMaxX = defaultMaxX;
-    map._mazeMaxY = defaultMaxY;
+    map._mazeMaxX = tmpMaxX;
+    map._mazeMaxY = tmpMaxY;
 }
 
 // Helper function to find a random location in the maze
