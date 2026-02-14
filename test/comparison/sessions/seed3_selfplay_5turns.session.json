@@ -10,7 +10,7 @@
     "align": "neutral"
   },
   "symset": "DECgraphics",
-  "type": "selfplay",
+  "type": "gameplay",
   "maxTurns": 5,
   "startup": {
     "rngCalls": 2659,
@@ -5543,13 +5543,44 @@
     {
       "key": " ",
       "action": "more",
+      "rng": [],
+      "screen": [
+        "Velkommen wizard, welcome to NetHack!  You are a neutral human Valkyrie.",
+        "--More--",
+        "                             lqqqqqqqqqk",
+        "                             x~~~~~~~~~x",
+        "                             x@~~(~~~~~x",
+        "                             ~d~~~~~?~~x",
+        "                             mqqqqqq+qqj",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "Wizard the Stripling           St:17 Dx:14 Co:17 In:9 Wi:9 Ch:9 Neutral",
+        "Dlvl:1 $:0 HP:16(16) Pw:2(2) AC:6 Xp:1"
+      ]
+    },
+    {
+      "key": " ",
+      "action": "more",
       "rng": [
         "rnd(9000)=2195 @ moveloop_preamble(allmain.c:74)",
         "rnd(30)=26 @ moveloop_preamble(allmain.c:81)"
       ],
       "screen": [
-        "Velkommen wizard, welcome to NetHack!  You are a neutral human Valkyrie.",
-        "--More--",
+        "Watch out!  Bad things can happen on Friday the 13th.--More--",
+        "",
         "                             lqqqqqqqqqk",
         "                             x~~~~~~~~~x",
         "                             x@~~(~~~~~x",

@@ -3,6 +3,8 @@
   "seed": 16,
   "type": "map",
   "source": "c",
+  "wizard": true,
+  "debugThemerm": true,
   "levels": [
     {
       "depth": 1,

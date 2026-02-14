@@ -4291,13 +4291,44 @@
     {
       "key": " ",
       "action": "more",
+      "rng": [],
+      "screen": [
+        "Velkommen wizard, welcome to NetHack!  You are a neutral human Valkyrie.",
+        "--More--",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "                                                lq qqqk",
+        "                                                ~~~~@~x",
+        "                                                x~~f~~x",
+        "                                                +~~~F~x",
+        "                                                maqqqqj",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "Wizard the Stripling           St:15 Dx:15 Co:17 In:11 Wi:8 Ch:9 Neutral",
+        "Dlvl:1 $:0 HP:16(16) Pw:2(2) AC:6 Xp:1"
+      ]
+    },
+    {
+      "key": " ",
+      "action": "more",
       "rng": [
         "rnd(9000)=3908 @ moveloop_preamble(allmain.c:74)",
         "rnd(30)=20 @ moveloop_preamble(allmain.c:81)"
       ],
       "screen": [
-        "Velkommen wizard, welcome to NetHack!  You are a neutral human Valkyrie.",
-        "--More--",
+        "Watch out!  Bad things can happen on Friday the 13th.--More--",
+        "",
         "",
         "",
         "",
