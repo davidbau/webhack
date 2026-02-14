@@ -271,8 +271,9 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
         }
         setFinalizeContext(finalizeCtx);
         let depthForSpecial = Number.isFinite(cLevel.absDepth) ? cLevel.absDepth : dlevel;
-        // Filler session absDepth is global depth and can be 1 even on a
-        // deeper branch level; use branch-local depth for mkstairs gating.
+        // Mines filler sessions need branch-local depth for mkstairs gating.
+        // Gehennom filler traces are recorded with their absolute depth and
+        // should use fixture absDepth as-is.
         if (cSession.group === 'filler' && dnum === GNOMISH_MINES) {
             depthForSpecial = dlevel;
         }
@@ -287,6 +288,18 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
                 branchPlacement: finalizeCtx.branchPlacement,
                 isBranchLevel: true,
                 dunlev: 1,
+                dunlevs: 99,
+                applyRoomFill: true
+            });
+        } else if (cSession.group === 'filler' && levelName.toLowerCase() === 'hellfill') {
+            // Gehennom filler capture is recorded at branch-local depth 1.
+            // Use that depth for finalize context so fixup_special() can place
+            // the branch stair in the same C branch window.
+            setFinalizeContext({
+                dnum,
+                dlevel: depthForSpecial,
+                isBranchLevel: true,
+                dunlev: depthForSpecial,
                 dunlevs: 99,
                 applyRoomFill: true
             });

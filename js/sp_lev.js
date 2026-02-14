@@ -3488,6 +3488,7 @@ function objectClassToType(classChar) {
         case '(': return TOOL_CLASS;
         case '"': return AMULET_CLASS;
         case '*': return GEM_CLASS;
+        case '`': return ROCK_CLASS;
         default: return -1;
     }
 }
@@ -3565,11 +3566,18 @@ export function object(name_or_opts, x, y) {
         obj = mkobj(0, artif);  // RANDOM_CLASS = 0
     } else if (typeof name_or_opts === 'string') {
         // Single-character strings are object class codes (!, ?, +, etc.)
-        // C ref: sp_lev.c spo_object() handles single chars as class selection
+        // C ref: sp_lev.c spo_object() first attempts class-char mapping, then
+        // falls back to object-name lookup for non-class single-char ids.
         if (name_or_opts.length === 1) {
             const objClass = objectClassToType(name_or_opts);
             if (objClass >= 0) {
                 obj = mkobj(objClass, artif);  // Random object from class
+            } else {
+                const otyp = objectNameToType(name_or_opts);
+                if (otyp >= 0) {
+                    obj = mksobj(otyp, true, artif);
+                    if (obj) obj.id = name_or_opts;
+                }
             }
         } else {
             // Multi-character strings are object names

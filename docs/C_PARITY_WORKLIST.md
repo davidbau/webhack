@@ -18,6 +18,7 @@ Scope: replace simulation/stub behavior with faithful C NetHack logic while keep
 - [ ] Complete deferred/finalization stubs in `js/sp_lev.js` (room finalization, random placement, solidify/premap parity paths).
 - [ ] Remove simplified branch/special selection behavior in `js/special_levels.js`.
 - [ ] Drive this phase with `test/unit/special_levels_comparison.test.js` and targeted per-level diffs.
+- [x] 2026-02-14 checkpoint: fixed `des.object("`")` class handling (`ROCK_CLASS`) and Lua loop-bound RNG evaluation in `hellfill`; `special_levels_comparison` moved 19 -> 20 passing (Gehennom filler seed 100 now green).
 
 ## Phase 3: Object and Monster Generation Fidelity
 

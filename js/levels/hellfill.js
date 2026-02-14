@@ -70,7 +70,8 @@ export function generate() {
     // 
 
     function populatemaze() {
-       for (let i = 1; i <= rnd(8) + 11; i++) {
+       const mazeObjectCount = rnd(8) + 11;
+       for (let i = 1; i <= mazeObjectCount; i++) {
           if ((percent(50))) {
              des.object("*");
           } else {
@@ -78,23 +79,28 @@ export function generate() {
           }
        }
 
-       for (let i = 1; i <= rnd(10) + 2; i++) {
+       const boulderCount = rnd(10) + 2;
+       for (let i = 1; i <= boulderCount; i++) {
           des.object("`");
    }
 
-   for (let i = 1; i <= rnd(3); i++) {
+   const minotaurCount = rnd(3);
+   for (let i = 1; i <= minotaurCount; i++) {
       des.monster({ id: "minotaur", peaceful: 0 });
    }
 
-   for (let i = 1; i <= rnd(5) + 7; i++) {
+   const randomMonsterCount = rnd(5) + 7;
+   for (let i = 1; i <= randomMonsterCount; i++) {
       des.monster({ peaceful: 0 });
    }
 
-   for (let i = 1; i <= rnd(6) + 7; i++) {
+   const goldCount = rnd(6) + 7;
+   for (let i = 1; i <= goldCount; i++) {
       des.gold();
    }
 
-   for (let i = 1; i <= rnd(6) + 7; i++) {
+   const trapCount = rnd(6) + 7;
+   for (let i = 1; i <= trapCount; i++) {
       des.trap();
    }
 }
@@ -189,12 +195,14 @@ xxxxxx.xxxxxx
       { x: 6, y: 9, dir: "north", state: "closed" }
    ]
    shuffle(dblocs);
-   for (let i = 1; i <= (rn2((dblocs.length) - (1) + 1) + (1)); i++) {
-      des.drawbridge(dblocs[i]);
+   const drawbridgeCount = (rn2((dblocs.length) - (1) + 1) + (1));
+   for (let i = 1; i <= drawbridgeCount; i++) {
+      des.drawbridge(dblocs[i - 1]);
    }
    let mons = [ "H", "T", "@" ];
    shuffle(mons);
-   for (let i = 1; i <= 3 + (rn2((5) - (1) + 1) + (1)); i++) {
+   const guardCount = 3 + (rn2((5) - (1) + 1) + (1));
+   for (let i = 1; i <= guardCount; i++) {
       des.monster(mons[0], 6, 5);
    }
       } });
