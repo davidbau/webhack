@@ -84,6 +84,7 @@ export class Agent {
         this.failedDescendCounts = new Map(); // depth:x,y -> consecutive failed descends
         this.blockedDescendStairs = new Map(); // depth:x,y -> cooldown turn
         this.descendDecisionStreaks = new Map(); // depth:x,y -> {count, lastTurn}
+        this.unsafeDescendStreaks = new Map(); // depth:x,y -> {count, lastTurn}
 
         // Deterministic RNG for agent decisions (seeded by game seed + turn)
         this.rngState = 0; // Will be seeded on first use
@@ -586,6 +587,11 @@ export class Agent {
                 this.descendDecisionStreaks.delete(key);
             }
         }
+        for (const [key, streak] of this.unsafeDescendStreaks.entries()) {
+            if (this.turnNumber - streak.lastTurn > 5) {
+                this.unsafeDescendStreaks.delete(key);
+            }
+        }
 
         // Detect descend no-op loops (e.g., repeatedly sending '>' but staying put)
         if (this.lastAction && this.lastAction.type === 'descend' && this.lastDescendAttempt) {
@@ -608,6 +614,7 @@ export class Agent {
                 // Successful descent: clear any historical failure state at old tile
                 this.failedDescendCounts.delete(attemptKey);
                 this.blockedDescendStairs.delete(attemptKey);
+                this.unsafeDescendStreaks.delete(attemptKey);
             }
 
             this.lastDescendAttempt = null;
@@ -1186,6 +1193,7 @@ export class Agent {
 
             if (descendDecision.shouldDescend) {
                 const descendSig = this._downstairsKey(this.dungeon.currentDepth, px, py);
+                this.unsafeDescendStreaks.delete(descendSig);
                 const streak = this.descendDecisionStreaks.get(descendSig);
                 let repeated = 1;
                 if (streak && (this.turnNumber - streak.lastTurn) <= 3) {
@@ -1210,6 +1218,23 @@ export class Agent {
                     return { type: 'descend', key: '>', reason: descendDecision.reason };
                 }
             } else {
+                const descendSig = this._downstairsKey(this.dungeon.currentDepth, px, py);
+                const hpPercent = this.status && this.status.hpmax > 0 ? this.status.hp / this.status.hpmax : 1;
+                const unsafeStreak = this.unsafeDescendStreaks.get(descendSig);
+                let unsafeRepeated = 1;
+                if (unsafeStreak && (this.turnNumber - unsafeStreak.lastTurn) <= 3) {
+                    unsafeRepeated = unsafeStreak.count + 1;
+                }
+                this.unsafeDescendStreaks.set(descendSig, { count: unsafeRepeated, lastTurn: this.turnNumber });
+
+                const blockedByMonsterCount = descendDecision.reason.startsWith('surrounded by ');
+                const onFirstDungeonLevel = (this.status?.dungeonLevel || this.dungeon.currentDepth || 1) <= 1;
+                if (blockedByMonsterCount && onFirstDungeonLevel && hpPercent >= 0.75 && unsafeRepeated >= 8) {
+                    console.log(`[DESCEND-STALL] Forcing descent at (${px},${py}) on Dlvl 1 after ${unsafeRepeated} unsafe checks (${descendDecision.reason}, HP ${Math.round(hpPercent * 100)}%)`);
+                    this.unsafeDescendStreaks.delete(descendSig);
+                    return { type: 'descend', key: '>', reason: `forced descent after stall: ${descendDecision.reason}` };
+                }
+
                 // Not safe to descend - move away from stairs and heal/prepare
                 console.log(`[DEBUG] At downstairs but not safe to descend: ${descendDecision.reason}`);
                 // Move in a random direction away from stairs to avoid descending accidentally
