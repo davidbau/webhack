@@ -10,6 +10,7 @@ import {
 import { place_lregion } from '../../js/dungeon.js';
 import {
     STONE, ROOM, CORR, DOOR, HWALL, VWALL, STAIRS, LAVAPOOL, PIT, MAGIC_PORTAL, CROSSWALL, GRAVE,
+    WATER, AIR,
     ALTAR, THRONE, A_LAWFUL, A_NEUTRAL, A_CHAOTIC, ROOMOFFSET,
 } from '../../js/config.js';
 import { BOULDER, DAGGER, GOLD_PIECE } from '../../js/objects.js';
@@ -673,5 +674,29 @@ describe('sp_lev.js - des.* API', () => {
         assert.equal(portal.ttyp, MAGIC_PORTAL, 'trap should be MAGIC_PORTAL');
         assert.equal(portal.dst.dnum, 6, 'numeric destination should keep current dungeon');
         assert.equal(portal.dst.dlevel, 7, 'numeric destination should set destination level');
+    });
+
+    it('fixup_special water setup clears hero_memory and converts fallback stone to WATER', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: ' ' });
+        des.level_flags('premapped');
+        setFinalizeContext({ specialName: 'water' });
+        getLevelState().coder.allow_flips = 0;
+
+        const map = des.finalize_level();
+        assert.equal(map.flags.hero_memory, false, 'water setup should force hero_memory off');
+        assert.equal(map.at(40, 10).typ, WATER, 'water setup should convert default STONE to WATER');
+    });
+
+    it('fixup_special air setup clears hero_memory and converts fallback stone to AIR', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: ' ' });
+        des.level_flags('premapped');
+        setFinalizeContext({ specialName: 'air' });
+        getLevelState().coder.allow_flips = 0;
+
+        const map = des.finalize_level();
+        assert.equal(map.flags.hero_memory, false, 'air setup should force hero_memory off');
+        assert.equal(map.at(40, 10).typ, AIR, 'air setup should convert default STONE to AIR');
     });
 });

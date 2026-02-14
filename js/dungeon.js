@@ -1326,8 +1326,9 @@ function create_maze(map, corrwid, wallthick, rmdeadends) {
                 }
                 if (idx2 >= 3 && dirok.length > 0) {
                     const dir = dirok[rn2(dirok.length)];
-                    let dest = mzMove(x, y, dir);
-                    dest = mzMove(dest.x, dest.y, dir);
+                    // C ref: mkmaze.c maze_remove_deadends():
+                    // carve the immediate neighboring wall, not the far room node.
+                    const dest = mzMove(x, y, dir);
                     const loc = map.at(dest.x, dest.y);
                     if (loc) loc.typ = carveType;
                 }

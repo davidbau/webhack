@@ -1113,6 +1113,24 @@ function fixupSpecialLevel() {
     const LR_BRANCH = 4;
     const LR_UPSTAIR = 5;
     const LR_DOWNSTAIR = 6;
+    const ctx = levelState.finalizeContext || {};
+    const specialName = (typeof ctx.specialName === 'string') ? ctx.specialName.toLowerCase() : '';
+
+    // C ref: mkmaze.c fixup_special():
+    // Is_waterlevel/Is_airlevel forces hero_memory off and runs setup_waterlevel()
+    // before processing levregions.
+    if (specialName === 'water' || specialName === 'air') {
+        levelState.map.flags.hero_memory = false;
+        const baseTyp = (specialName === 'water') ? WATER : AIR;
+        for (let x = 1; x < COLNO; x++) {
+            for (let y = 0; y < ROWNO; y++) {
+                const loc = levelState.map.at(x, y);
+                if (loc && loc.typ === STONE) {
+                    loc.typ = baseTyp;
+                }
+            }
+        }
+    }
 
     let addedBranch = false;
     const withBranchHint = (placement, fn) => {
@@ -1192,7 +1210,6 @@ function fixupSpecialLevel() {
                     break;
                 }
 
-                const ctx = levelState.finalizeContext || {};
                 const branch = resolveBranchPlacementForLevel(ctx.dnum, ctx.dlevel);
                 if (branch.placement === 'none') {
                     break;
@@ -1240,7 +1257,6 @@ function fixupSpecialLevel() {
         }
     }
 
-    const ctx = levelState.finalizeContext || {};
     if (!addedBranch && ctx.isBranchLevel) {
         // C fallback: fixup_special() places branch if Is_branchlev(&u.uz) true.
         const branch = resolveBranchPlacementForLevel(ctx.dnum, ctx.dlevel);
@@ -1253,7 +1269,6 @@ function fixupSpecialLevel() {
         }
     }
 
-    const specialName = (typeof ctx.specialName === 'string') ? ctx.specialName.toLowerCase() : '';
     if (specialName === 'baalz') {
         baalz_fixup(levelState.map);
     }
