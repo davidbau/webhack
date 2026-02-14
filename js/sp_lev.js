@@ -1066,6 +1066,16 @@ export function setSpecialLevelDepth(depth) {
     }
 }
 
+/**
+ * des.reset_level()
+ *
+ * Test-only level reset helper mirroring C des.reset_level().
+ * C ref: sp_lev.c lspo_reset_level()
+ */
+export function reset_level() {
+    resetLevelState();
+}
+
 function canPlaceStair(direction) {
     const ctx = levelState.finalizeContext;
     const dunlev = (ctx && typeof ctx.dunlev === 'number')
@@ -6904,5 +6914,6 @@ export const des = {
     random_corridors,
     wallify,
     mazewalk,
+    reset_level,
     finalize_level,
 };

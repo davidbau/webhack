@@ -47,6 +47,7 @@ describe('sp_lev.js - des.* API', () => {
         assert.equal(typeof des.grave, 'function');
         assert.equal(typeof des.random_corridors, 'function');
         assert.equal(typeof des.wallify, 'function');
+        assert.equal(typeof des.reset_level, 'function');
     });
 
     it('should set level flags correctly', () => {
