@@ -3433,6 +3433,24 @@ const SPINE_ARRAY = [
     VWALL, TLWALL, TRWALL, CROSSWALL,
 ];
 
+// C ref: rm.h WM_* wall mode flags (stored in rm.flags/wall_info low bits)
+const WM_MASK = 0x07;
+const WM_W_LEFT = 1;
+const WM_W_RIGHT = 2;
+const WM_W_TOP = WM_W_LEFT;
+const WM_W_BOTTOM = WM_W_RIGHT;
+const WM_C_OUTER = 1;
+const WM_C_INNER = 2;
+const WM_T_LONG = 1;
+const WM_T_BL = 2;
+const WM_T_BR = 3;
+const WM_X_TL = 1;
+const WM_X_TR = 2;
+const WM_X_BL = 3;
+const WM_X_BR = 4;
+const WM_X_TLBR = 5;
+const WM_X_BLTR = 6;
+
 // C ref: mkmaze.c fix_wall_spines() — set correct wall type based on neighbors
 function setWallType(map, x, y) {
     const loc = map.at(x, y);
@@ -3463,6 +3481,142 @@ function setWallType(map, x, y) {
 
     // Don't change typ if wall is free-standing
     if (bits) loc.typ = SPINE_ARRAY[bits];
+}
+
+// C ref: display.c check_pos()
+function check_wall_pos(map, x, y, which) {
+    if (!isok(x, y)) return which;
+    const type = map.at(x, y)?.typ;
+    if (type === undefined) return which;
+    if (IS_STWALL(type) || type === CORR || type === SCORR || type === SDOOR) {
+        return which;
+    }
+    return 0;
+}
+
+function moreThanOne(a, b, c) {
+    return ((a && (b || c)) || (b && (a || c)) || (c && (a || b)));
+}
+
+// C ref: display.c set_twall()
+function set_twall_mode(map, x1, y1, x2, y2, x3, y3) {
+    const is1 = check_wall_pos(map, x1, y1, WM_T_LONG);
+    const is2 = check_wall_pos(map, x2, y2, WM_T_BL);
+    const is3 = check_wall_pos(map, x3, y3, WM_T_BR);
+    if (moreThanOne(is1, is2, is3)) return 0;
+    return is1 + is2 + is3;
+}
+
+// C ref: display.c set_wall()
+function set_wall_mode(map, x, y, horiz) {
+    let is1, is2;
+    if (horiz) {
+        is1 = check_wall_pos(map, x, y - 1, WM_W_TOP);
+        is2 = check_wall_pos(map, x, y + 1, WM_W_BOTTOM);
+    } else {
+        is1 = check_wall_pos(map, x - 1, y, WM_W_LEFT);
+        is2 = check_wall_pos(map, x + 1, y, WM_W_RIGHT);
+    }
+    if (moreThanOne(is1, is2, 0)) return 0;
+    return is1 + is2;
+}
+
+// C ref: display.c set_corn()
+function set_corner_mode(map, x1, y1, x2, y2, x3, y3, x4, y4) {
+    const is1 = check_wall_pos(map, x1, y1, 1);
+    const is2 = check_wall_pos(map, x2, y2, 1);
+    const is3 = check_wall_pos(map, x3, y3, 1);
+    const is4 = check_wall_pos(map, x4, y4, 1);
+    if (is4) return WM_C_INNER;
+    if (is1 && is2 && is3) return WM_C_OUTER;
+    return 0;
+}
+
+// C ref: display.c set_crosswall()
+function set_crosswall_mode(map, x, y) {
+    const is1 = check_wall_pos(map, x - 1, y - 1, 1);
+    const is2 = check_wall_pos(map, x + 1, y - 1, 1);
+    const is3 = check_wall_pos(map, x + 1, y + 1, 1);
+    const is4 = check_wall_pos(map, x - 1, y + 1, 1);
+
+    let wmode = is1 + is2 + is3 + is4;
+    if (wmode > 1) {
+        if (is1 && is3 && (is2 + is4 === 0)) {
+            wmode = WM_X_TLBR;
+        } else if (is2 && is4 && (is1 + is3 === 0)) {
+            wmode = WM_X_BLTR;
+        } else {
+            wmode = 0;
+        }
+    } else if (is1) {
+        wmode = WM_X_TL;
+    } else if (is2) {
+        wmode = WM_X_TR;
+    } else if (is3) {
+        wmode = WM_X_BR;
+    } else if (is4) {
+        wmode = WM_X_BL;
+    }
+    return wmode;
+}
+
+// C ref: display.c xy_set_wall_state()
+export function xy_set_wall_state(map, x, y) {
+    const loc = map.at(x, y);
+    if (!loc) return;
+    let wmode = -1;
+    switch (loc.typ) {
+    case SDOOR:
+        wmode = set_wall_mode(map, x, y, loc.horizontal ? 1 : 0);
+        break;
+    case VWALL:
+        wmode = set_wall_mode(map, x, y, 0);
+        break;
+    case HWALL:
+        wmode = set_wall_mode(map, x, y, 1);
+        break;
+    case TDWALL:
+        wmode = set_twall_mode(map, x, y - 1, x - 1, y + 1, x + 1, y + 1);
+        break;
+    case TUWALL:
+        wmode = set_twall_mode(map, x, y + 1, x + 1, y - 1, x - 1, y - 1);
+        break;
+    case TLWALL:
+        wmode = set_twall_mode(map, x + 1, y, x - 1, y - 1, x - 1, y + 1);
+        break;
+    case TRWALL:
+        wmode = set_twall_mode(map, x - 1, y, x + 1, y + 1, x + 1, y - 1);
+        break;
+    case TLCORNER:
+        wmode = set_corner_mode(map, x - 1, y - 1, x, y - 1, x - 1, y, x + 1, y + 1);
+        break;
+    case TRCORNER:
+        wmode = set_corner_mode(map, x, y - 1, x + 1, y - 1, x + 1, y, x - 1, y + 1);
+        break;
+    case BLCORNER:
+        wmode = set_corner_mode(map, x, y + 1, x - 1, y + 1, x - 1, y, x + 1, y - 1);
+        break;
+    case BRCORNER:
+        wmode = set_corner_mode(map, x + 1, y, x + 1, y + 1, x, y + 1, x - 1, y - 1);
+        break;
+    case CROSSWALL:
+        wmode = set_crosswall_mode(map, x, y);
+        break;
+    default:
+        break;
+    }
+    if (wmode >= 0) {
+        loc.flags = (loc.flags & ~WM_MASK) | wmode;
+    }
+}
+
+// C ref: display.c set_wall_state()
+export function set_wall_state(map) {
+    for (let x = 0; x < COLNO; x++) {
+        for (let y = 0; y < ROWNO; y++) {
+            xy_set_wall_state(map, x, y);
+        }
+    }
 }
 
 // C ref: gb.bughack.inarea defaults to an invalid rectangle so bounded checks fail.
