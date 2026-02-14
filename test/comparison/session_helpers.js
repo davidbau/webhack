@@ -12,6 +12,7 @@ import {
 } from '../../js/config.js';
 import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1, rnl, rne, rnz, d } from '../../js/rng.js';
 import { initLevelGeneration, makelevel, setGameSeed, wallification, simulateDungeonInit } from '../../js/dungeon.js';
+import { DUNGEONS_OF_DOOM } from '../../js/special_levels.js';
 import { simulatePostLevelInit, mon_arrive } from '../../js/u_init.js';
 import { init_objects } from '../../js/o_init.js';
 import { Player, roles } from '../../js/player.js';
@@ -352,6 +353,11 @@ export function hasStartupBurstInFirstStep(session) {
     if ((session.startup?.rng?.length ?? 0) !== 0) return false;
     const firstStepRngLen = session.steps?.[0]?.rng?.length ?? 0;
     return firstStepRngLen > 0;
+}
+
+function isTutorialPromptScreen(screen) {
+    if (!Array.isArray(screen) || screen.length === 0) return false;
+    return screen.some(line => typeof line === 'string' && line.includes('Do you want a tutorial?'));
 }
 
 // Generate full startup (map gen + post-level init) with RNG trace capture.
@@ -724,6 +730,7 @@ export async function replaySession(seed, session, opts = {}) {
     const startupRng = startupLog.map(toCompactRng);
 
     const game = new HeadlessGame(player, map, { seerTurn: initResult.seerTurn });
+    let inTutorialPrompt = isTutorialPromptScreen(session.steps?.[0]?.screen || []);
 
     // Replay each step
     // C ref: allmain.c moveloop_core() step boundary analysis:
@@ -746,6 +753,30 @@ export async function replaySession(seed, session, opts = {}) {
     for (let stepIndex = 0; stepIndex < maxSteps; stepIndex++) {
         const step = allSteps[stepIndex];
         const prevCount = getRngLog().length;
+
+        // C ref: startup tutorial yes/no prompt blocks normal gameplay input.
+        // Invalid keys are ignored (no RNG/time). 'y' accepts tutorial and
+        // generates tut-1 as a DoD special level.
+        if (inTutorialPrompt) {
+            const key = (step.key || '').toLowerCase();
+            if (key === 'y') {
+                game.map = makelevel(1, DUNGEONS_OF_DOOM, 1);
+                game.levels[1] = game.map;
+                game.player.dungeonLevel = 1;
+                game.placePlayerOnLevel();
+                inTutorialPrompt = false;
+            } else if (key === 'n') {
+                inTutorialPrompt = false;
+            }
+
+            const fullLog = getRngLog();
+            const stepLog = fullLog.slice(prevCount);
+            stepResults.push({
+                rngCalls: stepLog.length,
+                rng: stepLog.map(toCompactRng),
+            });
+            continue;
+        }
 
         // C ref: cmd.c:4958 — digit keys start count prefix accumulation
         // In the session file, digits are recorded as separate steps with 0 RNG.

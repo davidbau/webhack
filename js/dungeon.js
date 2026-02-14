@@ -4115,9 +4115,17 @@ export function makelevel(depth, dnum, dlevel) {
             });
 
             // C ref: mklev.c:365-380 — Lua theme shuffle when loading special level
-            // In C, loading oracle.lua triggers themerms.lua load, which does rn2(3), rn2(2)
+            // In C, loading oracle.lua triggers themerms.lua load, which does rn2(3), rn2(2).
+            // Tutorial entry can hit this path after startup without prior themed-room
+            // Lua load, so preserve that shuffle for tut-* special levels as well.
+            const isTutorialSpecial = dnum === DUNGEONS_OF_DOOM
+                && (dlevel === 1 || dlevel === 2)
+                && typeof special.name === 'string'
+                && special.name.startsWith('tut-');
             if (!_themesLoaded) {
                 _themesLoaded = true;
+                rn2(3); rn2(2);
+            } else if (isTutorialSpecial) {
                 rn2(3); rn2(2);
             }
 
