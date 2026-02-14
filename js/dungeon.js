@@ -1074,9 +1074,10 @@ function makemaz(map, protofile, dnum, dlevel, depth) {
     // C ref: mkmaze.c:1199-1200
     // Wallification for non-corridor mazes
     if (!map.flags.corrmaze) {
-        // C uses bounded wallification(2,2,x_maze_max,y_maze_max).
-        // Use full-map wallification helper here for parity over the prior stub.
-        wallification(map);
+        // C ref: mkmaze.c wallification(2, 2, gx.x_maze_max, gy.y_maze_max)
+        const maxX = Number.isInteger(map._mazeMaxX) ? map._mazeMaxX : (COLNO - 1);
+        const maxY = Number.isInteger(map._mazeMaxY) ? map._mazeMaxY : (ROWNO - 1);
+        wallify_region(map, 2, 2, maxX, maxY);
     }
 
     // C ref: mkmaze.c:1202-1208
