@@ -29,6 +29,17 @@ const REPO_ROOT = process.env.REPO_ROOT || process.cwd();
 const SUMMARY_ONLY = process.argv.includes('--summary');
 const UNIT_ONLY = process.argv.includes('--unit-only');
 
+// Parse --timeout=<seconds> flag (default 60s for backfill, 0 = no timeout)
+function parseTimeout() {
+    const arg = process.argv.find(a => a.startsWith('--timeout='));
+    if (arg) {
+        const secs = parseInt(arg.split('=')[1], 10);
+        return isNaN(secs) ? 60000 : secs * 1000;
+    }
+    return 0; // No timeout by default for interactive use
+}
+const TEST_TIMEOUT = parseTimeout();
+
 // Parse test output line to extract test info
 function parseTestLine(line) {
     // Match: ✔ test name (duration)  or  ✖ test name (duration)
@@ -78,7 +89,11 @@ async function runTests() {
         let output = '';
 
         // Run comparison tests (the main ones with session data)
-        const proc = spawn('node', ['--test', 'test/comparison/*.test.js'], {
+        const testArgs = ['--test', 'test/comparison/*.test.js'];
+        if (TEST_TIMEOUT > 0) {
+            testArgs.unshift(`--test-timeout=${TEST_TIMEOUT}`);
+        }
+        const proc = spawn('node', testArgs, {
             cwd: REPO_ROOT,
             stdio: ['ignore', 'pipe', 'pipe']
         });
@@ -152,7 +167,11 @@ async function runUnitTests() {
         const startTime = Date.now();
         let output = '';
 
-        const proc = spawn('node', ['--test', 'test/unit/*.test.js'], {
+        const unitTestArgs = ['--test', 'test/unit/*.test.js'];
+        if (TEST_TIMEOUT > 0) {
+            unitTestArgs.unshift(`--test-timeout=${TEST_TIMEOUT}`);
+        }
+        const proc = spawn('node', unitTestArgs, {
             cwd: REPO_ROOT,
             stdio: ['ignore', 'pipe', 'pipe']
         });

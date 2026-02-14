@@ -8,11 +8,13 @@
 #   scripts/backfill-detailed-notes.sh --commits 100 --sample 20
 #   scripts/backfill-detailed-notes.sh --commits 1000 --code-only
 #   scripts/backfill-detailed-notes.sh --commits 1000 --sample 50 --recent 100
+#   scripts/backfill-detailed-notes.sh --commits 1000 --timeout 10  # 10s per-test timeout
 #
 # Options:
 #   --commits N     Number of commits to process (from HEAD backwards)
 #   --sample N      Run full tests every N commits (default: 1 = all)
 #   --recent N      Always run full tests on most recent N commits (default: 0)
+#   --timeout N     Per-test timeout in seconds (default: 0 = no timeout)
 #   --code-only     Only collect code metrics, skip tests entirely
 #   --dry-run       Show what would be done without executing
 #   --output DIR    Write notes to files in DIR instead of git notes
@@ -30,6 +32,7 @@ COMMIT_COUNT=10
 SAMPLE_RATE=1
 RECENT_FULL=0
 E2E_SAMPLE=0      # Run full E2E tests every N commits (0 = same as sample rate)
+TEST_TIMEOUT=0    # Per-test timeout in seconds (0 = no timeout)
 CODE_ONLY=false
 DRY_RUN=false
 OUTPUT_DIR=""
@@ -43,6 +46,7 @@ while [[ $# -gt 0 ]]; do
         --sample) SAMPLE_RATE="$2"; shift 2 ;;
         --recent) RECENT_FULL="$2"; shift 2 ;;
         --e2e-sample) E2E_SAMPLE="$2"; shift 2 ;;
+        --timeout) TEST_TIMEOUT="$2"; shift 2 ;;
         --code-only) CODE_ONLY=true; shift ;;
         --dry-run) DRY_RUN=true; shift ;;
         --output) OUTPUT_DIR="$2"; shift 2 ;;
@@ -78,6 +82,7 @@ echo "Processing $TOTAL commits" >&2
 echo "  Sample rate: every $SAMPLE_RATE commits" >&2
 echo "  E2E sample rate: every $E2E_SAMPLE commits" >&2
 echo "  Recent full tests: $RECENT_FULL commits" >&2
+echo "  Test timeout: ${TEST_TIMEOUT}s per test" >&2
 echo "  Code only: $CODE_ONLY" >&2
 echo "" >&2
 
@@ -202,6 +207,10 @@ for i in "${!COMMIT_ARRAY[@]}"; do
             else
                 [ "$VERBOSE" = true ] && echo "  Running unit tests only..." >&2
                 TEST_ARGS="--summary --unit-only"
+            fi
+            # Add timeout if specified
+            if [ "$TEST_TIMEOUT" -gt 0 ]; then
+                TEST_ARGS="$TEST_ARGS --timeout=$TEST_TIMEOUT"
             fi
             TEST_OUTPUT=$(mktemp)
             TEST_STDERR=$(mktemp)
