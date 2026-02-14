@@ -4479,6 +4479,14 @@ function executeDeferredMonster(deferred) {
     // Execute the original monster() logic
     let monsterId, coordX, coordY, opts;
 
+    // C ref: dungeon.c induced_align(int pct), used by sp_lev create_monster()
+    // when monster alignment is random (AM_SPLEV_RANDOM).
+    function consumeInducedAlignRng(pct = 80) {
+        const roll = rn2(100);
+        if (roll < pct) return;
+        rn2(3);
+    }
+
     if (opts_or_class === undefined) {
         const randClass = String.fromCharCode(65 + rn2(26));
         if (!levelState.monsters) {
@@ -4488,7 +4496,7 @@ function executeDeferredMonster(deferred) {
         const coordY = (y !== undefined) ? y : rn2(15) + 3;
     if (immediateParity) {
         // C ref: create_monster() default AM_SPLEV_RANDOM alignment path.
-        rn2(3);
+        consumeInducedAlignRng(80);
             createMonster(randClass, coordX, coordY);
             return;
         }
@@ -4565,7 +4573,9 @@ function executeDeferredMonster(deferred) {
             }
         }
         // C ref: create_monster() default AM_SPLEV_RANDOM -> induced_align().
-        rn2(3);
+        if (opts?.align === undefined) {
+            consumeInducedAlignRng(80);
+        }
         // C ref: create_monster() resolves class with mkclass() after induced_align()
         // but before get_location().
         if (mndxForParity === null && typeof monsterId === 'string' && monsterId.length === 1) {
