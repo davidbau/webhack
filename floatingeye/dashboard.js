@@ -13,30 +13,48 @@ let currentView = 'sessions';
 let currentRange = 'all';
 let selectedCommit = null;
 let chart = null;
-let sessionFilter = null;  // null = all, 'chargen' / 'gameplay' / 'map' = group, 'seed1_gameplay' = specific session
+
+// Session groups to show (toggleable)
+const SESSION_GROUPS = ['chargen', 'gameplay', 'selfplay', 'options', 'special'];
 
 // Chart colors - parchment-friendly palette
 const COLORS = {
-  pass: 'rgba(42, 107, 42, 0.9)',      // Deep forest green
+  pass: 'rgba(42, 107, 42, 0.9)',
   passFill: 'rgba(42, 107, 42, 0.25)',
-  fail: 'rgba(139, 44, 44, 0.9)',      // Deep burgundy
+  fail: 'rgba(139, 44, 44, 0.9)',
   failFill: 'rgba(139, 44, 44, 0.25)',
-  rate: 'rgba(44, 74, 107, 0.9)',      // Deep navy
+  rate: 'rgba(44, 74, 107, 0.9)',
   rateFill: 'rgba(44, 74, 107, 0.15)',
-  chargen: 'rgba(74, 122, 74, 0.85)',  // Sage green
-  special: 'rgba(90, 90, 138, 0.85)',  // Muted purple
-  gameplay: 'rgba(138, 90, 74, 0.85)', // Warm brown
-  map: 'rgba(74, 122, 138, 0.85)',     // Teal
-  unit: 'rgba(122, 90, 122, 0.85)',    // Dusty rose
-  options: 'rgba(122, 122, 74, 0.85)', // Olive
-  lines: 'rgba(42, 107, 42, 0.7)',     // Green for added lines
-  files: 'rgba(139, 44, 44, 0.7)',     // Red for removed lines
+  // Session groups
+  chargen: 'rgba(74, 122, 74, 0.85)',
+  gameplay: 'rgba(138, 90, 74, 0.85)',
+  selfplay: 'rgba(122, 90, 122, 0.85)',
+  options: 'rgba(122, 122, 74, 0.85)',
+  special: 'rgba(90, 90, 138, 0.85)',
+  // Metrics
+  sessions: 'rgba(74, 122, 74, 0.9)',
+  steps: 'rgba(42, 107, 42, 0.9)',
+  rng: 'rgba(44, 74, 107, 0.9)',
+  screen: 'rgba(138, 90, 74, 0.9)',
+  // Code metrics
+  main: 'rgba(42, 107, 42, 0.85)',
+  test: 'rgba(44, 74, 107, 0.85)',
+  docs: 'rgba(122, 122, 74, 0.85)',
+  other: 'rgba(122, 90, 122, 0.85)',
+};
+
+// Group icons
+const GROUP_ICONS = {
+  chargen: '🧙',
+  gameplay: '🎮',
+  selfplay: '🤖',
+  options: '⚙️',
+  special: '🗺️',
 };
 
 // Load data
 async function loadData() {
   try {
-    // Try loading from JSONL file first
     const response = await fetch('results.jsonl');
     const text = await response.text();
 
@@ -104,9 +122,54 @@ function updateStats() {
   const rate = total > 0 ? Math.round(pass / total * 100) : 0;
   document.querySelector('#stat-rate .stat-value').textContent = rate + '%';
 
-  // Total lines across all commits
-  const totalLines = filteredData.reduce((sum, d) => sum + (d.codeMetrics?.netLines || 0), 0);
-  document.querySelector('#stat-lines .stat-value').textContent = totalLines.toLocaleString();
+  // Code metrics from latest commit
+  const mainLines = latest.codeMetrics?.main?.lines || 0;
+  document.querySelector('#stat-lines .stat-value').textContent = mainLines.toLocaleString();
+}
+
+// Get enabled session groups
+function getEnabledGroups() {
+  return SESSION_GROUPS.filter(g => document.getElementById(`show-${g}`)?.checked);
+}
+
+// Aggregate session stats for enabled groups from a commit
+function getAggregatedStats(d) {
+  const enabledGroups = getEnabledGroups();
+
+  // Try new sessionGroups format first
+  if (d.sessionGroups) {
+    let sessions = 0, sessionsPassing = 0;
+    let steps = 0, stepsPassing = 0;
+    let rng = 0, rngPassing = 0;
+
+    for (const group of enabledGroups) {
+      const g = d.sessionGroups[group];
+      if (g) {
+        sessions += g.total || 0;
+        sessionsPassing += g.passing || 0;
+        steps += g.steps || 0;
+        stepsPassing += g.stepsPassing || 0;
+        rng += g.rng || 0;
+        rngPassing += g.rngPassing || 0;
+      }
+    }
+
+    return { sessions, sessionsPassing, steps, stepsPassing, rng, rngPassing };
+  }
+
+  // Fallback to old sessionStats format
+  if (d.sessionStats) {
+    return {
+      sessions: d.sessionStats.sessionsTotal || 0,
+      sessionsPassing: d.sessionStats.sessionsPassing || 0,
+      steps: d.sessionStats.stepsTotal || 0,
+      stepsPassing: d.sessionStats.stepsPassing || 0,
+      rng: d.sessionStats.rngTotal || 0,
+      rngPassing: d.sessionStats.rngPassing || 0,
+    };
+  }
+
+  return null;
 }
 
 // Update main chart
@@ -119,12 +182,20 @@ function updateChart() {
 
   const labels = filteredData.map(d => d.commit);
   const datasets = [];
-
-  const showPass = document.getElementById('show-pass').checked;
-  const showFail = document.getElementById('show-fail').checked;
-  const showRate = document.getElementById('show-rate').checked;
+  const scales = {};
 
   if (currentView === 'tests') {
+    const showPass = document.getElementById('show-pass').checked;
+    const showFail = document.getElementById('show-fail').checked;
+    const showRate = document.getElementById('show-rate').checked;
+
+    scales.y = {
+      type: 'linear',
+      position: 'left',
+      ticks: { color: '#6b5b4b', font: { size: 10 } },
+      grid: { color: 'rgba(196, 168, 130, 0.2)' },
+    };
+
     if (showPass) {
       datasets.push({
         label: 'Pass',
@@ -135,7 +206,7 @@ function updateChart() {
         fill: true,
         tension: 0.1,
         pointRadius: 2,
-        pointHoverRadius: 5,
+        yAxisID: 'y',
       });
     }
     if (showFail) {
@@ -148,10 +219,18 @@ function updateChart() {
         fill: true,
         tension: 0.1,
         pointRadius: 2,
-        pointHoverRadius: 5,
+        yAxisID: 'y',
       });
     }
     if (showRate) {
+      scales.yRate = {
+        type: 'linear',
+        position: 'right',
+        min: 0,
+        max: 100,
+        ticks: { color: COLORS.rate, font: { size: 10 } },
+        grid: { display: false },
+      };
       datasets.push({
         label: 'Pass Rate %',
         data: filteredData.map(d => {
@@ -159,234 +238,220 @@ function updateChart() {
           const pass = d.stats?.pass || 0;
           return total > 0 ? Math.round(pass / total * 100) : 0;
         }),
-        backgroundColor: COLORS.rateFill,
         borderColor: COLORS.rate,
         borderWidth: 2,
         fill: false,
         tension: 0.1,
         pointRadius: 2,
-        pointHoverRadius: 5,
-        yAxisID: 'y1',
+        yAxisID: 'yRate',
       });
     }
+
   } else if (currentView === 'categories') {
-    const categories = ['unit', 'chargen', 'special', 'map', 'gameplay', 'options'];
+    const categories = ['unit', 'chargen', 'special', 'gameplay', 'options'];
+    scales.y = {
+      ticks: { color: '#6b5b4b', font: { size: 10 } },
+      grid: { color: 'rgba(196, 168, 130, 0.2)' },
+    };
     categories.forEach(cat => {
       datasets.push({
         label: cat,
         data: filteredData.map(d => d.categories?.[cat]?.pass || 0),
-        borderColor: COLORS[cat],
-        backgroundColor: COLORS[cat].replace('0.8', '0.2'),
+        borderColor: COLORS[cat] || COLORS.pass,
         borderWidth: 1,
         fill: false,
         tension: 0.1,
         pointRadius: 1,
-        pointHoverRadius: 4,
       });
     });
+
   } else if (currentView === 'sessions') {
-    // Session metrics toggles
+    // Session view with separate Y axes for sessions, steps, RNG, screen
     const showSessions = document.getElementById('show-sessions')?.checked ?? true;
     const showSteps = document.getElementById('show-steps')?.checked ?? true;
     const showRng = document.getElementById('show-rng')?.checked ?? false;
-    const showTotals = document.getElementById('show-totals')?.checked ?? false;
+    const showScreen = document.getElementById('show-screen')?.checked ?? false;
 
-    // Helper to aggregate session stats from a commit (respects sessionFilter)
-    function getSessionStats(d) {
-      if (!d.sessions || Object.keys(d.sessions).length === 0) {
-        // Check for new sessionStats format (only when no filter is set)
-        if (d.sessionStats && !sessionFilter) {
-          return {
-            sessionsPassing: d.sessionStats.sessionsPassing || 0,
-            sessionsTotal: d.sessionStats.sessionsTotal || 0,
-            stepsPassing: d.sessionStats.stepsPassing || 0,
-            stepsTotal: d.sessionStats.stepsTotal || 0,
-            rngPassing: d.sessionStats.rngPassing || 0,
-            rngTotal: d.sessionStats.rngTotal || 0,
-          };
-        }
-        return null;
-      }
+    // Calculate data for each metric
+    const sessionData = filteredData.map(d => getAggregatedStats(d));
 
-      let sessionsPassing = 0, sessionsTotal = 0;
-      let stepsPassing = 0, stepsTotal = 0;
-      let rngPassing = 0, rngTotal = 0;
+    let axisCount = 0;
 
-      Object.entries(d.sessions).forEach(([name, session]) => {
-        // Apply filter
-        if (sessionFilter) {
-          // Exact session name match
-          if (sessionFilter.includes('seed') && name !== sessionFilter) return;
-          // Group match
-          if (!sessionFilter.includes('seed') && getSessionType(name) !== sessionFilter) return;
-        }
-
-        sessionsTotal++;
-        if (session.status === 'pass') sessionsPassing++;
-        stepsPassing += session.passedSteps || 0;
-        stepsTotal += session.totalSteps || 0;
-        rngPassing += session.passedRng || 0;
-        rngTotal += session.totalRng || 0;
-      });
-
-      // Return null if filter excludes all sessions
-      if (sessionsTotal === 0) return null;
-
-      return { sessionsPassing, sessionsTotal, stepsPassing, stepsTotal, rngPassing, rngTotal };
-    }
-
-    // Sessions passing
+    // Sessions axis (left)
     if (showSessions) {
+      scales.ySessions = {
+        type: 'linear',
+        position: 'left',
+        title: { display: true, text: 'Sessions', color: COLORS.sessions },
+        ticks: { color: COLORS.sessions, font: { size: 9 } },
+        grid: { color: 'rgba(196, 168, 130, 0.15)' },
+      };
       datasets.push({
         label: 'Sessions Passing',
-        data: filteredData.map(d => {
-          const stats = getSessionStats(d);
-          return stats ? stats.sessionsPassing : null;
-        }),
-        borderColor: COLORS.chargen,
-        backgroundColor: COLORS.chargen.replace('0.85', '0.2'),
+        data: sessionData.map(s => s?.sessionsPassing ?? null),
+        borderColor: COLORS.sessions,
+        backgroundColor: COLORS.sessions.replace('0.9', '0.2'),
         borderWidth: 2,
         fill: true,
         tension: 0.3,
         pointRadius: 3,
-        pointHoverRadius: 6,
+        yAxisID: 'ySessions',
         spanGaps: true,
       });
-      if (showTotals) {
-        datasets.push({
-          label: 'Sessions Total',
-          data: filteredData.map(d => {
-            const stats = getSessionStats(d);
-            return stats ? stats.sessionsTotal : null;
-          }),
-          borderColor: COLORS.chargen,
-          borderWidth: 1,
-          borderDash: [5, 5],
-          fill: false,
-          tension: 0.3,
-          pointRadius: 2,
-          spanGaps: true,
-        });
-      }
+      axisCount++;
     }
 
-    // Steps passing
+    // Steps axis
     if (showSteps) {
+      scales.ySteps = {
+        type: 'linear',
+        position: axisCount === 0 ? 'left' : 'right',
+        title: { display: true, text: 'Steps', color: COLORS.steps },
+        ticks: { color: COLORS.steps, font: { size: 9 } },
+        grid: { display: axisCount === 0 },
+      };
       datasets.push({
         label: 'Steps Passing',
-        data: filteredData.map(d => {
-          const stats = getSessionStats(d);
-          return stats ? stats.stepsPassing : null;
-        }),
-        borderColor: COLORS.pass,
-        backgroundColor: COLORS.passFill,
+        data: sessionData.map(s => s?.stepsPassing ?? null),
+        borderColor: COLORS.steps,
+        backgroundColor: COLORS.steps.replace('0.9', '0.15'),
         borderWidth: 2,
         fill: true,
         tension: 0.3,
         pointRadius: 3,
-        pointHoverRadius: 6,
+        yAxisID: 'ySteps',
         spanGaps: true,
       });
-      if (showTotals) {
-        datasets.push({
-          label: 'Steps Total',
-          data: filteredData.map(d => {
-            const stats = getSessionStats(d);
-            return stats ? stats.stepsTotal : null;
-          }),
-          borderColor: COLORS.pass,
-          borderWidth: 1,
-          borderDash: [5, 5],
-          fill: false,
-          tension: 0.3,
-          pointRadius: 2,
-          spanGaps: true,
-        });
-      }
+      axisCount++;
     }
 
-    // RNG calls matching
+    // RNG axis
     if (showRng) {
+      scales.yRng = {
+        type: 'linear',
+        position: 'right',
+        title: { display: true, text: 'RNG Calls', color: COLORS.rng },
+        ticks: { color: COLORS.rng, font: { size: 9 } },
+        grid: { display: false },
+      };
       datasets.push({
         label: 'RNG Matching',
-        data: filteredData.map(d => {
-          const stats = getSessionStats(d);
-          return stats ? stats.rngPassing : null;
-        }),
-        borderColor: COLORS.rate,
-        backgroundColor: COLORS.rateFill,
+        data: sessionData.map(s => s?.rngPassing ?? null),
+        borderColor: COLORS.rng,
+        backgroundColor: COLORS.rng.replace('0.9', '0.1'),
         borderWidth: 2,
         fill: true,
         tension: 0.3,
         pointRadius: 3,
-        pointHoverRadius: 6,
+        yAxisID: 'yRng',
         spanGaps: true,
       });
-      if (showTotals) {
-        datasets.push({
-          label: 'RNG Total',
-          data: filteredData.map(d => {
-            const stats = getSessionStats(d);
-            return stats ? stats.rngTotal : null;
-          }),
-          borderColor: COLORS.rate,
-          borderWidth: 1,
-          borderDash: [5, 5],
-          fill: false,
-          tension: 0.3,
-          pointRadius: 2,
-          spanGaps: true,
-        });
-      }
+      axisCount++;
     }
-  } else if (currentView === 'code') {
-    datasets.push({
-      label: 'Lines Added',
-      data: filteredData.map(d => d.codeMetrics?.linesAdded || 0),
-      backgroundColor: COLORS.passFill,
-      borderColor: COLORS.pass,
-      borderWidth: 1,
-      type: 'bar',
-    });
-    datasets.push({
-      label: 'Lines Removed',
-      data: filteredData.map(d => -(d.codeMetrics?.linesRemoved || 0)),
-      backgroundColor: COLORS.failFill,
-      borderColor: COLORS.fail,
-      borderWidth: 1,
-      type: 'bar',
-    });
-  }
 
-  const scales = {
-    x: {
-      ticks: {
-        color: '#6b5b4b',
-        maxRotation: 0,
-        autoSkip: true,
-        maxTicksLimit: 20,
-        font: { size: 10, family: "'Source Code Pro', monospace" },
-      },
-      grid: { color: 'rgba(196, 168, 130, 0.2)' },
-    },
-    y: {
+    // Screen axis (placeholder for now)
+    if (showScreen) {
+      scales.yScreen = {
+        type: 'linear',
+        position: 'right',
+        title: { display: true, text: 'Screen', color: COLORS.screen },
+        ticks: { color: COLORS.screen, font: { size: 9 } },
+        grid: { display: false },
+      };
+      // Screen data not yet implemented - use steps as placeholder
+      datasets.push({
+        label: 'Screen Matching',
+        data: sessionData.map(s => s?.stepsPassing ?? null),
+        borderColor: COLORS.screen,
+        borderWidth: 2,
+        borderDash: [5, 5],
+        fill: false,
+        tension: 0.3,
+        pointRadius: 2,
+        yAxisID: 'yScreen',
+        spanGaps: true,
+      });
+    }
+
+  } else if (currentView === 'code') {
+    // Code metrics view
+    const showMain = document.getElementById('show-main')?.checked ?? true;
+    const showTest = document.getElementById('show-test')?.checked ?? true;
+    const showDocs = document.getElementById('show-docs')?.checked ?? false;
+    const showOther = document.getElementById('show-other')?.checked ?? false;
+
+    scales.y = {
+      type: 'linear',
+      position: 'left',
+      title: { display: true, text: 'Lines of Code' },
       ticks: { color: '#6b5b4b', font: { size: 10 } },
       grid: { color: 'rgba(196, 168, 130, 0.2)' },
-    },
-  };
-
-  if (showRate && currentView === 'tests') {
-    scales.y1 = {
-      position: 'right',
-      min: 0,
-      max: 100,
-      ticks: { color: '#2c4a6b', font: { size: 10 } },
-      grid: { display: false },
     };
+
+    if (showMain) {
+      datasets.push({
+        label: 'Main Code',
+        data: filteredData.map(d => d.codeMetrics?.main?.lines || 0),
+        borderColor: COLORS.main,
+        backgroundColor: COLORS.main.replace('0.85', '0.2'),
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 2,
+      });
+    }
+    if (showTest) {
+      datasets.push({
+        label: 'Test Code',
+        data: filteredData.map(d => d.codeMetrics?.test?.lines || 0),
+        borderColor: COLORS.test,
+        backgroundColor: COLORS.test.replace('0.85', '0.2'),
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 2,
+      });
+    }
+    if (showDocs) {
+      datasets.push({
+        label: 'Documentation',
+        data: filteredData.map(d => d.codeMetrics?.docs?.lines || 0),
+        borderColor: COLORS.docs,
+        backgroundColor: COLORS.docs.replace('0.85', '0.2'),
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 2,
+      });
+    }
+    if (showOther) {
+      datasets.push({
+        label: 'Other',
+        data: filteredData.map(d => d.codeMetrics?.other?.lines || 0),
+        borderColor: COLORS.other,
+        backgroundColor: COLORS.other.replace('0.85', '0.2'),
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 2,
+      });
+    }
   }
 
+  // Common x-axis
+  scales.x = {
+    ticks: {
+      color: '#6b5b4b',
+      maxRotation: 0,
+      autoSkip: true,
+      maxTicksLimit: 20,
+      font: { size: 10, family: "'Source Code Pro', monospace" },
+    },
+    grid: { color: 'rgba(196, 168, 130, 0.2)' },
+  };
+
   chart = new Chart(ctx, {
-    type: currentView === 'code' ? 'bar' : 'line',
+    type: 'line',
     data: { labels, datasets },
     options: {
       responsive: true,
@@ -429,13 +494,15 @@ function updateChart() {
               }
               return '';
             },
+            label: (context) => {
+              const value = context.parsed.y;
+              if (value === null || value === undefined) return null;
+              return `${context.dataset.label}: ${value.toLocaleString()}`;
+            },
           },
         },
         zoom: {
-          pan: {
-            enabled: true,
-            mode: 'x',
-          },
+          pan: { enabled: true, mode: 'x' },
           zoom: {
             wheel: { enabled: true },
             drag: { enabled: true, backgroundColor: 'rgba(107, 136, 136, 0.2)' },
@@ -476,27 +543,20 @@ function showDetailPanel(d) {
     <h3>Commit Info</h3>
     <div class="detail-row"><span class="detail-label">Date</span><span class="detail-value">${d.date?.slice(0, 19) || 'unknown'}</span></div>
     <div class="detail-row"><span class="detail-label">Author</span><span class="detail-value">${d.author || 'unknown'}</span></div>
-    <div class="detail-row"><span class="detail-label">GitHub</span><span class="detail-value"><a href="${GITHUB_REPO}/commit/${d.commit}" target="_blank" style="color:#6b8;">View on GitHub →</a></span></div>
+    <div class="detail-row"><span class="detail-label">GitHub</span><span class="detail-value"><a href="${GITHUB_REPO}/commit/${d.commit}" target="_blank" style="color:#6b8;">View on GitHub</a></span></div>
   </div>`;
 
-  // Test stats
-  html += `<div class="detail-group">
-    <h3>Test Results</h3>
-    <div class="detail-row"><span class="detail-label">Total</span><span class="detail-value">${(d.stats?.total || 0).toLocaleString()}</span></div>
-    <div class="detail-row"><span class="detail-label">Pass</span><span class="detail-value" style="color:#5a5;">${(d.stats?.pass || 0).toLocaleString()}</span></div>
-    <div class="detail-row"><span class="detail-label">Fail</span><span class="detail-value" style="color:#d55;">${(d.stats?.fail || 0).toLocaleString()}</span></div>
-    <div class="detail-row"><span class="detail-label">Duration</span><span class="detail-value">${d.stats?.duration || 0}s</span></div>
-  </div>`;
-
-  // Categories
-  if (d.categories && Object.keys(d.categories).length > 0) {
+  // Session groups
+  if (d.sessionGroups) {
     html += `<div class="detail-group">
-      <h3>Categories</h3>`;
-    for (const [cat, stats] of Object.entries(d.categories)) {
-      const pct = stats.total > 0 ? Math.round(stats.pass / stats.total * 100) : 0;
+      <h3>Session Groups</h3>`;
+    for (const [group, stats] of Object.entries(d.sessionGroups)) {
+      if (stats.total === 0) continue;
+      const pct = stats.total > 0 ? Math.round(stats.passing / stats.total * 100) : 0;
+      const icon = GROUP_ICONS[group] || '📋';
       html += `<div class="detail-row">
-        <span class="detail-label">${cat}</span>
-        <span class="detail-value"><span style="color:#5a5;">${stats.pass}</span>/<span style="color:#d55;">${stats.fail}</span> (${pct}%)</span>
+        <span class="detail-label">${icon} ${group}</span>
+        <span class="detail-value"><span style="color:#5a5;">${stats.passing}</span>/${stats.total} (${pct}%)</span>
       </div>`;
     }
     html += `</div>`;
@@ -506,33 +566,26 @@ function showDetailPanel(d) {
   if (d.codeMetrics) {
     const cm = d.codeMetrics;
     html += `<div class="detail-group">
-      <h3>Code Changes</h3>
-      <div class="detail-row"><span class="detail-label">Files</span><span class="detail-value">${cm.filesChanged || 0}</span></div>
-      <div class="detail-row"><span class="detail-label">Added</span><span class="detail-value" style="color:#5a5;">+${cm.linesAdded || 0}</span></div>
-      <div class="detail-row"><span class="detail-label">Removed</span><span class="detail-value" style="color:#d55;">-${cm.linesRemoved || 0}</span></div>
-      <div class="detail-row"><span class="detail-label">Net</span><span class="detail-value">${cm.netLines >= 0 ? '+' : ''}${cm.netLines || 0}</span></div>
-    </div>`;
-  }
-
-  // Sessions (if any)
-  if (d.sessions && Object.keys(d.sessions).length > 0) {
-    html += `<div class="detail-group">
-      <h3>Sessions</h3>`;
-    const sessions = Object.entries(d.sessions).slice(0, 8);
-    for (const [name, session] of sessions) {
-      const status = session.status === 'pass' ? '✓' : '✗';
-      const color = session.status === 'pass' ? '#5a5' : '#d55';
-      const coverage = session.coveragePercent?.toFixed(0) || '?';
-      html += `<div class="detail-row">
-        <span class="detail-label" style="color:${color};">${status} ${name.slice(0, 20)}</span>
-        <span class="detail-value">${coverage}%</span>
-      </div>`;
+      <h3>Code Metrics</h3>`;
+    if (cm.main) {
+      html += `<div class="detail-row"><span class="detail-label">Main</span><span class="detail-value">${cm.main.files} files, ${cm.main.lines?.toLocaleString()} lines</span></div>`;
     }
-    if (Object.keys(d.sessions).length > 8) {
-      html += `<div class="detail-row"><span class="detail-label" style="color:#777;">+${Object.keys(d.sessions).length - 8} more...</span></div>`;
+    if (cm.test) {
+      html += `<div class="detail-row"><span class="detail-label">Test</span><span class="detail-value">${cm.test.files} files, ${cm.test.lines?.toLocaleString()} lines</span></div>`;
+    }
+    if (cm.docs) {
+      html += `<div class="detail-row"><span class="detail-label">Docs</span><span class="detail-value">${cm.docs.files} files, ${cm.docs.lines?.toLocaleString()} lines</span></div>`;
     }
     html += `</div>`;
   }
+
+  // Test stats
+  html += `<div class="detail-group">
+    <h3>Test Results</h3>
+    <div class="detail-row"><span class="detail-label">Total</span><span class="detail-value">${(d.stats?.total || 0).toLocaleString()}</span></div>
+    <div class="detail-row"><span class="detail-label">Pass</span><span class="detail-value" style="color:#5a5;">${(d.stats?.pass || 0).toLocaleString()}</span></div>
+    <div class="detail-row"><span class="detail-label">Fail</span><span class="detail-value" style="color:#d55;">${(d.stats?.fail || 0).toLocaleString()}</span></div>
+  </div>`;
 
   content.innerHTML = html;
   panel.style.display = 'block';
@@ -554,7 +607,6 @@ function updateTable() {
   const tbody = document.getElementById('commit-tbody');
   let html = '';
 
-  // Show most recent first
   const reversed = [...filteredData].reverse();
 
   reversed.forEach((d, i) => {
@@ -567,8 +619,7 @@ function updateTable() {
     const deltaClass = delta > 0 ? 'delta-positive' : (delta < 0 ? 'delta-negative' : 'delta-neutral');
     const deltaText = delta > 0 ? `+${delta}` : (delta === 0 ? '–' : delta);
 
-    const linesClass = (d.codeMetrics?.netLines || 0) >= 0 ? 'lines-positive' : 'lines-negative';
-    const linesText = (d.codeMetrics?.netLines || 0) >= 0 ? `+${d.codeMetrics?.netLines || 0}` : d.codeMetrics?.netLines;
+    const mainLines = d.codeMetrics?.main?.lines || 0;
 
     html += `<tr class="${rowClass}" data-commit="${d.commit}" onclick="selectCommit(filteredData[${filteredData.length - 1 - i}])">
       <td><a class="commit-hash" href="${GITHUB_REPO}/commit/${d.commit}" target="_blank" onclick="event.stopPropagation();">${d.commit}</a></td>
@@ -577,8 +628,8 @@ function updateTable() {
       <td style="color:#5a5;">${d.stats?.pass || 0}</td>
       <td style="color:#d55;">${d.stats?.fail || 0}</td>
       <td class="${deltaClass}">${deltaText}</td>
-      <td>${d.codeMetrics?.filesChanged || 0}</td>
-      <td class="${linesClass}">${linesText}</td>
+      <td>${d.codeMetrics?.main?.files || 0}</td>
+      <td>${mainLines.toLocaleString()}</td>
     </tr>`;
   });
 
@@ -612,87 +663,78 @@ function updateCategoryBreakdown() {
   grid.innerHTML = html;
 }
 
-// Categorize session by type
-function getSessionType(name) {
-  if (name.includes('chargen')) return 'chargen';
-  if (name.includes('gameplay') || name.includes('selfplay')) return 'gameplay';
-  if (name.includes('special') || name.includes('map')) return 'map';
-  if (name.includes('option')) return 'options';
-  if (name.includes('interface')) return 'interface';
-  return 'other';
-}
-
-// Update session breakdown with clickable groups
+// Update session breakdown with grouped sessions
 function updateSessionBreakdown() {
   const latest = filteredData[filteredData.length - 1];
   const list = document.getElementById('session-list');
 
-  if (!latest?.sessions || Object.keys(latest.sessions).length === 0) {
+  if (!latest?.sessionGroups) {
     list.innerHTML = '<div style="color:#777;font-style:italic;">No session data available</div>';
     return;
   }
 
-  // Group sessions by type
-  const groups = {};
-  Object.entries(latest.sessions).forEach(([name, session]) => {
-    const type = getSessionType(name);
-    if (!groups[type]) {
-      groups[type] = { sessions: [], passing: 0, total: 0, stepsPassing: 0, stepsTotal: 0 };
-    }
-    groups[type].sessions.push({ name, ...session });
-    groups[type].total++;
-    if (session.status === 'pass') groups[type].passing++;
-    groups[type].stepsPassing += session.passedSteps || 0;
-    groups[type].stepsTotal += session.totalSteps || 0;
-  });
-
   let html = '';
 
-  // "All" button
-  const allActive = sessionFilter === null ? 'active' : '';
-  html += `<div class="session-group-header ${allActive}" onclick="setSessionFilter(null)">
-    <span class="group-name">📊 All Sessions</span>
-    <span class="group-stats">${Object.keys(latest.sessions).length}</span>
-  </div>`;
+  // Show each group
+  for (const group of SESSION_GROUPS) {
+    const g = latest.sessionGroups[group];
+    if (!g || g.total === 0) continue;
 
-  // Group headers
-  const groupOrder = ['gameplay', 'chargen', 'map', 'options', 'interface', 'other'];
-  for (const type of groupOrder) {
-    const group = groups[type];
-    if (!group) continue;
+    const icon = GROUP_ICONS[group] || '📋';
+    const pct = g.total > 0 ? Math.round(g.passing / g.total * 100) : 0;
+    const isEnabled = document.getElementById(`show-${group}`)?.checked;
+    const enabledClass = isEnabled ? '' : 'disabled';
 
-    const isGroupActive = sessionFilter === type ? 'active' : '';
-    const pct = group.total > 0 ? Math.round(group.passing / group.total * 100) : 0;
-    const icon = type === 'gameplay' ? '🎮' : type === 'chargen' ? '🧙' : type === 'map' ? '🗺️' : type === 'options' ? '⚙️' : '📋';
+    html += `<div class="session-group ${enabledClass}">
+      <div class="session-group-header" onclick="toggleGroupExpand('${group}')">
+        <span class="group-icon">${icon}</span>
+        <span class="group-name">${group}</span>
+        <span class="group-stats">${g.passing}/${g.total} sessions (${pct}%)</span>
+        <span class="group-expand" id="expand-${group}">▶</span>
+      </div>
+      <div class="session-group-details" id="details-${group}" style="display:none;">`;
 
-    html += `<div class="session-group-header ${isGroupActive}" onclick="setSessionFilter('${type}')">
-      <span class="group-name">${icon} ${type}</span>
-      <span class="group-stats">${group.passing}/${group.total} (${pct}%)</span>
-    </div>`;
+    // Session metrics for this group
+    if (g.steps > 0) {
+      const stepPct = Math.round(g.stepsPassing / g.steps * 100);
+      html += `<div class="group-metric"><span>Steps:</span> ${g.stepsPassing.toLocaleString()}/${g.steps.toLocaleString()} (${stepPct}%)</div>`;
+    }
+    if (g.rng > 0) {
+      const rngPct = Math.round(g.rngPassing / g.rng * 100);
+      html += `<div class="group-metric"><span>RNG:</span> ${g.rngPassing.toLocaleString()}/${g.rng.toLocaleString()} (${rngPct}%)</div>`;
+    }
 
-    // Show individual sessions if this group is selected
-    if (sessionFilter === type) {
-      const sorted = group.sessions.sort((a, b) => (a.coveragePercent || 0) - (b.coveragePercent || 0));
-      for (const session of sorted) {
+    // Individual sessions
+    if (g.sessions && g.sessions.length > 0) {
+      html += `<div class="session-items">`;
+      for (const session of g.sessions) {
         const status = session.status === 'pass' ? 'pass' : 'fail';
-        const isActive = sessionFilter === session.name ? 'active' : '';
-        const coverage = session.coveragePercent?.toFixed(0) || (session.status === 'pass' ? '100' : '?');
-        html += `<div class="session-item ${status} ${isActive}" onclick="event.stopPropagation(); setSessionFilter('${session.name}')">
+        const statusIcon = session.status === 'pass' ? '✓' : '✗';
+        html += `<div class="session-item ${status}">
+          <span class="session-status">${statusIcon}</span>
           <span class="session-name">${session.name}</span>
-          <span class="session-coverage">${coverage}%</span>
         </div>`;
       }
+      html += `</div>`;
     }
+
+    html += `</div></div>`;
   }
 
   list.innerHTML = html;
 }
 
-// Set session filter and update chart
-function setSessionFilter(filter) {
-  sessionFilter = filter;
-  updateSessionBreakdown();
-  updateChart();
+// Toggle group expansion
+function toggleGroupExpand(group) {
+  const details = document.getElementById(`details-${group}`);
+  const expand = document.getElementById(`expand-${group}`);
+  if (details.style.display === 'none') {
+    details.style.display = 'block';
+    expand.textContent = '▼';
+  } else {
+    details.style.display = 'none';
+    expand.textContent = '▶';
+  }
 }
 
 // Event listeners
@@ -713,6 +755,10 @@ document.querySelectorAll('.view-btn').forEach(btn => {
       currentView === 'tests' ? 'flex' : 'none';
     document.getElementById('session-controls').style.display =
       currentView === 'sessions' ? 'flex' : 'none';
+    document.getElementById('session-metrics-controls').style.display =
+      currentView === 'sessions' ? 'flex' : 'none';
+    document.getElementById('code-controls').style.display =
+      currentView === 'code' ? 'flex' : 'none';
 
     updateChart();
   });
@@ -727,11 +773,26 @@ document.querySelectorAll('.range-btn').forEach(btn => {
   });
 });
 
+// Test view controls
 document.querySelectorAll('#show-pass, #show-fail, #show-rate').forEach(cb => {
   cb.addEventListener('change', updateChart);
 });
 
-document.querySelectorAll('#show-sessions, #show-steps, #show-rng, #show-totals').forEach(cb => {
+// Session view controls (groups)
+document.querySelectorAll('#show-chargen, #show-gameplay, #show-selfplay, #show-options, #show-special').forEach(cb => {
+  cb.addEventListener('change', () => {
+    updateChart();
+    updateSessionBreakdown();
+  });
+});
+
+// Session view controls (metrics)
+document.querySelectorAll('#show-sessions, #show-steps, #show-rng, #show-screen').forEach(cb => {
+  cb.addEventListener('change', updateChart);
+});
+
+// Code view controls
+document.querySelectorAll('#show-main, #show-test, #show-docs, #show-other').forEach(cb => {
   cb.addEventListener('change', updateChart);
 });
 

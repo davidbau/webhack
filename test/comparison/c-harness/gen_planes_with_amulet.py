@@ -23,7 +23,9 @@ from gen_special_sessions import (
     setup_home, wait_for_game_ready, execute_dumpmap, quit_game,
     tmux_send, tmux_send_special, tmux_capture,
     NETHACK_BINARY, INSTALL_DIR, SESSIONS_DIR, RESULTS_DIR,
-    fixed_datetime_env
+    fixed_datetime_env,
+    get_rng_call_count, get_rng_raw_draw_count,
+    extract_rng_prelude_calls, extract_post_prelude_fingerprint
 )
 
 def wizard_wish_amulet(session, verbose=False):
@@ -254,6 +256,7 @@ def main():
 
         tmpdir = tempfile.mkdtemp(prefix=f'webhack-planes-{seed}-')
         dumpmap_file = os.path.join(tmpdir, 'dumpmap.txt')
+        rnglog_file = os.path.join(tmpdir, 'rng.log')
         session_name = f'webhack-planes-{seed}-{os.getpid()}'
 
         levels = []
@@ -264,6 +267,7 @@ def main():
                 f'NETHACKDIR={INSTALL_DIR} '
                 f'NETHACK_SEED={seed} '
                 f'NETHACK_DUMPMAP={dumpmap_file} '
+                f'NETHACK_RNGLOG={rnglog_file} '
                 f'HOME={RESULTS_DIR} '
                 f'TERM=xterm-256color '
                 f'{NETHACK_BINARY} -u Wizard -D; '
@@ -281,7 +285,7 @@ def main():
             # Wish for Amulet of Yendor
             wizard_wish_amulet(session_name, verbose)
 
-            # First teleport to Water (which we know works)
+            # First teleport to Water to enter the endgame (planes require Amulet)
             print(f"  Teleporting to water (entry plane)...")
             success = wizard_teleport_to_plane(session_name, 'water', verbose)
             if not success:
@@ -290,17 +294,23 @@ def main():
                 continue
 
             # Now we're ON an elemental plane, capture all 5 planes from here
+            # We start by teleporting to astral, then visit all planes including water
+            current_plane = 'water'
             for plane_name in planes:
                 print(f"  Teleporting to {plane_name}...")
 
-                # If we're already on this plane, just capture it
-                if plane_name == 'water':
+                # Track RNG call count before teleport
+                rng_call_start = get_rng_call_count(rnglog_file)
+
+                # Teleport to the plane (unless we're already on it)
+                if plane_name == current_plane:
                     print(f"  Already on {plane_name}, capturing...")
                 else:
                     success = wizard_teleport_to_plane(session_name, plane_name, verbose)
                     if not success:
                         print(f"  WARNING: Failed to teleport to {plane_name}")
                         continue
+                    current_plane = plane_name
 
                 # Clean previous dumpmap
                 if os.path.exists(dumpmap_file):
@@ -325,8 +335,24 @@ def main():
                     'typGrid': grid,
                 }
 
+                # Add RNG fingerprint data if available
+                # Capture full RNG sequence (not just 20 calls) for debugging
+                if rng_call_start is not None:
+                    level_data['rngCallStart'] = int(rng_call_start)
+                    raw_start = get_rng_raw_draw_count(rnglog_file, rng_call_start)
+                    if raw_start is not None:
+                        level_data['rngRawCallStart'] = int(raw_start)
+                    prelude_calls = extract_rng_prelude_calls(rnglog_file, rng_call_start)
+                    if prelude_calls:
+                        level_data['preRngCalls'] = prelude_calls
+                    # Use large limit to capture full RNG sequence for level generation
+                    fingerprint = extract_post_prelude_fingerprint(rnglog_file, rng_call_start, limit=10000)
+                    if fingerprint:
+                        level_data['rngFingerprint'] = fingerprint
+
                 levels.append(level_data)
-                print(f"  Captured {plane_name}: {len(grid)} rows, {len(grid[0]) if grid else 0} cols")
+                rng_info = f", rngFingerprint: {len(level_data.get('rngFingerprint', []))} calls" if level_data.get('rngFingerprint') else ""
+                print(f"  Captured {plane_name}: {len(grid)} rows, {len(grid[0]) if grid else 0} cols{rng_info}")
 
             # Quit the game
             quit_game(session_name)
@@ -336,6 +362,8 @@ def main():
                            capture_output=True)
             if os.path.exists(dumpmap_file):
                 os.unlink(dumpmap_file)
+            if os.path.exists(rnglog_file):
+                os.unlink(rnglog_file)
             try:
                 os.rmdir(tmpdir)
             except OSError:

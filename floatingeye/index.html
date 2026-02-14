@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The Oracle's Test Chamber</title>
+  <title>The Floating Eye's Gaze</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
   <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
   <header>
-    <h1>The Oracle's Test Chamber</h1>
-    <p class="tagline">"Many fall in the face of chaos, but not this one. Not today."</p>
+    <h1>The Floating Eye's Gaze</h1>
+    <p class="tagline">"You are frozen by the floating eye's gaze. You can still see."</p>
   </header>
 
   <main>
@@ -66,6 +66,25 @@
         </label>
       </div>
       <div class="control-group" id="session-controls">
+        <span class="control-label">Groups:</span>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-chargen" checked> Chargen
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-gameplay" checked> Gameplay
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-selfplay" checked> Selfplay
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-options" checked> Options
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-special" checked> Special
+        </label>
+      </div>
+      <div class="control-group" id="session-metrics-controls">
+        <span class="control-label">Metrics:</span>
         <label class="checkbox-label">
           <input type="checkbox" id="show-sessions" checked> Sessions
         </label>
@@ -76,7 +95,22 @@
           <input type="checkbox" id="show-rng"> RNG
         </label>
         <label class="checkbox-label">
-          <input type="checkbox" id="show-totals"> Totals
+          <input type="checkbox" id="show-screen"> Screen
+        </label>
+      </div>
+      <div class="control-group" id="code-controls" style="display:none;">
+        <span class="control-label">Metrics:</span>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-main" checked> Main
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-test" checked> Test
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-docs"> Docs
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-other"> Other
         </label>
       </div>
       <div class="control-group zoom-controls">
@@ -94,19 +128,19 @@
 
     <!-- Category Breakdown (shown when Categories view active) -->
     <section class="breakdown-section" id="category-breakdown" style="display: none;">
-      <h2>Category Breakdown <span class="section-hint">(Each test finds its own peril)</span></h2>
+      <h2>Category Breakdown <span class="section-hint">(The eye watches each category)</span></h2>
       <div class="category-grid" id="category-grid"></div>
     </section>
 
     <!-- Session Coverage (shown when Sessions view active) -->
     <section class="breakdown-section" id="session-breakdown">
-      <h2>Session Coverage <span class="section-hint">(The Oracle remembers every step)</span></h2>
+      <h2>Session Coverage <span class="section-hint">(The eye sees every step)</span></h2>
       <div class="session-list" id="session-list"></div>
     </section>
 
     <!-- Commit Table -->
     <section class="table-section">
-      <h2>Commit History <span class="section-hint">(A scroll of your deeds, good and ill)</span></h2>
+      <h2>Commit History <span class="section-hint">(The eye has seen all changes)</span></h2>
       <div class="table-container">
         <table id="commit-table">
           <thead>
@@ -138,7 +172,7 @@
 
   <footer>
     <p>
-      <span class="footer-quote">"The Oracle intones: 'Your tests reveal your fate.'"</span>
+      <span class="footer-quote">"The floating eye's gaze paralyzes regressions in their tracks."</span>
       <br>
       <a href="https://github.com/davidbau/mazesofmenace">Mazes of Menace</a> ·
       Data from <code>refs/notes/test-results</code>

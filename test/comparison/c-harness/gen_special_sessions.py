@@ -681,6 +681,7 @@ def generate_group(group_name, seeds, verbose=False):
         tmpdir = tempfile.mkdtemp(prefix=f'webhack-special-{seed}-')
         dumpmap_file = os.path.join(tmpdir, 'dumpmap.txt')
         checkpoint_file = os.path.join(tmpdir, 'checkpoints.jsonl')
+        rnglog_file = os.path.join(tmpdir, 'rnglog.txt')
 
         levels = []
 
@@ -702,7 +703,7 @@ def generate_group(group_name, seeds, verbose=False):
                 f'NETHACK_SEED={seed} '
                 f'NETHACK_DUMPMAP={dumpmap_file} '
                 f'NETHACK_DUMPSNAP={checkpoint_file} '
-                f"{('NETHACK_RNGLOG=' + os.environ['NETHACK_RNGLOG'] + ' ') if os.environ.get('NETHACK_RNGLOG') else ''}"
+                f'NETHACK_RNGLOG={rnglog_file} '
                 f'HOME={RESULTS_DIR} '
                 f'TERM=xterm-256color '
                 f'{NETHACK_BINARY} -u Wizard -D; '
@@ -721,7 +722,6 @@ def generate_group(group_name, seeds, verbose=False):
                 for level_def in level_defs:
                     level_name = level_def['name']
                     print(f"  Teleporting to {level_name}...")
-                    rnglog_file = os.environ.get('NETHACK_RNGLOG')
                     rng_call_start = get_rng_call_count(rnglog_file)
                     level_checkpoint_start = checkpoint_cursor
                     abs_depth = None
@@ -817,8 +817,9 @@ def generate_group(group_name, seeds, verbose=False):
                         )
                         if prelude_calls:
                             level_data['preRngCalls'] = prelude_calls
+                        # Capture full RNG sequence (not just 20 calls) for debugging
                         fingerprint = extract_post_prelude_fingerprint(
-                            rnglog_file, rng_call_start
+                            rnglog_file, rng_call_start, limit=10000
                         )
                         if fingerprint:
                             level_data['rngFingerprint'] = fingerprint
@@ -857,6 +858,8 @@ def generate_group(group_name, seeds, verbose=False):
                 os.unlink(dumpmap_file)
             if os.path.exists(checkpoint_file):
                 os.unlink(checkpoint_file)
+            if os.path.exists(rnglog_file):
+                os.unlink(rnglog_file)
             try:
                 os.rmdir(tmpdir)
             except OSError:

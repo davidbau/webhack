@@ -321,26 +321,111 @@ main {
 /* Session List */
 
 .session-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.4rem;
-  max-height: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 400px;
   overflow-y: auto;
+}
+
+/* Session Group Container */
+.session-group {
+  background: var(--bg-parchment);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.session-group.disabled {
+  opacity: 0.5;
+}
+
+.session-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg-section);
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.session-group-header:hover {
+  background: var(--bg-hover);
+}
+
+.group-icon {
+  font-size: 1rem;
+}
+
+.group-name {
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.group-stats {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.group-expand {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  margin-left: 0.5rem;
+}
+
+/* Session Group Details (expanded) */
+.session-group-details {
+  padding: 0.5rem;
+  background: var(--bg-parchment);
+}
+
+.group-metric {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  padding: 0.2rem 0.5rem;
+}
+
+.group-metric span {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.session-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.3rem;
+  margin-top: 0.5rem;
 }
 
 .session-item {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.3rem 0.5rem;
-  background: var(--bg-parchment);
+  padding: 0.25rem 0.5rem;
+  background: var(--bg-panel);
   border: 1px solid var(--border-light);
   border-radius: 3px;
   font-size: 0.75rem;
 }
 
-.session-item.pass { border-left: 4px solid var(--pass); }
-.session-item.fail { border-left: 4px solid var(--fail); }
+.session-item.pass { border-left: 3px solid var(--pass); }
+.session-item.fail { border-left: 3px solid var(--fail); }
+
+.session-status {
+  font-size: 0.75rem;
+}
+
+.session-item.pass .session-status { color: var(--pass); }
+.session-item.fail .session-status { color: var(--fail); }
 
 .session-name {
   flex: 1;
@@ -349,7 +434,7 @@ main {
   white-space: nowrap;
   font-family: var(--font-mono);
   color: var(--text);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
 }
 
 .session-coverage {
@@ -360,51 +445,10 @@ main {
 .session-item.pass .session-coverage { color: var(--pass); }
 .session-item.fail .session-coverage { color: var(--fail); }
 
-.session-item.active,
-.session-group-header.active {
-  background: var(--bg-accent);
-  border-color: var(--accent);
-}
-
-.session-group-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.4rem 0.6rem;
-  background: var(--bg-section);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  margin-bottom: 0.3rem;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.session-group-header:hover {
-  background: var(--bg-accent);
-}
-
-.group-name {
-  font-family: var(--font-body);
-  font-weight: 600;
-  color: var(--text);
-  font-size: 0.85rem;
-}
-
-.group-stats {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--text-dim);
-}
-
-.session-item {
-  cursor: pointer;
-  margin-left: 1rem;
-  transition: background 0.15s;
-}
-
-.session-item:hover {
-  background: var(--bg-accent);
-}
+/* Group color accents */
+.session-group:has(.group-name:contains('chargen')) .session-group-header { border-left: 4px solid var(--chargen); }
+.session-group:has(.group-name:contains('gameplay')) .session-group-header { border-left: 4px solid var(--gameplay); }
+.session-group:has(.group-name:contains('special')) .session-group-header { border-left: 4px solid var(--special); }
 
 /* --- Table Section --- */
 
