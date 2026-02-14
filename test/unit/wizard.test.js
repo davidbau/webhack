@@ -16,6 +16,7 @@ import { initDiscoveryState, discoverObject } from '../../js/discovery.js';
 import { WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, WAND_CLASS, TOOL_CLASS, FOOD_CLASS,
     POTION_CLASS, SCROLL_CLASS, SPBOOK_CLASS, SCR_EARTH,
     LEATHER_GLOVES, LOW_BOOTS, LENSES, GRAY_DRAGON_SCALES, SHIELD_OF_REFLECTION, CORPSE,
+    POT_HEALING, SCR_BLANK_PAPER,
     oclass_prob_totals, initObjectData, objectData } from '../../js/objects.js';
 import { Player } from '../../js/player.js';
 import { simulatePostLevelInit } from '../../js/u_init.js';
@@ -569,6 +570,25 @@ describe('doname', () => {
             known: false, dknown: true, bknown: false,
         };
         assert.match(doname(obj, null), /^2 scrolls labeled /);
+    });
+
+    it('non-magic unknown scroll uses "<desc> scroll" format', () => {
+        const obj = {
+            otyp: SCR_BLANK_PAPER, oclass: SCROLL_CLASS,
+            spe: 0, blessed: false, cursed: false,
+            known: false, dknown: true, bknown: false,
+        };
+        assert.equal(doname(obj, null), 'an unlabeled scroll');
+    });
+
+    it('diluted potion includes diluted prefix when appearance is known', () => {
+        const obj = {
+            otyp: POT_HEALING, oclass: POTION_CLASS,
+            spe: 0, blessed: false, cursed: false,
+            odiluted: true,
+            known: true, dknown: true, bknown: false,
+        };
+        assert.equal(doname(obj, null), 'a diluted potion of healing');
     });
 });
 

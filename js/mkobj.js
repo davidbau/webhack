@@ -18,7 +18,8 @@ import {
     LARGE_BOX, CHEST, ICE_BOX, CORPSE, STATUE,
     GRAY_DRAGON_SCALES, YELLOW_DRAGON_SCALES, LENSES,
     ELVEN_SHIELD, ORCISH_SHIELD, SHIELD_OF_REFLECTION,
-    WORM_TOOTH, UNICORN_HORN,
+    WORM_TOOTH, UNICORN_HORN, POT_WATER,
+    SPE_BOOK_OF_THE_DEAD,
     ARM_SHIELD, ARM_GLOVES, ARM_BOOTS,
     CLASS_SYMBOLS,
     initObjectData,
@@ -827,7 +828,10 @@ function xname_for_doname(obj, dknown = true, known = true, bknown = false) {
         base = !dknown ? 'potion'
             : nameKnown ? `potion of ${od.name}`
                 : `${od.desc || od.name} potion`;
-        if (dknown && nameKnown && obj.otyp && od.name === 'water'
+        if (dknown && obj.odiluted) {
+            base = `diluted ${base}`;
+        }
+        if (dknown && nameKnown && obj.otyp === POT_WATER
             && bknown && (obj.blessed || obj.cursed)) {
             base = `potion of ${obj.blessed ? 'holy' : 'unholy'} water`;
         }
@@ -835,12 +839,14 @@ function xname_for_doname(obj, dknown = true, known = true, bknown = false) {
     case SCROLL_CLASS:
         if (!dknown) base = 'scroll';
         else if (nameKnown) base = `scroll of ${od.name}`;
-        else if (od.desc) base = `scroll labeled ${od.desc}`;
-        else base = `scroll of ${od.name}`;
+        else if (od.magic) base = `scroll labeled ${od.desc || od.name}`;
+        else base = `${od.desc || od.name} scroll`;
         break;
     case SPBOOK_CLASS:
         base = !dknown ? 'spellbook'
-            : nameKnown ? `spellbook of ${od.name}`
+            : nameKnown ? (obj.otyp === SPE_BOOK_OF_THE_DEAD
+                ? od.name
+                : `spellbook of ${od.name}`)
                 : `${od.desc || od.name} spellbook`;
         break;
     case WAND_CLASS:
