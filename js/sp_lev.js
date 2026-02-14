@@ -32,7 +32,7 @@ import {
     MAGIC_PORTAL, WEB, ANTI_MAGIC, POLY_TRAP, STATUE_TRAP, MAGIC_TRAP,
     VIBRATING_SQUARE,
     D_NODOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN, D_SECRET,
-    COLNO, ROWNO, IS_OBSTRUCTED, IS_WALL, IS_POOL, IS_LAVA,
+    COLNO, ROWNO, IS_OBSTRUCTED, IS_WALL, IS_STWALL, IS_POOL, IS_LAVA,
     A_LAWFUL, A_NEUTRAL, A_CHAOTIC,
     MKTRAP_SEEN, MKTRAP_MAZEFLAG, MKTRAP_NOSPIDERONWEB, MKTRAP_NOVICTIM,
     MAXNROFROOMS, ROOMOFFSET
@@ -5678,6 +5678,24 @@ function map_cleanup(map) {
     }
 }
 
+// C ref: sp_lev.c solidify_map()
+function solidify_map(map) {
+    if (!map) return;
+    initSpLevMap();
+    const spLevMap = levelState.spLevMap || levelState.spLevTouched;
+    if (!spLevMap) return;
+    for (let x = 0; x < COLNO; x++) {
+        for (let y = 0; y < ROWNO; y++) {
+            const loc = map.locations[x][y];
+            if (!loc) continue;
+            if (IS_STWALL(loc.typ) && !spLevMap[x]?.[y]) {
+                loc.nondiggable = true;
+                loc.nonpasswall = true;
+            }
+        }
+    }
+}
+
 // C ref: sp_lev.c remove_boundary_syms()
 function remove_boundary_syms(map) {
     if (!map) return;
@@ -5788,6 +5806,11 @@ export function finalize_level() {
     // not full wallification().
     if (levelState.map && flipped) {
         fix_wall_spines(levelState.map, 1, 0, COLNO - 1, ROWNO - 1);
+    }
+
+    // C ref: sp_lev.c fixup_special() (branch stair placement, etc.)
+    if (levelState.map && levelState.coder?.solidify) {
+        solidify_map(levelState.map);
     }
 
     // C ref: sp_lev.c fixup_special() (branch stair placement, etc.)

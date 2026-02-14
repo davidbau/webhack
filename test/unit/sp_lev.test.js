@@ -260,6 +260,22 @@ describe('sp_lev.js - des.* API', () => {
         assert.ok(randomGold.quan >= 1 && randomGold.quan <= 200, 'gold() amount should be rnd(200)');
     });
 
+    it('finalize_level applies C solidify_map to untouched stone/walls', () => {
+        resetLevelState();
+        des.level_init({ style: 'solidfill', fg: ' ' });
+        des.level_flags('solidify');
+
+        const map = getLevelState().map;
+        map.locations[10][5].typ = ROOM; // touched/open tile
+        map.locations[30][10].typ = STONE; // untouched tile
+
+        des.finalize_level();
+
+        assert.equal(map.locations[30][10].nondiggable, true, 'untouched stone should become nondiggable');
+        assert.equal(map.locations[30][10].nonpasswall, true, 'untouched stone should become nonpasswall');
+        assert.equal(map.locations[10][5].nonpasswall, undefined, 'touched tile should not be force-solidified');
+    });
+
     it('should preserve leading and trailing blank map lines', () => {
         resetLevelState();
         des.level_init({ style: 'solidfill', fg: ' ' });
