@@ -578,6 +578,7 @@ def run_session(seed, output_json, move_str):
             'wizard': True,
             'character': CHARACTER.copy(),
             'symset': 'DECgraphics',
+            'screenMode': 'decgraphics',
             'startup': {
                 'rngCalls': startup_actual_rng,
                 'rng': startup_rng_entries,

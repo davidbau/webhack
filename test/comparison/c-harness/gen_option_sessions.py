@@ -163,6 +163,7 @@ def generate_verbose_sessions():
             'type': 'option_test',
             'option': 'verbose',
             'option_value': True,
+            'screenMode': 'ascii',
             'description': 'Test verbose option - should show "Next command will..." message',
             'character': {
                 'name': 'Wizard',
@@ -262,6 +263,7 @@ def generate_verbose_sessions():
             'type': 'option_test',
             'option': 'verbose',
             'option_value': False,
+            'screenMode': 'ascii',
             'description': 'Test verbose=off - should NOT show "Next command will..." message',
             'character': {
                 'name': 'Wizard',
@@ -350,6 +352,7 @@ def generate_decgraphics_sessions():
             'type': 'option_test',
             'option': 'DECgraphics',
             'option_value': False,
+            'screenMode': 'ascii',
             'description': 'Test DECgraphics=off - should show ASCII walls (| - )',
             'character': {
                 'name': 'Wizard',
@@ -419,6 +422,7 @@ def generate_decgraphics_sessions():
             'type': 'option_test',
             'option': 'DECgraphics',
             'option_value': True,
+            'screenMode': 'decgraphics',
             'description': 'Test DECgraphics=on - should show box-drawing walls (│ ─ ┌ etc.)',
             'character': {
                 'name': 'Wizard',
@@ -503,6 +507,7 @@ def generate_time_sessions():
             'type': 'option_test',
             'option': 'time',
             'option_value': True,
+            'screenMode': 'ascii',
             'description': 'Test time=on - should show turn counter T:N in status line',
             'character': {
                 'name': 'Wizard',
@@ -579,6 +584,7 @@ def generate_time_sessions():
             'type': 'option_test',
             'option': 'time',
             'option_value': False,
+            'screenMode': 'ascii',
             'description': 'Test time=off - should NOT show turn counter in status line',
             'character': {
                 'name': 'Wizard',

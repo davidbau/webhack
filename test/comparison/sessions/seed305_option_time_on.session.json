@@ -41,5 +41,6 @@
       "Dlvl:1 $:0 HP:11(11) Pw:9(9) AC:9 Xp:1 T:1"
     ]
   },
-  "steps": []
+  "steps": [],
+  "screenMode": "ascii"
 }

@@ -4,6 +4,7 @@
   "type": "chargen",
   "source": "c",
   "wizard": true,
+  "screenMode": "ascii",
   "character": {
     "name": "Wizard",
     "role": "Archeologist",

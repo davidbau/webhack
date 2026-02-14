@@ -834,6 +834,7 @@ def generate_group(group_name, seeds, verbose=False):
             'type': 'special',
             'source': 'c',
             'group': group_name,
+            'screenMode': 'decgraphics',
             'levels': levels,
         }
 

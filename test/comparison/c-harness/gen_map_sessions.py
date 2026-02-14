@@ -243,6 +243,7 @@ def generate_one(seed, max_depth, with_rng, output_filename=None, debug_themerm=
         'type': 'map',
         'source': 'c',
         'wizard': True,  # Always true (uses -D flag for level teleport)
+        'screenMode': 'decgraphics',
         'debugThemerm': debug_themerm,  # Whether THEMERM debug mode was enabled
         'levels': levels,
     }

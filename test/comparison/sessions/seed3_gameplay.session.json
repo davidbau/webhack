@@ -10,6 +10,7 @@
     "align": "neutral"
   },
   "symset": "DECgraphics",
+  "screenMode": "decgraphics",
   "startup": {
     "rngCalls": 2357,
     "rng": [

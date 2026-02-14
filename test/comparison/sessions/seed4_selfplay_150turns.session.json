@@ -10,6 +10,7 @@
     "align": "neutral"
   },
   "symset": "DECgraphics",
+  "screenMode": "decgraphics",
   "type": "gameplay",
   "maxTurns": 150,
   "startup": {

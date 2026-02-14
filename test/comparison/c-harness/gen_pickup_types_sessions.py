@@ -257,6 +257,7 @@ def generate_pickup_types_session(session_name, seed, pickup_types_value, pickup
         'character': 'Wizard chaotic elf male',
         'version': '3.7',
         'wizard': True,
+        'screenMode': 'decgraphics',
         'pickup_types': pickup_types_value,
         'pickup_types_label': pickup_types_label,
         'steps': steps

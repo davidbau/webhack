@@ -10,6 +10,7 @@
     "align": "neutral"
   },
   "symset": "ASCII",
+  "screenMode": "ascii",
   "startup": {
     "rngCalls": 0,
     "rng": [],

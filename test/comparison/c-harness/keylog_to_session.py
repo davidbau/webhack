@@ -195,6 +195,7 @@ def run_from_keylog(events, seed, character, symset, output_json):
             'wizard': True,
             'character': character,
             'symset': symset,
+            'screenMode': 'decgraphics' if symset.lower() == 'decgraphics' else 'ascii',
             'startup': {
                 'rngCalls': startup_actual_rng,
                 'rng': startup_rng_entries,

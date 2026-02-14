@@ -348,6 +348,7 @@ def main():
             'type': 'special',
             'source': 'c',
             'group': 'planes',
+            'screenMode': 'decgraphics',
             'levels': levels,
         }
 

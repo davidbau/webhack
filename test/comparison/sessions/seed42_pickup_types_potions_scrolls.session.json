@@ -3,6 +3,7 @@
   "character": "Wizard chaotic elf male",
   "version": "3.7",
   "wizard": true,
+  "screenMode": "ascii",
   "pickup_types": "!?",
   "pickup_types_label": "potions_scrolls",
   "steps": [

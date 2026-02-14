@@ -353,6 +353,7 @@ def generate_one(seed, role_key, race_key, gender_key, align_key, label):
         'type': 'chargen',
         'source': 'c',
         'wizard': True,
+        'screenMode': 'decgraphics',
         'character': character,
         'startup': {
             'rngCalls': startup_rng_count,

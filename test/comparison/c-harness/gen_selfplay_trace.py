@@ -273,6 +273,7 @@ def generate_trace(seed, max_turns=100, role='Valkyrie'):
                 'align': 'neutral',
             },
             'symset': 'DECgraphics',
+            'screenMode': 'decgraphics',
             'type': 'gameplay',  # Use 'gameplay' type for existing test infrastructure
             'maxTurns': max_turns,
             'startup': {
