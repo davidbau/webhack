@@ -5,6 +5,7 @@
 // per-key JSONL traces from C instrumentation (NETHACK_KEYLOG).
 
 import { execSync, spawnSync } from 'child_process';
+import { writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { TmuxAdapter } from '../interface/tmux_adapter.js';
 
@@ -81,6 +82,22 @@ async function main() {
     process.env.NETHACK_KEYLOG_DELAY_MS = String(opts.keylogDelayMs);
     if (opts.fixedDatetime) process.env.NETHACK_FIXED_DATETIME = opts.fixedDatetime;
     else delete process.env.NETHACK_FIXED_DATETIME;
+
+    // Write metadata header to keylog before starting game
+    const metadata = {
+        type: 'meta',
+        seed: opts.seed,
+        role: opts.role,
+        race: opts.race,
+        gender: opts.gender,
+        align: opts.align,
+        name: opts.name,
+        symset: opts.symset,
+        datetime: opts.fixedDatetime || null,
+        keylogDelayMs: opts.keylogDelayMs,
+        recordedAt: new Date().toISOString(),
+    };
+    writeFileSync(opts.keylog, JSON.stringify(metadata) + '\n');
 
     const adapter = new TmuxAdapter({
         sessionName: opts.session,
