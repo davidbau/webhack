@@ -2,10 +2,13 @@
 // Faithful port of makemon.c from NetHack 3.7
 // C ref: makemon.c — monster creation, selection, weapon/inventory assignment
 
-import { rn2, rnd, rn1, d, c_d, getRngLog } from './rng.js';
+import { rn2, rnd, rn1, d, c_d, getRngLog, getRngCallCount } from './rng.js';
 import { mksobj, mkobj, next_ident } from './mkobj.js';
 import { def_monsyms } from './symbols.js';
-import { SHOPBASE, ROOMOFFSET } from './config.js';
+import {
+    SHOPBASE, ROOMOFFSET, IS_POOL, IS_LAVA, IS_STWALL, IS_DOOR, ACCESSIBLE,
+    D_LOCKED, D_CLOSED, isok
+} from './config.js';
 import { A_NONE, A_LAWFUL, A_NEUTRAL, A_CHAOTIC } from './config.js';
 
 // Registration for get_shop_item to avoid circular dependency with shknam.js.
@@ -25,10 +28,10 @@ import {
     S_NAGA, S_OGRE, S_PUDDING, S_QUANTMECH, S_RUSTMONST, S_SNAKE,
     S_TROLL, S_UMBER, S_VAMPIRE, S_WRAITH, S_XORN, S_YETI, S_ZOMBIE,
     S_HUMAN, S_GHOST, S_GOLEM, S_DEMON, S_EEL, S_LIZARD, S_MIMIC_DEF,
-    M2_MERC, M2_LORD, M2_PRINCE, M2_NASTY, M2_FEMALE, M2_MALE, M2_STRONG,
+    M2_MERC, M2_LORD, M2_PRINCE, M2_NASTY, M2_FEMALE, M2_MALE, M2_STRONG, M2_ROCKTHROW,
     M2_HOSTILE, M2_PEACEFUL, M2_DOMESTIC, M2_NEUTER, M2_GREEDY,
     M2_MINION,
-    M1_FLY, M1_NOHANDS,
+    M1_FLY, M1_NOHANDS, M1_SWIM, M1_AMPHIBIOUS, M1_WALLWALK, M1_AMORPHOUS,
     PM_ORC, PM_GIANT, PM_ELF, PM_HUMAN, PM_ETTIN, PM_MINOTAUR, PM_NAZGUL,
     PM_MASTER_LICH, PM_ARCH_LICH,
     PM_WUMPUS, PM_LONG_WORM, PM_GIANT_EEL,
@@ -148,6 +151,30 @@ let _makemonLevelCtx = {
     dungeonAlign: A_NONE,
 };
 
+let _rndmonTraceInvocation = 0;
+
+function shouldTraceRndmon() {
+    if (typeof process === 'undefined') return false;
+    if (process.env.WEBHACK_RNDMON_TRACE !== '1') return false;
+    const start = Number.parseInt(process.env.WEBHACK_RNDMON_TRACE_START || '0', 10);
+    const count = Number.parseInt(process.env.WEBHACK_RNDMON_TRACE_COUNT || '20', 10);
+    return _rndmonTraceInvocation >= start && _rndmonTraceInvocation < (start + count);
+}
+
+function getRndmonTraceCtx() {
+    const stack = new Error().stack || '';
+    const lines = stack.split('\n');
+    const toTag = (line) => {
+        const m = (line || '').match(/at (?:(\S+)\s+\()?.*?([^/\s]+\.js):(\d+)/);
+        if (!m) return null;
+        return `${m[1] || '?'}(${m[2]}:${m[3]})`;
+    };
+    const a = toTag(lines[3]);
+    if (!a) return '?';
+    const b = toTag(lines[4]);
+    return b ? `${a} <= ${b}` : a;
+}
+
 export function setMakemonPlayerContext(playerLike) {
     const inventory = Array.isArray(playerLike?.inventory) ? playerLike.inventory : [];
     _makemonPlayerCtx = normalizePlayerContext({
@@ -266,6 +293,9 @@ function temperature_shift(ptr) {
 
 // C ref: makemon.c rndmonst_adj()
 export function rndmonst_adj(minadj, maxadj, depth) {
+    const trace = shouldTraceRndmon();
+    const traceIdx = _rndmonTraceInvocation++;
+    const traceCtx = trace ? getRndmonTraceCtx() : '?';
     const ulevel = 1; // hardcoded for level gen testing
     // C ref: level_difficulty() returns depth(&u.uz) for main dungeon
     const zlevel = depth;
@@ -276,6 +306,10 @@ export function rndmonst_adj(minadj, maxadj, depth) {
 
     let totalweight = 0;
     let selected_mndx = -1; // NON_PM
+
+    if (trace) {
+        console.log(`[RNDMON] begin #${traceIdx} call=${getRngCallCount()} minadj=${minadj} maxadj=${maxadj} depth=${depth} diff=${minmlev}-${maxmlev} ctx=${traceCtx}`);
+    }
 
     // DEBUG: Disabled (set to true to debug depth 3 rndmonst_adj)
     const DEBUG_RNG = false; // (depth === 3 && minadj === 0 && maxadj === 0);
@@ -316,12 +350,20 @@ export function rndmonst_adj(minadj, maxadj, depth) {
             //     console.log(`  -> Calling rn2(${totalweight})`);
             // }
             const roll = rn2(totalweight);
+            if (trace) {
+                console.log(`[RNDMON] #${traceIdx} mndx=${mndx} name=${ptr.name} w=${weight} total=${oldTotal}->${totalweight} roll=${roll} pick=${roll < weight ? 1 : 0} ctx=${traceCtx}`);
+            }
             // if (depth === 3 && minadj === 0 && maxadj === 0 && iterCount < 5) {
             //     console.log(`  -> Result: ${roll}, weight=${weight}, selected=${roll < weight ? mndx : 'unchanged'}`);
             // }
             if (roll < weight)
                 selected_mndx = mndx;
         }
+    }
+
+    if (trace) {
+        const selectedName = selected_mndx >= 0 ? (mons[selected_mndx]?.name || `#${selected_mndx}`) : 'NON_PM';
+        console.log(`[RNDMON] end #${traceIdx} totalweight=${totalweight} selected=${selected_mndx} ${selectedName} ctx=${traceCtx}`);
     }
 
     if (selected_mndx < 0 || uncommon(selected_mndx))
@@ -332,6 +374,20 @@ export function rndmonst_adj(minadj, maxadj, depth) {
 // C ref: makemon.c rndmonst()
 export function rndmonnum(depth) {
     return rndmonst_adj(0, 0, depth || 1);
+}
+
+// C ref: mkobj.c rndmonnum_adj()
+export function rndmonnum_adj(minadj, maxadj, depth) {
+    const chosen = rndmonst_adj(minadj, maxadj, depth || 1);
+    if (chosen >= 0) return chosen;
+
+    // Plan B: any common monster, matching C's rn1-based fallback.
+    const excludeflags = G_UNIQ | G_NOGEN | G_HELL;
+    let idx;
+    do {
+        idx = rn1(SPECIAL_PM - LOW_PM, LOW_PM);
+    } while ((mons[idx].geno & excludeflags) !== 0);
+    return idx;
 }
 
 // ========================================================================
@@ -1200,45 +1256,107 @@ function set_mimic_sym(mndx, x, y, map, depth) {
 
 // MM flags
 export const NO_MM_FLAGS = 0;
-export const MM_NOGRP = 0x08;
+export const MM_IGNOREWATER = 0x00000008;
+export const MM_ADJACENTOK = 0x00000010;
+export const MM_NOGRP = 0x00002000;
+export const MM_IGNORELAVA = 0x00080000;
 
 // C ref: makemon.c makemon_rnd_goodpos() — find random valid position
 // Tries up to 50 random positions using rn2(COLNO-3)+2, rn2(ROWNO).
 // During mklev, cansee() is FALSE so it always checks goodpos.
 // Simplified goodpos: SPACE_POS(typ) terrain, no monster already there.
-function makemon_rnd_goodpos(map, ptr) {
+function boulderBlocks(ptr, map, x, y) {
+    if (!Array.isArray(map?.objects)) return false;
+    const hasBoulder = map.objects.some(o => o && o.otyp === BOULDER && o.ox === x && o.oy === y);
+    if (!hasBoulder) return false;
+    return !ptr || ((ptr.flags2 || 0) & M2_ROCKTHROW) === 0;
+}
+
+function eelDryPlacementFails(ptr, typ) {
+    // C ref: teleport.c goodpos() eel clause:
+    // else if (mdat->mlet == S_EEL && rn2(13) && !ignorewater) return FALSE;
+    if (!ptr || ptr.symbol !== S_EEL) return false;
+    if (IS_POOL(typ)) return false;
+    return rn2(13) !== 0;
+}
+
+function closedDoorAt(map, x, y) {
+    const loc = map?.at?.(x, y);
+    return !!loc && IS_DOOR(loc.typ) && !!(loc.flags & (D_LOCKED | D_CLOSED));
+}
+
+function accessibleAt(map, x, y) {
+    const loc = map?.at?.(x, y);
+    if (!loc) return false;
+    return ACCESSIBLE(loc.typ) && !closedDoorAt(map, x, y);
+}
+
+function mayPasswallAt(map, x, y) {
+    const loc = map?.at?.(x, y);
+    if (!loc) return false;
+    // C ref: hack.c may_passwall() checks W_NONPASSWALL on stone walls.
+    // JS map doesn't currently track nonpasswall separately, so only
+    // enforce the terrain side of the check.
+    return !IS_STWALL(loc.typ) || !loc.nonpasswall;
+}
+
+// C ref: teleport.c goodpos() subset used by makemon paths.
+function makemonGoodpos(map, x, y, ptr, mmflags = NO_MM_FLAGS, avoidMonpos = true) {
+    if (!isok(x, y)) return false;
+    const loc = map?.at?.(x, y);
+    if (!loc) return false;
+    const ignoreWater = !!(mmflags & MM_IGNOREWATER);
+    const ignoreLava = !!(mmflags & MM_IGNORELAVA);
+
+    if (avoidMonpos) {
+        for (const m of map.monsters || []) {
+            if (m.mx === x && m.my === y) return false;
+        }
+    }
+
+    if (ptr) {
+        if (IS_POOL(loc.typ) && !ignoreWater) {
+            const f1 = ptr.flags1 || 0;
+            if (!(f1 & (M1_SWIM | M1_AMPHIBIOUS | M1_FLY))) return false;
+        } else if (ptr.symbol === S_EEL && !ignoreWater && eelDryPlacementFails(ptr, loc.typ)) {
+            return false;
+        } else if (IS_LAVA(loc.typ) && !ignoreLava) {
+            const f1 = ptr.flags1 || 0;
+            if (!(f1 & M1_FLY)) return false;
+        }
+
+        if ((ptr.flags1 & M1_WALLWALK) && mayPasswallAt(map, x, y)) return true;
+        if ((ptr.flags1 & M1_AMORPHOUS) && closedDoorAt(map, x, y)) return true;
+    }
+
+    if (!accessibleAt(map, x, y)) {
+        if (!(IS_POOL(loc.typ) && ignoreWater)
+            && !(IS_LAVA(loc.typ) && ignoreLava)) return false;
+    }
+    if (boulderBlocks(ptr, map, x, y)) return false;
+    return true;
+}
+
+function makemon_rnd_goodpos(map, ptr, mmflags = NO_MM_FLAGS) {
     const COLNO = 80, ROWNO = 21;
-    const DOOR = 23; // SPACE_POS(typ) = typ > DOOR
+    let lastNx = 2;
+    let lastNy = 0;
     for (let tryct = 0; tryct < 50; tryct++) {
         const nx = rn2(COLNO - 3) + 2; // rn1(COLNO-3, 2)
         const ny = rn2(ROWNO);
-        if (!map.at) continue;
-        const loc = map.at(nx, ny);
-        if (!loc) continue;
-        // C ref: goodpos checks accessible terrain
-        if (loc.typ <= DOOR) continue; // wall, stone, door — not SPACE_POS
-        // Check no monster at this position
-        let occupied = false;
-        if (map.monsters) {
-            for (const m of map.monsters) {
-                if (m.mx === nx && m.my === ny) { occupied = true; break; }
-            }
-        }
-        if (occupied) continue;
-        return { x: nx, y: ny };
+        lastNx = nx;
+        lastNy = ny;
+        if (makemonGoodpos(map, nx, ny, ptr, mmflags, true)) return { x: nx, y: ny };
     }
-    // Exhaustive search fallback (no RNG consumed)
-    for (let nx = 2; nx < COLNO - 1; nx++) {
-        for (let ny = 0; ny < ROWNO; ny++) {
-            const loc = map.at(nx, ny);
-            if (!loc || loc.typ <= DOOR) continue;
-            let occupied = false;
-            if (map.monsters) {
-                for (const m of map.monsters) {
-                    if (m.mx === nx && m.my === ny) { occupied = true; break; }
-                }
-            }
-            if (!occupied) return { x: nx, y: ny };
+    // C ref: makemon.c makemon_rnd_goodpos() fallback scan order.
+    // Uses offset-wrapped traversal over x:1..79, y:1..20 from last probe.
+    const xofs = lastNx;
+    const yofs = lastNy;
+    for (let dx = 0; dx < COLNO; dx++) {
+        for (let dy = 0; dy < ROWNO; dy++) {
+            const nx = ((dx + xofs) % (COLNO - 1)) + 1;
+            const ny = ((dy + yofs) % (ROWNO - 1)) + 1;
+            if (makemonGoodpos(map, nx, ny, ptr, mmflags, true)) return { x: nx, y: ny };
         }
     }
     return null;
@@ -1307,37 +1425,60 @@ function group_enexto(cx, cy, map) {
     return null;
 }
 
+function randomMonGoodpos(ptr, x, y, map, mmflags = NO_MM_FLAGS) {
+    if (!map || x === undefined || y === undefined) return true;
+    return makemonGoodpos(map, x, y, ptr, mmflags, true);
+}
+
 export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     let mndx;
     let anymon = false;
 
-    // DEBUG: Disabled
-    const DEBUG_MAKEMON = false;
+    const DEBUG_MAKEMON = (typeof process !== 'undefined' && process.env.WEBHACK_MAKEMON_TRACE === '1');
     if (DEBUG_MAKEMON && depth >= 2) {
         console.log(`\nmakemon(${ptr_or_null === null ? 'null' : ptr_or_null}, ${x}, ${y}, ${mmflags}, depth=${depth})`);
+    }
+
+    let specifiedPtr = null;
+    if (ptr_or_null !== null && ptr_or_null !== undefined) {
+        if (typeof ptr_or_null === 'number') specifiedPtr = mons[ptr_or_null];
+        else specifiedPtr = ptr_or_null;
     }
 
     // C ref: makemon.c:1173-1178 — random position finding for (0,0)
     // Happens before random monster selection when ptr is null.
     if (x === 0 && y === 0 && map) {
-        const pos = makemon_rnd_goodpos(map, null);
+        const pos = makemon_rnd_goodpos(map, specifiedPtr, mmflags || NO_MM_FLAGS);
         if (pos) { x = pos.x; y = pos.y; }
         else return null;
     }
 
+    let ptr;
     if (ptr_or_null === null || ptr_or_null === undefined) {
-        // Random monster selection
+        // C ref: makemon.c random monster path retries up to 50 times for
+        // fixed coordinates until goodpos() accepts the chosen monster.
         anymon = true;
-        mndx = rndmonst_adj(0, 0, depth || 1);
-        if (mndx < 0) return null; // No valid monster found
+        let tryct = 0;
+        do {
+            mndx = rndmonst_adj(0, 0, depth || 1);
+            if (mndx < 0) return null; // No valid monster found
+            ptr = mons[mndx];
+            const ok = randomMonGoodpos(ptr, x, y, map, mmflags || NO_MM_FLAGS);
+            if (DEBUG_MAKEMON) {
+                console.log(`[MAKEMON] rnd try=${tryct + 1} depth=${depth || 1} at=${x},${y} mndx=${mndx} name=${ptr?.name || '?'} ok=${ok}`);
+            }
+            if (++tryct > 50 || ok) break;
+        } while (true);
     } else if (typeof ptr_or_null === 'number') {
         mndx = ptr_or_null;
+        ptr = mons[mndx];
     } else {
         mndx = mons.indexOf(ptr_or_null);
+        ptr = mons[mndx];
     }
 
     if (mndx < 0 || mndx >= mons.length) return null;
-    const ptr = mons[mndx];
+    if (!ptr) return null;
 
     // C ref: makemon.c:1252 — mtmp->m_id = next_ident()
     // next_ident() returns counter value and consumes rnd(2)

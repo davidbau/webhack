@@ -65,6 +65,7 @@ function inferRuntimeBranchPlacement(seed, dnum, dlevel) {
     return placement;
 }
 
+
 /**
  * Load C reference session for a special level
  */
@@ -188,14 +189,14 @@ function resolveLevelGenerator(dnum, dlevel, levelName) {
         }
     }
 
-    const byCoord = getSpecialLevel(dnum, dlevel);
-    if (byCoord) {
-        return byCoord;
-    }
-
     const byName = otherSpecialLevels[levelName.toLowerCase()];
     if (typeof byName === 'function') {
         return { generator: byName, name: levelName, dnum, dlevel };
+    }
+
+    const byCoord = getSpecialLevel(dnum, dlevel);
+    if (byCoord) {
+        return byCoord;
     }
 
     return null;
@@ -320,7 +321,9 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
             replayPrelude();
             resetVariantCache();
             resetLevelState();
-            const runtimeBranchPlacement = inferRuntimeBranchPlacement(seed, dnum, dlevel);
+            let depthForSpecial = Number.isFinite(cLevel.absDepth) ? cLevel.absDepth : dlevel;
+            const branchLevelForSession = (cSession.group === 'filler') ? depthForSpecial : dlevel;
+            const runtimeBranchPlacement = inferRuntimeBranchPlacement(seed, dnum, branchLevelForSession);
             const finalizeCtx = { dnum, dlevel, specialName: levelName };
             // Apply runtime branch overrides only for DoD parent-side branch depths.
             // Other standalone wizloaddes sessions currently match C better with
@@ -330,13 +333,21 @@ function testLevel(seed, dnum, dlevel, levelName, cSession) {
                 finalizeCtx.branchPlacement = runtimeBranchPlacement;
             }
             setFinalizeContext(finalizeCtx);
-            let depthForSpecial = Number.isFinite(cLevel.absDepth) ? cLevel.absDepth : dlevel;
-            // Mines filler sessions need branch-local depth for mkstairs gating.
-            // Gehennom filler traces are recorded with their absolute depth and
-            // should use fixture absDepth as-is.
-            if (cSession.group === 'filler' && dnum === GNOMISH_MINES) {
-                depthForSpecial = dlevel;
+            if (cSession.group === 'filler') {
+                // Filler fixtures are captured via direct level loads and use
+                // branch-local depth in branch-placement decisions.
+                finalizeCtx.dlevel = depthForSpecial;
+                finalizeCtx.isBranchLevel = (runtimeBranchPlacement !== 'none');
+                if (runtimeBranchPlacement === 'portal'
+                    || runtimeBranchPlacement === 'none'
+                    || runtimeBranchPlacement === 'stair-up'
+                    || runtimeBranchPlacement === 'stair-down') {
+                    finalizeCtx.branchPlacement = runtimeBranchPlacement;
+                }
             }
+            // finalize context is copied at call-time; set it after all
+            // group-specific adjustments above.
+            setFinalizeContext(finalizeCtx);
             setSpecialLevelDepth(depthForSpecial);
             if (cSession.group === 'filler' && levelName.toLowerCase() === 'hellfill') {
                 // Gehennom filler capture is recorded at branch-local depth 1.

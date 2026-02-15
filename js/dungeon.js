@@ -33,8 +33,8 @@ import { GameMap, makeRoom, FILL_NONE, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, d, getRngCallCount } from './rng.js';
 import { getbones } from './bones.js';
 import { mkobj, mksobj, mkcorpstat, weight, setLevelDepth, TAINT_AGE, RANDOM_CLASS } from './mkobj.js';
-import { makemon, mkclass, NO_MM_FLAGS, MM_NOGRP, setMakemonRoleContext, setMakemonLevelContext } from './makemon.js';
-import { S_HUMAN, PM_ELF, PM_HUMAN, PM_GNOME, PM_DWARF, PM_ORC, PM_ARCHEOLOGIST, PM_WIZARD, PM_MINOTAUR } from './monsters.js';
+import { makemon, mkclass, rndmonnum_adj, NO_MM_FLAGS, MM_NOGRP, setMakemonRoleContext, setMakemonLevelContext, getMakemonRoleIndex } from './makemon.js';
+import { mons, S_HUMAN, S_UNICORN, PM_ELF, PM_HUMAN, PM_GNOME, PM_DWARF, PM_ORC, PM_ARCHEOLOGIST, PM_WIZARD, PM_MINOTAUR } from './monsters.js';
 import { init_objects } from './o_init.js';
 import { roles } from './player.js';
 import {
@@ -2703,8 +2703,53 @@ function find_random_launch_coord(map, trap) {
     return success ? cc : null;
 }
 
+// C ref: trap.c mk_trap_statue()
+function mk_trap_statue(map, x, y, depth = 1) {
+    const sgn = (v) => (v > 0 ? 1 : (v < 0 ? -1 : 0));
+    const roleIndex = getMakemonRoleIndex();
+    const ualign = roles[roleIndex]?.align || 0;
+    let trycount = 10;
+    let statueMndx = -1;
+
+    do {
+        statueMndx = rndmonnum_adj(3, 6, depth);
+    } while (--trycount > 0
+        && statueMndx >= 0
+        && mons[statueMndx]?.symbol === S_UNICORN
+        && sgn(ualign) === sgn(mons[statueMndx]?.align || 0));
+
+    if (statueMndx < 0 || !mons[statueMndx]) return;
+
+    const statue = mkcorpstat(STATUE, statueMndx, false);
+    if (statue) {
+        statue.ox = x;
+        statue.oy = y;
+        map.objects.push(statue);
+    }
+
+    const mtmp = makemon(statueMndx, 0, 0, NO_MM_FLAGS, depth, map);
+    if (!mtmp) return;
+
+    if (statue && Array.isArray(mtmp.minvent) && mtmp.minvent.length > 0) {
+        // Move generated inventory onto the statue container.
+        statue.contents = Array.isArray(statue.contents) ? statue.contents : [];
+        while (mtmp.minvent.length > 0) {
+            const otmp = mtmp.minvent.shift();
+            if (!otmp) continue;
+            otmp.owornmask = 0;
+            statue.contents.push(otmp);
+        }
+        statue.owt = weight(statue);
+    }
+
+    if (Array.isArray(map.monsters)) {
+        const idx = map.monsters.indexOf(mtmp);
+        if (idx >= 0) map.monsters.splice(idx, 1);
+    }
+}
+
 // C ref: trap.c:455 maketrap() -- create a trap at (x,y)
-function maketrap(map, x, y, typ) {
+function maketrap(map, x, y, typ, depth = 1) {
     if (typ === TRAPPED_DOOR || typ === TRAPPED_CHEST) return null;
 
     // Check if trap already exists at this position
@@ -2736,9 +2781,7 @@ function maketrap(map, x, y, typ) {
         trap.tnote = choose_trapnote(map);
         break;
     case STATUE_TRAP:
-        // C ref: mk_trap_statue — needs makemon, skip for now
-        // RNG: rndmonnum_adj (complex) + makemon (complex)
-        // At shallow levels this trap can't generate (needs lvl>=8)
+        mk_trap_statue(map, x, y, depth);
         break;
     case ROLLING_BOULDER_TRAP: {
         // C ref: mkroll_launch
@@ -2892,7 +2935,7 @@ export function mktrap(map, num, mktrapflags, croom, tm, depth) {
         } while (occupied(map, mx, my) || (avoid_boulder && hasBoulderAt(map, mx, my)));
     }
 
-    const t = maketrap(map, mx, my, kind);
+    const t = maketrap(map, mx, my, kind, depth);
     if (!t) return;
     kind = t.ttyp;
 

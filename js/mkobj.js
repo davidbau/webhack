@@ -2,7 +2,7 @@
 // Faithful port of mkobj.c from NetHack 3.7
 // C ref: mkobj.c — object creation, class initialization, containers
 
-import { rn2, rnd, rn1, rne, rnz, d } from './rng.js';
+import { rn2, rnd, rn1, rne, rnz, d, getRngCallCount } from './rng.js';
 import { isObjectNameKnown } from './discovery.js';
 import {
     objectData, bases, oclass_prob_totals, mkobjprobs, NUM_OBJECTS,
@@ -43,6 +43,25 @@ import { mons, G_NOCORPSE, M2_NEUTER, M2_FEMALE, M2_MALE, MZ_SMALL, PM_LIZARD, P
 // Module-level depth for level_difficulty() during mklev
 let _levelDepth = 1;
 export function setLevelDepth(d) { _levelDepth = d; }
+
+function mkobjTrace(msg) {
+    if (typeof process !== 'undefined' && process.env.WEBHACK_MKOBJ_TRACE === '1') {
+        const stack = new Error().stack || '';
+        const lines = stack.split('\n');
+        const toTag = (line) => {
+            const m = (line || '').match(/at (?:(\S+)\s+\()?.*?([^/\s]+\.js):(\d+)/);
+            if (!m) return null;
+            return `${m[1] || '?'}(${m[2]}:${m[3]})`;
+        };
+        const c1 = toTag(lines[2]);
+        const c2 = toTag(lines[3]);
+        const c3 = toTag(lines[4]);
+        let ctx = c1 || '?';
+        if (c2) ctx += ` <= ${c2}`;
+        if (c3) ctx += ` <= ${c3}`;
+        console.log(`[MKOBJ] ${msg} ctx=${ctx}`);
+    }
+}
 
 // C ref: mkobj.c svc.context.ident — monotonic ID counter for objects and monsters.
 // next_ident() returns current value, then increments by rnd(2).
@@ -334,7 +353,8 @@ function mksobj_init(obj, artif, skipErosion) {
             // C ref: mkobj.c:900-910 — retry if G_NOCORPSE
             let tryct = 50;
             do {
-                obj.corpsenm = undead_to_corpse(rndmonnum());
+                obj.corpsenm = undead_to_corpse(rndmonnum(_levelDepth));
+                mkobjTrace(`corpse try=${51 - tryct} call=${getRngCallCount()} corpsenm=${obj.corpsenm} nocorpse=${obj.corpsenm >= 0 ? (((mons[obj.corpsenm].geno & G_NOCORPSE) !== 0) ? 1 : 0) : -1}`);
             } while (obj.corpsenm >= 0
                      && (mons[obj.corpsenm].geno & G_NOCORPSE)
                      && --tryct > 0);
@@ -343,7 +363,9 @@ function mksobj_init(obj, artif, skipErosion) {
             obj.corpsenm = -1;
             if (!rn2(3)) {
                 for (let tryct = 200; tryct > 0; --tryct) {
-                    obj.corpsenm = rndmonnum(); // can_be_hatched(rndmonnum())
+                    const base = rndmonnum(_levelDepth); // can_be_hatched(rndmonnum())
+                    obj.corpsenm = base;
+                    mkobjTrace(`egg try=${201 - tryct} call=${getRngCallCount()} base=${base}`);
                     break; // simplified: first attempt succeeds
                 }
             }
@@ -351,14 +373,19 @@ function mksobj_init(obj, artif, skipErosion) {
             obj.corpsenm = -1;
             if (!rn2(6)) {
                 // spinach tin -- no RNG
+                mkobjTrace(`tin spinach call=${getRngCallCount()}`);
             } else {
                 // C ref: mkobj.c:930-937 — retry until cnutrit && !G_NOCORPSE
                 for (let tryct = 200; tryct > 0; --tryct) {
-                    const mndx = undead_to_corpse(rndmonnum());
+                    const mndx = undead_to_corpse(rndmonnum(_levelDepth));
+                    const nutrition = mndx >= 0 ? (mons[mndx].nutrition || 0) : 0;
+                    const nocorpse = mndx >= 0 ? (((mons[mndx].geno & G_NOCORPSE) !== 0) ? 1 : 0) : -1;
+                    mkobjTrace(`tin try=${201 - tryct} call=${getRngCallCount()} mndx=${mndx} cnutrit=${nutrition} nocorpse=${nocorpse}`);
                     if (mndx >= 0 && mons[mndx].nutrition > 0
                         && !(mons[mndx].geno & G_NOCORPSE)) {
                         obj.corpsenm = mndx;
                         rn2(15); // set_tin_variety RANDOM_TIN: rn2(TTSZ-1) where TTSZ=16
+                        mkobjTrace(`tin selected=${mndx} at_try=${201 - tryct} call=${getRngCallCount()}`);
                         break;
                     }
                 }
@@ -421,7 +448,8 @@ function mksobj_init(obj, artif, skipErosion) {
         } else if (od.name === 'figurine') {
             let tryct = 0;
             do {
-                obj.corpsenm = rndmonnum(); // rndmonnum_adj(5, 10)
+                obj.corpsenm = rndmonnum(_levelDepth); // rndmonnum_adj(5, 10)
+                mkobjTrace(`figurine try=${tryct + 1} call=${getRngCallCount()} corpsenm=${obj.corpsenm}`);
             } while (tryct++ < 30 && false); // simplified: first attempt ok
             blessorcurse(obj, 4);
         } else if (od.name === 'Bell of Opening') {
@@ -510,6 +538,7 @@ function mksobj_init(obj, artif, skipErosion) {
     case ROCK_CLASS:
         if (od.name === 'statue') {
             obj.corpsenm = rndmonnum(_levelDepth); // Pass depth for correct monster selection
+            mkobjTrace(`statue call=${getRngCallCount()} corpsenm=${obj.corpsenm}`);
             // C ref: !verysmall() && rn2(level_difficulty()/2+10) > 10
             // verysmall = msize < MZ_SMALL (i.e., MZ_TINY)
             // Short-circuit: skip rn2 if monster is very small
@@ -545,7 +574,9 @@ function mkbox_cnts(box) {
         // sack, oilskin sack, bag of holding
         n = 1;
     }
+    mkobjTrace(`mkbox start call=${getRngCallCount()} box=${box.otyp} base_n=${n}`);
     n = rn2(n + 1); // actual count
+    mkobjTrace(`mkbox count call=${getRngCallCount()} n=${n}`);
 
     // For each item in box, generate it
     for (let i = 0; i < n; i++) {
@@ -573,6 +604,7 @@ function mkbox_cnts(box) {
                 prob -= bp.iprob;
                 if (prob <= 0) { oclass = bp.iclass; break; }
             }
+            mkobjTrace(`mkbox pick call=${getRngCallCount()} class=${oclass} tprob=${prob}`);
             // Create the item
             const otmp = mkobj(oclass, false);
             if (!otmp) continue;
@@ -598,6 +630,7 @@ function mkbox_cnts(box) {
                     }
                 }
             }
+            mkobjTrace(`mkbox item call=${getRngCallCount()} otyp=${otmp.otyp} oclass=${otmp.oclass} corpsenm=${otmp.corpsenm ?? -1}`);
         }
     }
 }
@@ -608,7 +641,7 @@ function mksobj_postinit(obj) {
     const od = objectData[obj.otyp];
     // Corpse: if corpsenm not set, assign one
     if (od.name === 'corpse' && obj.corpsenm === -1) {
-        obj.corpsenm = undead_to_corpse(rndmonnum());
+        obj.corpsenm = undead_to_corpse(rndmonnum(_levelDepth));
     }
     // C ref: mkobj.c mksobj() SPE_NOVEL case:
     // initialize novelidx and consume noveltitle() selection RNG.
@@ -618,7 +651,7 @@ function mksobj_postinit(obj) {
     // Statue/figurine: if corpsenm not set, assign one
     // C ref: mkobj.c:1212 — otmp->corpsenm = rndmonnum()
     if ((od.name === 'statue' || od.name === 'figurine') && obj.corpsenm === -1) {
-        obj.corpsenm = rndmonnum();
+        obj.corpsenm = rndmonnum(_levelDepth);
     }
     // Gender assignment for corpse/statue/figurine
     // C ref: mkobj.c:1215-1218 — only rn2(2) if not neuter/female/male
@@ -644,6 +677,10 @@ function mksobj_postinit(obj) {
 // skipErosion: if true, skip mkobj_erosions (for ini_inv items)
 export function mksobj(otyp, init, artif, skipErosion) {
     if (otyp < 0 || otyp >= NUM_OBJECTS) otyp = 0;
+    const nm = objectData[otyp]?.name;
+    if (nm === 'tin' || nm === 'egg' || nm === 'corpse') {
+        mkobjTrace(`mksobj create otyp=${otyp} name=${nm} init=${init ? 1 : 0} artif=${artif ? 1 : 0} call=${getRngCallCount()}`);
+    }
     const obj = newobj(otyp);
     if (init) mksobj_init(obj, artif, skipErosion);
     mksobj_postinit(obj);
@@ -719,6 +756,7 @@ export function mkcorpstat(objtype, ptr_mndx, init) {
 // skipErosion: if true, skip mkobj_erosions (for ini_inv UNDEF_TYP items)
 export function mkobj(oclass, artif, skipErosion) {
     ensureObjectClassTablesInitialized();
+    const inputClass = oclass;
 
     // RANDOM_CLASS selection
     if (oclass === 0) { // RANDOM_CLASS = 0 in C, but our ILLOBJ_CLASS = 0
@@ -747,7 +785,7 @@ export function mkobj(oclass, artif, skipErosion) {
     if (i >= NUM_OBJECTS || objectData[i].oc_class !== oclass) {
         i = bases[oclass];
     }
-
+    mkobjTrace(`mkobj call=${getRngCallCount()} in_class=${inputClass} class=${oclass} picked=${i} artif=${artif ? 1 : 0}`);
     return mksobj(i, true, artif, skipErosion);
 }
 
