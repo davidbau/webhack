@@ -109,12 +109,12 @@ export function generate() {
 
 function rnd_halign() {
    let aligns = [ "half-left", "center", "half-right" ];
-   // return aligns[rn2(aligns.length)];
+   return aligns[rn2(aligns.length)];
 }
 
 function rnd_valign() {
-   aligns = [ "top", "center", "bottom" ];
-   // return aligns[rn2(aligns.length)];
+   const aligns = [ "top", "center", "bottom" ];
+   return aligns[rn2(aligns.length)];
 }
 
 // the prefab maps must have contents-function, || populatemaze()
@@ -257,7 +257,7 @@ BBBBBBB`, contents: function() {
 ..........
 ..........`, contents: function() {
    des.exclusion({ type: "teleport", region: [ 4,4, 5,5 ] });
-   mons = [ "Angel", "D", "H", "L" ];
+   const mons = [ "Angel", "D", "H", "L" ];
    des.monster(mons[rn2(mons.length)], 4,4);
       } });
    },
@@ -298,7 +298,7 @@ BBBBBBB`, contents: function() {
    {
       repeatable: true,
       contents: function() {
-      mapstr = `\
+      const mapstr = `\
 ...
 ...
 ...
@@ -327,23 +327,23 @@ BBBBBBB`, contents: function() {
 function rnd_hell_prefab(coldhell) {
    let dorepeat = true;
    let nloops = 0;
-   repeat
+   while (dorepeat && nloops <= 5) {
       nloops = nloops + 1;
-      let pf = (rn2((hell_prefabs.length) - (1) + 1) + (1));
-      let fab = hell_prefabs[pf];
-      let fabtype = type(fab);
+      const pf = rn2(hell_prefabs.length);
+      const fab = hell_prefabs[pf];
+      const fabtype = typeof fab;
 
-      if ((fabtype == "function")) {
+      if (fabtype === "function") {
          fab(coldhell);
          dorepeat = false;
-      } else if ((fabtype == "table")) {
+      } else if (fab && fabtype === "object") {
          fab.contents(coldhell);
-         dorepeat = ! (fab.repeatable && (rn2((nloops * 2) - (0) + 1) + (0)) == 0);
+         dorepeat = !(fab.repeatable && rn2((nloops * 2) + 1) === 0);
       }
-   until ((! dorepeat) || (nloops > 5));
+   }
 }
 
-let hells = {
+let hells = [
    // 1: "mines" style with lava
    function() {
       des.level_init({ style: "solidfill", fg: " ", lit: 0 });
@@ -405,7 +405,7 @@ let hells = {
       des.level_flags("mazelevel", "noflip");
       des.level_init({ style: "maze", wallthick: wwid, corrwid: rnd(2) });
       if ((percent(50))) {
-         outside_walls = selection.match(" ");
+         const outside_walls = selection.match(" ");
          des.replace_terrain({ mapfragment: "w", toterrain: "L" });
          des.terrain(outside_walls, " ");  // return the outside back to solid wall;
          if ((wwid == 3 && percent(40))) {
@@ -417,11 +417,11 @@ let hells = {
 
    // 6: cold maze, with ice && water
    function() {
-      cwid = rnd(4);
+      let cwid = rnd(4);
       des.level_init({ style: "solidfill", fg: " ", lit: 0 });
       des.level_flags("mazelevel", "noflip", "cold");
       des.level_init({ style: "maze", wallthick: 1, corrwid: cwid });
-      outside_walls = selection.match(" ");
+      let outside_walls = selection.match(" ");
       let icey = selection.negate().percentage(10).grow().filter_mapchar(".");
       des.terrain(icey, "I");
       if ((cwid > 1)) {
@@ -443,7 +443,7 @@ let hells = {
       des.level_init({ style: "solidfill", fg: " ", lit: 0 });
       des.level_flags("mazelevel", "noflip");
       des.level_init({ style: "mines", fg: ".", smoothed: true ,joined: true, lit: 0 });
-      sel = selection.match(".").grow();
+      const sel = selection.match(".").grow();
       des.terrain({ selection: sel, typ: "." });
 
       let border = selection.rect(0,0, 78, 20);
@@ -451,9 +451,9 @@ let hells = {
       des.wallify();
    },
 
-};
+];
 
-let hellno = (rn2((hells.length) - (1) + 1) + (1));
+let hellno = rn2(hells.length);
 hells[hellno]();
 
 // 

@@ -16,7 +16,7 @@
 import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, getRngCallCount } from './rng.js';
 import { mksobj, mkobj, mkcorpstat, set_corpsenm, setLevelDepth, weight } from './mkobj.js';
-import { create_room, create_subroom, makecorridors, create_corridor, init_rect, rnd_rect, get_rect, split_rects, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize as dungeonMineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized, wallification as dungeonWallification, wallify_region as dungeonWallifyRegion, fix_wall_spines, set_wall_state, place_lregion, mktrap, enexto, somexy, sp_create_door, floodFillAndRegister, resolveBranchPlacementForLevel, random_epitaph_text, induced_align, DUNGEON_ALIGN_BY_DNUM } from './dungeon.js';
+import { create_room, create_subroom, makecorridors, create_corridor, init_rect, rnd_rect, get_rect, split_rects, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize as dungeonMineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized, wallification as dungeonWallification, wallify_region as dungeonWallifyRegion, fix_wall_spines, set_wall_state, place_lregion, mktrap, enexto, somexy, sp_create_door, floodFillAndRegister, resolveBranchPlacementForLevel, random_epitaph_text, induced_align, DUNGEON_ALIGN_BY_DNUM, enterMklevContext, leaveMklevContext } from './dungeon.js';
 import { seedFromMT } from './xoshiro256.js';
 import {
     makemon, mkclass, def_char_to_monclass, NO_MM_FLAGS,
@@ -48,7 +48,7 @@ import {
     SCR_EARTH, objectData, GOLD_PIECE, STATUE
 } from './objects.js';
 import { mons, M2_FEMALE, M2_MALE, G_NOGEN, PM_MINOTAUR, MR_STONE } from './monsters.js';
-import { findSpecialLevelByName } from './special_levels.js';
+import { findSpecialLevelByName, GEHENNOM } from './special_levels.js';
 
 // Aliases for compatibility with C naming
 const STAIRS_UP = STAIRS;
@@ -224,6 +224,7 @@ export let levelState = {
     levRegions: [],
     spLevMap: null,
     spLevTouched: null,
+    _mklevContextEntered: false,
 };
 
 const WALL_INFO_MASK = 0x07;
@@ -1143,6 +1144,9 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth, skipL
  * Reset level state for new level generation
  */
 export function resetLevelState() {
+    if (levelState && levelState._mklevContextEntered) {
+        leaveMklevContext();
+    }
     levelState = {
         map: null,
         flags: {
@@ -1205,6 +1209,7 @@ export function resetLevelState() {
         levRegions: [],
         spLevMap: null,
         spLevTouched: null,
+        _mklevContextEntered: false,
         // luaRngCounter is NOT initialized here - only set explicitly for levels that need it
     };
     icedpools = false;
@@ -1228,7 +1233,7 @@ export function resetLevelState() {
  * @param {number} [ctx.dnum]
  * @param {number} [ctx.dlevel]
  * @param {string} [ctx.specialName]
- * @param {"stairs"|"portal"|"none"} [ctx.branchPlacement]
+ * @param {"stairs"|"portal"|"none"|"stair-up"|"stair-down"} [ctx.branchPlacement]
  */
 export function setFinalizeContext(ctx = null) {
     if (!ctx) {
@@ -1245,7 +1250,9 @@ export function setFinalizeContext(ctx = null) {
         specialName: typeof ctx.specialName === 'string' ? ctx.specialName : undefined,
         branchPlacement: (ctx.branchPlacement === 'stairs'
             || ctx.branchPlacement === 'portal'
-            || ctx.branchPlacement === 'none')
+            || ctx.branchPlacement === 'none'
+            || ctx.branchPlacement === 'stair-up'
+            || ctx.branchPlacement === 'stair-down')
             ? ctx.branchPlacement
             : undefined
     };
@@ -1415,8 +1422,12 @@ function fixupSpecialLevel() {
                     withBranchHint('portal', () => placeRegion(region, LR_BRANCH));
                     break;
                 }
-                if (explicit === 'stairs') {
+                if (explicit === 'stairs' || explicit === 'stair-down') {
                     withBranchHint('stair-down', () => placeRegion(region, LR_BRANCH));
+                    break;
+                }
+                if (explicit === 'stair-up') {
+                    withBranchHint('stair-up', () => placeRegion(region, LR_BRANCH));
                     break;
                 }
 
@@ -1469,14 +1480,24 @@ function fixupSpecialLevel() {
 
     if (!addedBranch && ctx.isBranchLevel) {
         // C fallback: fixup_special() places branch if Is_branchlev(&u.uz) true.
-        const branch = resolveBranchPlacementForLevel(ctx.dnum, ctx.dlevel);
-        if (branch.placement === 'portal') {
+        const explicit = levelState.finalizeContext?.branchPlacement;
+        if (explicit === 'portal') {
             withBranchHint('portal', () => place_lregion(levelState.map, 0, 0, 0, 0, 0, 0, 0, 0, LR_BRANCH));
-        } else if (branch.placement === 'stair-up') {
+        } else if (explicit === 'stair-up') {
             withBranchHint('stair-up', () => place_lregion(levelState.map, 0, 0, 0, 0, 0, 0, 0, 0, LR_BRANCH));
-        } else if (branch.placement === 'stair-down') {
+        } else if (explicit === 'stair-down' || explicit === 'stairs') {
             withBranchHint('stair-down', () => place_lregion(levelState.map, 0, 0, 0, 0, 0, 0, 0, 0, LR_BRANCH));
+        } else if (explicit !== 'none') {
+            const branch = resolveBranchPlacementForLevel(ctx.dnum, ctx.dlevel);
+            if (branch.placement === 'portal') {
+                withBranchHint('portal', () => place_lregion(levelState.map, 0, 0, 0, 0, 0, 0, 0, 0, LR_BRANCH));
+            } else if (branch.placement === 'stair-up') {
+                withBranchHint('stair-up', () => place_lregion(levelState.map, 0, 0, 0, 0, 0, 0, 0, 0, LR_BRANCH));
+            } else if (branch.placement === 'stair-down') {
+                withBranchHint('stair-down', () => place_lregion(levelState.map, 0, 0, 0, 0, 0, 0, 0, 0, LR_BRANCH));
+            }
         }
+        /* else explicit none => intentionally no branch placement */
     }
 
     if (specialName === 'baalz') {
@@ -1739,6 +1760,13 @@ export function getLevelCheckpoints() {
  * @param {boolean} opts.walled - Add walls (default: false)
  */
 export function level_init(opts = {}) {
+    // C parity: special level scripts run under mklev context between
+    // lspo_level_init() and lspo_finalize_level().
+    if (!levelState._mklevContextEntered) {
+        enterMklevContext();
+        levelState._mklevContextEntered = true;
+    }
+
     const style = opts.style || 'solidfill';
     const validStyles = ['solidfill', 'mazegrid', 'maze', 'rogue', 'mines', 'swamp'];
     if (!validStyles.includes(style)) {
@@ -1768,6 +1796,11 @@ export function level_init(opts = {}) {
         if (k in levelState.map.flags) {
             levelState.map.flags[k] = !!v;
         }
+    }
+    const ctx = levelState.finalizeContext || {};
+    if (Number.isFinite(ctx.dnum)) {
+        levelState.map._dnum = ctx.dnum;
+        levelState.map.flags.inhell = (ctx.dnum === GEHENNOM);
     }
     levelState.monsters = [];
     levelState.objects = [];
@@ -5775,7 +5808,7 @@ function executeDeferredMonster(deferred) {
             }
         }
 
-        const mtmp = makemon(mndx >= 0 ? mndx : null, mx, my, mmFlags, depth, levelState.map);
+        const mtmp = makemon(mndx >= 0 ? mndx : null, mx, my, mmFlags, depth, levelState.map, true);
         if (mtmp) {
             if (resolvedFemale !== undefined) {
                 mtmp.female = !!resolvedFemale;
@@ -6484,6 +6517,10 @@ export function finalize_level() {
     // TODO: Add other finalization steps (solidify_map, premapping, etc.)
 
     captureCheckpoint('after_finalize');
+    if (levelState._mklevContextEntered) {
+        leaveMklevContext();
+        levelState._mklevContextEntered = false;
+    }
     // Return the generated map
     return levelState.map;
 }
@@ -6972,6 +7009,22 @@ export const selection = {
                 }
             },
             /**
+             * bounds()
+             * Return bounding rectangle for this selection.
+             */
+            bounds: () => {
+                if (coords.length === 0) return { lx: 0, ly: 0, hx: 0, hy: 0 };
+                let lx = coords[0].x, hx = coords[0].x;
+                let ly = coords[0].y, hy = coords[0].y;
+                for (const c of coords) {
+                    if (c.x < lx) lx = c.x;
+                    if (c.x > hx) hx = c.x;
+                    if (c.y < ly) ly = c.y;
+                    if (c.y > hy) hy = c.y;
+                }
+                return { lx, ly, hx, hy };
+            },
+            /**
              * filter_mapchar(ch)
              * Filter this selection to only include tiles matching a map character.
              * Returns a new selection.
@@ -7260,63 +7313,47 @@ export const selection = {
      */
     match: (pattern) => {
         if (!levelState.map) {
-            const emptyBounds = () => ({ lx: 0, ly: 0, hx: 0, hy: 0 });
-            const emptyNegate = function() { return selection.negate(this); };
-            const emptyUnion = function(other) { return other || this; };
-            return {
-                coords: [],
-                bounds: emptyBounds,
-                negate: emptyNegate,
-                union: emptyUnion
-            };
+            return selection.new();
         }
 
-        const coords = [];
+        const patternChars = [];
+        if (typeof pattern === 'number') {
+            patternChars.push(pattern);
+        } else if (typeof pattern === 'string') {
+            for (const ch of pattern) {
+                if (ch === '[' || ch === ']' || ch === '\n' || ch === '\r') continue;
+                patternChars.push(ch);
+            }
+        }
+
+        const matchesPattern = (typ) => {
+            for (const token of patternChars) {
+                if (typeof token === 'number') {
+                    if (typ === token) return true;
+                    continue;
+                }
+                // Lua "w" mapchar means "any wall".
+                if (token === 'w') {
+                    if (IS_WALL(typ) || typ === SDOOR || typ === IRONBARS) return true;
+                    continue;
+                }
+                const mapped = mapchrToTerrain(token);
+                if (mapped >= 0 && typ === mapped) return true;
+            }
+            return false;
+        };
+
+        const result = selection.new();
         for (let y = 0; y < ROWNO; y++) {
             for (let x = 1; x < COLNO; x++) {
-                const loc = levelState.map.locations[x][y];
-                if (loc && loc.typ === pattern) {
-                    coords.push({ x, y });
+                const typ = levelState.map.locations[x]?.[y]?.typ;
+                if (typ === undefined) continue;
+                if (matchesPattern(typ)) {
+                    result.set(x, y, true);
                 }
             }
         }
-
-        const sel = {
-            coords,
-            bounds: function() {
-                if (coords.length === 0) return { lx: 0, ly: 0, hx: 0, hy: 0 };
-                let lx = coords[0].x, hx = coords[0].x;
-                let ly = coords[0].y, hy = coords[0].y;
-                for (const c of coords) {
-                    if (c.x < lx) lx = c.x;
-                    if (c.x > hx) hx = c.x;
-                    if (c.y < ly) ly = c.y;
-                    if (c.y > hy) hy = c.y;
-                }
-                return { lx, ly, hx, hy };
-            },
-            negate: function() {
-                return selection.negate(this);
-            },
-            union: function(other) {
-                const coordSet = new Set();
-                this.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
-                if (other && other.coords) {
-                    other.coords.forEach(c => coordSet.add(`${c.x},${c.y}`));
-                }
-                const unionCoords = Array.from(coordSet).map(s => {
-                    const [x, y] = s.split(',').map(Number);
-                    return { x, y };
-                });
-                return {
-                    coords: unionCoords,
-                    bounds: sel.bounds,
-                    negate: sel.negate,
-                    union: sel.union
-                };
-            }
-        };
-        return sel;
+        return result;
     },
 
     /**
@@ -7538,12 +7575,12 @@ function fillEmptyMaze() {
     stats.minotaurCount = rn2(2);
     for (let i = stats.minotaurCount; i > 0; i--) {
         const pos = maze1xy(GETLOC_DRY);
-        makemon(PM_MINOTAUR, pos.x, pos.y, NO_MM_FLAGS, depth, levelState.map);
+        makemon(PM_MINOTAUR, pos.x, pos.y, NO_MM_FLAGS, depth, levelState.map, true);
     }
     stats.monCount = rnd(Math.floor((12 * mapfact) / 100));
     for (let i = stats.monCount; i > 0; i--) {
         const pos = maze1xy(GETLOC_DRY);
-        makemon(null, pos.x, pos.y, NO_MM_FLAGS, depth, levelState.map);
+        makemon(null, pos.x, pos.y, NO_MM_FLAGS, depth, levelState.map, true);
     }
     stats.goldCount = rn2(Math.floor((15 * mapfact) / 100));
     for (let i = stats.goldCount; i > 0; i--) {
