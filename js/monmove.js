@@ -1473,7 +1473,7 @@ function shk_move(mon, map, player) {
         }
     }
 
-    const inHisShop = !!(map.at(omx, omy) && IS_ROOM(map.at(omx, omy).typ));
+    const inHisShop = monsterInShop(mon, map);
     return move_special(mon, map, player, inHisShop, appr, uondoor, avoid, gtx, gty);
 }
 

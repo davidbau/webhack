@@ -886,34 +886,51 @@ export async function replaySession(seed, session, opts = {}) {
     let pendingTransitionTurn = false;
     let deferredSparseMoveKey = null;
     let deferredMoreBoundaryRng = [];
+    let deferredMoreBoundaryTarget = null;
 
     const pushStepResult = (stepLogRaw, screen, step, stepScreen, stepIndex) => {
-        let raw = deferredMoreBoundaryRng.length > 0
-            ? deferredMoreBoundaryRng.concat(stepLogRaw)
-            : stepLogRaw;
-        deferredMoreBoundaryRng = [];
+        let raw = stepLogRaw;
+        if (deferredMoreBoundaryRng.length > 0
+            && deferredMoreBoundaryTarget != null
+            && stepIndex === deferredMoreBoundaryTarget) {
+            raw = deferredMoreBoundaryRng.concat(stepLogRaw);
+            deferredMoreBoundaryRng = [];
+            deferredMoreBoundaryTarget = null;
+        }
         let compact = raw.map(toCompactRng);
 
         // C replay captures can split a single turn at "--More--".
         // Normalize by carrying unmatched trailing RNG to the next
         // space-acknowledgement step when current step has a known-matching prefix.
         const hasMore = ((stepScreen[0] || '').includes('--More--'));
-        const nextStep = allSteps[stepIndex + 1];
-        const nextKey = nextStep?.key || '';
-        const nextIsAcknowledge = nextKey === ' ' || nextKey === '\n' || nextKey === '\r';
-        if (hasMore && nextIsAcknowledge) {
+        if (hasMore) {
             const splitAt = matchingJsPrefixLength(compact, step.rng || []);
             if (splitAt >= 0 && splitAt < compact.length) {
                 const remainderRaw = raw.slice(splitAt);
                 const remainderCompact = compact.slice(splitAt);
                 const firstRemainder = firstComparableEntry(remainderCompact);
-                const firstNextExpected = firstComparableEntry(nextStep?.rng || []);
+                let targetIdx = stepIndex + 1;
+                let firstNextExpected = null;
+                while (targetIdx < allSteps.length) {
+                    const targetStep = allSteps[targetIdx];
+                    firstNextExpected = firstComparableEntry(targetStep?.rng || []);
+                    if (firstNextExpected) break;
+                    const targetScreen = getSessionScreenLines(targetStep || {});
+                    const targetHasMore = ((targetScreen[0] || '').includes('--More--'));
+                    const targetRngLen = (targetStep?.rng || []).length;
+                    if (targetHasMore && targetRngLen === 0) {
+                        targetIdx++;
+                        continue;
+                    }
+                    break;
+                }
                 // Only defer when we can prove this looks like a true C
                 // step-boundary split: the carried remainder should begin
                 // with the next step's first expected comparable RNG call.
                 if (firstRemainder && firstNextExpected
                     && rngCallPart(firstRemainder) === rngCallPart(firstNextExpected)) {
                     deferredMoreBoundaryRng = remainderRaw;
+                    deferredMoreBoundaryTarget = targetIdx;
                     raw = raw.slice(0, splitAt);
                     compact = compact.slice(0, splitAt);
                 }
@@ -999,6 +1016,45 @@ export async function replaySession(seed, session, opts = {}) {
 
         if (isCapturedDipPrompt && !pendingCommand) {
             game.display.setScreenLines(stepScreen);
+            pushStepResult(
+                [],
+                opts.captureScreens ? game.display.getScreenLines() : undefined,
+                step,
+                stepScreen,
+                stepIndex
+            );
+            continue;
+        }
+
+        // Some captures contain intermediate "--More--" frames with zero RNG,
+        // where the key is consumed by message pagination and no command runs.
+        if (!pendingCommand
+            && (stepMsg.includes('--More--'))
+            && ((step.rng && step.rng.length) || 0) === 0) {
+            if (stepScreen.length > 0) {
+                game.display.setScreenLines(stepScreen);
+            }
+            pushStepResult(
+                [],
+                opts.captureScreens ? game.display.getScreenLines() : undefined,
+                step,
+                stepScreen,
+                stepIndex
+            );
+            continue;
+        }
+
+        // When deferred "--More--" boundary RNG is targeted at this step,
+        // some logs use a raw space key solely as acknowledgement. Treat that
+        // as an ack-only frame to avoid injecting an extra command side-effect.
+        if (!pendingCommand
+            && deferredMoreBoundaryRng.length > 0
+            && deferredMoreBoundaryTarget === stepIndex
+            && step.action === 'key-'
+            && step.key === ' ') {
+            if (stepScreen.length > 0) {
+                game.display.setScreenLines(stepScreen);
+            }
             pushStepResult(
                 [],
                 opts.captureScreens ? game.display.getScreenLines() : undefined,
