@@ -1,10 +1,38 @@
 // test/comparison/test_result_format.js
-// Standard test result format for session-based tests
+// Standard test result format for all test types
 //
-// Produces per-session results that can be bundled together.
-// Used by backfill_runner.js and stored in git notes.
+// Supports:
+// - Session tests (chargen, gameplay, interface, special)
+// - Unit tests
+// - E2E tests
+//
+// Used by test runners and stored in git notes.
 
 import { execSync } from 'node:child_process';
+
+/**
+ * Create a generic test result (for unit/e2e tests)
+ * @param {string} name - Test name or file
+ * @param {string} type - Test type: 'unit', 'e2e', etc.
+ * @returns {Object} Test result object
+ */
+export function createTestResult(name, type) {
+    return {
+        test: name,
+        type,
+        passed: true,
+        duration: null, // ms, set via setDuration()
+    };
+}
+
+/**
+ * Set duration on a result (works for both session and generic tests)
+ * @param {Object} result - Test result object
+ * @param {number} durationMs - Duration in milliseconds
+ */
+export function setDuration(result, durationMs) {
+    result.duration = durationMs;
+}
 
 /**
  * Create a new session test result
@@ -113,18 +141,23 @@ export function markFailed(result, error = null) {
 }
 
 /**
- * Finalize a session result - remove empty/default fields
+ * Finalize a result - remove empty/default fields
  */
 export function finalizeResult(result) {
     // Remove zero-total metrics for cleaner output
-    const m = result.metrics;
-    if (m.rngCalls.total === 0) delete m.rngCalls;
-    if (m.keys.total === 0) delete m.keys;
-    if (m.grids.total === 0) delete m.grids;
-    if (m.screens.total === 0) delete m.screens;
+    if (result.metrics) {
+        const m = result.metrics;
+        if (m.rngCalls?.total === 0) delete m.rngCalls;
+        if (m.keys?.total === 0) delete m.keys;
+        if (m.grids?.total === 0) delete m.grids;
+        if (m.screens?.total === 0) delete m.screens;
 
-    // Remove empty metrics object
-    if (Object.keys(m).length === 0) delete result.metrics;
+        // Remove empty metrics object
+        if (Object.keys(m).length === 0) delete result.metrics;
+    }
+
+    // Remove null duration
+    if (result.duration === null) delete result.duration;
 
     return result;
 }
@@ -187,10 +220,32 @@ export function formatBundleSummary(bundle) {
     const s = bundle.summary;
     const lines = [
         `Commit: ${bundle.commit || '(unknown)'}`,
-        `Sessions: ${s.passed}/${s.total} passed (${s.failed} failed)`,
+        `Tests: ${s.passed}/${s.total} passed (${s.failed} failed)`,
     ];
     if (bundle.goldenBranch) {
         lines.splice(1, 0, `Golden: ${bundle.goldenBranch}`);
     }
     return lines.join('\n');
+}
+
+/**
+ * Merge multiple bundles into one (e.g., session + unit + e2e)
+ * @param {Object[]} bundles - Array of result bundles
+ * @param {Object} options - Override options (commit, timestamp)
+ * @returns {Object} Merged bundle
+ */
+export function mergeBundles(bundles, options = {}) {
+    const allResults = bundles.flatMap(b => b.results || []);
+    const merged = {
+        timestamp: options.timestamp || new Date().toISOString(),
+        commit: options.commit || bundles[0]?.commit || getGitCommit(),
+        goldenBranch: bundles.find(b => b.goldenBranch)?.goldenBranch || null,
+        results: allResults,
+        summary: {
+            total: allResults.length,
+            passed: allResults.filter(r => r.passed).length,
+            failed: allResults.filter(r => !r.passed).length,
+        },
+    };
+    return merged;
 }

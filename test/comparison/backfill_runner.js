@@ -16,6 +16,7 @@ import {
     recordGrids,
     recordScreens,
     markFailed,
+    setDuration,
     createResultsBundle,
     formatResult,
     formatBundleSummary,
@@ -260,11 +261,13 @@ async function runBackfillTests() {
     if (capabilities.chargen) {
         for (const session of chargenSessions) {
             const result = createSessionResult(session);
+            const startTime = Date.now();
 
             try {
                 const jsResult = helpers.generateStartupWithRng(session.seed, session);
                 if (!jsResult || !jsResult.grid) {
                     markFailed(result, 'No grid returned');
+                    setDuration(result, Date.now() - startTime);
                     sessionResults.push(result);
                     continue;
                 }
@@ -291,6 +294,7 @@ async function runBackfillTests() {
                 markFailed(result, e);
             }
 
+            setDuration(result, Date.now() - startTime);
             sessionResults.push(result);
             if (VERBOSE) console.log(`  ${formatResult(result)}`);
         }
@@ -302,11 +306,13 @@ async function runBackfillTests() {
     if (capabilities.gameplay) {
         for (const session of gameplaySessions) {
             const result = createSessionResult(session);
+            const startTime = Date.now();
 
             try {
                 const jsResult = await helpers.replaySession(session.seed, session, { captureScreens: true });
                 if (!jsResult || jsResult.error) {
                     markFailed(result, jsResult?.error || 'Replay failed');
+                    setDuration(result, Date.now() - startTime);
                     sessionResults.push(result);
                     continue;
                 }
@@ -368,6 +374,7 @@ async function runBackfillTests() {
                 markFailed(result, e);
             }
 
+            setDuration(result, Date.now() - startTime);
             sessionResults.push(result);
             if (VERBOSE) console.log(`  ${formatResult(result)}`);
         }
