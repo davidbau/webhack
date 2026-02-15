@@ -2385,6 +2385,12 @@ export class Agent {
             return { shouldDescend: false, reason: `HP moderate (${Math.round(hpPercent*100)}%), no healing potions available` };
         }
 
+        // 4b. Transition guard: Dlvl 3 -> Dlvl 4 is a common spike in threat.
+        // Require stronger condition before stepping into Dlvl 4.
+        if (dungeonLevel === 3 && hpPercent < 0.75 && potionCount === 0) {
+            return { shouldDescend: false, reason: `pre-Dlvl4 guard: HP ${Math.round(hpPercent*100)}% with no potions` };
+        }
+
         // 5. Don't descend on deep levels (Dlvl 4+) with moderate HP and no potions
         if (dungeonLevel >= 4 && hpPercent < 0.7 && potionCount === 0) {
             return { shouldDescend: false, reason: `HP moderate (${Math.round(hpPercent*100)}%), no healing potions, deep level` };

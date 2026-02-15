@@ -99,3 +99,49 @@ remaining state divergence in later tutorial movement flow.
 - The remaining frontier mismatch sits in `dog_move` candidate evaluation order
   and per-candidate side effects (`dogfood`/`obj_resists` path), making
   `dogmove.c` a high-value next C-port target for strict parity.
+
+## Latest Progress (2026-02-15, later)
+
+- Strict seed5 no-screen frontier advanced from step `330` to step `357`.
+- Replay/unit baseline remains green:
+  - `test/unit/seed1_gameplay_replay.test.js`
+  - `test/unit/seed2_gameplay_replay.test.js`
+  - `test/unit/seed3_gameplay_replay.test.js`
+  - `test/unit/seed4_gameplay_replay.test.js`
+  - `test/unit/seed5_gameplay_replay.test.js`
+  - `test/unit/monmove.test.js`
+
+### C-Faithful Ports Added
+
+- `js/commands.js`:
+  - floor-corpse eating path now uses C-like timing (`eatcorpse`-style reqtime)
+    and completion (`eatfood`-style `++usedtime > reqtime`),
+  - rotten-corpse path shortens meal duration in a C-like way (`consume_oeaten`
+    effect),
+  - floor object consumption now includes `obj_resists(...,0,0)` before removal
+    (C `useupf -> delobj_core` path).
+
+- `js/nethack.js`:
+  - real game loop now executes occupation `onFinishAfterTurn` callbacks after
+    the final occupation turn (matching replay-harness timing).
+
+- `js/monmove.js`:
+  - added C-like `passivemm` RNG gate behavior for pet-vs-monster melee, with
+    AD_ACID and AD_ENCH special handling.
+  - `find_targ` now checks pet perceived player location via `mux/muy` before
+    selecting monsters on a line.
+
+- `test/comparison/session_helpers.js`:
+  - added `--More--` boundary normalization so trailing RNG from a split C
+    capture can be attributed to the following acknowledgement step when prefix
+    alignment proves the split.
+
+### Current First Strict Mismatch
+
+- step `357` (`move-east`):
+  - JS: `rnd(5)=3` (`score_targ` fuzz factor)
+  - C: `rn2(5)=2 @ distfleeck(monmove.c:539)`
+
+This pinpoints remaining drift to pet ranged-target eligibility in `dogmove.c`
+paths (`best_target/find_targ/score_targ`) rather than earlier eating or
+occupation timing.

@@ -1198,7 +1198,9 @@ class NetHackGame {
         while (!this.gameOver) {
             // C ref: allmain.c moveloop_core() — occupation check before input
             if (this.occupation) {
-                const cont = this.occupation.fn(this);
+                const occ = this.occupation;
+                const cont = occ.fn(this);
+                const finishedOcc = !cont ? occ : null;
                 if (!cont) {
                     this.occupation = null;
                 }
@@ -1214,6 +1216,9 @@ class NetHackGame {
                 this.fov.compute(this.map, this.player.x, this.player.y);
                 this.display.renderMap(this.map, this.player, this.fov, this.flags);
                 this.display.renderStatus(this.player);
+                if (finishedOcc && typeof finishedOcc.onFinishAfterTurn === 'function') {
+                    finishedOcc.onFinishAfterTurn(this);
+                }
                 continue;
             }
 

@@ -21,6 +21,7 @@ import { observeObject, getDiscoveriesMenuLines } from './discovery.js';
 import { showPager } from './pager.js';
 import { handleZap } from './zap.js';
 import { saveGame, saveFlags } from './storage.js';
+import { obj_resists } from './objdata.js';
 import {
     renderOptionsMenu,
     getTotalPages,
@@ -1292,19 +1293,53 @@ async function handleEat(player, display, game) {
                         }
                     }
                 }
-                game.occupation = {
-                    fn: () => 0,
-                    txt: `eating ${floorName}`,
-                    xtime: 1,
-                    onFinishAfterTurn: () => {
-                        map.removeObject(floorItem);
-                        if (rottenTriggered) {
-                            display.putstr_message(`Blecch!  Rotten food!  You finish eating the ${floorName}.`);
-                        } else {
-                            display.putstr_message(`You finish eating the ${floorName}.`);
-                        }
-                    },
+                const corpseWeight = (cnum >= 0 && mons[cnum]) ? (mons[cnum].weight || 0) : 0;
+                // C ref: eat.c eatcorpse() -> reqtime from corpse weight, then
+                // rotten path consume_oeaten(..., 2) effectively quarters meal size.
+                const baseReqtime = 3 + (corpseWeight >> 6);
+                const reqtime = rottenTriggered
+                    ? Math.max(1, Math.floor((baseReqtime + 2) / 4))
+                    : baseReqtime;
+                let usedtime = 1; // first bite happens immediately
+                let consumedFloorItem = false;
+                const consumeFloorItem = () => {
+                    if (consumedFloorItem) return;
+                    consumedFloorItem = true;
+                    // C ref: eat.c done_eating() -> useupf() -> delobj() -> delobj_core()
+                    // delobj_core consumes obj_resists(obj, 0, 0) for ordinary objects.
+                    obj_resists(floorItem, 0, 0);
+                    map.removeObject(floorItem);
                 };
+
+                if (reqtime > 1) {
+                    game.occupation = {
+                        fn: () => {
+                            usedtime++;
+                            // C ref: eat.c eatfood(): done when ++usedtime > reqtime.
+                            if (usedtime > reqtime) {
+                                consumeFloorItem();
+                                return 0;
+                            }
+                            return 1;
+                        },
+                        txt: `eating ${floorName}`,
+                        xtime: reqtime,
+                        onFinishAfterTurn: () => {
+                            if (rottenTriggered) {
+                                display.putstr_message(`Blecch!  Rotten food!  You finish eating the ${floorName}.`);
+                            } else {
+                                display.putstr_message(`You finish eating the ${floorName}.`);
+                            }
+                        },
+                    };
+                } else {
+                    consumeFloorItem();
+                    if (rottenTriggered) {
+                        display.putstr_message(`Blecch!  Rotten food!  You finish eating the ${floorName}.`);
+                    } else {
+                        display.putstr_message(`You finish eating the ${floorName}.`);
+                    }
+                }
                 return { moved: false, tookTime: true };
             }
         }

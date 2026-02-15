@@ -86,3 +86,37 @@ Date: 2026-02-15
   chunk than before.
 - Remaining mismatch appears to be turn-chunk/input-attribution related around
   post-eat continuation, not the earlier shop/knockback/eat control-flow gaps.
+
+---
+
+Date: 2026-02-15 (later checkpoint)
+
+## Additional Progress
+
+- Strict seed5 replay frontier advanced from step 357 to step 374.
+- Seed replay unit tests (`seed1`..`seed5`) and `monmove` stayed green.
+
+## Additional C-Faithful Fixes
+
+1. `onlineu` parity fix for shopkeeper movement gating.
+   - C `onlineu` uses `online2`: same row/column OR same diagonal.
+   - JS incorrectly treated this as orthogonal-only.
+   - Fix in `js/monmove.js`: `onlineu` now matches C `online2` semantics.
+   - Impact: corrected `shk_move`/`move_special` branching and removed an early
+     downstream pet-target RNG drift at step 357.
+
+2. `dosounds` shop branch parity in replay harness.
+   - C only consumes the shop message chooser `rn2(2)` when:
+     - there is a tended shop, and
+     - hero is not currently inside a shop room.
+   - JS harness was always consuming `rn2(2)` whenever `has_shop && !rn2(200)`.
+   - Fix in `test/comparison/session_helpers.js`: add `playerInShop` and
+     `tendedShop` gating before the `rn2(2)` shop message roll.
+   - Impact: removed a false RNG divergence in the step-365 area.
+
+## Current Remaining Gap
+
+- New strict frontier is step 374 in `dog_move` candidate evaluation.
+- C reports `mfndpos=5` at the relevant sub-turn while JS currently reports a
+  larger candidate set in one of the equivalent pet turns, indicating further
+  `mfndpos`/pet-candidate filtering parity work remains.
