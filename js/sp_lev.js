@@ -115,6 +115,13 @@ function getProcessEnv(name) {
     return (typeof process !== 'undefined' && process.env) ? process.env[name] : undefined;
 }
 
+let spObjTraceEvent = 0;
+function spObjTrace(message) {
+    const spec = getProcessEnv('WEBHACK_MKOBJ_TRACE');
+    if (!spec || spec === '0') return;
+    console.log(message);
+}
+
 function installTypWatch(map) {
     const spec = getProcessEnv('WEBHACK_WATCH_TYP');
     if (!spec || !map || !map.locations) return;
@@ -3923,6 +3930,7 @@ export function object(name_or_opts, x, y) {
     const pos = getLocationCoord(x, y, GETLOC_DRY, levelState.currentRoom || null);
     let absX = pos.x;
     let absY = pos.y;
+    const ev = ++spObjTraceEvent;
 
     // C ref: Object creation happens IMMEDIATELY (calls next_ident, rndmonst_adj, etc.)
     // even though map placement is deferred until after corridors
@@ -3936,6 +3944,20 @@ export function object(name_or_opts, x, y) {
         && typeof name_or_opts.name === 'string'
         && name_or_opts.name.length > 0);
     const artif = !named;
+    const specClass = (typeof name_or_opts === 'string' && name_or_opts.length === 1)
+        ? name_or_opts
+        : (typeof name_or_opts === 'object' && name_or_opts && typeof name_or_opts.class === 'string'
+            ? name_or_opts.class
+            : '');
+    const specId = (typeof name_or_opts === 'string' && name_or_opts.length !== 1)
+        ? name_or_opts
+        : (typeof name_or_opts === 'object' && name_or_opts && typeof name_or_opts.id === 'string'
+            ? name_or_opts.id
+            : '');
+    const specCorpsenm = (typeof name_or_opts === 'object' && name_or_opts && name_or_opts.montype)
+        ? String(name_or_opts.montype)
+        : '';
+    spObjTrace(`[SPLEV_OBJ_JS] ev=${ev} phase=begin call=${getRngCallCount()} class_raw=${JSON.stringify(specClass)} id_raw=${JSON.stringify(specId)} named=${named ? 1 : 0} corpsenm_raw=${JSON.stringify(specCorpsenm)} x=${absX} y=${absY}`);
 
     // Create the object now (triggers next_ident and other creation RNG)
     if (!name_or_opts) {
@@ -3983,6 +4005,12 @@ export function object(name_or_opts, x, y) {
             } else {
                 obj = mksobj(otyp, true, artif);
             }
+        }
+    }
+    if (obj) {
+        spObjTrace(`[SPLEV_OBJ_JS] ev=${ev} phase=created call=${getRngCallCount()} otyp=${obj.otyp ?? -1} oclass=${obj.oclass ?? -1} spe=${obj.spe ?? -999} quan=${obj.quan ?? -1}`);
+        if (obj.corpsenm !== undefined && obj.corpsenm !== null && obj.corpsenm !== -1) {
+            spObjTrace(`[SPLEV_OBJ_JS] ev=${ev} phase=corpsenm call=${getRngCallCount()} got=${obj.corpsenm} otyp=${obj.otyp ?? -1}`);
         }
     }
 
