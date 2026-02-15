@@ -22,6 +22,7 @@ function parseArgs(argv) {
         keylog: null,
         keepSession: true,
         fixedDatetime: '20000110090000',
+        keylogDelayMs: 200,  // Skip startup keypresses (character selection)
     };
 
     for (let i = 2; i < argv.length; i++) {
@@ -40,6 +41,7 @@ function parseArgs(argv) {
         else if (a.startsWith('--tmux-socket=')) opts.tmuxSocket = a.slice(14);
         else if (a.startsWith('--session=')) opts.session = a.slice(10);
         else if (a.startsWith('--keylog=')) opts.keylog = a.slice(9);
+        else if (a.startsWith('--keylog-delay=')) opts.keylogDelayMs = Number(a.slice(15));
     }
 
     if (!opts.keylog) {
@@ -53,6 +55,7 @@ function printUsage() {
     console.log('Usage: node selfplay/runner/c_manual_record.js [options]');
     console.log('  --seed=N            RNG seed (default: 1)');
     console.log('  --keylog=PATH       JSONL output path (default: /tmp/...)');
+    console.log('  --keylog-delay=MS   skip initial keypresses (default: 200ms)');
     console.log('  --role=ROLE         default: Valkyrie');
     console.log('  --race=RACE         default: human');
     console.log('  --gender=GENDER     default: female');
@@ -75,6 +78,7 @@ async function main() {
 
     const opts = parseArgs(process.argv);
     process.env.NETHACK_KEYLOG = opts.keylog;
+    process.env.NETHACK_KEYLOG_DELAY_MS = String(opts.keylogDelayMs);
     if (opts.fixedDatetime) process.env.NETHACK_FIXED_DATETIME = opts.fixedDatetime;
     else delete process.env.NETHACK_FIXED_DATETIME;
 

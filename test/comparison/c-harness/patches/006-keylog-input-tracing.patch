@@ -2,74 +2,101 @@ diff --git a/win/tty/wintty.c b/win/tty/wintty.c
 index 61338542b..a3ad74640 100644
 --- a/win/tty/wintty.c
 +++ b/win/tty/wintty.c
-@@ -94,6 +94,70 @@ extern void msmsg(const char *, ...);
+@@ -12,6 +12,7 @@
+
+ #include "hack.h"
+
++#include <sys/time.h>
+ #ifdef TTY_GRAPHICS
+ #include "dlb.h"
+ #ifdef __BEOS__
+@@ -94,6 +95,10 @@ extern void msmsg(const char *, ...);
  #define HUPSKIP_RESULT(RES) /*empty*/
  #endif /* ?HANGUPHANDLING */
- 
+
 +/* Optional input event logging for deterministic replay/testing.
 + * Enable by setting NETHACK_KEYLOG to a writable file path.
++ * Optionally set NETHACK_KEYLOG_DELAY_MS to skip initial keypresses.
 + * Each input event is written as one JSON line.
 + */
-+static FILE *nh_keylog_fp = (FILE *) 0;
-+static boolean nh_keylog_inited = FALSE;
-+static long nh_keylog_seq = 0L;
-+
-+static void
-+nh_keylog_init(void)
-+{
-+    const char *path;
-+
-+    if (nh_keylog_inited)
-+        return;
-+    nh_keylog_inited = TRUE;
-+    path = nh_getenv("NETHACK_KEYLOG");
-+    if (!path || !*path)
-+        return;
-+    nh_keylog_fp = fopen(path, "a");
-+    if (!nh_keylog_fp)
-+        return;
-+    (void) setvbuf(nh_keylog_fp, (char *) 0, _IOLBF, 0);
-+}
-+
-+static void
-+nh_keylog_event(int key)
-+{
-+    const char *seed;
-+    int in_getlin, in_moveloop;
-+    long movecount;
-+    coordxy ux = 0, uy = 0;
-+    int dnum = 0, dlevel = 0;
-+
-+    nh_keylog_init();
-+    if (!nh_keylog_fp)
-+        return;
-+
-+    seed = nh_getenv("NETHACK_SEED");
-+    if (!seed)
-+        seed = "";
-+
-+    in_getlin = !!program_state.in_getlin;
-+    in_moveloop = !!program_state.in_moveloop;
-+    movecount = (long) svm.moves;
-+    if (u.ux && u.uy) {
-+        ux = u.ux;
-+        uy = u.uy;
-+        dnum = u.uz.dnum;
-+        dlevel = u.uz.dlevel;
+ static FILE *nh_keylog_fp = (FILE *) 0;
+ static boolean nh_keylog_inited = FALSE;
+ static long nh_keylog_seq = 0L;
++static struct timeval nh_keylog_start_time;
++static int nh_keylog_delay_ms = 0;
+
+ static void
+ nh_keylog_init(void)
+ {
+-    const char *path;
++    const char *path, *delay_str;
+
+     if (nh_keylog_inited)
+         return;
+     nh_keylog_inited = TRUE;
++    gettimeofday(&nh_keylog_start_time, NULL);
++    delay_str = nh_getenv("NETHACK_KEYLOG_DELAY_MS");
++    if (delay_str && *delay_str)
++        nh_keylog_delay_ms = atoi(delay_str);
+     path = nh_getenv("NETHACK_KEYLOG");
+     if (!path || !*path)
+         return;
+     nh_keylog_fp = fopen(path, "a");
+     if (!nh_keylog_fp)
+         return;
+     (void) setvbuf(nh_keylog_fp, (char *) 0, _IOLBF, 0);
+ }
+
+ static void
+ nh_keylog_event(int key)
+ {
+     const char *seed;
+     int in_getlin, in_moveloop;
+     long movecount;
+     coordxy ux = 0, uy = 0;
+     int dnum = 0, dlevel = 0;
+
+     nh_keylog_init();
+     if (!nh_keylog_fp)
+         return;
+
++    /* Skip logging if delay hasn't elapsed (for manual recording). */
++    if (nh_keylog_delay_ms > 0) {
++        struct timeval now;
++        long elapsed_ms;
++        gettimeofday(&now, NULL);
++        elapsed_ms = (now.tv_sec - nh_keylog_start_time.tv_sec) * 1000L
++                   + (now.tv_usec - nh_keylog_start_time.tv_usec) / 1000L;
++        if (elapsed_ms < nh_keylog_delay_ms)
++            return;
 +    }
 +
-+    ++nh_keylog_seq;
-+    (void) fprintf(
-+        nh_keylog_fp,
-+        "{\"seq\":%ld,\"key\":%d,\"moves\":%ld,"
-+        "\"x\":%d,\"y\":%d,\"dnum\":%d,\"dlevel\":%d,"
-+        "\"in_getlin\":%d,\"in_moveloop\":%d,"
-+        "\"seed\":\"%s\"}\n",
-+        nh_keylog_seq, key, movecount,
-+        (int) ux, (int) uy, (int) dnum, (int) dlevel,
-+        in_getlin, in_moveloop, seed);
-+}
-+
+     seed = nh_getenv("NETHACK_SEED");
+     if (!seed)
+         seed = "";
+
+     in_getlin = !!program_state.in_getlin;
+     in_moveloop = !!program_state.in_moveloop;
+     movecount = (long) svm.moves;
+     if (u.ux && u.uy) {
+         ux = u.ux;
+         uy = u.uy;
+         dnum = u.uz.dnum;
+         dlevel = u.uz.dlevel;
+     }
+
+     ++nh_keylog_seq;
+     (void) fprintf(
+         nh_keylog_fp,
+         "{\"seq\":%ld,\"key\":%d,\"moves\":%ld,"
+         "\"x\":%d,\"y\":%d,\"dnum\":%d,\"dlevel\":%d,"
+         "\"in_getlin\":%d,\"in_moveloop\":%d,"
+         "\"seed\":\"%s\"}\n",
+         nh_keylog_seq, key, movecount,
+         (int) ux, (int) uy, (int) dnum, (int) dlevel,
+         in_getlin, in_moveloop, seed);
+ }
+
  /* Interface definition, for windows.c */
  struct window_procs tty_procs = {
      WPID(tty),
@@ -80,4 +107,4 @@ index 61338542b..a3ad74640 100644
 +    nh_keylog_event(i);
      return i;
  }
- 
+
