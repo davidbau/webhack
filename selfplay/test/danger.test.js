@@ -45,10 +45,10 @@ describe('Monster Danger Assessment', () => {
         const danger = assessMonsterDanger('d', 16, 16, 1, 1);
         assert.equal(danger, DangerLevel.LOW);
 
-        // LOW danger monsters are ignored (not fought)
+        // Dlvl 1 lone dogs are special-cased to engage when healthy.
         const engagement = shouldEngageMonster('d', 16, 16, 1, false, 1, 0, false);
-        assert.equal(engagement.ignore, true);
-        assert.equal(engagement.shouldEngage, false);
+        assert.equal(engagement.ignore, false);
+        assert.equal(engagement.shouldEngage, true);
     });
 
     it('treats lowercase monsters as medium danger when HP low', () => {

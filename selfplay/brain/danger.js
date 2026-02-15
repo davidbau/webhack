@@ -180,6 +180,27 @@ export function shouldEngageMonster(
     inCorridor = false
 ) {
     const danger = assessMonsterDanger(monsterChar, playerHP, playerMaxHP, playerLevel, dungeonLevel);
+    const hpRatio = playerMaxHP > 0 ? (playerHP / playerMaxHP) : 0;
+
+    // Early Dlvl-1 canine handling:
+    // Lone hostile dogs are a common early death source if we keep yielding space.
+    // Prefer decisive melee when reasonably healthy; flee only if already weak/outnumbered.
+    if (monsterChar === 'd' && dungeonLevel <= 1 && nearbyMonsterCount === 0) {
+        if (hpRatio >= 0.45) {
+            return {
+                shouldEngage: true,
+                shouldFlee: false,
+                ignore: false,
+                reason: `engaging lone dog on Dlvl 1 (HP ${playerHP}/${playerMaxHP})`,
+            };
+        }
+        return {
+            shouldEngage: false,
+            shouldFlee: true,
+            ignore: false,
+            reason: `avoiding lone dog on Dlvl 1 due to low HP (${playerHP}/${playerMaxHP})`,
+        };
+    }
 
     // Strategy: FLEE MORE, FIGHT LESS
     // Only fight when necessary (blocking path or already attacking)
