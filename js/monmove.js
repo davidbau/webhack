@@ -4,7 +4,7 @@
 
 import { COLNO, ROWNO, STONE, IS_WALL, IS_DOOR, IS_ROOM,
          ACCESSIBLE, CORR, DOOR, D_CLOSED, D_LOCKED, D_BROKEN,
-         POOL, LAVAPOOL,
+         POOL, LAVAPOOL, SHOPBASE, ROOMOFFSET,
          NORMAL_SPEED, isok } from './config.js';
 import { rn2, rnd, c_d } from './rng.js';
 import { monsterAttackPlayer } from './combat.js';
@@ -107,6 +107,49 @@ function hasGold(inv) {
 
 function playerHasGold(player) {
     return (player?.gold || 0) > 0 || hasGold(player?.inventory);
+}
+
+// C ref: in_rooms(x,y,SHOPBASE) check used by monmove.c m_search_items().
+function monsterInShop(mon, map) {
+    const loc = map.at(mon.mx, mon.my);
+    const roomno = loc?.roomno || 0;
+
+    if (roomno >= ROOMOFFSET) {
+        const roomIdx = roomno - ROOMOFFSET;
+        const room = map.rooms?.[roomIdx];
+        return !!(room && room.rtype >= SHOPBASE);
+    }
+
+    // C ref: in_rooms() handles SHARED/SHARED_PLUS tiles by scanning
+    // nearby roomno entries for eligible rooms. Our map roomno assignment
+    // can leave doorway/corridor connectors as NO_ROOM, so use a narrow
+    // fallback for door/corridor (and shared-like roomno values).
+    const isSharedLike = roomno === 1 || roomno === 2;
+    const isDoorCorr = loc && (loc.typ === DOOR || loc.typ === CORR);
+    if (!isSharedLike && !isDoorCorr) return false;
+
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const nloc = map.at(mon.mx + dx, mon.my + dy);
+            const nr = nloc?.roomno || 0;
+            if (nr < ROOMOFFSET) continue;
+            const room = map.rooms?.[nr - ROOMOFFSET];
+            if (room && room.rtype >= SHOPBASE) return true;
+        }
+    }
+    return false;
+}
+
+// C ref: mon.c mpickstuff() early gates.
+function maybeMonsterPickStuff(mon, map) {
+    // prevent shopkeepers from leaving their shop door behavior
+    if (mon.isshk && monsterInShop(mon, map)) return false;
+
+    // non-tame monsters normally don't go shopping
+    if (!mon.tame && monsterInShop(mon, map) && rn2(25)) return false;
+
+    // Full pickup behavior is pending; current port keeps RNG-visible gates.
+    return false;
 }
 
 function wipeoutEngravingText(text, cnt) {
@@ -623,6 +666,12 @@ function dochug(mon, map, player, display, fov) {
             dog_move(mon, map, player, display, fov);
         } else {
             m_move(mon, map, player);
+            if (mon.mcanmove !== false
+                && !mon.tame
+                && monsterInShop(mon, map)
+                && map.objectsAt(mon.mx, mon.my).length > 0) {
+                maybeMonsterPickStuff(mon, map);
+            }
         }
         // distfleeck recalc after m_move
         // C ref: monmove.c:915
@@ -834,8 +883,10 @@ function pet_ranged_attk(mon, map, player, display) {
 // Returns: -2 (skip), 0 (stay), 1 (moved), 2 (moved+ate)
 function dog_move(mon, map, player, display, fov, after = false) {
     const omx = mon.mx, omy = mon.my;
+    // C ref: hack.h #define distu(xx,yy) dist2(xx,yy,u.ux,u.uy)
     const udist = dist2(omx, omy, player.x, player.y);
-    const edog = mon.edog || { apport: 0, hungrytime: 1000, whistletime: 0 };
+    const edogRaw = mon.edog || null;
+    const edog = edogRaw || { apport: 0, hungrytime: 1000, whistletime: 0 };
     // C ref: dog_move uses svm.moves which is incremented at end of turn,
     // so during movemon() svm.moves = (completed turns + 1).
     // JS player.turns is incremented after movemon(), so add 1 to match C.
@@ -860,7 +911,12 @@ function dog_move(mon, map, player, display, fov, after = false) {
     const maxY = Math.min(ROWNO - 1, omy + SQSRCHRADIUS);
 
     // C ref: in_masters_sight = couldsee(omx, omy)
-    const inMastersSight = couldsee(map, player, omx, omy);
+    if (fov && typeof fov.compute === 'function') {
+        fov.compute(map, player.x, player.y);
+    }
+    const inMastersSight = (fov && typeof fov.couldSee === 'function')
+        ? !!fov.couldSee(omx, omy)
+        : couldsee(map, player, omx, omy);
 
     // C ref: dogmove.c:498 — dog_has_minvent = (droppables(mtmp) != 0)
     const dogHasMinvent = !!(mon.minvent && mon.minvent.length > 0);
@@ -871,43 +927,51 @@ function dog_move(mon, map, player, display, fov, after = false) {
     const dogLit = !!(dogLoc && dogLoc.lit);
     const playerLit = !!(playerLoc0 && playerLoc0.lit);
 
-    // C ref: dog_goal iterates fobj (ALL objects on level)
-    // C's fobj is LIFO (place_object prepends), so iterate in reverse to match
-    for (let oi = map.objects.length - 1; oi >= 0; oi--) {
-        const obj = map.objects[oi];
-        const ox = obj.ox, oy = obj.oy;
+    // C ref: dogmove.c:498-555
+    // Pets without EDOG (or leashed pets) don't pick object goals.
+    if (!edogRaw || mon.mleashed) {
+        gtyp = APPORT;
+        gx = player.x;
+        gy = player.y;
+    } else {
+        // C ref: dog_goal iterates fobj (ALL objects on level)
+        // C's fobj is LIFO (place_object prepends), so iterate in reverse to match
+        for (let oi = map.objects.length - 1; oi >= 0; oi--) {
+            const obj = map.objects[oi];
+            const ox = obj.ox, oy = obj.oy;
 
-        if (ox < minX || ox > maxX || oy < minY || oy > maxY) continue;
+            if (ox < minX || ox > maxX || oy < minY || oy > maxY) continue;
 
-        const otyp = dogfood(mon, obj, turnCount);
+            const otyp = dogfood(mon, obj, turnCount);
 
-        // C ref: dogmove.c:526 — skip inferior goals
-        if (otyp > gtyp || otyp === UNDEF) continue;
+            // C ref: dogmove.c:526 — skip inferior goals
+            if (otyp > gtyp || otyp === UNDEF) continue;
 
-        // C ref: dogmove.c:529-531 — skip cursed POSITIONS unless starving
-        // C uses cursed_object_at(nx, ny) which checks ALL objects at position
-        if (cursed_object_at(map, ox, oy)
-            && !(edog.mhpmax_penalty && otyp < MANFOOD)) continue;
+            // C ref: dogmove.c:529-531 — skip cursed POSITIONS unless starving
+            // C uses cursed_object_at(nx, ny) which checks ALL objects at position
+            if (cursed_object_at(map, ox, oy)
+                && !(edog.mhpmax_penalty && otyp < MANFOOD)) continue;
 
-        // C ref: dogmove.c:533-535 — skip unreachable goals
-        if (!could_reach_item(map, mon, ox, oy)
-            || !can_reach_location(map, mon, omx, omy, ox, oy))
-            continue;
+            // C ref: dogmove.c:533-535 — skip unreachable goals
+            if (!could_reach_item(map, mon, ox, oy)
+                || !can_reach_location(map, mon, omx, omy, ox, oy))
+                continue;
 
-        if (otyp < MANFOOD) {
-            // Good food — direct goal
-            // C ref: dogmove.c:536-542
-            if (otyp < gtyp || dist2(ox, oy, omx, omy) < dist2(gx, gy, omx, omy)) {
-                gx = ox; gy = oy; gtyp = otyp;
+            if (otyp < MANFOOD) {
+                // Good food — direct goal
+                // C ref: dogmove.c:536-542
+                if (otyp < gtyp || dist2(ox, oy, omx, omy) < dist2(gx, gy, omx, omy)) {
+                    gx = ox; gy = oy; gtyp = otyp;
+                }
+            } else if (gtyp === UNDEF && inMastersSight
+                    && !dogHasMinvent
+                    && (!dogLit || playerLit)
+                    && (otyp === MANFOOD || m_cansee(mon, map, ox, oy))
+                    && edog.apport > rn2(8)
+                    && can_carry(mon, obj) > 0) {
+                // C ref: dogmove.c:543-552 — APPORT/MANFOOD with apport+carry check
+                gx = ox; gy = oy; gtyp = APPORT;
             }
-        } else if (gtyp === UNDEF && inMastersSight
-                   && !dogHasMinvent
-                   && (!dogLit || playerLit)
-                   && (otyp === MANFOOD || m_cansee(mon, map, ox, oy))
-                   && edog.apport > rn2(8)
-                   && can_carry(mon, obj) > 0) {
-            // C ref: dogmove.c:543-552 — APPORT/MANFOOD with apport+carry check
-            gx = ox; gy = oy; gtyp = APPORT;
         }
     }
 
@@ -1024,9 +1088,12 @@ function dog_move(mon, map, player, display, fov, after = false) {
     const cursemsg = new Array(cnt).fill(false);
 
     // First pass: count uncursed positions
-    // C ref: dogmove.c:1066-1079
+    // C ref: dogmove.c:1063-1072
     for (let i = 0; i < cnt; i++) {
         const nx = positions[i].x, ny = positions[i].y;
+        if (map.monsterAt(nx, ny) && !positions[i].allowM && !positions[i].allowMdisp) {
+            continue;
+        }
         if (cursed_object_at(map, nx, ny)) continue;
         uncursedcnt++;
     }
@@ -1039,6 +1106,10 @@ function dog_move(mon, map, player, display, fov, after = false) {
     const distmin_pu = Math.max(Math.abs(omx - player.x), Math.abs(omy - player.y));
     for (let i = 0; i < cnt; i++) {
         const nx = positions[i].x, ny = positions[i].y;
+        // C ref: dogmove.c:1086-1088 — if leashed, we drag the pet along.
+        if (mon.mleashed && dist2(nx, ny, player.x, player.y) > 4) {
+            continue;
+        }
 
         // C ref: dogmove.c:1088-1166 — pet melee against adjacent monster.
         // Minimal faithful path: consume mattackm to-hit roll and stop after
@@ -1123,8 +1194,9 @@ function dog_move(mon, map, player, display, fov, after = false) {
             const trap = map.trapAt(nx, ny);
             if (trap && !m_harmless_trap(mon, trap)) {
                 if (!mon.mleashed) {
-                    if (trap.tseen && rn2(40))
+                    if (trap.tseen && rn2(40)) {
                         continue;
+                    }
                 }
             }
         }
@@ -1166,7 +1238,7 @@ function dog_move(mon, map, player, display, fov, after = false) {
         // C ref: dogmove.c:1239-1245 — only if not leashed and far from player
         // distmin > 5 check prevents backtrack avoidance when close to player
         // k = edog ? uncursedcnt : cnt; limit j < MTSZ && j < k - 1
-        if (mon.mtrack && distmin_pu > 5) {
+        if (!mon.mleashed && mon.mtrack && distmin_pu > 5) {
             const k = edog ? uncursedcnt : cnt;
             let skipThis = false;
             for (let j = 0; j < MTSZ && j < k - 1; j++) {
@@ -1331,16 +1403,18 @@ function shk_move(mon, map, player) {
 function m_move(mon, map, player) {
     // C ref: monmove.c dispatch for shopkeeper/guard/priest before generic m_move().
     if (mon.isshk) {
+        const omx = mon.mx, omy = mon.my;
         shk_move(mon, map, player);
-        return;
+        return mon.mx !== omx || mon.my !== omy;
     }
     if (mon.ispriest) {
         // Priests with no shrine metadata fall back to generic movement.
         if (mon.epri && mon.epri.shrpos) {
+            const omx = mon.mx, omy = mon.my;
             const ggx = mon.epri.shrpos.x + (rn2(3) - 1);
             const ggy = mon.epri.shrpos.y + (rn2(3) - 1);
             move_special(mon, map, player, false, 1, false, true, ggx, ggy);
-            return;
+            return mon.mx !== omx || mon.my !== omy;
         }
         // else fall through to generic m_move behavior
     }
@@ -1380,10 +1454,17 @@ function m_move(mon, map, player) {
         }
     }
 
+    // C ref: monmove.c m_search_items() shop short-circuit:
+    // "in shop, usually skip" -> rn2(25) consumed for non-peaceful movers.
+    // Full item-search port is pending; keep this RNG-visible gate aligned.
+    if (!mon.peaceful && monsterInShop(mon, map)) {
+        rn2(25);
+    }
+
     // Collect valid positions via mfndpos (column-major, NODIAG, boulder filter)
     const positions = mfndpos(mon, map, player);
     const cnt = positions.length;
-    if (cnt === 0) return; // no valid positions
+    if (cnt === 0) return false; // no valid positions
 
     // ========================================================================
     // Position evaluation — C-faithful m_move logic
@@ -1460,5 +1541,7 @@ function m_move(mon, map, player) {
         }
         mon.mx = nix;
         mon.my = niy;
+        return true;
     }
+    return false;
 }

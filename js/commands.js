@@ -92,6 +92,9 @@ const RUN_KEYS = {
 export async function rhack(ch, game) {
     const { player, map, display, fov } = game;
     const c = String.fromCharCode(ch);
+    if (ch !== 16) {
+        display.prevMessageCycleIndex = null;
+    }
     if (ch !== 4) {
         player.kickedloc = null;
     }
@@ -1259,6 +1262,56 @@ async function handleDrop(player, map, display) {
 // Handle eating
 // C ref: eat.c doeat() → start_eating() → eatfood() occupation
 async function handleEat(player, display, game) {
+    const map = game?.map;
+    const floorFoods = map
+        ? map.objectsAt(player.x, player.y).filter((o) => o && o.oclass === FOOD_CLASS)
+        : [];
+
+    // C ref: eat.c floor-food prompt (corpse traces): if edible food is at
+    // hero square, ask before opening inventory selector.
+    if (floorFoods.length > 0) {
+        const floorItem = floorFoods[0];
+        const floorName = floorItem.name || doname(floorItem, null);
+        const article = /^[aeiou]/i.test(floorName) ? 'an' : 'a';
+        display.putstr_message(`There is ${article} ${floorName} here; eat it? [ynq] (n)`);
+        const ans = String.fromCharCode(await nhgetch()).toLowerCase();
+        if (ans === 'y') {
+            if (floorItem.otyp === CORPSE) {
+                const cnum = Number.isInteger(floorItem.corpsenm) ? floorItem.corpsenm : -1;
+                const nonrotting = (cnum === PM_LIZARD || cnum === PM_LICHEN);
+                let rottenTriggered = false;
+                if (!nonrotting) {
+                    rn2(20); // C: rotted age denominator
+                    if (!rn2(7)) {
+                        rottenTriggered = true;
+                        // C ref: rottenfood() branch probes
+                        const c1 = rn2(4);
+                        if (c1 !== 0) {
+                            const c2 = rn2(4);
+                            if (c2 !== 0) rn2(3);
+                        }
+                    }
+                }
+                game.occupation = {
+                    fn: () => 0,
+                    txt: `eating ${floorName}`,
+                    xtime: 1,
+                    onFinishAfterTurn: () => {
+                        map.removeObject(floorItem);
+                        if (rottenTriggered) {
+                            display.putstr_message(`Blecch!  Rotten food!  You finish eating the ${floorName}.`);
+                        } else {
+                            display.putstr_message(`You finish eating the ${floorName}.`);
+                        }
+                    },
+                };
+                return { moved: false, tookTime: true };
+            }
+        }
+        display.putstr_message('Never mind.');
+        return { moved: false, tookTime: false };
+    }
+
     const food = player.inventory.filter(o => o.oclass === 6); // FOOD_CLASS
     if (food.length === 0) {
         display.putstr_message("You don't have anything to eat.");
@@ -1718,41 +1771,16 @@ async function handlePrevMessages(display) {
         return { moved: false, tookTime: false };
     }
 
-    // C ref: topl.c:102 mode 's' (single)
-    // Shows messages one at a time on top line, cycling backwards
-    // User can press Ctrl+P repeatedly to see older messages
-
-    let messageIndex = messages.length - 1; // Start with most recent message
-
-    while (true) {
-        // Show current message on top line
-        // C ref: redotoplin(cw->data[cw->maxcol])
-        if (messageIndex >= 0 && messageIndex < messages.length) {
-            display.putstr_message(messages[messageIndex]);
-        }
-
-        // Move to next older message for next iteration
-        // C ref: cw->maxcol--
-        messageIndex--;
-
-        // Wrap around to newest if we've gone past oldest
-        // C ref: if (cw->maxcol < 0) cw->maxcol = cw->rows - 1
-        if (messageIndex < 0) {
-            messageIndex = messages.length - 1;
-        }
-
-        // Wait for user input
-        // C ref: } while (morc == C('p'))
-        const ch = await nhgetch();
-
-        // If user presses Ctrl+P again, continue to next older message
-        if (ch === 16) { // Ctrl+P
-            continue;
-        } else {
-            // Any other key exits
-            break;
-        }
+    // C tty mode 's': show one message each Ctrl+P press.
+    // Keep an index so repeated Ctrl+P cycles backward without blocking input.
+    let messageIndex = Number.isInteger(display.prevMessageCycleIndex)
+        ? display.prevMessageCycleIndex
+        : (messages.length - 1);
+    if (messageIndex < 0 || messageIndex >= messages.length) {
+        messageIndex = messages.length - 1;
     }
+    display.putstr_message(messages[messageIndex]);
+    display.prevMessageCycleIndex = (messageIndex - 1 + messages.length) % messages.length;
 
     return { moved: false, tookTime: false };
 }

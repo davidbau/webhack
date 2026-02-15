@@ -37,3 +37,52 @@ parity for `seed5_gnomish_mines_gameplay`.
   local heuristics.
 - When a divergence appears in pet AI, verify item metadata (especially corpse
   `age`, `corpsenm`, and curse state) before changing movement logic.
+
+---
+
+Date: 2026-02-15
+
+## Additional Progress
+
+- Strict seed5 replay frontier advanced from step 205 to step 330.
+- Seed replay unit tests (`seed1`..`seed5`) remain green after each change.
+
+## Additional C-Faithful Fixes
+
+1. Special-level room fill defaults must preserve shop stocking.
+   - Bug: special-level rooms were created with `needfill=undefined` for
+     non-ordinary room types.
+   - Effect: `stock_room()` was skipped for shop rooms on generated levels.
+   - Fix: default `needfill` to `FILL_NORMAL` (outside themed-room mode) for
+     all room types unless explicitly overridden.
+
+2. Shop stock generation must place objects on map tiles.
+   - Bug: `mkshobj_at()` created objects but did not assign `(ox, oy)` or push
+     them into `map.objects`.
+   - Effect: in-shop monster item logic (`m_search_items`/`mpickstuff`) diverged.
+   - Fix: set object coordinates and insert into level object list for all
+     shop stock paths (including veggy/special book paths).
+
+3. In-shop checks used by monster AI need roomno/shared fallback.
+   - C uses `in_rooms(...)` semantics based on roomno/shared tiles.
+   - Fix: replace broad geometry fallback with roomno-first checks plus a
+     narrow neighbor-room fallback for shared-like/door-corridor tiles.
+
+4. Monster-to-player to-hit should use displayed AC semantics (`u.uac`).
+   - C macro: `AC_VALUE(ac) = ac >= 0 ? ac : -rnd(-ac)`.
+   - Fix: base monster-hit AC_VALUE on `player.ac` (with negative AC randomization),
+     not `effectiveAC` clamping.
+
+5. Floor-corpse eat prompt and rotten-food RNG chain must follow C order.
+   - Added C-style floor prompt: `There is a ... here; eat it? [ynq] (n)`.
+   - Implemented rotten-food RNG chain for the early corpse path:
+     `rn2(20)`, `rn2(7)`, then rottenfood probes `rn2(4)`, `rn2(4)`, `rn2(3)`.
+   - Kept corpse removal at end-of-turn occupation completion so monster phase
+     sees expected floor object state.
+
+## Current Remaining Gap
+
+- First strict mismatch is now inside step 330, much later in the same turn
+  chunk than before.
+- Remaining mismatch appears to be turn-chunk/input-attribution related around
+  post-eat continuation, not the earlier shop/knockback/eat control-flow gaps.

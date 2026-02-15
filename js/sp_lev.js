@@ -3560,9 +3560,7 @@ export function room(opts = {}) {
         // During themed room generation (in_mk_themerooms): default 0 (FILL_NONE)
         // Otherwise: default 1 (FILL_NORMAL)
         // Explicit filled=1 overrides to FILL_NORMAL in either case.
-        needfill: (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL)
-            ? (filled !== undefined ? filled : (levelState.inThemerooms ? 0 : FILL_NORMAL))
-            : undefined,
+        needfill: (filled !== undefined ? filled : (levelState.inThemerooms ? 0 : FILL_NORMAL)),
         // Lua compatibility: region property for accessing room bounds
         region: { x1: roomX, y1: roomY, x2: roomX + roomW - 1, y2: roomY + roomH - 1 }
     };

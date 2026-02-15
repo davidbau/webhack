@@ -557,6 +557,10 @@ function is_clear_map(map, x, y) {
     if (!loc) return false;
     if (loc.typ < POOL) return false;
     if (IS_DOOR(loc.typ) && (loc.flags & (D_CLOSED | D_LOCKED))) return false;
+    const objs = map.objectsAt(x, y);
+    for (const obj of objs) {
+        if (obj.otyp === BOULDER) return false;
+    }
     return true;
 }
 

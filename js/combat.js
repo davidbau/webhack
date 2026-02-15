@@ -199,6 +199,14 @@ export function playerAttackMonster(player, monster, display, map) {
         } else {
             display.putstr_message(`You hit the ${monster.name}.`);
         }
+        // C ref: uhitm.c hmon_hitmon() -> mhitm_knockback():
+        // for non-unarmed melee weapon hits with damage > 1 against a
+        // surviving target, knockback logic consumes rn2(3) distance and
+        // rn2(chance) (normally chance=6) before deciding effect.
+        if (player.weapon && damage > 1 && !player.twoweap) {
+            rn2(3);
+            rn2(6);
+        }
         // C ref: uhitm.c:5997 passive() — rn2(3) when monster alive after hit
         rn2(3);
         return false;
@@ -217,8 +225,10 @@ export function monsterAttackPlayer(monster, player, display) {
         // C ref: mhitu.c:707-708 — tmp = AC_VALUE(u.uac) + 10 + mtmp->m_lev
         // C ref: mhitu.c:804 — rnd(20+i) where i is attack index
         const dieRoll = rnd(20 + i);
-        // AC_VALUE(ac) = ac when ac >= 0 (randomized when negative)
-        const acValue = player.effectiveAC >= 0 ? player.effectiveAC : 0;
+        // C ref: AC_VALUE(ac) macro:
+        //   ac >= 0 ? ac : -rnd(-ac)
+        const playerAc = Number.isInteger(player.ac) ? player.ac : player.effectiveAC;
+        const acValue = (playerAc >= 0) ? playerAc : -rnd(-playerAc);
         const toHit = acValue + 10 + monster.mlevel;
 
         if (toHit <= dieRoll) {

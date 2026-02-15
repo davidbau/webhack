@@ -329,7 +329,12 @@ function shkveg() {
 
 // C ref: shknam.c:442-450 — make a random veggy item at position
 function mkveggy_at(sx, sy) {
-    mksobj(shkveg(), true, true);
+    const obj = mksobj(shkveg(), true, true);
+    if (obj) {
+        obj.ox = sx;
+        obj.oy = sy;
+    }
+    return obj;
 }
 
 // ========================================================================
@@ -506,7 +511,12 @@ function shkinit(shp, sroom, map, depth, seed) {
 function mkshobj_at(shp, shpIndex, sx, sy, mkspecl, map, depth) {
     // C ref: shknam.c:461-468 — tribute novel for bookstores
     if (mkspecl && (shp.name === "rare books" || shp.name === "second-hand bookstore")) {
-        mksobj(SPE_NOVEL, false, false);
+        const obj = mksobj(SPE_NOVEL, false, false);
+        if (obj) {
+            obj.ox = sx;
+            obj.oy = sy;
+            map.objects.push(obj);
+        }
         // C: context.tribute.bookstock = TRUE
         return;
     }
@@ -524,12 +534,18 @@ function mkshobj_at(shp, shpIndex, sx, sy, mkspecl, map, depth) {
     } else {
         // C ref: shknam.c:475-482 — create shop item
         const atype = get_shop_item(shpIndex);
+        let obj = null;
         if (atype === VEGETARIAN_CLASS) {
-            mkveggy_at(sx, sy);
+            obj = mkveggy_at(sx, sy);
         } else if (atype < 0) {
-            mksobj(-atype, true, true);
+            obj = mksobj(-atype, true, true);
         } else {
-            mkobj(atype, true);
+            obj = mkobj(atype, true);
+        }
+        if (obj) {
+            obj.ox = sx;
+            obj.oy = sy;
+            map.objects.push(obj);
         }
     }
 }
