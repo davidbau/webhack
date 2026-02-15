@@ -109,7 +109,13 @@ def setup_home(character, symset):
 
 
 def read_keylog(path):
+    """Read keylog JSONL file, returning (metadata, events).
+
+    metadata is a dict from the 'type': 'meta' line if present, else None.
+    events is a list of key event dicts sorted by seq.
+    """
     events = []
+    metadata = None
     with open(path) as f:
         for line in f:
             line = line.strip()
@@ -119,12 +125,14 @@ def read_keylog(path):
                 e = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if isinstance(e.get('key'), int):
+            if e.get('type') == 'meta':
+                metadata = e
+            elif isinstance(e.get('key'), int):
                 events.append(e)
     events.sort(key=lambda e: int(e.get('seq', 0)))
     if not events:
         raise RuntimeError(f'No key events found in {path}')
-    return events
+    return metadata, events
 
 
 def key_repr(code):
@@ -319,22 +327,44 @@ def run_from_keylog(events, seed, character, symset, output_json, screen_capture
 
 def main():
     args = parse_args()
-    events = read_keylog(args.input_jsonl)
+    metadata, events = read_keylog(args.input_jsonl)
+
+    # Use metadata from keylog header if available, with command line overrides
+    def get_opt(name, default):
+        """Get option: CLI arg > metadata > default."""
+        cli_val = getattr(args, name, None)
+        # Check if CLI provided a non-default value
+        cli_default = {'name': 'Recorder', 'role': 'Valkyrie', 'race': 'human',
+                       'gender': 'female', 'align': 'neutral', 'symset': 'ASCII'}.get(name)
+        if cli_val is not None and cli_val != cli_default:
+            return cli_val
+        if metadata and name in metadata:
+            return metadata[name]
+        return cli_val if cli_val is not None else default
+
     seed = args.seed
     if seed is None:
-        raw_seed = events[0].get('seed')
-        seed = int(raw_seed) if raw_seed is not None else 1
+        if metadata and 'seed' in metadata:
+            seed = int(metadata['seed'])
+        else:
+            raw_seed = events[0].get('seed')
+            seed = int(raw_seed) if raw_seed is not None else 1
 
     character = {
-        'name': args.name,
-        'role': args.role,
-        'race': args.race,
-        'gender': args.gender,
-        'align': args.align,
+        'name': get_opt('name', 'Recorder'),
+        'role': get_opt('role', 'Valkyrie'),
+        'race': get_opt('race', 'human'),
+        'gender': get_opt('gender', 'female'),
+        'align': get_opt('align', 'neutral'),
     }
 
-    screen_capture_mode = resolve_screen_capture_mode(args.screen_capture, args.symset)
-    run_from_keylog(events, seed, character, args.symset, args.output_json, screen_capture_mode, args.startup_mode)
+    symset = get_opt('symset', 'ASCII')
+
+    if metadata:
+        print(f'Using keylog metadata: seed={seed}, role={character["role"]}, name={character["name"]}')
+
+    screen_capture_mode = resolve_screen_capture_mode(args.screen_capture, symset)
+    run_from_keylog(events, seed, character, symset, args.output_json, screen_capture_mode, args.startup_mode)
 
 
 if __name__ == '__main__':
