@@ -18,10 +18,13 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const VERBOSE = process.argv.includes('--verbose');
+const USE_GOLDEN = process.argv.includes('--golden');
+const GOLDEN_BRANCH = process.env.GOLDEN_BRANCH || 'golden/sessions';
 
 // ============================================================================
 // Pure comparison utilities (no external deps)
@@ -142,7 +145,52 @@ async function tryImport(path) {
     }
 }
 
+// Read file from golden branch using git show
+function readGoldenFile(relativePath) {
+    try {
+        const content = execSync(`git show ${GOLDEN_BRANCH}:${relativePath}`, {
+            encoding: 'utf8',
+            maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large sessions
+            stdio: ['pipe', 'pipe', 'pipe']
+        });
+        return content;
+    } catch {
+        return null;
+    }
+}
+
+// List files from golden branch directory
+function listGoldenDir(relativePath) {
+    try {
+        const output = execSync(`git ls-tree --name-only ${GOLDEN_BRANCH}:${relativePath}`, {
+            encoding: 'utf8',
+            stdio: ['pipe', 'pipe', 'pipe']
+        });
+        return output.trim().split('\n').filter(f => f);
+    } catch {
+        return [];
+    }
+}
+
 function loadSessions(dir, filter = () => true) {
+    // Convert absolute path to relative for golden branch access
+    const relativePath = dir.replace(process.cwd() + '/', '');
+
+    if (USE_GOLDEN) {
+        const files = listGoldenDir(relativePath)
+            .filter(f => f.endsWith('.session.json'));
+        return files.map(f => {
+            try {
+                const content = readGoldenFile(`${relativePath}/${f}`);
+                if (!content) return null;
+                const data = JSON.parse(content);
+                return { file: f, dir: `golden:${relativePath}`, ...data };
+            } catch {
+                return null;
+            }
+        }).filter(s => s && filter(s));
+    }
+
     if (!existsSync(dir)) return [];
     return readdirSync(dir)
         .filter(f => f.endsWith('.session.json'))
@@ -191,7 +239,11 @@ async function runBackfillTests() {
         errors: [],
     };
 
-    console.log('=== Backfill Test Runner ===\n');
+    console.log('=== Backfill Test Runner ===');
+    if (USE_GOLDEN) {
+        console.log(`Using golden sessions from branch: ${GOLDEN_BRANCH}`);
+    }
+    console.log('');
 
     // ========================================================================
     // Phase 1: Test core module imports
@@ -681,6 +733,7 @@ async function runBackfillTests() {
     // Output JSON for parsing
     console.log('\n__RESULTS_JSON__');
     console.log(JSON.stringify({
+        goldenBranch: USE_GOLDEN ? GOLDEN_BRANCH : null,
         imports: results.imports,
         capabilities: results.capabilities,
         metrics: results.metrics,
