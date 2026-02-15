@@ -156,6 +156,7 @@ export class TmuxAdapter extends GameAdapter {
             `OPTIONS=role:${role}`,
             `OPTIONS=gender:${gender}`,
             `OPTIONS=align:${align}`,
+            'OPTIONS=showexp',
             'OPTIONS=!autopickup',
             'OPTIONS=!tutorial',
             'OPTIONS=suppress_alert:3.4.3',
