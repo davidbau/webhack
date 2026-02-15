@@ -33,13 +33,21 @@ import {
     M2_MINION,
     M1_FLY, M1_NOHANDS, M1_SWIM, M1_AMPHIBIOUS, M1_WALLWALK, M1_AMORPHOUS,
     PM_ORC, PM_GIANT, PM_ELF, PM_HUMAN, PM_ETTIN, PM_MINOTAUR, PM_NAZGUL,
+    PM_QUANTUM_MECHANIC, PM_ICE_DEVIL,
+    PM_ASMODEUS,
     PM_MASTER_LICH, PM_ARCH_LICH,
-    PM_WUMPUS, PM_LONG_WORM, PM_GIANT_EEL,
+    PM_WUMPUS, PM_LONG_WORM, PM_GIANT_EEL, PM_FOREST_CENTAUR,
     PM_SOLDIER, PM_SERGEANT, PM_LIEUTENANT, PM_CAPTAIN, PM_WATCHMAN, PM_WATCH_CAPTAIN, PM_GUARD,
     PM_SHOPKEEPER, AT_WEAP, AT_EXPL, PM_PESTILENCE,
     PM_GOBLIN, PM_ORC_CAPTAIN, PM_MORDOR_ORC, PM_URUK_HAI, PM_ORC_SHAMAN,
     PM_OGRE_LEADER, PM_OGRE_TYRANT, PM_GHOST, PM_ERINYS,
-    MS_LEADER, MS_NEMESIS, MS_GUARDIAN,
+    PM_HORNED_DEVIL, PM_BALROG, PM_ORCUS, PM_DISPATER, PM_YEENOGHU,
+    PM_GRAY_DRAGON, PM_DEATH, PM_FAMINE,
+    PM_STRAW_GOLEM, PM_PAPER_GOLEM, PM_ROPE_GOLEM, PM_LEATHER_GOLEM,
+    PM_GOLD_GOLEM, PM_WOOD_GOLEM, PM_FLESH_GOLEM, PM_CLAY_GOLEM,
+    PM_STONE_GOLEM, PM_GLASS_GOLEM, PM_IRON_GOLEM,
+    MS_LEADER, MS_NEMESIS, MS_GUARDIAN, MS_PRIEST,
+    PM_MONK,
     PM_CROESUS,
 } from './monsters.js';
 import {
@@ -84,9 +92,10 @@ import {
     SCR_EARTH, SCR_TELEPORTATION, SCR_CREATE_MONSTER,
     RIN_INVISIBILITY,
     AMULET_OF_LIFE_SAVING, AMULET_OF_YENDOR,
-    CORPSE, LUCKSTONE, objectData,
+    CORPSE, LARGE_BOX, LUCKSTONE, objectData,
 } from './objects.js';
 import { roles, races, initialAlignmentRecordForRole } from './player.js';
+import { is_demon, is_giant } from './mondata.js';
 
 // ========================================================================
 // Monster flags needed for m_initweap/m_initinv checks
@@ -105,7 +114,6 @@ function is_domestic(ptr) { return !!(ptr.flags2 & M2_DOMESTIC); }
 function is_elf(ptr) { return ptr.symbol === S_HUMANOID && ptr.name && ptr.name.includes('elf'); }
 function is_dwarf(ptr) { return ptr.symbol === S_HUMANOID && ptr.name && ptr.name.includes('dwarf'); }
 function is_hobbit(ptr) { return ptr.symbol === S_HUMANOID && ptr.name && ptr.name.includes('hobbit'); }
-function is_giant_species(ptr) { return ptr.symbol === S_GIANT && ptr.name && ptr.name.includes('giant'); }
 // C ref: mondata.h:87 — #define is_armed(ptr) attacktype(ptr, AT_WEAP)
 function is_armed(ptr) { return ptr.attacks && ptr.attacks.some(a => a.type === AT_WEAP); }
 function attacktype(ptr, atyp) { return ptr.attacks && ptr.attacks.some(a => a.type === atyp); }
@@ -459,6 +467,10 @@ function montoostrong(mndx, lev) {
 // C ref: makemon.c:1866-1967 mkclass() / mkclass_aligned()
 // Returns monster index (mndx) or -1 (NON_PM)
 export function mkclass(monclass, spc, depth = 1, atyp = A_NONE) {
+    const traceMkclass = (typeof process !== 'undefined' && process.env
+        && process.env.WEBHACK_MKCLASS_TRACE === '1');
+    const traceCtx = traceMkclass ? getRndmonTraceCtx() : '?';
+    const startCall = traceMkclass ? getRngCallCount() : 0;
     const ulevel = 1;
     const maxmlev = depth >> 1; // level_difficulty() >> 1
     const gehennom = 0; // not in hell during level gen
@@ -519,8 +531,23 @@ export function mkclass(monclass, spc, depth = 1, atyp = A_NONE) {
     for (let i = first; i < last; i++) {
         const mndx = mongen_order[i];
         roll -= nums[mndx];
-        if (roll <= 0)
-            return nums[mndx] ? mndx : -1;
+        if (roll <= 0) {
+            const out = nums[mndx] ? mndx : -1;
+            if (traceMkclass) {
+                const endCall = getRngCallCount();
+                const name = out >= 0 ? (mons[out]?.name || `#${out}`) : 'NON_PM';
+                console.log(
+                    `[MKCLASS] begin=${startCall + 1} end=${endCall} class=${monclass} spc=0x${(spc >>> 0).toString(16)} atyp=${atyp} depth=${depth} first=${first} last=${last} total=${num} selected=${out} ${name} ctx=${traceCtx}`
+                );
+            }
+            return out;
+        }
+    }
+    if (traceMkclass) {
+        const endCall = getRngCallCount();
+        console.log(
+            `[MKCLASS] begin=${startCall + 1} end=${endCall} class=${monclass} spc=0x${(spc >>> 0).toString(16)} atyp=${atyp} depth=${depth} first=${first} last=${last} total=${num} selected=-1 NON_PM ctx=${traceCtx}`
+        );
     }
     return -1;
 }
@@ -542,18 +569,38 @@ export function newmonhp(mndx, depth = 1) {
     const ptr = mons[mndx];
     let m_lev = adj_lev(ptr, depth);
     let hp;
+    const isRider = (mndx === PM_DEATH || mndx === PM_PESTILENCE || mndx === PM_FAMINE);
+    const golemhp = (() => {
+        switch (mndx) {
+        case PM_STRAW_GOLEM: return 20;
+        case PM_PAPER_GOLEM: return 20;
+        case PM_ROPE_GOLEM: return 30;
+        case PM_LEATHER_GOLEM: return 40;
+        case PM_GOLD_GOLEM: return 60;
+        case PM_WOOD_GOLEM: return 50;
+        case PM_FLESH_GOLEM: return 40;
+        case PM_CLAY_GOLEM: return 70;
+        case PM_STONE_GOLEM: return 100;
+        case PM_GLASS_GOLEM: return 80;
+        case PM_IRON_GOLEM: return 120;
+        default: return 0;
+        }
+    })();
+    const inEndgame = Number.isFinite(depth) && depth < 0;
 
-    // Golem: fixed HP based on type — no RNG
-    // Rider: d(10, 8) — rare at depth 1
-    // High level (>49): fixed — no RNG
-    // Dragon: d(m_lev, 4) — not at depth 1
-    // Level 0: rnd(4)
-    // Normal: d(m_lev, 8)
-
-    if (m_lev === 0) {
+    // C ref: makemon.c newmonhp()
+    if (ptr.symbol === S_GOLEM && golemhp > 0) {
+        hp = golemhp;
+    } else if (isRider) {
+        hp = c_d(10, 8);
+    } else if (ptr.level > 49) {
+        hp = 2 * (ptr.level - 6);
+        m_lev = Math.floor(hp / 4);
+    } else if (ptr.symbol === S_DRAGON && mndx >= PM_GRAY_DRAGON) {
+        const base = Math.max(1, m_lev);
+        hp = inEndgame ? (8 * base) : ((4 * base) + c_d(base, 4));
+    } else if (m_lev === 0) {
         hp = rnd(4);
-    } else if (ptr.symbol === S_DRAGON) {
-        hp = c_d(m_lev, 4);
     } else {
         hp = c_d(m_lev, 8);
     }
@@ -775,8 +822,13 @@ function m_initweap(mon, mndx, depth) {
 
     case S_CENTAUR:
         if (rn2(2)) {
-            mksobj(BOW, true, false);
-            m_initthrow(CROSSBOW_BOLT, 12);
+            if (mndx === PM_FOREST_CENTAUR) {
+                mksobj(BOW, true, false);
+                m_initthrow(ARROW, 12);
+            } else {
+                mksobj(CROSSBOW, true, false);
+                m_initthrow(CROSSBOW_BOLT, 12);
+            }
         }
         break;
 
@@ -802,13 +854,28 @@ function m_initweap(mon, mndx, depth) {
         break;
 
     case S_DEMON:
-        // Horned devil
-        if (ptr.name && ptr.name === 'horned devil') {
-            if (!rn2(4)) {
-                mksobj(rn2(2) ? TRIDENT : BULLWHIP, true, false);
-            }
+        switch (mndx) {
+        case PM_BALROG:
+            mksobj(BULLWHIP, true, false);
+            mksobj(BROADSWORD, true, false);
+            break;
+        case PM_ORCUS:
+            mksobj(WAN_DEATH, true, false);
+            break;
+        case PM_HORNED_DEVIL:
+            mksobj(rn2(4) ? TRIDENT : BULLWHIP, true, false);
+            break;
+        case PM_DISPATER:
+            mksobj(WAN_STRIKING, true, false);
+            break;
+        case PM_YEENOGHU:
+            mksobj(FLAIL, true, false);
+            break;
+        default:
+            break;
         }
-        break;
+        if (!is_demon(ptr)) break;
+        // C falls through for true demons.
 
     default:
         // Generic weapon assignment for armed monsters
@@ -848,7 +915,8 @@ function m_initweap(mon, mndx, depth) {
 
     // C ref: makemon.c:571 — offensive item check, OUTSIDE the switch,
     // always called for ALL monsters. rn2(75) is always consumed.
-    if (ptr.level > rn2(75)) {
+    const monLev = Number.isFinite(mon?.mlevel) ? mon.mlevel : ptr.level;
+    if (monLev > rn2(75)) {
         // C ref: muse.c rnd_offensive_item()
         // Skip for animals, exploders, mindless, ghosts, kops
         const difficulty = ptr.difficulty || ptr.level;
@@ -977,9 +1045,17 @@ function rnd_misc_item(mndx) {
 // Simplified: only port branches that consume RNG
 // ========================================================================
 
-function m_initinv(mndx, depth, m_lev) {
+function hasGoldInInventory(minvent) {
+    if (!Array.isArray(minvent)) return false;
+    return minvent.some(obj => obj
+        && (obj.otyp === GOLD_PIECE
+            || objectData[obj.otyp]?.oc_class === COIN_CLASS));
+}
+
+function m_initinv(mon, mndx, depth, m_lev) {
     const ptr = mons[mndx];
     const mm = ptr.symbol;
+    let hasGold = hasGoldInInventory(mon?.minvent);
 
     switch (mm) {
     case S_HUMAN:
@@ -987,7 +1063,8 @@ function m_initinv(mndx, depth, m_lev) {
             // C ref: makemon.c m_initinv() mercenary branch.
             // Keep the same roll order and gating so RNG stays aligned.
             let mac = 0;
-            if (mndx === PM_SOLDIER) mac = 3;
+            if (mndx === PM_GUARD) mac = -1;
+            else if (mndx === PM_SOLDIER) mac = 3;
             else if (mndx === PM_SERGEANT) mac = 0;
             else if (mndx === PM_LIEUTENANT) mac = -2;
             else if (mndx === PM_CAPTAIN) mac = -3;
@@ -1043,17 +1120,14 @@ function m_initinv(mndx, depth, m_lev) {
             } else if (mndx === PM_WATCHMAN) {
                 if (rn2(3)) mksobj(TIN_WHISTLE, true, false);
             } else if (mndx === PM_GUARD) {
-                mksobj(TIN_WHISTLE, true, false);
+                const whistle = mksobj(TIN_WHISTLE, true, false);
+                if (whistle) whistle.cursed = true;
             } else {
                 // Soldiers and officers.
                 if (!rn2(3)) mksobj(K_RATION, true, false);
                 if (!rn2(2)) mksobj(C_RATION, true, false);
                 if (mndx !== PM_SOLDIER && !rn2(3)) mksobj(BUGLE, true, false);
             }
-        } else if (ptr.name && (ptr.name === 'priest' || ptr.name === 'priestess')) {
-            mksobj(rn2(7) ? ROBE : (rn2(3) ? CLOAK_OF_PROTECTION : CLOAK_OF_MAGIC_RESISTANCE), true, false);
-            mksobj(SMALL_SHIELD, true, false);
-            rn1(10, 20); // gold amount
         } else if (mndx === PM_SHOPKEEPER) {
             // C ref: makemon.c:703-721 — SKELETON_KEY + fall-through switch
             mksobj(SKELETON_KEY, true, false);
@@ -1063,6 +1137,14 @@ function m_initinv(mndx, depth, m_lev) {
             if (w <= 1) mksobj(POT_EXTRA_HEALING, true, false);
             if (w <= 2) mksobj(POT_HEALING, true, false);
             mksobj(WAN_STRIKING, true, false); // case 3 always executes
+        } else if (ptr.sound === MS_PRIEST) {
+            mksobj(rn2(7) ? ROBE : (rn2(3) ? CLOAK_OF_PROTECTION : CLOAK_OF_MAGIC_RESISTANCE), true, false);
+            mksobj(SMALL_SHIELD, true, false);
+            rn1(10, 20); // gold amount
+            hasGold = true;
+        } else if (mndx === PM_MONK) {
+            // C ref: makemon.c monk role fallback.
+            mksobj(rn2(11) ? ROBE : CLOAK_OF_MAGIC_RESISTANCE, true, false);
         }
         break;
 
@@ -1077,7 +1159,7 @@ function m_initinv(mndx, depth, m_lev) {
             if (!rn2(3)) {
                 mksobj(WAN_DIGGING, true, false);
             }
-        } else if (is_giant_species(ptr)) {
+        } else if (is_giant(ptr)) {
             const cnt = rn2(Math.floor(m_lev / 2));
             for (let i = 0; i < cnt; i++) {
                 const otyp = mkobj_rnd_class(DILITHIUM_CRYSTAL, LUCKSTONE - 1);
@@ -1118,11 +1200,36 @@ function m_initinv(mndx, depth, m_lev) {
         if (rn2(7)) mksobj(MUMMY_WRAPPING, true, false);
         break;
 
+    case S_QUANTMECH:
+        // C ref: makemon.c:777-795
+        // For RNG-faithful parity we need the gating and both object creations.
+        if (!rn2(20) && mndx === PM_QUANTUM_MECHANIC) {
+            mksobj(LARGE_BOX, false, false);
+            mksobj(CORPSE, true, false);
+        }
+        break;
+
     case S_GNOME:
         // C ref: makemon.c:811 — gnome candle
         // Not in mines at depth 1, so rn2(60)
         if (!rn2(60)) {
             mksobj(rn2(4) ? TALLOW_CANDLE : WAX_CANDLE, true, false);
+        }
+        break;
+
+    case S_LEPRECHAUN:
+        // C ref: makemon.c:797-799
+        c_d(Math.max(depth, 1), 30);
+        hasGold = true;
+        break;
+
+    case S_DEMON:
+        // C ref: makemon.c:803-808
+        if (mndx === PM_ICE_DEVIL && !rn2(4)) {
+            mksobj(SPEAR, true, false);
+        } else if (mndx === PM_ASMODEUS) {
+            mksobj(WAN_COLD, true, false);
+            mksobj(WAN_FIRE, true, false);
         }
         break;
 
@@ -1146,9 +1253,14 @@ function m_initinv(mndx, depth, m_lev) {
         const otyp = rnd_misc_item(mndx);
         if (otyp) mksobj(otyp, true, false);
     }
-    if ((ptr.flags2 & M2_GREEDY) && !rn2(5)) {
-        // mkmonmoney: d(level_difficulty(), minvent ? 5 : 10)
-        c_d(Math.max(depth, 1), 10);
+    // C ref: makemon.c:831-833 — likes_gold(ptr) && !findgold(minvent) && !rn2(5)
+    if ((ptr.flags2 & M2_GREEDY)
+        && !hasGold
+        && !rn2(5)) {
+        // C ref: mkmonmoney(..., d(level_difficulty(), minvent ? 5 : 10))
+        const goldDie = (Array.isArray(mon?.minvent) && mon.minvent.length > 0) ? 5 : 10;
+        c_d(Math.max(depth, 1), goldDie);
+        hasGold = true;
     }
 }
 
@@ -1300,6 +1412,22 @@ function mayPasswallAt(map, x, y) {
     return !IS_STWALL(loc.typ) || !loc.nonpasswall;
 }
 
+function inMonGenExclusionZone(map, x, y) {
+    const zones = Array.isArray(map?.exclusionZones) ? map.exclusionZones : null;
+    if (!zones) return false;
+    for (const z of zones) {
+        if (!z) continue;
+        const type = String(z.type || '').toLowerCase();
+        if (type !== 'monster-generation' && type !== 'monster_generation') continue;
+        const lx = Math.min(z.lx, z.hx);
+        const hx = Math.max(z.lx, z.hx);
+        const ly = Math.min(z.ly, z.hy);
+        const hy = Math.max(z.ly, z.hy);
+        if (x >= lx && x <= hx && y >= ly && y <= hy) return true;
+    }
+    return false;
+}
+
 // C ref: teleport.c goodpos() subset used by makemon paths.
 function makemonGoodpos(map, x, y, ptr, mmflags = NO_MM_FLAGS, avoidMonpos = true) {
     if (!isok(x, y)) return false;
@@ -1334,6 +1462,8 @@ function makemonGoodpos(map, x, y, ptr, mmflags = NO_MM_FLAGS, avoidMonpos = tru
             && !(IS_LAVA(loc.typ) && ignoreLava)) return false;
     }
     if (boulderBlocks(ptr, map, x, y)) return false;
+    // C ref: teleport.c goodpos() with GP_AVOID_MONPOS rejects LR_MONGEN zones.
+    if (avoidMonpos && inMonGenExclusionZone(map, x, y)) return false;
     return true;
 }
 
@@ -1607,7 +1737,7 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     // C ref: makemon.c:1438-1440
     if (is_armed(ptr))
         m_initweap(mon, mndx, depth || 1);
-    m_initinv(mndx, depth || 1, m_lev);
+    m_initinv(mon, mndx, depth || 1, m_lev);
 
     // C ref: makemon.c:1443-1448 — saddle for domestic monsters
     // C evaluates !rn2(100) first (always consumed), then is_domestic

@@ -25,6 +25,8 @@ Scope: replace simulation/stub behavior with faithful C NetHack logic while keep
 - [ ] Replace simplified retries/shortcuts in `js/mkobj.js` with C loop/termination behavior.
 - [ ] Continue porting omitted `makemon` generation constraints/checks in `js/makemon.js` (mvitals/quest/hell/nohell/etc).
 - [x] Replaced rider corpse stub in `js/objdata.js` (`PM_DEATH/PESTILENCE/FAMINE` detection).
+- [x] 2026-02-15 checkpoint: tightened `m_initinv` human-branch parity in `js/makemon.js` (guard AC seed, cursed guard whistle intent, C branch order for mercenary/shopkeeper/priest/monk). Verified non-regression: `test/unit/wizard_levels.test.js` still green, `test/unit/special_levels_comparison.test.js` unchanged at 17/69.
+- [ ] Active blocker: first deterministic castle drift remains pre-`walkfrom` in `induced_align -> mkclass -> makemon` selection path; current first mismatch still starts at first `walkfrom` roll.
 - [ ] Validate with startup/chargen/special-level replay tests.
 
 ## Phase 4: Combat and Status Fidelity
