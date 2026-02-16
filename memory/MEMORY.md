@@ -13,8 +13,10 @@ JS port of NetHack 3.7 with RNG-faithful replay testing. C harness generates gol
 - Fountain drinking: `rnd(30)` fate, then `dryup()` with `rn2(3)` at end (except blessed jackpot path)
 
 ## Test Commands
-- Run specific session: `node --test --test-name-pattern='seed2_wizard' test/comparison/session_runner.test.js`
-- Run all tests: `node --test test/comparison/session_runner.test.js`
+- Run specific session: `npm run test:session -- --test-name-pattern='seed2_wizard'`
+- Run all session tests: `npm run test:session`
+- Run all tests (unit + session): `npm test`
+- Run everything (unit + session + E2E): `npm run test:all`
 
 ## Beads (bd) Issue Tracking
 - Use `bd ready` to find available work, `bd close <id>` when done, `bd sync` at session end
