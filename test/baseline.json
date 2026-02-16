@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "phase": 0,
-  "generatedAt": "2026-02-16T13:24:58Z",
-  "commit": "c24ea90008f8a16832b037ce62120c86a1e85e78",
+  "generatedAt": "2026-02-16T13:38:17Z",
+  "commit": "2f53346b8fe724ce302ff579b0c19656b7567a4f",
   "branch": "codex2",
   "nodeVersion": "v25.6.0",
   "platform": "linux/x86_64",
@@ -15,10 +15,10 @@
     "unit": {
       "status": "failed",
       "exitCode": 1,
-      "durationMs": 801,
+      "durationMs": 827,
       "counts": {
-        "total": 78,
-        "passed": 76,
+        "total": 79,
+        "passed": 77,
         "failed": 2,
         "skipped": 0,
         "todo": 0,
@@ -42,7 +42,7 @@
     "session": {
       "status": "failed",
       "exitCode": 1,
-      "durationMs": 5749,
+      "durationMs": 5868,
       "counts": {
         "total": 178,
         "passed": 141,
@@ -105,6 +105,7 @@
           "session": "seed1_gameplay.session.json",
           "type": "gameplay",
           "firstDivergence": {
+            "channel": "rng",
             "index": 0,
             "session": "rn2(2)=1"
           },
@@ -114,6 +115,7 @@
           "session": "seed100_multidigit_gameplay.session.json",
           "type": "gameplay",
           "firstDivergence": {
+            "channel": "rng",
             "index": 0,
             "session": "rn2(2)=0"
           },
@@ -123,10 +125,12 @@
           "session": "seed119_map.session.json",
           "type": "map",
           "firstDivergence": {
-            "index": 381,
-            "js": "rnd(5)=3",
-            "session": "rn2(100)=22",
-            "depth": 1
+            "channel": "grid",
+            "depth": 1,
+            "x": 6,
+            "y": 0,
+            "js": 0,
+            "session": 15
           },
           "error": null
         },
@@ -134,10 +138,12 @@
           "session": "seed119_maps_c.session.json",
           "type": "map",
           "firstDivergence": {
-            "index": 381,
-            "js": "rnd(5)=3",
-            "session": "rn2(100)=22",
-            "depth": 1
+            "channel": "grid",
+            "depth": 1,
+            "x": 6,
+            "y": 0,
+            "js": 0,
+            "session": 15
           },
           "error": null
         },
@@ -145,10 +151,12 @@
           "session": "seed16_map.session.json",
           "type": "map",
           "firstDivergence": {
-            "index": 857,
-            "js": "rn2(12)=0",
-            "session": "rn2(13)=1",
-            "depth": 1
+            "channel": "grid",
+            "depth": 1,
+            "x": 5,
+            "y": 3,
+            "js": 25,
+            "session": 26
           },
           "error": null
         },
@@ -156,10 +164,12 @@
           "session": "seed16_maps_c.session.json",
           "type": "map",
           "firstDivergence": {
-            "index": 857,
-            "js": "rn2(12)=0",
-            "session": "rn2(13)=1",
-            "depth": 1
+            "channel": "grid",
+            "depth": 1,
+            "x": 5,
+            "y": 3,
+            "js": 25,
+            "session": 26
           },
           "error": null
         },
@@ -167,10 +177,12 @@
           "session": "seed163_map.session.json",
           "type": "map",
           "firstDivergence": {
-            "index": 343,
-            "js": "rnd(5)=5",
-            "session": "rn2(100)=84",
-            "depth": 1
+            "channel": "grid",
+            "depth": 1,
+            "x": 29,
+            "y": 1,
+            "js": 0,
+            "session": 3
           },
           "error": null
         },
@@ -178,10 +190,12 @@
           "session": "seed163_maps_c.session.json",
           "type": "map",
           "firstDivergence": {
-            "index": 343,
-            "js": "rnd(5)=5",
-            "session": "rn2(100)=84",
-            "depth": 1
+            "channel": "grid",
+            "depth": 1,
+            "x": 29,
+            "y": 1,
+            "js": 0,
+            "session": 3
           },
           "error": null
         },
@@ -189,6 +203,7 @@
           "session": "seed2_wizard_fountains_gameplay.session.json",
           "type": "gameplay",
           "firstDivergence": {
+            "channel": "rng",
             "index": 0,
             "session": "rn2(2)=1"
           },
@@ -198,6 +213,7 @@
           "session": "seed200_repeat_ctrl_a_gameplay.session.json",
           "type": "gameplay",
           "firstDivergence": {
+            "channel": "rng",
             "index": 0,
             "session": "rn2(2)=1"
           },
@@ -207,6 +223,7 @@
           "session": "seed201_fight_prefix_gameplay.session.json",
           "type": "gameplay",
           "firstDivergence": {
+            "channel": "rng",
             "index": 0,
             "session": "rn2(2)=0"
           },
@@ -216,6 +233,7 @@
           "session": "seed203_run_prefix_gameplay.session.json",
           "type": "gameplay",
           "firstDivergence": {
+            "channel": "rng",
             "index": 0,
             "session": "rn2(2)=0"
           },
@@ -225,6 +243,7 @@
           "session": "seed204_multidigit_wait_gameplay.session.json",
           "type": "gameplay",
           "firstDivergence": {
+            "channel": "rng",
             "index": 0,
             "session": "rn2(2)=1"
           },
@@ -234,6 +253,7 @@
           "session": "seed3_gameplay.session.json",
           "type": "gameplay",
           "firstDivergence": {
+            "channel": "rng",
             "index": 0,
             "session": "rn2(2)=1"
           },
@@ -243,6 +263,7 @@
           "session": "seed3_selfplay_100turns_gameplay.session.json",
           "type": "gameplay",
           "firstDivergence": {
+            "channel": "rng",
             "index": 0,
             "session": "rn2(2)=1"
           },
@@ -252,6 +273,7 @@
           "session": "seed3_selfplay_20turns_gameplay.session.json",
           "type": "gameplay",
           "firstDivergence": {
+            "channel": "rng",
             "index": 0,
             "session": "rn2(2)=1"
           },
@@ -261,6 +283,7 @@
           "session": "seed3_selfplay_5turns_gameplay.session.json",
           "type": "gameplay",
           "firstDivergence": {
+            "channel": "rng",
             "index": 0,
             "session": "rn2(2)=1"
           },
@@ -276,26 +299,26 @@
     }
   },
   "overall": {
-    "durationMs": 6761,
-    "total": 256,
-    "passed": 217,
+    "durationMs": 6904,
+    "total": 257,
+    "passed": 218,
     "failed": 39
   },
   "fileBaselines": {
     "test/comparison/session_helpers.js": {
-      "lines": 41,
+      "lines": 43,
       "target": 500,
       "note": "Remove HeadlessGame class and game logic"
     },
     "test/comparison/session_test_runner.js": {
-      "lines": 306,
+      "lines": 343,
       "target": 350,
       "note": "Keep only orchestration, no game logic"
     },
-    "test/comparison/headless_game.js": {
-      "lines": 0,
-      "target": 0,
-      "note": "Delete after shared runtime adoption"
+    "test/comparison/session_runtime.js": {
+      "lines": 34,
+      "target": 120,
+      "note": "Thin compatibility facade only; replay logic lives in js/replay_core.js"
     }
   }
 }

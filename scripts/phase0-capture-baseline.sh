@@ -176,7 +176,7 @@ count_lines() {
 
 SESSION_HELPERS_LINES="$(count_lines test/comparison/session_helpers.js)"
 SESSION_RUNNER_LINES="$(count_lines test/comparison/session_test_runner.js)"
-HEADLESS_GAME_LINES="$(count_lines test/comparison/headless_game.js)"
+SESSION_RUNTIME_LINES="$(count_lines test/comparison/session_runtime.js)"
 
 OVERALL_END="$(ms_now)"
 OVERALL_DURATION=0
@@ -210,7 +210,7 @@ jq -n \
   --argjson overallDuration "$OVERALL_DURATION" \
   --argjson sessionHelpersLines "$SESSION_HELPERS_LINES" \
   --argjson sessionRunnerLines "$SESSION_RUNNER_LINES" \
-  --argjson headlessGameLines "$HEADLESS_GAME_LINES" \
+  --argjson sessionRuntimeLines "$SESSION_RUNTIME_LINES" \
   --arg skipE2E "$SKIP_E2E" \
   '
   {
@@ -280,10 +280,10 @@ jq -n \
         target: 350,
         note: "Keep only orchestration, no game logic"
       },
-      "test/comparison/headless_game.js": {
-        lines: $headlessGameLines,
-        target: 0,
-        note: "Delete after shared runtime adoption"
+      "test/comparison/session_runtime.js": {
+        lines: $sessionRuntimeLines,
+        target: 120,
+        note: "Thin compatibility facade only; replay logic lives in js/replay_core.js"
       }
     }
   }

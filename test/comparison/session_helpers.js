@@ -1,8 +1,7 @@
 // test/comparison/session_helpers.js -- Legacy compatibility facade.
 //
-// Phase 7 cleanup keeps runtime/gameplay logic in session_runtime.js and
-// comparison/normalization helpers in dedicated modules. Keep this file small
-// so older tooling can keep importing the same paths during migration.
+// Keep this file small so older tooling can keep importing the same paths.
+// Replay behavior is now owned by core modules in js/.
 
 export {
     compareRng,
@@ -26,16 +25,19 @@ export {
     formatDiffs,
     extractTypGrid,
     generateMapsSequential,
-    generateMapsWithRng,
     hasStartupBurstInFirstStep,
     getSessionStartup,
     getSessionCharacter,
     getSessionGameplaySteps,
-    generateStartupWithRng,
     replaySession,
     checkWallCompleteness,
     checkConnectivity,
     checkStairs,
     checkDimensions,
     checkValidTypValues,
-} from './session_runtime.js';
+} from '../../js/replay_core.js';
+
+export {
+    generateMapsWithCoreReplay as generateMapsWithRng,
+    generateStartupWithCoreReplay as generateStartupWithRng,
+} from '../../js/headless_runtime.js';

@@ -465,6 +465,28 @@ export class HeadlessGame {
         };
     }
 
+    static isCountPrefixDigit(key) {
+        const ch = typeof key === 'string' ? key.charCodeAt(0) : key;
+        return ch >= 48 && ch <= 57;
+    }
+
+    static parseCountPrefixDigit(key) {
+        const ch = typeof key === 'string' ? key.charCodeAt(0) : key;
+        if (ch >= 48 && ch <= 57) return ch - 48;
+        return null;
+    }
+
+    static accumulateCountPrefix(currentCount, key) {
+        const digit = HeadlessGame.parseCountPrefixDigit(key);
+        if (digit !== null) {
+            return {
+                isDigit: true,
+                newCount: Math.min(32767, (currentCount * 10) + digit),
+            };
+        }
+        return { isDigit: false, newCount: currentCount };
+    }
+
     async sendKey(key, replayContext = {}) {
         const raw = typeof key === 'string' ? key : String.fromCharCode(key);
         if (!raw) {
@@ -485,17 +507,101 @@ export class HeadlessGame {
         return out;
     }
 
+    async replayStep(key, options = {}) {
+        const ch = typeof key === 'string' ? key.charCodeAt(0) : key;
+        if (options.countPrefix && options.countPrefix > 0) {
+            this.commandCount = options.countPrefix;
+            this.multi = options.countPrefix;
+            if (this.multi > 0) this.multi--;
+            this.cmdKey = ch;
+        } else {
+            this.commandCount = 0;
+            this.multi = 0;
+        }
+
+        const result = await rhack(ch, this);
+        if (result && result.tookTime && !options.skipTurnEnd) {
+            if (!options.skipMonsterMove) {
+                settrack(this.player);
+                movemon(this.map, this.player, this.display, this.fov);
+            }
+            this.simulateTurnEnd();
+
+            while (this.occupation) {
+                const occ = this.occupation;
+                const cont = occ.fn(this);
+                const finishedOcc = !cont ? occ : null;
+                if (!cont) this.occupation = null;
+                if (!options.skipMonsterMove) {
+                    settrack(this.player);
+                    movemon(this.map, this.player, this.display, this.fov);
+                }
+                this.simulateTurnEnd();
+                if (finishedOcc && typeof finishedOcc.onFinishAfterTurn === 'function') {
+                    finishedOcc.onFinishAfterTurn(this);
+                }
+            }
+
+            while (this.multi > 0) {
+                this.multi--;
+                const repeated = await rhack(this.cmdKey, this);
+                if (!repeated || !repeated.tookTime) break;
+                if (!options.skipMonsterMove) {
+                    settrack(this.player);
+                    movemon(this.map, this.player, this.display, this.fov);
+                }
+                this.simulateTurnEnd();
+                while (this.occupation) {
+                    const occ = this.occupation;
+                    const cont = occ.fn(this);
+                    const finishedOcc = !cont ? occ : null;
+                    if (!cont) this.occupation = null;
+                    if (!options.skipMonsterMove) {
+                        settrack(this.player);
+                        movemon(this.map, this.player, this.display, this.fov);
+                    }
+                    this.simulateTurnEnd();
+                    if (finishedOcc && typeof finishedOcc.onFinishAfterTurn === 'function') {
+                        finishedOcc.onFinishAfterTurn(this);
+                    }
+                }
+            }
+        }
+
+        this.renderCurrentScreen();
+        if (this.player.hp <= 0) {
+            this.gameOver = true;
+            this.gameOverReason = 'died';
+        }
+
+        return {
+            tookTime: result?.tookTime || false,
+            moved: result?.moved || false,
+            result,
+            screen: this.getScreen(),
+            typGrid: this.getTypGrid(),
+        };
+    }
+
     async executeReplayStep(key, replayContext = {}) {
         const raw = typeof key === 'string' ? key : String.fromCharCode(key);
         if (!raw) {
             throw new Error('executeReplayStep requires a key');
         }
-        const keyCode = raw.charCodeAt(0);
         const beforeCount = readRngLog()?.length || 0;
         if (typeof this.hooks.onStepStart === 'function') {
             this.hooks.onStepStart({ game: this, key: raw, context: replayContext });
         }
-        const result = await this.executeCommand(keyCode);
+        const result = await this.replayStep(raw, replayContext);
+        if (typeof this.hooks.onCommandResult === 'function') {
+            this.hooks.onCommandResult({ game: this, keyCode: raw.charCodeAt(0), result: result.result });
+        }
+        if (result.tookTime && typeof this.hooks.onTurnAdvanced === 'function') {
+            this.hooks.onTurnAdvanced({ game: this, keyCode: raw.charCodeAt(0), result: result.result });
+        }
+        if (typeof this.hooks.onScreenRendered === 'function') {
+            this.hooks.onScreenRendered({ game: this, keyCode: raw.charCodeAt(0) });
+        }
         const fullLog = readRngLog() || [];
         const stepRng = fullLog.slice(beforeCount);
         if (typeof this.hooks.onReplayPrompt === 'function' && this.occupation) {
