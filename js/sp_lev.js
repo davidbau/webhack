@@ -2385,6 +2385,11 @@ export function map(data) {
     // C ref: sp_lev.c mapfrag_fromstr() calls stripdigits() before computing
     // dimensions or applying map cells.
     mapStr = String(mapStr).replace(/[0-9]/g, '');
+    // C/Lua parity: long-bracket strings [[...]] discard one initial newline
+    // when it appears immediately after the opening delimiter.
+    if (mapStr.startsWith('\n')) {
+        mapStr = mapStr.slice(1);
+    }
 
     // Parse map string into lines.
     // C ref: sp_lev.c mapfrag_fromstr() keeps leading blank lines from Lua
@@ -4032,6 +4037,20 @@ export function object(name_or_opts, x, y) {
     }
 
     if (obj) {
+        // C/Lua object userdata compatibility needs to be available before
+        // contents callbacks execute.
+        obj.stop_timer = obj.stop_timer || function() {};
+        obj.start_timer = obj.start_timer || function() {};
+        obj.totable = obj.totable || function() {
+            return {
+                ox: this.ox,
+                oy: this.oy,
+                NO_OBJ: this.NO_OBJ
+            };
+        };
+        if (!Number.isInteger(obj.ox) && Number.isInteger(absX)) obj.ox = absX;
+        if (!Number.isInteger(obj.oy) && Number.isInteger(absY)) obj.oy = absY;
+
         const activeContainer = levelState.containerStack[levelState.containerStack.length - 1];
 
         // C ref: sp_lev.c create_object() with SP_OBJ_CONTENT creates object
@@ -5836,12 +5855,15 @@ function executeDeferredMonster(deferred) {
         if (!levelState.monsters) {
             levelState.monsters = [];
         }
+        if (immediateParity) {
+            // C ref: create_monster() computes amask via sp_amask_to_amask()
+            // (AM_SPLEV_RANDOM -> induced_align()) before coordinate selection.
+            consumeInducedAlignRng();
+        }
         const coordX = (x !== undefined) ? x : rn2(60) + 10;
         const coordY = (y !== undefined) ? y : rn2(15) + 3;
         if (immediateParity) {
             // C ref: create_monster() with no class/id -> makemon(NULL, ...).
-            // Alignment handling still resolves AM_SPLEV_RANDOM first.
-            consumeInducedAlignRng();
             createMonster(null, coordX, coordY);
             return;
         }
@@ -5885,7 +5907,7 @@ function executeDeferredMonster(deferred) {
             coordY = opts.y;
         }
 
-        if (coordX === undefined || coordY === undefined) {
+        if (!deferred.deferCoord && (coordX === undefined || coordY === undefined)) {
             coordX = rn2(60) + 10;
             coordY = rn2(15) + 3;
         }

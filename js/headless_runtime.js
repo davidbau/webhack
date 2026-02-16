@@ -24,6 +24,7 @@ import { movemon, initrack, settrack } from './monmove.js';
 import { FOV } from './vision.js';
 import { getArrivalPosition } from './level_transition.js';
 import { doname } from './mkobj.js';
+import { enexto } from './dungeon.js';
 import {
     COLNO, ROWNO, NORMAL_SPEED,
     A_STR, A_DEX, A_CON,
@@ -625,7 +626,7 @@ export class HeadlessGame {
         if (!Number.isInteger(depth) || depth <= 0) {
             return { ok: false, reason: 'invalid-depth' };
         }
-        this.changeLevel(depth);
+        this.changeLevel(depth, 'teleport');
         this.renderCurrentScreen();
         if (typeof this.hooks.onLevelChange === 'function') {
             this.hooks.onLevelChange({ game: this, depth });
@@ -808,11 +809,50 @@ export class HeadlessGame {
     }
 
     // Generate or retrieve a level (for stair traversal)
-    changeLevel(depth) {
+    resolveArrivalCollision() {
+        const mtmp = this.map?.monsterAt?.(this.player.x, this.player.y);
+        if (!mtmp || mtmp === this.player?.usteed) return;
+
+        const moveMonsterNearby = () => {
+            const pos = enexto(this.player.x, this.player.y, this.map);
+            if (pos) {
+                mtmp.mx = pos.x;
+                mtmp.my = pos.y;
+            }
+        };
+
+        // C ref: do.c u_collide_m() -- randomize whether hero or monster moves.
+        if (!rn2(2)) {
+            const cc = enexto(this.player.x, this.player.y, this.map);
+            if (cc && Math.abs(cc.x - this.player.x) <= 1 && Math.abs(cc.y - this.player.y) <= 1) {
+                this.player.x = cc.x;
+                this.player.y = cc.y;
+            } else {
+                moveMonsterNearby();
+            }
+        } else {
+            moveMonsterNearby();
+        }
+
+        const still = this.map?.monsterAt?.(this.player.x, this.player.y);
+        if (!still) return;
+        const fallback = enexto(this.player.x, this.player.y, this.map);
+        if (fallback) {
+            still.mx = fallback.x;
+            still.my = fallback.y;
+        } else {
+            this.map.removeMonster(still);
+        }
+    }
+
+    changeLevel(depth, transitionDir = null) {
+        const fromX = this.player?.x;
+        const fromY = this.player?.y;
         if (this.map) {
             this.levels[this.player.dungeonLevel] = this.map;
         }
         const previousMap = this.levels[this.player.dungeonLevel];
+        let created = false;
         if (this.levels[depth]) {
             this.map = this.levels[depth];
         } else {
@@ -820,18 +860,22 @@ export class HeadlessGame {
                 ? makelevel(depth, this.dnum, depth, { dungeonAlignOverride: this.dungeonAlignOverride })
                 : makelevel(depth, undefined, undefined, { dungeonAlignOverride: this.dungeonAlignOverride });
             this.levels[depth] = this.map;
-
-            // C ref: dog.c:474 mon_arrive — pet arrival on level change
-            // Use real migration logic to preserve startup/replay fidelity.
-            if (depth > 1) {
-                mon_arrive(previousMap, this.map, this.player, {
-                    heroX: this.map.upstair.x,
-                    heroY: this.map.upstair.y,
-                });
-            }
+            created = true;
         }
         this.player.dungeonLevel = depth;
-        this.placePlayerOnLevel();
+        this.placePlayerOnLevel(transitionDir);
+        // C ref: do.c goto_level(): u_on_rndspot()/u_on_newpos happens
+        // before losedogs()->mon_arrive(), so follower arrival sees the
+        // final hero position on the destination level.
+        if (created && depth > 1) {
+            mon_arrive(previousMap, this.map, this.player, {
+                sourceHeroX: fromX,
+                sourceHeroY: fromY,
+                heroX: this.player.x,
+                heroY: this.player.y,
+            });
+            this.resolveArrivalCollision();
+        }
         this.renderCurrentScreen();
         if (typeof this.hooks.onLevelChange === 'function') {
             this.hooks.onLevelChange({ game: this, depth });

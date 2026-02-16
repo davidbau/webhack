@@ -114,6 +114,10 @@ function mindless(ptr) { return !!(ptr.flags1 & 0x00010000); } // M1_MINDLESS
 function is_ndemon(ptr) { return ptr.symbol === S_DEMON; }
 function always_hostile(ptr) { return !!(ptr.flags2 & M2_HOSTILE); }
 function always_peaceful(ptr) { return !!(ptr.flags2 & M2_PEACEFUL); }
+function playerHasAmulet(map) {
+    const inv = map?.player?.inventory;
+    return Array.isArray(inv) && inv.some((o) => o?.otyp === AMULET_OF_YENDOR);
+}
 
 function sgn(x) {
     return x > 0 ? 1 : (x < 0 ? -1 : 0);
@@ -1505,11 +1509,19 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
         // hideunder() — no RNG
     }
 
-    // C ref: makemon.c:1382-1386
+    // C ref: makemon.c:1299-1340 switch(ptr->mlet), nymph/jabberwock case.
+    // This check happens regardless of in_mklev; preserve RNG side effects.
+    const hasAmulet = playerHasAmulet(map);
+    if ((ptr.symbol === S_JABBERWOCK || ptr.symbol === S_NYMPH)
+        && !hasAmulet && rn2(5)) {
+        // mtmp->msleeping = TRUE; RNG side effect only.
+    }
+
+    // C ref: makemon.c:1382-1386 -- in_mklev only.
     // During mklev and without Amulet, selected monsters may start asleep.
     if ((is_ndemon(ptr) || mndx === PM_WUMPUS
         || mndx === PM_LONG_WORM || mndx === PM_GIANT_EEL)
-        && rn2(5)) {
+        && !hasAmulet && rn2(5)) {
         // mtmp->msleeping = TRUE; RNG side effect only.
     }
 

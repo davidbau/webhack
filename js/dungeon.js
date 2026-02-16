@@ -673,9 +673,12 @@ function do_room_or_subroom(map, croom, lowx, lowy, hix, hiy,
 function add_room_to_map(map, lowx, lowy, hix, hiy, lit, rtype, special) {
     const croom = makeRoom();
     // needfill defaults to FILL_NONE; caller sets FILL_NORMAL as needed
-    map.rooms.push(croom);
+    const roomIdx = map.nroom || 0;
+    // C stores main rooms at rooms[nroom], independent of any subroom slots
+    // that may exist at higher indices.
+    map.rooms[roomIdx] = croom;
     // Track nroom separately (don't use rooms.length once subrooms are added)
-    map.nroom = (map.nroom || 0) + 1;
+    map.nroom = roomIdx + 1;
     do_room_or_subroom(map, croom, lowx, lowy, hix, hiy, lit, rtype,
                        special, true);
 }
@@ -871,8 +874,13 @@ function bsdQsort(arr, cmpFn) {
 function sort_rooms(map) {
     const n = map.nroom;
 
-    // Sort rooms using BSD-compatible qsort to match C's behavior
-    bsdQsort(map.rooms, mkroom_cmp);
+    // C ref: qsort(svr.rooms, svn.nroom, ...) sorts only main rooms.
+    // Subrooms live beyond nroom and must not participate.
+    const mainRooms = map.rooms.slice(0, n);
+    bsdQsort(mainRooms, mkroom_cmp);
+    for (let i = 0; i < n; i++) {
+        map.rooms[i] = mainRooms[i];
+    }
 
     // Build reverse index: ri[old_roomnoidx] = new_index
     const ri = new Array(MAXNROFROOMS + 1).fill(0);
@@ -1005,6 +1013,17 @@ function branchPlacementForEnd(branch, onEnd1) {
 
     const goesUp = onEnd1 ? !!branch.end1_up : !branch.end1_up;
     return { placement: goesUp ? 'stair-up' : 'stair-down' };
+}
+
+function isBranchLevel(dnum, dlevel) {
+    if (!Number.isInteger(dnum) || !Number.isInteger(dlevel)) return false;
+    for (const br of _branchTopology) {
+        if ((br.end1.dnum === dnum && br.end1.dlevel === dlevel)
+            || (br.end2.dnum === dnum && br.end2.dlevel === dlevel)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // C-faithful branch placement resolution for special-level LR_BRANCH handling.
@@ -1485,16 +1504,15 @@ function makerooms(map, depth) {
             if (!result) {
                 // themeroom_failed
                 if (DEBUG) {
-                    console.log(`themeroom failed, tries=${themeroom_tries + 1}, nroom=${map.nroom}, breaking=${(themeroom_tries + 1) > 10 || map.nroom >= Math.floor(MAXNROFROOMS / 6)}`);
+                    console.log(`themeroom failed, tries=${themeroom_tries + 1}, nroom=${map.nroom}, breaking=${themeroom_tries > 10 || map.nroom >= Math.floor(MAXNROFROOMS / 6)}`);
                 }
-                if (++themeroom_tries > 10
+                // C ref: mklev.c uses post-increment and does not reset this
+                // counter on success.
+                if (themeroom_tries++ > 10
                     || map.nroom >= Math.floor(MAXNROFROOMS / 6))
                     break;
-            } else {
-                if (DEBUG) {
-                    console.log(`themeroom succeeded, resetting tries, nroom=${map.nroom}`);
-                }
-                themeroom_tries = 0;
+            } else if (DEBUG) {
+                console.log(`themeroom succeeded, cumulative tries stays=${themeroom_tries}, nroom=${map.nroom}`);
             }
         }
     }
@@ -1641,8 +1659,8 @@ function finddpos(map, dir, aroom) {
         }
     }
 
-    // Cannot find a valid position
-    return { x: x1, y: y1 };
+    // C ref: mklev.c finddpos() returns FALSE when no valid door position.
+    return null;
 }
 
 // C ref: mklev.c maybe_sdoor()
@@ -4915,7 +4933,8 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
     // At depth 1: u_depth > 1 fails, so entire chain is skipped (no RNG consumed).
     // For deeper depths, the chain consumes rn2() calls for each check.
     if (depth > 1) {
-        const room_threshold = 3; // simplified: no branch check
+        // C ref: mklev.c room_threshold = branchp ? 4 : 3
+        const room_threshold = isBranchLevel(dnum, dlevel) ? 4 : 3;
         // C ref: each check consumes one rn2() if it reaches that point
         if (depth > 1 && map.nroom >= room_threshold && rn2(depth) < 3) {
             mkshop(map);
@@ -4978,12 +4997,14 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
     // Only iterate over main rooms (nroom), not subrooms
     for (let i = 0; i < map.nroom; i++) {
         const croom = map.rooms[i];
+        if (!croom || croom.hx <= 0) continue;
         if (isFillable(croom)) fillableCount++;
     }
     let bonusCountdown = fillableCount > 0 ? rn2(fillableCount) : -1;
 
     for (let i = 0; i < map.nroom; i++) {
         const croom = map.rooms[i];
+        if (!croom || croom.hx <= 0) continue;
         const fillable = isFillable(croom);
         fill_ordinary_room(map, croom, depth,
                            fillable && bonusCountdown === 0);
@@ -4996,6 +5017,7 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
     // Only iterate over main rooms (nroom), not subrooms
     for (let i = 0; i < map.nroom; i++) {
         const croom = map.rooms[i];
+        if (!croom || croom.hx <= 0) continue;
         if (croom.rtype >= SHOPBASE && croom.needfill === FILL_NORMAL) {
             stock_room(croom.rtype - SHOPBASE, croom, map, depth, _gameSeed);
         }
@@ -5005,6 +5027,7 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
     // g_at(x,y) finds the existing gold object and skips mksobj_at/newobj.
     for (let i = 0; i < map.nroom; i++) {
         const croom = map.rooms[i];
+        if (!croom || croom.hx <= 0) continue;
         if (croom.rtype === VAULT && croom.needfill === FILL_NORMAL) {
             for (let vx = croom.lx; vx <= croom.hx; vx++) {
                 for (let vy = croom.ly; vy <= croom.hy; vy++) {

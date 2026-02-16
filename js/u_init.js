@@ -372,6 +372,8 @@ function monCatchupElapsedTime(mtmp, nmv) {
 export function mon_arrive(oldMap, newMap, player, opts = {}) {
     if (!oldMap || !newMap) return false;
     const when = opts.when || MON_ARRIVE_WITH_YOU;
+    const sourceHeroX = Number.isInteger(opts.sourceHeroX) ? opts.sourceHeroX : player.x;
+    const sourceHeroY = Number.isInteger(opts.sourceHeroY) ? opts.sourceHeroY : player.y;
     const heroX = Number.isInteger(opts.heroX) ? opts.heroX : player.x;
     const heroY = Number.isInteger(opts.heroY) ? opts.heroY : player.y;
     const currentMoves = Number.isInteger(opts.moves)
@@ -400,8 +402,8 @@ export function mon_arrive(oldMap, newMap, player, opts = {}) {
         if (oldFailedSet.has(m)) return true;
         // C ref: dog.c keepdogs() — pets still trapped/eating don't follow.
         if (m.mtrapped || m.meating) return false;
-        const dx = Math.abs((m.mx ?? 0) - player.x);
-        const dy = Math.abs((m.my ?? 0) - player.y);
+        const dx = Math.abs((m.mx ?? 0) - sourceHeroX);
+        const dy = Math.abs((m.my ?? 0) - sourceHeroY);
         // C ref: keepdogs() monnear(mtmp, u.ux, u.uy) on source level.
         return dx <= 1 && dy <= 1;
     });

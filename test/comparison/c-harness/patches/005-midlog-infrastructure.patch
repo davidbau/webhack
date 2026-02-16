@@ -454,3 +454,146 @@ diff --git a/src/mklev.c b/src/mklev.c
 
 +#define MIDLOG_IN_MKLEV_C
  #include "hack.h"
+@@ -434,53 +435,56 @@ join(int a, int b, boolean nxcor)
+     int dx, dy;
+     int npoints;
+     boolean dig_result;
++    boolean entered = FALSE;
+ 
++    midlog_enter("join", __FILE__, __LINE__, __func__);
++    entered = TRUE;
+     croom = &svr.rooms[a];
+     troom = &svr.rooms[b];
+ 
+     if (!croom->needjoining || !troom->needjoining)
+-        return;
++        goto join_done;
+ 
+     /* find positions cc and tt for doors in croom and troom
+        and direction for a corridor between them */
+ 
+     if (troom->hx < 0 || croom->hx < 0)
+-        return;
++        goto join_done;
+     if (troom->lx > croom->hx) {
+         dx = 1;
+         dy = 0;
+         if (!finddpos(&cc, DIR_E, croom))
+-            return;
++            goto join_done;
+         if (!finddpos(&tt, DIR_W, troom))
+-            return;
++            goto join_done;
+     } else if (troom->hy < croom->ly) {
+         dy = -1;
+         dx = 0;
+         if (!finddpos(&cc, DIR_N, croom))
+-            return;
++            goto join_done;
+         if (!finddpos(&tt, DIR_S, troom))
+-            return;
++            goto join_done;
+     } else if (troom->hx < croom->lx) {
+         dx = -1;
+         dy = 0;
+         if (!finddpos(&cc, DIR_W, croom))
+-            return;
++            goto join_done;
+         if (!finddpos(&tt, DIR_E, troom))
+-            return;
++            goto join_done;
+     } else {
+         dy = 1;
+         dx = 0;
+         if (!finddpos(&cc, DIR_S, croom))
+-            return;
++            goto join_done;
+         if (!finddpos(&tt, DIR_N, troom))
+-            return;
++            goto join_done;
+     }
+     xx = cc.x;
+     yy = cc.y;
+     tx = tt.x - dx;
+     ty = tt.y - dy;
+     if (nxcor && levl[xx + dx][yy + dy].typ != STONE)
+-        return;
++        goto join_done;
+ 
+     org.x = xx + dx;
+     org.y = yy + dy;
+@@ -495,7 +499,7 @@ join(int a, int b, boolean nxcor)
+         dodoor(xx, yy, croom);
+ 
+     if (!dig_result)
+-        return;
++        goto join_done;
+ 
+     /* we succeeded in digging the corridor */
+     if (okdoor(tt.x, tt.y) || !nxcor)
+@@ -505,6 +509,9 @@ join(int a, int b, boolean nxcor)
+         gs.smeq[b] = gs.smeq[a];
+     else
+         gs.smeq[a] = gs.smeq[b];
++join_done:
++    if (entered)
++        midlog_exit_void("join", __FILE__, __LINE__, __func__);
+ }
+
+diff --git a/src/sp_lev.c b/src/sp_lev.c
+--- a/src/sp_lev.c
++++ b/src/sp_lev.c
+@@ -2547,7 +2548,9 @@ dig_corridor(
+     int dx = 0, dy = 0, dix, diy, cct;
+     struct rm *crm;
+     int tx, ty, xx, yy;
++    boolean result = FALSE;
+ 
++    midlog_enter("dig_corridor", __FILE__, __LINE__, __func__);
+     if (npoints)
+         *npoints = 0;
+     xx = org->x;
+@@ -2558,7 +2561,7 @@ dig_corridor(
+         || tx > COLNO - 1 || yy > ROWNO - 1 || ty > ROWNO - 1) {
+         debugpline4("dig_corridor: bad coords <%d,%d> <%d,%d>.",
+                     xx, yy, tx, ty);
+-        return FALSE;
++        goto dig_done;
+     }
+     if (tx > xx)
+         dx = 1;
+@@ -2575,13 +2578,13 @@ dig_corridor(
+     while (xx != tx || yy != ty) {
+         /* loop: dig corridor at [xx,yy] and find new [xx,yy] */
+         if (cct++ > 500 || (nxcor && !rn2(35)))
+-            return FALSE;
++            goto dig_done;
+ 
+         xx += dx;
+         yy += dy;
+ 
+         if (xx >= COLNO - 1 || xx <= 0 || yy <= 0 || yy >= ROWNO - 1)
+-            return FALSE; /* impossible */
++            goto dig_done; /* impossible */
+ 
+         crm = &levl[xx][yy];
+         if (crm->typ == btyp) {
+@@ -2598,7 +2601,7 @@ dig_corridor(
+             }
+         } else if (crm->typ != ftyp && crm->typ != SCORR) {
+             /* strange ... */
+-            return FALSE;
++            goto dig_done;
+         }
+ 
+         /* find next corridor position */
+@@ -2651,7 +2654,10 @@ dig_corridor(
+         dy = -dy;
+         dx = -dx;
+     }
+-    return TRUE;
++    result = TRUE;
++dig_done:
++    midlog_exit_int("dig_corridor", result, __FILE__, __LINE__, __func__);
++    return result;
+ }
