@@ -8,6 +8,27 @@ This project implements **mandatory test logging** with a visual dashboard to tr
 
 > **The Oracle says**: *"A test not logged is a bug waiting to happen. Choose your commits wisely, for they shall be measured."*
 
+## ✅ Official Test Run Paths
+
+Use these as the canonical commands:
+
+```bash
+npm run test:unit      # unit tests
+npm run test:e2e       # end-to-end browser tests
+npm run test:session   # C-parity session tests
+```
+
+Aggregate commands:
+
+```bash
+npm test               # unit + session
+npm run test:all       # unit + session + e2e
+```
+
+Session tests can include many logical subtypes (chargen, map, gameplay,
+special, interface, options), but they all run through one path:
+`npm run test:session` (`test/comparison/sessions.test.js`).
+
 ## 🎯 Two Approaches Available
 
 *You see here two scrolls:*

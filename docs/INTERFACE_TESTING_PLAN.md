@@ -10,7 +10,7 @@ Ensure the JS port matches C NetHack's user interface character-by-character, in
 
 ### ✅ Completed
 1. Created `gen_interface_sessions.py` - Script to capture C NetHack UI (in progress)
-2. Created `interface_test_runner.js` - Test framework for replay/comparison (skeleton)
+2. Created an interface replay harness (now unified into `sessions.test.js`)
 3. Created task breakdown (#23-#27) for implementation
 
 ### ⚠️  In Progress
@@ -86,7 +86,7 @@ Ensure the JS port matches C NetHack's user interface character-by-character, in
 4. Files stored in `test/comparison/sessions/`
 
 ### Test Process
-1. Run `node --test test/comparison/interface_test_runner.js`
+1. Run `npm run test:session`
 2. For each session file:
    - Initialize JS NetHack in headless mode
    - Send same keys as C session
@@ -132,11 +132,11 @@ Ensure the JS port matches C NetHack's user interface character-by-character, in
 python3 test/comparison/c-harness/gen_interface_sessions.py --startup
 python3 test/comparison/c-harness/gen_interface_sessions.py --options
 
-# Run interface comparison tests
-node --test test/comparison/interface_test_runner.js
+# Run interface comparison sessions through the unified runner
+npm run test:session
 
-# View detailed diffs
-node --test test/comparison/interface_test_runner.js --verbose
+# View detailed diffs for interface sessions only
+node test/comparison/session_test_runner.js --verbose --type interface
 ```
 
 ## Success Criteria

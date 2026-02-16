@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 1,
+  "phase": 0,
+  "generatedAt": "2026-02-16T07:48:16Z",
+  "commit": "783ce16ab77663e95fb3ec2046344a48be7e7cac",
+  "branch": "codex",
+  "nodeVersion": "v25.6.0",
+  "platform": "linux/x86_64",
+  "commands": {
+    "unit": "node --test test/unit/*.test.js",
+    "e2e": "node --test --test-concurrency=1 test/e2e/*.test.js",
+    "session": "node test/comparison/session_test_runner.js"
+  },
+  "categories": {
+    "unit": {
+      "status": "failed",
+      "exitCode": 1,
+      "durationMs": 772,
+      "counts": {
+        "total": 75,
+        "passed": 73,
+        "failed": 2,
+        "skipped": 0,
+        "todo": 0,
+        "cancelled": 0
+      }
+    },
+    "e2e": {
+      "status": "failed",
+      "exitCode": 1,
+      "durationMs": 952,
+      "counts": {
+        "total": 3,
+        "passed": 0,
+        "failed": 3,
+        "skipped": 0,
+        "todo": 0,
+        "cancelled": 0
+      }
+    },
+    "session": {
+      "status": "failed",
+      "exitCode": 1,
+      "durationMs": 2231,
+      "counts": {
+        "total": 168,
+        "passed": 140,
+        "failed": 28
+      },
+      "byType": {
+        "chargen": {
+          "total": 91,
+          "passed": 90,
+          "failed": 1
+        },
+        "gameplay": {
+          "total": 17,
+          "passed": 0,
+          "failed": 17
+        },
+        "map": {
+          "total": 10,
+          "passed": 1,
+          "failed": 9
+        },
+        "special": {
+          "total": 50,
+          "passed": 49,
+          "failed": 1
+        }
+      },
+      "failingSamples": [
+        {
+          "session": "seed300_chargen_tourist.session.json",
+          "type": "chargen",
+          "firstDivergence": null,
+          "error": "otmp.totable is not a function"
+        },
+        {
+          "session": "seed100_multidigit_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed1_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed200_repeat_ctrl_a_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed201_fight_prefix_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed203_run_prefix_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed204_multidigit_wait_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed2_wizard_fountains_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed3_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed3_selfplay_100turns_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed3_selfplay_20turns_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed3_selfplay_5turns_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed42_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed42_inventory_wizard_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed42_inventory_wizard_pickup_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed42_items_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed4_selfplay_150turns_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed5_gnomish_mines_gameplay.session.json",
+          "type": "gameplay",
+          "firstDivergence": null,
+          "error": "Cannot read properties of null (reading 'charCodeAt')"
+        },
+        {
+          "session": "seed119_map.session.json",
+          "type": "map",
+          "firstDivergence": {
+            "rngCall": 381,
+            "expected": "rn2(100)=22",
+            "actual": "rnd(5)=3",
+            "depth": 1
+          },
+          "error": null
+        },
+        {
+          "session": "seed119_maps_c.session.json",
+          "type": "map",
+          "firstDivergence": {
+            "rngCall": 381,
+            "expected": "rn2(100)=22",
+            "actual": "rnd(5)=3",
+            "depth": 1
+          },
+          "error": null
+        }
+      ]
+    }
+  },
+  "overall": {
+    "durationMs": 4197,
+    "total": 246,
+    "passed": 213,
+    "failed": 33
+  },
+  "fileBaselines": {
+    "test/comparison/session_helpers.js": {
+      "lines": 2250,
+      "target": 500,
+      "note": "Remove HeadlessGame class and game logic"
+    },
+    "test/comparison/session_test_runner.js": {
+      "lines": 1133,
+      "target": 350,
+      "note": "Keep only orchestration, no game logic"
+    },
+    "test/comparison/headless_game.js": {
+      "lines": 615,
+      "target": 0,
+      "note": "Delete after shared runtime adoption"
+    }
+  }
+}

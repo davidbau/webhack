@@ -211,11 +211,12 @@ export function parseScreen(grid) {
     screen.message = extractRowText(grid[MESSAGE_ROW]);
     screen.hasMore = screen.message.includes('--More--');
 
-    // Detect prompts on the message line
-    // Common prompt patterns: "Really attack X [yn]", "What do you want to X?"
+    // Detect prompts on the message line.
+    // Use tail-based checks so concatenated follow-up messages don't keep
+    // stale prompts active (e.g. "Wield what? [...]  a - spear ...").
     const msgTrimmed = screen.message.trim();
-    if (msgTrimmed.endsWith('[yn]') || msgTrimmed.endsWith('[ynq]') ||
-        msgTrimmed.endsWith('[ynaq]') || msgTrimmed.includes('? [')) {
+    const hasPromptTail = /\[[^\]]+\](?:\s*\([^)]+\))?$/.test(msgTrimmed);
+    if (hasPromptTail) {
         screen.inPrompt = true;
         screen.promptText = msgTrimmed;
     }
@@ -265,9 +266,10 @@ export function parseScreen(grid) {
     screen.statusLine2 = extractRowText(grid[STATUS_ROW_2]);
 
     // --- Menu detection ---
-    // Menus typically have "(end)" at the bottom or alphabetic selectors
-    // along the left edge of the map area
-    if (screen.message.includes('(end)') || screen.message.includes('Pick ')) {
+    // Menus reliably surface "(end)" in the message line in our adapters.
+    // Avoid a broad "Pick " heuristic because stale prompt text can persist
+    // and cause infinite ESC loops in the agent.
+    if (screen.message.includes('(end)')) {
         screen.inMenu = true;
     }
 

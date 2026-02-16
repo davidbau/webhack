@@ -467,11 +467,17 @@ snapshotScreen() {
 **Tasks:**
 1. Capture baseline pass/fail counts and runtime for unit/e2e/session
 2. Add temporary side-by-side old/new session runner diff capability
-3. Document current test counts: ~1467 unit, ~142 session pass, ~32 session fail
+3. Document current test counts in-repo (baseline snapshot)
+   - Baseline snapshot (2026-02-16): unit `73/75`, e2e `0/3`, session `140/168`
 
 **Exit Criteria:**
 - Baseline metrics stored in repo (e.g., `test/baseline.json`)
 - Can run old and new runner and diff results
+- Commands are codified:
+  - `bash scripts/phase0-capture-baseline.sh --output test/baseline.json`
+  - `bash scripts/session-runner-diff.sh --old \"<old_cmd>\" --new \"<new_cmd>\"`
+  - `bash scripts/session-baseline-capture.sh --output test/comparison/baseline_results.json`
+  - `bash scripts/session-baseline-check.sh --strict`
 
 ---
 

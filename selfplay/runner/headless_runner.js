@@ -1,461 +1,12 @@
 #!/usr/bin/env node
 // selfplay/runner/headless_runner.js -- Run the AI agent against the JS port headlessly
-//
-// Drives the agent through the JS NetHack game engine without any DOM,
-// perfect for stress testing and trace collection.
-//
-// Usage:
-//   node selfplay/runner/headless_runner.js [--seed N] [--turns N] [--verbose]
 
 import { Agent } from '../agent.js';
-import { JSAdapter, HeadlessDisplay } from '../interface/js_adapter.js';
-import { parseScreen } from '../perception/screen_parser.js';
-import { parseStatus } from '../perception/status_parser.js';
-
-// Import game modules
-import { initRng, rn2, rnd, rn1 } from '../../js/rng.js';
-import { pushInput } from '../../js/input.js';
-import { initLevelGeneration, makelevel, wallification, setGameSeed } from '../../js/dungeon.js';
-import { Player, roles } from '../../js/player.js';
-import { rhack } from '../../js/commands.js';
-import { movemon, initrack, settrack } from '../../js/monmove.js';
-import { FOV } from '../../js/vision.js';
-import { simulatePostLevelInit } from '../../js/u_init.js';
-import {
-    COLNO, ROWNO, NORMAL_SPEED, A_DEX, A_CON,
-    RACE_HUMAN, MESSAGE_ROW, MAP_ROW_START, STATUS_ROW_1, STATUS_ROW_2,
-    STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,
-    CROSSWALL, TUWALL, TDWALL, TLWALL, TRWALL, DOOR, CORR, ROOM,
-    STAIRS, FOUNTAIN, THRONE, SINK, GRAVE, ALTAR, POOL, MOAT,
-    WATER, LAVAPOOL, LAVAWALL, ICE, IRONBARS, TREE,
-    DRAWBRIDGE_UP, DRAWBRIDGE_DOWN, AIR, CLOUD, SDOOR, SCORR,
-    D_NODOOR, D_CLOSED, D_ISOPEN, D_LOCKED, ACCESSIBLE, MAXLEVEL,
-} from '../../js/config.js';
-import { doname } from '../../js/mkobj.js';
-
-// Terrain symbol mapping (matches display.js)
-function getTerrainSymbol(loc) {
-    const typ = loc.typ;
-    if (typ === DOOR) {
-        if (loc.flags & D_ISOPEN) return { ch: '\u00b7', color: 3 };
-        if (loc.flags & D_CLOSED || loc.flags & D_LOCKED) return { ch: '+', color: 3 };
-        return { ch: '\u00b7', color: 7 };
-    }
-    if (typ === STAIRS) return loc.flags === 1 ? { ch: '<', color: 7 } : { ch: '>', color: 7 };
-    if (typ === SDOOR) return loc.horizontal ? { ch: '\u2500', color: 7 } : { ch: '\u2502', color: 7 };
-    const syms = {
-        [STONE]: { ch: ' ', color: 7 }, [VWALL]: { ch: '\u2502', color: 7 },
-        [HWALL]: { ch: '\u2500', color: 7 }, [TLCORNER]: { ch: '\u250c', color: 7 },
-        [TRCORNER]: { ch: '\u2510', color: 7 }, [BLCORNER]: { ch: '\u2514', color: 7 },
-        [BRCORNER]: { ch: '\u2518', color: 7 }, [CROSSWALL]: { ch: '\u253c', color: 7 },
-        [TUWALL]: { ch: '\u2534', color: 7 }, [TDWALL]: { ch: '\u252c', color: 7 },
-        [TLWALL]: { ch: '\u2524', color: 7 }, [TRWALL]: { ch: '\u251c', color: 7 },
-        [CORR]: { ch: '#', color: 7 }, [ROOM]: { ch: '\u00b7', color: 7 },
-        [FOUNTAIN]: { ch: '{', color: 11 }, [THRONE]: { ch: '\\', color: 10 },
-        [SINK]: { ch: '#', color: 7 }, [GRAVE]: { ch: '\u2020', color: 14 },
-        [ALTAR]: { ch: '_', color: 7 }, [POOL]: { ch: '\u2248', color: 4 },
-        [MOAT]: { ch: '\u2248', color: 4 }, [WATER]: { ch: '\u2248', color: 11 },
-        [LAVAPOOL]: { ch: '\u2248', color: 1 }, [LAVAWALL]: { ch: '\u2248', color: 8 },
-        [ICE]: { ch: '\u00b7', color: 6 }, [IRONBARS]: { ch: '#', color: 6 },
-        [TREE]: { ch: '#', color: 2 }, [DRAWBRIDGE_UP]: { ch: '#', color: 3 },
-        [DRAWBRIDGE_DOWN]: { ch: '\u00b7', color: 3 }, [AIR]: { ch: ' ', color: 6 },
-        [CLOUD]: { ch: '#', color: 7 }, [SCORR]: { ch: ' ', color: 7 },
-    };
-    return syms[typ] || { ch: '?', color: 5 };
-}
-
-const INVENTORY_CLASS_NAMES = {
-    1: 'Weapons', 2: 'Armor', 3: 'Rings', 4: 'Amulets',
-    5: 'Tools', 6: 'Comestibles', 7: 'Potions', 8: 'Scrolls',
-    9: 'Spellbooks', 10: 'Wands', 11: 'Coins', 12: 'Gems/Stones',
-};
-
-const INVENTORY_ORDER = [11, 4, 1, 2, 6, 8, 9, 7, 3, 10, 5, 12, 13, 14, 15];
-
-function buildInventoryLines(player) {
-    if (!player || player.inventory.length === 0) {
-        return ['Not carrying anything.'];
-    }
-
-    const groups = {};
-    for (const item of player.inventory) {
-        const cls = item.oclass;
-        if (!groups[cls]) groups[cls] = [];
-        groups[cls].push(item);
-    }
-
-    const lines = [];
-    for (const cls of INVENTORY_ORDER) {
-        if (!groups[cls]) continue;
-        lines.push(` ${INVENTORY_CLASS_NAMES[cls] || 'Other'}`);
-        for (const item of groups[cls]) {
-            lines.push(` ${item.invlet} - ${doname(item, player)}`);
-        }
-    }
-    lines.push(' (end)');
-    return lines;
-}
+import { roles } from '../../js/player.js';
+import { buildInventoryLines, createHeadlessGame } from '../../js/headless_runtime.js';
 
 /**
- * A headless game instance that mirrors NetHackGame but without DOM dependencies.
- */
-export class HeadlessGame {
-    constructor(seed, roleIndex = 11) { // default Valkyrie
-        this.seed = seed;
-        this.roleIndex = roleIndex;
-
-        // Game flags (C ref: flags struct from flag.h)
-        this.flags = {
-            pickup: true,
-            pickup_types: '',
-            showexp: true,
-            color: true,
-            time: false,
-            safe_pet: true,
-            confirm: true,
-            verbose: true,
-            tombstone: true,
-            rest_on_space: false,
-            number_pad: false,
-            lit_corridor: false,
-        };
-
-        // Initialize RNG and level generation (match test/comparison/session_helpers.js sequence)
-        initrack();  // reset player track buffer
-        initRng(seed);
-        setGameSeed(seed);  // for shopkeeper naming
-        initLevelGeneration(roleIndex);
-
-        // Generate first level
-        this.map = makelevel(1);
-        wallification(this.map);
-
-        // Set up player
-        this.player = new Player();
-        this.player.initRole(roleIndex);
-        this.player.name = 'Agent';
-        this.player.gender = 0; // male
-
-        // Place player at upstair
-        if (this.map.upstair) {
-            this.player.x = this.map.upstair.x;
-            this.player.y = this.map.upstair.y;
-            // DEBUG: log upstair position and room info
-            if (process.env.DEBUG_UPSTAIR) {
-                console.log(`DEBUG: upstair at (${this.map.upstair.x}, ${this.map.upstair.y}), player at (${this.player.x}, ${this.player.y})`);
-                console.log(`DEBUG: total rooms: ${this.map.rooms?.length || 0}`);
-                for (let i = 0; i < (this.map.rooms?.length || 0); i++) {
-                    const r = this.map.rooms[i];
-                    console.log(`DEBUG: room[${i}] bounds: lx=${r.lx}, hx=${r.hx}, ly=${r.ly}, hy=${r.hy}`);
-                }
-            }
-        }
-
-        // Post-level init
-        const initResult = simulatePostLevelInit(this.player, this.map, 1);
-
-        // Display and FOV
-        this.display = new HeadlessDisplay();
-        this.fov = new FOV();
-
-        // Game state
-        this.levels = { 1: this.map };
-        this.gameOver = false;
-        this.gameOverReason = '';
-        this.turnCount = 0;
-        this.wizard = false;
-        this.seerTurn = initResult?.seerTurn || 0;
-        this.occupation = null;
-
-        // Render initial state
-        this._renderAll();
-    }
-
-    /**
-     * Change to a different dungeon level. Mirrors NetHackGame.changeLevel().
-     */
-    changeLevel(depth) {
-        // Cache current level
-        if (this.map) {
-            this.levels[this.player.dungeonLevel] = this.map;
-        }
-
-        // Check cache or generate
-        if (this.levels[depth]) {
-            this.map = this.levels[depth];
-        } else {
-            this.map = makelevel(depth);
-            wallification(this.map);
-            this.levels[depth] = this.map;
-        }
-
-        this.player.dungeonLevel = depth;
-        this._placePlayerOnLevel();
-        this._renderAll();
-    }
-
-    /**
-     * Place the player on the current level at the appropriate staircase.
-     */
-    _placePlayerOnLevel() {
-        const hasUpstair = this.map.upstair && this.map.upstair.x > 0 && this.map.upstair.y > 0;
-        if (hasUpstair && this.player.dungeonLevel > 1) {
-            this.player.x = this.map.upstair.x;
-            this.player.y = this.map.upstair.y;
-            return;
-        }
-        // Find a room
-        if (this.map.rooms && this.map.rooms.length > 0) {
-            const room = this.map.rooms[0];
-            this.player.x = Math.floor((room.lx + room.hx) / 2);
-            this.player.y = Math.floor((room.ly + room.hy) / 2);
-            return;
-        }
-        // Fallback: any accessible square
-        for (let x = 1; x < COLNO - 1; x++) {
-            for (let y = 1; y < ROWNO - 1; y++) {
-                const loc = this.map.at(x, y);
-                if (loc && ACCESSIBLE(loc.typ)) {
-                    this.player.x = x;
-                    this.player.y = y;
-                    return;
-                }
-            }
-        }
-    }
-
-    _renderAll() {
-        this.fov.compute(this.map, this.player.x, this.player.y);
-        this._renderDisplay();
-    }
-
-    _renderDisplay() {
-        // Manually render the map to the headless display grid
-        // since HeadlessDisplay.renderMap is a no-op, we build the grid ourselves
-        const display = this.display;
-        const map = this.map;
-        const player = this.player;
-        const fov = this.fov;
-
-        // Message line (row 0) - handled by putstr_message
-
-        // Map area (rows 1-21)
-        for (let y = 0; y < ROWNO; y++) {
-            for (let x = 0; x < COLNO; x++) {
-                const row = y + MAP_ROW_START;
-                const col = x;
-
-                if (!fov.canSee(x, y)) {
-                    const loc = map.at(x, y);
-                    if (loc && loc.seenv) {
-                        // Remembered terrain (dark)
-                        const sym = getTerrainSymbol(loc);
-                        display.setCell(col, row, sym.ch, 0); // CLR_BLACK (dim)
-                    } else {
-                        display.setCell(col, row, ' ', 7);
-                    }
-                    continue;
-                }
-
-                const loc = map.at(x, y);
-                if (!loc) { display.setCell(col, row, ' ', 7); continue; }
-                loc.seenv = 0xFF;
-
-                // Player
-                if (x === player.x && y === player.y) {
-                    display.setCell(col, row, '@', 14); // CLR_WHITE
-                    continue;
-                }
-
-                // Monsters
-                const mon = map.monsterAt(x, y);
-                if (mon) {
-                    display.setCell(col, row, mon.displayChar, mon.displayColor);
-                    continue;
-                }
-
-                // Objects
-                const objs = map.objectsAt(x, y);
-                if (objs.length > 0) {
-                    const topObj = objs[objs.length - 1];
-                    display.setCell(col, row, topObj.displayChar, topObj.displayColor);
-                    continue;
-                }
-
-                // Traps
-                const trap = map.trapAt(x, y);
-                if (trap && trap.tseen) {
-                    display.setCell(col, row, '^', 5); // CLR_MAGENTA
-                    continue;
-                }
-
-                // Terrain
-                const sym = getTerrainSymbol(loc);
-                display.setCell(col, row, sym.ch, sym.color);
-            }
-        }
-
-        // Status lines (rows 22-23)
-        this._renderStatusLines();
-    }
-
-    _renderStatusLines() {
-        const p = this.player;
-        const d = this.display;
-
-        const alignStr = p.alignment < 0 ? 'Chaotic' : p.alignment > 0 ? 'Lawful' : 'Neutral';
-        const line1 = `${p.name}  St:${p.attributes[0]}  Dx:${p.attributes[3]}  Co:${p.attributes[4]}  In:${p.attributes[1]}  Wi:${p.attributes[2]}  Ch:${p.attributes[5]}  ${alignStr}`;
-        d.clearRow(STATUS_ROW_1);
-        d.putstr(0, STATUS_ROW_1, line1.substring(0, 80), 7);
-
-        const parts = [];
-        parts.push(`Dlvl:${p.dungeonLevel}`);
-        parts.push(`$:${p.gold}`);
-        parts.push(`HP:${p.hp}(${p.hpmax})`);
-        parts.push(`Pw:${p.pw}(${p.pwmax})`);
-        parts.push(`AC:${p.ac}`);
-        parts.push(`Xp:${p.level}/${p.exp || 0}`);
-        parts.push(`T:${p.turns}`);
-        if (p.hunger <= 50) parts.push('Fainting');
-        else if (p.hunger <= 150) parts.push('Weak');
-        else if (p.hunger <= 300) parts.push('Hungry');
-        const line2 = parts.join('  ');
-        d.clearRow(STATUS_ROW_2);
-        d.putstr(0, STATUS_ROW_2, line2.substring(0, 80), 7);
-    }
-
-    /**
-     * Execute one agent action: process command + monster turn.
-     * C ref: allmain.c:196-391 — full movement/turn loop
-     */
-    async executeCommand(ch) {
-        const code = typeof ch === 'string' ? ch.charCodeAt(0) : ch;
-        const result = await rhack(code, this);
-
-        if (result && result.tookTime) {
-            // C ref: allmain.c:197 — actual time passed
-            this.player.movement -= NORMAL_SPEED;
-
-            // C ref: allmain.c:199-391 — "hero can't move this turn loop"
-            // Keeps looping until player accumulates enough movement to act
-            let outerLoops = 0;
-            do {
-                outerLoops++;
-                // C ref: allmain.c:203-209 — inner monster movement loop
-                let monscanmove;
-                do {
-                    monscanmove = this._movemon_check();
-                    if (this.player.movement >= NORMAL_SPEED)
-                        break; // it's now your turn
-                } while (monscanmove);
-
-                // C ref: allmain.c:214-390 — set up for a new turn
-                // Only when both hero and monsters are out of steam
-                if (!monscanmove && this.player.movement < NORMAL_SPEED) {
-                    this.simulateTurnEnd();
-                }
-            } while (this.player.movement < NORMAL_SPEED);
-            if (process.env.DEBUG_LOOPS) console.log(`Turn ${this.turnCount}: outer loops = ${outerLoops}`);
-        }
-
-        // Re-render
-        this.fov.compute(this.map, this.player.x, this.player.y);
-        this._renderDisplay();
-
-        // Check for death
-        if (this.player.hp <= 0) {
-            this.gameOver = true;
-            this.gameOverReason = 'died';
-        }
-
-        return result;
-    }
-
-    // C ref: mon.c movemon() — returns TRUE if any monster can move
-    _movemon_check() {
-        movemon(this.map, this.player, this.display, this.fov);
-        // Check if any monster still has movement >= NORMAL_SPEED
-        for (const mon of this.map.monsters) {
-            if (!mon.dead && mon.movement >= NORMAL_SPEED) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // C ref: mon.c mcalcmove() — random rounding of monster speed
-    mcalcmove(mon) {
-        let mmove = mon.speed;
-        const mmoveAdj = mmove % NORMAL_SPEED;
-        mmove -= mmoveAdj;
-        if (rn2(NORMAL_SPEED) < mmoveAdj) mmove += NORMAL_SPEED;
-        return mmove;
-    }
-
-    // C ref: allmain.c moveloop_core() — per-turn effects after monster movement
-    simulateTurnEnd() {
-        // C ref: allmain.c:226-227 — reallocate movement to monsters via mcalcmove
-        for (const mon of this.map.monsters) {
-            if (mon.dead) continue;
-            mon.movement += this.mcalcmove(mon);
-        }
-
-        // C ref: allmain.c:232-236 — monster spawn check
-        rn2(70);   // rn2(25) if demigod, rn2(50) below stronghold
-
-        // C ref: allmain.c:237 — u_calc_moveamt() reallocates player movement
-        this.player.movement += NORMAL_SPEED;
-
-        // C ref: allmain.c:239 — settrack() AFTER movement allocation
-        settrack(this.player);
-
-        // C ref: allmain.c:240 — moves++ (turn counter)
-        this.turnCount++;
-        this.player.turns = this.turnCount;
-
-        // C ref: allmain.c:289-295 regen_hp()
-        if (this.player.hp < this.player.hpmax) {
-            const con = this.player.attributes ? this.player.attributes[A_CON] : 10;
-            const heal = (this.player.level + con) > rn2(100) ? 1 : 0;
-            if (heal) {
-                this.player.hp = Math.min(this.player.hp + heal, this.player.hpmax);
-            }
-        }
-
-        // C ref: allmain.c:351 dosounds() — ambient level sounds
-        this.dosounds();
-
-        // C ref: allmain.c:353 gethungry()
-        rn2(20);
-        this.player.hunger--;
-
-        // C ref: allmain.c:359 — engrave wipe check
-        const dex = this.player.attributes ? this.player.attributes[A_DEX] : 14;
-        rn2(40 + dex * 3);
-
-        // C ref: allmain.c:408-414 — seer_turn (clairvoyance timer)
-        if (this.turnCount >= this.seerTurn) {
-            this.seerTurn = this.turnCount + rn1(31, 15);
-        }
-    }
-
-    // C ref: sounds.c dosounds() — ambient sounds with occasional messages
-    dosounds() {
-        const f = this.map.flags || {};
-        if (f.nfountains && !rn2(400)) { rn2(3); }
-        if (f.nsinks && !rn2(300)) { rn2(2); }
-        if (f.has_court && !rn2(200)) { return; }
-        if (f.has_swamp && !rn2(200)) { rn2(2); return; }
-        if (f.has_vault && !rn2(200)) { rn2(2); return; }
-        if (f.has_beehive && !rn2(200)) { return; }
-        if (f.has_morgue && !rn2(200)) { rn2(5); return; }
-        if (f.has_barracks && !rn2(200)) { rn2(2); return; }
-        if (f.has_zoo && !rn2(200)) { rn2(2); return; }
-    }
-}
-
-/**
- * Custom adapter for the headless game that drives it directly.
+ * Adapter that drives the shared headless runtime.
  */
 export class HeadlessAdapter {
     constructor(game) {
@@ -464,23 +15,30 @@ export class HeadlessAdapter {
         this.stripColors = false;
     }
 
-    async start() { this._running = true; }
+    async start() {
+        this._running = true;
+    }
+
+    _pushKeyCode(code) {
+        const input = this.game?.input;
+        if (input && typeof input.pushInput === 'function') {
+            input.pushInput(code);
+        }
+    }
 
     async sendKey(key) {
         if (!this._running) return;
-        // Execute the command directly and wait for it to complete.
-        // Some commands can unexpectedly block waiting for extra input.
-        // To avoid deadlocks in long automated runs, arm a delayed
-        // fallback that feeds safe dismiss keys until the command returns.
+
+        // Some commands block on follow-up prompts. Arm a fallback that feeds
+        // safe dismiss keys if execution stalls.
         let rescueTimer = null;
         let rescueInterval = null;
         const armRescue = () => {
             rescueInterval = setInterval(() => {
-                // ESC, 'n', Enter, and Space cover most blocking prompts.
-                pushInput(27);
-                pushInput('n'.charCodeAt(0));
-                pushInput('\n'.charCodeAt(0));
-                pushInput(' '.charCodeAt(0));
+                this._pushKeyCode(27); // ESC
+                this._pushKeyCode('n'.charCodeAt(0));
+                this._pushKeyCode('\n'.charCodeAt(0));
+                this._pushKeyCode(' '.charCodeAt(0));
             }, 20);
         };
 
@@ -495,7 +53,7 @@ export class HeadlessAdapter {
 
     queueInput(key) {
         const ch = typeof key === 'number' ? key : key.charCodeAt(0);
-        pushInput(ch);
+        this._pushKeyCode(ch);
     }
 
     async getInventoryLines() {
@@ -503,46 +61,64 @@ export class HeadlessAdapter {
     }
 
     async readScreen() {
-        if (!this.stripColors) return this.game.display.grid;
-        const grid = this.game.display.grid;
-        const stripped = [];
-        for (let r = 0; r < grid.length; r++) {
-            stripped[r] = [];
-            for (let c = 0; c < grid[r].length; c++) {
-                const cell = grid[r][c];
-                stripped[r][c] = cell ? { ch: cell.ch, color: 7 } : { ch: ' ', color: 7 };
+        const display = this.game?.display;
+        if (!display || !Array.isArray(display.grid)) return [];
+
+        const rows = display.rows || 24;
+        const cols = display.cols || 80;
+        const screen = [];
+        for (let r = 0; r < rows; r++) {
+            screen[r] = [];
+            for (let c = 0; c < cols; c++) {
+                const ch = display.grid?.[r]?.[c] || ' ';
+                const color = this.stripColors
+                    ? 7
+                    : (display.colors?.[r]?.[c] ?? 7);
+                screen[r][c] = { ch, color };
             }
         }
-        return stripped;
+        return screen;
     }
 
     async isRunning() {
         return this._running && !this.game.gameOver;
     }
 
-    async stop() { this._running = false; }
+    async stop() {
+        this._running = false;
+    }
 }
 
 /**
  * Run the agent headlessly.
  */
 export async function runHeadless(options = {}) {
-    const seed = options.seed || Math.floor(Math.random() * 100000);
-    const maxTurns = options.maxTurns || 1000;
-    const verbose = options.verbose || false;
-    const roleIndex = options.roleIndex || 11; // Valkyrie
+    const seed = Number.isInteger(options.seed)
+        ? options.seed
+        : Math.floor(Math.random() * 100000);
+    const maxTurns = Number.isInteger(options.maxTurns) ? options.maxTurns : 1000;
+    const verbose = !!options.verbose;
+    const roleIndex = Number.isInteger(options.roleIndex) ? options.roleIndex : 11; // Valkyrie
     const userOnTurn = options.onTurn || null;
     const dumpMaps = options.dumpMaps !== false;
 
     if (verbose) {
-        console.log(`Starting headless game: seed=${seed}, maxTurns=${maxTurns}, role=${roles[roleIndex].name}`);
+        const roleName = roles[roleIndex]?.name || `role#${roleIndex}`;
+        console.log(`Starting headless game: seed=${seed}, maxTurns=${maxTurns}, role=${roleName}`);
     }
 
-    const game = new HeadlessGame(seed, roleIndex);
+    const game = createHeadlessGame(seed, roleIndex, {
+        name: options.name || 'Agent',
+        wizard: !!options.wizard,
+        flags: options.flags,
+        DECgraphics: options.DECgraphics,
+    });
+
     const adapter = new HeadlessAdapter(game);
     if (options.colorless) {
         adapter.stripColors = true;
     }
+
     const onPerceive = options.onPerceive
         ? (info) => options.onPerceive({ ...info, game, adapter })
         : null;
@@ -564,7 +140,7 @@ export async function runHeadless(options = {}) {
         },
     });
 
-    // Dump the agent's known map at specific turns for debugging
+    // Dump the agent's known map at specific turns for debugging.
     const origOnTurn = agent.onTurn;
     agent.onTurn = (info) => {
         if (origOnTurn) origOnTurn(info);
@@ -572,6 +148,7 @@ export async function runHeadless(options = {}) {
             dumpAgentMap(agent, info.turn);
         }
     };
+
     const stats = await agent.run();
 
     if (verbose) {
@@ -584,7 +161,7 @@ export async function runHeadless(options = {}) {
         seed,
         stats,
         game,
-        agent,  // Return agent for diagnostic access
+        agent,
     };
 }
 
@@ -637,7 +214,7 @@ function dumpAgentMap(agent, turn) {
     const py = agent.screen?.playerY ?? -1;
     console.log(`\n=== Agent Map at Turn ${turn} (Dlvl ${agent.dungeon.currentDepth}) ===`);
     // Find bounding box of explored area
-    let minX = 80, maxX = 0, minY = 21, maxY = 0;
+    let minX = 80; let maxX = 0; let minY = 21; let maxY = 0;
     for (let y = 0; y < 21; y++) {
         for (let x = 0; x < 80; x++) {
             if (level.at(x, y).explored) {
@@ -659,7 +236,7 @@ function dumpAgentMap(agent, turn) {
             if (x === px && y === py) { row += '@'; continue; }
             const cell = level.at(x, y);
             if (!cell.explored) { row += ' '; continue; }
-            row += cell.ch === ' ' ? '.' : cell.ch;  // show stone-marked cells as '.'
+            row += cell.ch === ' ' ? '.' : cell.ch; // show stone-marked cells as '.'
         }
         console.log(`  ${String(y).padStart(2)}| ${row}`);
     }

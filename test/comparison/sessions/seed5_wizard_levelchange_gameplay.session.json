@@ -1,0 +1,55 @@
+{
+  "version": 3,
+  "seed": 5,
+  "source": "js",
+  "type": "gameplay",
+  "regen": {
+    "mode": "wizard-transitions",
+    "moves": "^V5^F"
+  },
+  "options": {
+    "name": "Wizard",
+    "wizard": true,
+    "role": "Valkyrie",
+    "race": "human",
+    "gender": "female",
+    "align": "neutral",
+    "symset": "DECgraphics",
+    "autopickup": false,
+    "pickup_types": ""
+  },
+  "startup": {
+    "rngCalls": 2479,
+    "screen": []
+  },
+  "steps": [
+    {
+      "key": "\u0016",
+      "action": "wizard-levelchange-open",
+      "rngCalls": 0,
+      "rng": [],
+      "screen": []
+    },
+    {
+      "key": "5",
+      "action": "wizard-levelchange-depth",
+      "rngCalls": 0,
+      "rng": [],
+      "screen": []
+    },
+    {
+      "key": "\n",
+      "action": "wizard-levelchange-confirm-5",
+      "rngCalls": 22677,
+      "rng": [],
+      "screen": []
+    },
+    {
+      "key": "\u0006",
+      "action": "wizard-map-reveal",
+      "rngCalls": 0,
+      "rng": [],
+      "screen": []
+    }
+  ]
+}

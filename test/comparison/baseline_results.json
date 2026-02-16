@@ -1,0 +1,1775 @@
+{
+  "timestamp": "2026-02-16T07:48:12.619Z",
+  "commit": "",
+  "goldenBranch": null,
+  "results": [
+    {
+      "session": "interface_chargen.session.json",
+      "type": "chargen",
+      "seed": 0,
+      "passed": true,
+      "duration": 18
+    },
+    {
+      "session": "seed100_chargen_archeologist.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "archeologist",
+      "duration": 9
+    },
+    {
+      "session": "seed100_chargen_barbarian.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "barbarian",
+      "duration": 9
+    },
+    {
+      "session": "seed100_chargen_caveman.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "caveman",
+      "duration": 8
+    },
+    {
+      "session": "seed100_chargen_healer.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "healer",
+      "duration": 14
+    },
+    {
+      "session": "seed100_chargen_knight.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "knight",
+      "duration": 7
+    },
+    {
+      "session": "seed100_chargen_monk.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "monk",
+      "duration": 107
+    },
+    {
+      "session": "seed100_chargen_priest.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "priest",
+      "duration": 10
+    },
+    {
+      "session": "seed100_chargen_ranger.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "ranger",
+      "duration": 6
+    },
+    {
+      "session": "seed100_chargen_rogue.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "rogue",
+      "duration": 6
+    },
+    {
+      "session": "seed100_chargen_samurai.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "samurai",
+      "duration": 6
+    },
+    {
+      "session": "seed100_chargen_tourist.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "tourist",
+      "duration": 6
+    },
+    {
+      "session": "seed100_chargen_valkyrie.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "valkyrie",
+      "duration": 5
+    },
+    {
+      "session": "seed100_chargen_wizard.session.json",
+      "type": "chargen",
+      "seed": 100,
+      "passed": true,
+      "role": "wizard",
+      "duration": 7
+    },
+    {
+      "session": "seed1_chargen_archeologist.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "archeologist",
+      "duration": 8
+    },
+    {
+      "session": "seed1_chargen_barbarian.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "barbarian",
+      "duration": 6
+    },
+    {
+      "session": "seed1_chargen_caveman.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "caveman",
+      "duration": 55
+    },
+    {
+      "session": "seed1_chargen_healer.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "healer",
+      "duration": 5
+    },
+    {
+      "session": "seed1_chargen_knight.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "knight",
+      "duration": 6
+    },
+    {
+      "session": "seed1_chargen_monk.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "monk",
+      "duration": 7
+    },
+    {
+      "session": "seed1_chargen_priest.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "priest",
+      "duration": 7
+    },
+    {
+      "session": "seed1_chargen_ranger.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "ranger",
+      "duration": 32
+    },
+    {
+      "session": "seed1_chargen_rogue.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "rogue",
+      "duration": 6
+    },
+    {
+      "session": "seed1_chargen_samurai.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "samurai",
+      "duration": 6
+    },
+    {
+      "session": "seed1_chargen_tourist.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "tourist",
+      "duration": 7
+    },
+    {
+      "session": "seed1_chargen_valkyrie.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "valkyrie",
+      "duration": 6
+    },
+    {
+      "session": "seed1_chargen_wizard.session.json",
+      "type": "chargen",
+      "seed": 1,
+      "passed": true,
+      "role": "wizard",
+      "duration": 7
+    },
+    {
+      "session": "seed200_chargen_archeologist.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "archeologist",
+      "duration": 4
+    },
+    {
+      "session": "seed200_chargen_barbarian.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "barbarian",
+      "duration": 6
+    },
+    {
+      "session": "seed200_chargen_caveman.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "caveman",
+      "duration": 6
+    },
+    {
+      "session": "seed200_chargen_healer.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "healer",
+      "duration": 6
+    },
+    {
+      "session": "seed200_chargen_knight.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "knight",
+      "duration": 5
+    },
+    {
+      "session": "seed200_chargen_monk.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "monk",
+      "duration": 6
+    },
+    {
+      "session": "seed200_chargen_priest.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "priest",
+      "duration": 5
+    },
+    {
+      "session": "seed200_chargen_ranger.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "ranger",
+      "duration": 7
+    },
+    {
+      "session": "seed200_chargen_rogue.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "rogue",
+      "duration": 5
+    },
+    {
+      "session": "seed200_chargen_samurai.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "samurai",
+      "duration": 5
+    },
+    {
+      "session": "seed200_chargen_tourist.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "tourist",
+      "duration": 6
+    },
+    {
+      "session": "seed200_chargen_valkyrie.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "valkyrie",
+      "duration": 4
+    },
+    {
+      "session": "seed200_chargen_wizard.session.json",
+      "type": "chargen",
+      "seed": 200,
+      "passed": true,
+      "role": "wizard",
+      "duration": 6
+    },
+    {
+      "session": "seed300_chargen_archeologist.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "archeologist",
+      "duration": 7
+    },
+    {
+      "session": "seed300_chargen_barbarian.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "barbarian",
+      "duration": 6
+    },
+    {
+      "session": "seed300_chargen_caveman.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "caveman",
+      "duration": 5
+    },
+    {
+      "session": "seed300_chargen_healer.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "healer",
+      "duration": 6
+    },
+    {
+      "session": "seed300_chargen_knight.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "knight",
+      "duration": 6
+    },
+    {
+      "session": "seed300_chargen_monk.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "monk",
+      "duration": 6
+    },
+    {
+      "session": "seed300_chargen_priest.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "priest",
+      "duration": 6
+    },
+    {
+      "session": "seed300_chargen_ranger.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "ranger",
+      "duration": 6
+    },
+    {
+      "session": "seed300_chargen_rogue.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "rogue",
+      "duration": 5
+    },
+    {
+      "session": "seed300_chargen_samurai.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "samurai",
+      "duration": 5
+    },
+    {
+      "session": "seed300_chargen_tourist.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": false,
+      "role": "tourist",
+      "error": "otmp.totable is not a function",
+      "duration": 3
+    },
+    {
+      "session": "seed300_chargen_valkyrie.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "valkyrie",
+      "duration": 6
+    },
+    {
+      "session": "seed300_chargen_wizard.session.json",
+      "type": "chargen",
+      "seed": 300,
+      "passed": true,
+      "role": "wizard",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_archeologist.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "archeologist",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_archeologist_dwarf.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "archeologist_dwarf",
+      "variant": "dwarf",
+      "duration": 16
+    },
+    {
+      "session": "seed42_chargen_archeologist_gnome.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "archeologist_gnome",
+      "variant": "gnome",
+      "duration": 10
+    },
+    {
+      "session": "seed42_chargen_archeologist_lawful.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "archeologist_lawful",
+      "variant": "lawful",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_barbarian.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "barbarian",
+      "duration": 6
+    },
+    {
+      "session": "seed42_chargen_barbarian_chaotic.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "barbarian_chaotic",
+      "variant": "chaotic",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_barbarian_orc.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "barbarian_orc",
+      "variant": "orc",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_caveman.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "caveman",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_caveman_dwarf.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "caveman_dwarf",
+      "variant": "dwarf",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_caveman_gnome.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "caveman_gnome",
+      "variant": "gnome",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_caveman_lawful.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "caveman_lawful",
+      "variant": "lawful",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_healer.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "healer",
+      "duration": 6
+    },
+    {
+      "session": "seed42_chargen_healer_gnome.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "healer_gnome",
+      "variant": "gnome",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_knight.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "knight",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_monk.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "monk",
+      "duration": 4
+    },
+    {
+      "session": "seed42_chargen_monk_chaotic.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "monk_chaotic",
+      "variant": "chaotic",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_monk_lawful.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "monk_lawful",
+      "variant": "lawful",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_priest.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "priest",
+      "duration": 6
+    },
+    {
+      "session": "seed42_chargen_priest_chaotic.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "priest_chaotic",
+      "variant": "chaotic",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_priest_elf.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "priest_elf",
+      "variant": "elf",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_priest_lawful.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "priest_lawful",
+      "variant": "lawful",
+      "duration": 6
+    },
+    {
+      "session": "seed42_chargen_ranger.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "ranger",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_ranger_chaotic.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "ranger_chaotic",
+      "variant": "chaotic",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_ranger_elf.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "ranger_elf",
+      "variant": "elf",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_ranger_gnome.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "ranger_gnome",
+      "variant": "gnome",
+      "duration": 4
+    },
+    {
+      "session": "seed42_chargen_ranger_orc.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "ranger_orc",
+      "variant": "orc",
+      "duration": 6
+    },
+    {
+      "session": "seed42_chargen_rogue.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "rogue",
+      "duration": 8
+    },
+    {
+      "session": "seed42_chargen_rogue_orc.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "rogue_orc",
+      "variant": "orc",
+      "duration": 6
+    },
+    {
+      "session": "seed42_chargen_samurai.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "samurai",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_tourist.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "tourist",
+      "duration": 6
+    },
+    {
+      "session": "seed42_chargen_valkyrie.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "valkyrie",
+      "duration": 7
+    },
+    {
+      "session": "seed42_chargen_valkyrie_dwarf.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "valkyrie_dwarf",
+      "variant": "dwarf",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_valkyrie_lawful.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "valkyrie_lawful",
+      "variant": "lawful",
+      "duration": 4
+    },
+    {
+      "session": "seed42_chargen_wizard.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "wizard",
+      "duration": 6
+    },
+    {
+      "session": "seed42_chargen_wizard_chaotic.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "wizard_chaotic",
+      "variant": "chaotic",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_wizard_elf.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "wizard_elf",
+      "variant": "elf",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_wizard_gnome.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "wizard_gnome",
+      "variant": "gnome",
+      "duration": 5
+    },
+    {
+      "session": "seed42_chargen_wizard_orc.session.json",
+      "type": "chargen",
+      "seed": 42,
+      "passed": true,
+      "role": "wizard_orc",
+      "variant": "orc",
+      "duration": 6
+    },
+    {
+      "session": "seed100_multidigit_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 100,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 6
+    },
+    {
+      "session": "seed1_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 1,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 4
+    },
+    {
+      "session": "seed200_repeat_ctrl_a_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 200,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 4
+    },
+    {
+      "session": "seed201_fight_prefix_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 201,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 4
+    },
+    {
+      "session": "seed203_run_prefix_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 203,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 3
+    },
+    {
+      "session": "seed204_multidigit_wait_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 204,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 4
+    },
+    {
+      "session": "seed2_wizard_fountains_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 2,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 4
+    },
+    {
+      "session": "seed3_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 3,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 3
+    },
+    {
+      "session": "seed3_selfplay_100turns_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 3,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 5
+    },
+    {
+      "session": "seed3_selfplay_20turns_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 3,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 6
+    },
+    {
+      "session": "seed3_selfplay_5turns_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 3,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 5
+    },
+    {
+      "session": "seed42_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 42,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 3
+    },
+    {
+      "session": "seed42_inventory_wizard_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 42,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 4
+    },
+    {
+      "session": "seed42_inventory_wizard_pickup_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 42,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 4
+    },
+    {
+      "session": "seed42_items_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 42,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 3
+    },
+    {
+      "session": "seed4_selfplay_150turns_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 4,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 3
+    },
+    {
+      "session": "seed5_gnomish_mines_gameplay.session.json",
+      "type": "gameplay",
+      "seed": 5,
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'charCodeAt')",
+      "duration": 3
+    },
+    {
+      "session": "seed100_special_bigroom.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_castle.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_filler.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 2,
+          "total": 2
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_gehennom.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 7,
+          "total": 7
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_knox.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_medusa.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_mines.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 2,
+          "total": 2
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_oracle.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_planes.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 5,
+          "total": 5
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_quest.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 39,
+          "total": 39
+        }
+      },
+      "duration": 1
+    },
+    {
+      "session": "seed100_special_rogue.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_sokoban.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 4,
+          "total": 4
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_tutorial.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 2,
+          "total": 2
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_valley.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_vlad.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 3,
+          "total": 3
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed100_special_wizard.session.json",
+      "type": "special",
+      "seed": 100,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 3,
+          "total": 3
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed119_map.session.json",
+      "type": "map",
+      "seed": 119,
+      "passed": false,
+      "metrics": {
+        "rngCalls": {
+          "matched": 1025,
+          "total": 16528
+        },
+        "grids": {
+          "matched": 0,
+          "total": 5
+        }
+      },
+      "firstDivergence": {
+        "rngCall": 381,
+        "expected": "rn2(100)=22",
+        "actual": "rnd(5)=3",
+        "depth": 1
+      },
+      "duration": 22
+    },
+    {
+      "session": "seed119_maps_c.session.json",
+      "type": "map",
+      "seed": 119,
+      "passed": false,
+      "metrics": {
+        "rngCalls": {
+          "matched": 1025,
+          "total": 16528
+        },
+        "grids": {
+          "matched": 0,
+          "total": 5
+        }
+      },
+      "firstDivergence": {
+        "rngCall": 381,
+        "expected": "rn2(100)=22",
+        "actual": "rnd(5)=3",
+        "depth": 1
+      },
+      "duration": 17
+    },
+    {
+      "session": "seed163_map.session.json",
+      "type": "map",
+      "seed": 163,
+      "passed": false,
+      "metrics": {
+        "rngCalls": {
+          "matched": 1799,
+          "total": 13681
+        },
+        "grids": {
+          "matched": 0,
+          "total": 5
+        }
+      },
+      "firstDivergence": {
+        "rngCall": 343,
+        "expected": "rn2(100)=84",
+        "actual": "rnd(5)=5",
+        "depth": 1
+      },
+      "duration": 18
+    },
+    {
+      "session": "seed163_maps_c.session.json",
+      "type": "map",
+      "seed": 163,
+      "passed": false,
+      "metrics": {
+        "rngCalls": {
+          "matched": 1799,
+          "total": 13681
+        },
+        "grids": {
+          "matched": 0,
+          "total": 5
+        }
+      },
+      "firstDivergence": {
+        "rngCall": 343,
+        "expected": "rn2(100)=84",
+        "actual": "rnd(5)=5",
+        "depth": 1
+      },
+      "duration": 16
+    },
+    {
+      "session": "seed16_map.session.json",
+      "type": "map",
+      "seed": 16,
+      "passed": false,
+      "metrics": {
+        "rngCalls": {
+          "matched": 997,
+          "total": 3639
+        },
+        "grids": {
+          "matched": 0,
+          "total": 1
+        }
+      },
+      "firstDivergence": {
+        "rngCall": 857,
+        "expected": "rn2(13)=1",
+        "actual": "rn2(12)=0",
+        "depth": 1
+      },
+      "duration": 3
+    },
+    {
+      "session": "seed16_maps_c.session.json",
+      "type": "map",
+      "seed": 16,
+      "passed": false,
+      "metrics": {
+        "rngCalls": {
+          "matched": 1044,
+          "total": 13779
+        },
+        "grids": {
+          "matched": 0,
+          "total": 5
+        }
+      },
+      "firstDivergence": {
+        "rngCall": 857,
+        "expected": "rn2(13)=1",
+        "actual": "rn2(12)=0",
+        "depth": 1
+      },
+      "duration": 15
+    },
+    {
+      "session": "seed1_special_bigroom.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_castle.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_filler.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 2,
+          "total": 2
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_gehennom.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 7,
+          "total": 7
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_knox.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_medusa.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_mines.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 2,
+          "total": 2
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_oracle.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_planes.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 5,
+          "total": 5
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_quest.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 39,
+          "total": 39
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_rogue.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_sokoban.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 4,
+          "total": 4
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_tutorial.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 2,
+          "total": 2
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_valley.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_vlad.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 3,
+          "total": 3
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed1_special_wizard.session.json",
+      "type": "special",
+      "seed": 1,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 3,
+          "total": 3
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed200_special_sokoban.session.json",
+      "type": "special",
+      "seed": 200,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 4,
+          "total": 4
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed300_special_sokoban.session.json",
+      "type": "special",
+      "seed": 300,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 4,
+          "total": 4
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed306_map.session.json",
+      "type": "map",
+      "seed": 306,
+      "passed": false,
+      "metrics": {
+        "rngCalls": {
+          "matched": 4281,
+          "total": 13403
+        },
+        "grids": {
+          "matched": 1,
+          "total": 5
+        }
+      },
+      "firstDivergence": {
+        "rngCall": 904,
+        "expected": "rn2(4)=2",
+        "actual": "rn2(6)=2",
+        "depth": 2
+      },
+      "duration": 16
+    },
+    {
+      "session": "seed306_maps_c.session.json",
+      "type": "map",
+      "seed": 306,
+      "passed": false,
+      "metrics": {
+        "rngCalls": {
+          "matched": 4281,
+          "total": 13403
+        },
+        "grids": {
+          "matched": 1,
+          "total": 5
+        }
+      },
+      "firstDivergence": {
+        "rngCall": 904,
+        "expected": "rn2(4)=2",
+        "actual": "rn2(6)=2",
+        "depth": 2
+      },
+      "duration": 14
+    },
+    {
+      "session": "seed42_special_bigroom.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_castle.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": false,
+      "metrics": {
+        "grids": {
+          "matched": 0,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_filler.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 2,
+          "total": 2
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_gehennom.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 7,
+          "total": 7
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_knox.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_medusa.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_mines.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 2,
+          "total": 2
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_oracle.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_planes.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 5,
+          "total": 5
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_quest.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 39,
+          "total": 39
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_rogue.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_sokoban.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 4,
+          "total": 4
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_tutorial.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 2,
+          "total": 2
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_valley.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_vlad.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 3,
+          "total": 3
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed42_special_wizard.session.json",
+      "type": "special",
+      "seed": 42,
+      "passed": true,
+      "metrics": {
+        "grids": {
+          "matched": 3,
+          "total": 3
+        }
+      },
+      "duration": 0
+    },
+    {
+      "session": "seed72_map.session.json",
+      "type": "map",
+      "seed": 72,
+      "passed": true,
+      "metrics": {
+        "rngCalls": {
+          "matched": 2591,
+          "total": 2591
+        },
+        "grids": {
+          "matched": 1,
+          "total": 1
+        }
+      },
+      "duration": 4
+    },
+    {
+      "session": "seed72_maps_c.session.json",
+      "type": "map",
+      "seed": 72,
+      "passed": false,
+      "metrics": {
+        "rngCalls": {
+          "matched": 3076,
+          "total": 21823
+        },
+        "grids": {
+          "matched": 1,
+          "total": 5
+        }
+      },
+      "firstDivergence": {
+        "rngCall": 242,
+        "expected": "rn2(13)=10",
+        "actual": "rn2(12)=11",
+        "depth": 2
+      },
+      "duration": 15
+    }
+  ],
+  "summary": {
+    "total": 168,
+    "passed": 140,
+    "failed": 28
+  }
+}
