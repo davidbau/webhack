@@ -4,10 +4,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-    generateStartupWithRng,
     replaySession,
 } from './session_runtime.js';
-import { generateMapsWithCoreReplay } from '../../js/headless_runtime.js';
+import {
+    generateMapsWithCoreReplay,
+    generateStartupWithCoreReplay,
+} from '../../js/headless_runtime.js';
 import { compareRng, compareGrids, compareScreenLines } from './comparators.js';
 import { loadAllSessions } from './session_loader.js';
 import {
@@ -49,7 +51,7 @@ async function runChargenResult(session) {
     const start = Date.now();
 
     try {
-        const startup = generateStartupWithRng(session.meta.seed, session.raw);
+        const startup = generateStartupWithCoreReplay(session.meta.seed, session.raw);
         if (session.startup?.rng?.length) {
             recordRngComparison(result, startup?.rng || [], session.startup.rng);
         }

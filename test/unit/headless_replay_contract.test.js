@@ -1,7 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { HeadlessGame, generateMapsWithCoreReplay } from '../../js/headless_runtime.js';
+import {
+    HeadlessGame,
+    generateMapsWithCoreReplay,
+    generateStartupWithCoreReplay,
+} from '../../js/headless_runtime.js';
 import { RACE_ELF } from '../../js/config.js';
 
 describe('HeadlessGame replay contract', () => {
@@ -82,5 +86,25 @@ describe('HeadlessGame replay contract', () => {
         assert.equal(Array.isArray(out.grids[2]), true);
         assert.equal(Array.isArray(out.rngLogs[1].rng), true);
         assert.equal(typeof out.rngLogs[1].rngCalls, 'number');
+    });
+
+    it('can generate startup state via core init path', () => {
+        const startup = generateStartupWithCoreReplay(42, {
+            type: 'chargen',
+            options: {
+                name: 'CoreInit',
+                role: 'Valkyrie',
+                race: 'human',
+                gender: 'female',
+                align: 'lawful',
+            },
+            steps: [],
+        });
+        assert.equal(typeof startup.rngCalls, 'number');
+        assert.equal(Array.isArray(startup.rng), true);
+        assert.equal(Array.isArray(startup.grid), true);
+        assert.equal(startup.grid.length, 21);
+        assert.equal(startup.grid[0].length, 80);
+        assert.equal(startup.player.name, 'CoreInit');
     });
 });

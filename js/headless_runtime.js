@@ -6,6 +6,10 @@ import {
     rn2,
     rnd,
     rn1,
+    rnl,
+    rne,
+    rnz,
+    d,
     enableRngLog,
     getRngLog as readRngLog,
     setRngCallCount,
@@ -232,6 +236,116 @@ export function generateMapsWithCoreReplay(seed, maxDepth, options = {}) {
         game.clearRngLog();
     }
     return { grids, maps, rngLogs };
+}
+
+function extractCharacterFromSession(session = {}) {
+    const opts = session.options || session.meta?.options || {};
+    return {
+        name: opts.name,
+        role: opts.role,
+        race: opts.race,
+        gender: opts.gender,
+        align: opts.align,
+    };
+}
+
+function getPreStartupRngEntries(session = {}) {
+    if (session.type === 'chargen') {
+        const out = [];
+        for (const step of (session.steps || [])) {
+            if (step.action === 'confirm-ok') break;
+            out.push(...(step.rng || []));
+        }
+        return out;
+    }
+    if (session.chargen && session.chargen.length > 0) {
+        const out = [];
+        const confirmIndex = session.chargen.findIndex((s) => s.action === 'confirm-ok');
+        for (let i = 0; i < confirmIndex && i < session.chargen.length; i++) {
+            out.push(...(session.chargen[i].rng || []));
+        }
+        return out;
+    }
+    return [];
+}
+
+function consumeRngEntry(entry) {
+    const call = rngCallPart(String(entry || ''));
+    const match = call.match(/^([a-z0-9_]+)\(([^)]*)\)=/i);
+    if (!match) return;
+    const fn = match[1];
+    const args = match[2]
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => Number.parseInt(s, 10));
+    switch (fn) {
+        case 'rn2':
+            if (args.length >= 1) rn2(args[0]);
+            break;
+        case 'rnd':
+            if (args.length >= 1) rnd(args[0]);
+            break;
+        case 'rn1':
+            if (args.length >= 2) rn1(args[0], args[1]);
+            break;
+        case 'rnl':
+            if (args.length >= 1) rnl(args[0]);
+            break;
+        case 'rne':
+            if (args.length >= 1) rne(args[0]);
+            break;
+        case 'rnz':
+            if (args.length >= 1) rnz(args[0]);
+            break;
+        case 'd':
+            if (args.length >= 2) d(args[0], args[1]);
+            break;
+    }
+}
+
+function consumeRngEntries(entries) {
+    for (const entry of entries || []) consumeRngEntry(entry);
+}
+
+export function generateStartupWithCoreReplay(seed, session, options = {}) {
+    const rawSession = session || {};
+    const char = extractCharacterFromSession(rawSession);
+    const preStartupEntries = getPreStartupRngEntries(rawSession);
+
+    enableRngLog(!!options.rngWithTags);
+    initRng(seed);
+    setGameSeed(seed);
+    consumeRngEntries(preStartupEntries);
+
+    const roleIndex = normalizeRoleIndex(char.role, 11);
+    const game = HeadlessGame.fromSeed(seed, roleIndex, {
+        preserveRngState: true,
+        wizard: options.wizard !== false,
+        name: char.name || options.name || 'Wizard',
+        gender: normalizeGender(char.gender, 0),
+        alignment: normalizeAlignment(char.align),
+        race: normalizeRace(char.race, RACE_HUMAN),
+        startDnum: options.startDnum,
+        startDlevel: Number.isInteger(options.startDlevel) ? options.startDlevel : 1,
+        dungeonAlignOverride: Number.isInteger(options.startDungeonAlign)
+            ? options.startDungeonAlign
+            : options.dungeonAlignOverride,
+        DECgraphics: options.symbolMode !== 'ascii' && options.DECgraphics !== false,
+    });
+
+    const fullLog = game.getRngLog().map(toCompactRng);
+    const stripCount = rawSession.type === 'chargen' ? preStartupEntries.length : 0;
+    const startupRng = fullLog.slice(stripCount);
+
+    return {
+        game,
+        map: game.map,
+        player: game.player,
+        grid: game.getTypGrid(),
+        rngCalls: startupRng.length,
+        rng: startupRng,
+    };
 }
 
 export class HeadlessGame {
@@ -633,7 +747,9 @@ HeadlessGame.fromSeed = function fromSeed(seed, roleIndex = 11, opts = {}) {
     setInputRuntime(input);
 
     initrack();
-    initRng(seed);
+    if (!opts.preserveRngState) {
+        initRng(seed);
+    }
     setGameSeed(seed);
     initLevelGeneration(roleIndex);
 
