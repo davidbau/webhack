@@ -1647,6 +1647,9 @@ function finddpos(map, dir, aroom) {
     }
 
     // Try random points (up to 20 attempts)
+    if (typeof process !== 'undefined' && process.env.DEBUG_FINDDPOS === '1') {
+        console.log(`[FDP] call=${getRngCallCount()} dir=${dir} room=(${aroom.lx},${aroom.ly})-(${aroom.hx},${aroom.hy}) rangeX=${x2 - x1 + 1} rangeY=${y2 - y1 + 1}`);
+    }
     let tryct = 0;
     do {
         const x = (x2 - x1) ? rn1(x2 - x1 + 1, x1) : x1;
@@ -1966,6 +1969,10 @@ function join(map, a, b, nxcor, depth) {
     }
 
     if (!cc || !tt) return;
+
+    if (typeof process !== 'undefined' && process.env.DEBUG_FINDDPOS === '1') {
+        console.log(`[JOIN] call=${getRngCallCount()} a=${a} b=${b} nxcor=${nxcor ? 1 : 0} cc=(${cc.x},${cc.y}) tt=(${tt.x},${tt.y}) croom=(${croom.lx},${croom.ly})-(${croom.hx},${croom.hy}) troom=(${troom.lx},${troom.ly})-(${troom.hx},${troom.hy})`);
+    }
 
     const xx = cc.x, yy = cc.y;
     const tx = tt.x - dx, ty = tt.y - dy;
