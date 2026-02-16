@@ -4,10 +4,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-    generateMapsWithRng,
     generateStartupWithRng,
     replaySession,
 } from './session_runtime.js';
+import { generateMapsWithCoreReplay } from '../../js/headless_runtime.js';
 import { compareRng, compareGrids, compareScreenLines } from './comparators.js';
 import { loadAllSessions } from './session_loader.js';
 import {
@@ -162,7 +162,7 @@ async function runMapResult(session) {
         }
 
         const maxDepth = Math.max(...levels.map((level) => level.depth || 1));
-        const generated = generateMapsWithRng(session.meta.seed, maxDepth);
+        const generated = generateMapsWithCoreReplay(session.meta.seed, maxDepth);
 
         for (const level of levels) {
             const depth = level.depth || 1;

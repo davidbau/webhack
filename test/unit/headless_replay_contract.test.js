@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { HeadlessGame } from '../../js/headless_runtime.js';
+import { HeadlessGame, generateMapsWithCoreReplay } from '../../js/headless_runtime.js';
 import { RACE_ELF } from '../../js/config.js';
 
 describe('HeadlessGame replay contract', () => {
@@ -72,5 +72,15 @@ describe('HeadlessGame replay contract', () => {
         game.clearRngLog();
         assert.equal(game.getRngLog().length, 0);
         assert.equal(typeof game.getAnsiScreen(), 'string');
+    });
+
+    it('can generate map depth traces via core wizard replay path', () => {
+        const out = generateMapsWithCoreReplay(11, 3);
+        assert.equal(Object.keys(out.grids).length, 3);
+        assert.equal(Object.keys(out.rngLogs).length, 3);
+        assert.equal(Array.isArray(out.grids[1]), true);
+        assert.equal(Array.isArray(out.grids[2]), true);
+        assert.equal(Array.isArray(out.rngLogs[1].rng), true);
+        assert.equal(typeof out.rngLogs[1].rngCalls, 'number');
     });
 });

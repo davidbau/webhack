@@ -177,6 +177,63 @@ export function createHeadlessInput({ throwOnEmpty = false } = {}) {
         },
     };
 }
+
+function isMidlogEntry(entry) {
+    return typeof entry === 'string' && entry.length > 0 && (entry[0] === '>' || entry[0] === '<');
+}
+
+function isCompositeEntry(entry) {
+    return typeof entry === 'string'
+        && (entry.startsWith('rne(') || entry.startsWith('rnz(') || entry.startsWith('d('));
+}
+
+function toCompactRng(entry) {
+    if (isMidlogEntry(entry)) return entry;
+    return String(entry || '').replace(/^\d+\s+/, '');
+}
+
+function rngCallPart(entry) {
+    const atIdx = String(entry || '').indexOf(' @ ');
+    return atIdx >= 0 ? String(entry).substring(0, atIdx) : String(entry || '');
+}
+
+export function generateMapsWithCoreReplay(seed, maxDepth, options = {}) {
+    const targetDepth = Number.isInteger(maxDepth) ? maxDepth : 0;
+    const grids = {};
+    const maps = {};
+    const rngLogs = {};
+    if (targetDepth <= 0) return { grids, maps, rngLogs };
+
+    enableRngLog(!!options.rngWithTags);
+    const game = HeadlessGame.start(seed, {
+        wizard: true,
+        roleIndex: Number.isInteger(options.roleIndex) ? options.roleIndex : 11,
+        startDnum: options.startDnum,
+        startDlevel: 1,
+        startDungeonAlign: options.startDungeonAlign,
+        flags: options.flags,
+    });
+
+    for (let depth = 1; depth <= targetDepth; depth++) {
+        if (depth > 1) {
+            game.teleportToLevel(depth);
+        }
+        grids[depth] = game.getTypGrid();
+        maps[depth] = game.map;
+        const compact = game.getRngLog().map(toCompactRng);
+        const filtered = compact.filter((entry) => {
+            const call = rngCallPart(entry);
+            return !isMidlogEntry(entry) && !isCompositeEntry(call);
+        });
+        rngLogs[depth] = {
+            rngCalls: filtered.length,
+            rng: filtered,
+        };
+        game.clearRngLog();
+    }
+    return { grids, maps, rngLogs };
+}
+
 export class HeadlessGame {
     constructor(player, map, opts = {}) {
         this.input = opts.input || createHeadlessInput();
@@ -341,7 +398,7 @@ export class HeadlessGame {
         };
     }
 
-    async teleportToLevel(depth) {
+    teleportToLevel(depth) {
         if (!this.player?.wizard) {
             return { ok: false, reason: 'wizard-disabled' };
         }
