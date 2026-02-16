@@ -77,6 +77,27 @@ describe('browser key mapping', () => {
         assert.equal(code, 'k'.charCodeAt(0));
     });
 
+    it('maps numpad keys when number_pad mode is numeric and > 0', () => {
+        const code = mapBrowserKeyToNhCode(
+            { key: '8', location: 3, ctrlKey: false, altKey: false, metaKey: false },
+            { number_pad: 2 }
+        );
+        assert.equal(code, 'k'.charCodeAt(0));
+    });
+
+    it('does not map numpad keys when number_pad mode is 0 or -1', () => {
+        const offCode = mapBrowserKeyToNhCode(
+            { key: '8', location: 3, ctrlKey: false, altKey: false, metaKey: false },
+            { number_pad: 0 }
+        );
+        const legacyOffCode = mapBrowserKeyToNhCode(
+            { key: '8', location: 3, ctrlKey: false, altKey: false, metaKey: false },
+            { number_pad: -1 }
+        );
+        assert.equal(offCode, '8'.charCodeAt(0));
+        assert.equal(legacyOffCode, '8'.charCodeAt(0));
+    });
+
     it('maps space to rest only when rest_on_space is enabled', () => {
         const enabled = mapBrowserKeyToNhCode(
             { key: ' ', location: 0, ctrlKey: false, altKey: false, metaKey: false },
