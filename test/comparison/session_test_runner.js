@@ -47,6 +47,7 @@ function recordRngComparison(result, actual, expected, context = {}) {
 
 async function runChargenResult(session) {
     const result = createReplayResult(session);
+    result.type = 'chargen';
     const start = Date.now();
 
     try {
