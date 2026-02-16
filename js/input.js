@@ -1,113 +1,61 @@
-// input.js -- Keyboard input handling
-// Implements an async input queue that replaces the C's blocking nhgetch().
+// input.js -- Keyboard input handling (environment-agnostic core)
+// Implements an async input queue that replaces C's blocking nhgetch().
 // See DECISIONS.md #1 for the rationale.
+//
+// Phase 2 refactor: This module provides the core input queue and utilities.
+// Browser-specific DOM listeners are in browser_input.js.
 
 import { CLR_WHITE } from './display.js';
 import { recordKey, isReplayMode, getNextReplayKey } from './keylog.js';
 
+// --- Module-level input queue (used by legacy/browser path) ---
 const inputQueue = [];
 let inputResolver = null;
 
-// Initialize keyboard listener
-// C ref: replaces tty input initialization in win/tty/wintty.c
+// Flags and display references (set by browser adapter or injected)
+let _gameFlags = null;
+let _gameDisplay = null;
+
+/**
+ * Set global flags reference (for number_pad mode, etc.)
+ * Called by browser adapter after flags are loaded.
+ */
+export function setInputFlags(flags) {
+    _gameFlags = flags;
+}
+
+/**
+ * Set global display reference (for message acknowledgement)
+ * Called by browser adapter after display is created.
+ */
+export function setInputDisplay(display) {
+    _gameDisplay = display;
+}
+
+/**
+ * Get current flags (for browser_input.js keydown handler)
+ */
+export function getInputFlags() {
+    return _gameFlags;
+}
+
+// --- Legacy browser-specific initialization ---
+// This function is DEPRECATED - use browser_input.js createBrowserInput() instead
+// Kept for backwards compatibility during Phase 2 transition
 export function initInput() {
-    document.addEventListener('keydown', handleKeyDown);
-}
-
-function handleKeyDown(e) {
-    // Ignore modifier-only keys
-    if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') {
-        return;
-    }
-
-    let ch = null;
-
-    // Handle numeric keypad in number_pad mode
-    // C ref: cmd.c number_pad handling - digits 1-9,0 map to directions + inventory
-    // Standard layout: 7=NW 8=N 9=NE 4=W 5=. 6=E 1=SW 2=S 3=SE 0=i
-    if (window.gameFlags?.number_pad && e.location === KeyboardEvent.DOM_KEY_LOCATION_NUMPAD) {
-        const numpadMap = {
-            '0': 'i'.charCodeAt(0),  // inventory
-            '1': 'b'.charCodeAt(0),  // southwest
-            '2': 'j'.charCodeAt(0),  // south
-            '3': 'n'.charCodeAt(0),  // southeast
-            '4': 'h'.charCodeAt(0),  // west
-            '5': '.'.charCodeAt(0),  // wait/rest
-            '6': 'l'.charCodeAt(0),  // east
-            '7': 'y'.charCodeAt(0),  // northwest
-            '8': 'k'.charCodeAt(0),  // north
-            '9': 'u'.charCodeAt(0),  // northeast
-        };
-        if (e.key in numpadMap) {
-            ch = numpadMap[e.key];
-            e.preventDefault();
-            pushInput(ch);
-            return;
-        }
-    }
-
-    // Handle Ctrl+key combinations
-    // C ref: cmd.c uses C('x') which is (x & 0x1f)
-    if (e.ctrlKey && !e.altKey && !e.metaKey) {
-        const code = e.key.toLowerCase().charCodeAt(0);
-        if (code >= 97 && code <= 122) { // a-z
-            ch = code - 96; // Ctrl+A = 1, Ctrl+Z = 26
-            e.preventDefault();
-        }
-    }
-    // Handle Meta (Alt) key combinations
-    // C ref: cmd.c uses M('x') which is (x | 0x80)
-    else if (e.altKey && !e.ctrlKey && !e.metaKey) {
-        if (e.key.length === 1) {
-            ch = e.key.charCodeAt(0) | 0x80;
-            e.preventDefault();
-        }
-    }
-    // Handle Escape
-    else if (e.key === 'Escape') {
-        ch = 27; // ESC
-        e.preventDefault();
-    }
-    // Handle Enter
-    else if (e.key === 'Enter') {
-        ch = 13; // CR
-        e.preventDefault();
-    }
-    // Handle Backspace
-    else if (e.key === 'Backspace') {
-        ch = 8;
-        e.preventDefault();
-    }
-    // Handle space bar with rest_on_space option
-    // C ref: flag.h flags.rest_on_space - space triggers rest/wait command
-    else if (e.key === ' ' && window.gameFlags?.rest_on_space) {
-        ch = '.'.charCodeAt(0); // Convert space to period (rest)
-        e.preventDefault();
-    }
-    // Handle regular character keys
-    else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-        ch = e.key.charCodeAt(0);
-    }
-    // Handle arrow keys -> vi movement keys
-    else if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-        switch (e.key) {
-            case 'ArrowLeft':  ch = 'h'.charCodeAt(0); break;
-            case 'ArrowDown':  ch = 'j'.charCodeAt(0); break;
-            case 'ArrowUp':    ch = 'k'.charCodeAt(0); break;
-            case 'ArrowRight': ch = 'l'.charCodeAt(0); break;
-            case 'Home':       ch = 'y'.charCodeAt(0); break;
-            case 'End':        ch = 'b'.charCodeAt(0); break;
-            case 'PageUp':     ch = 'K'.charCodeAt(0); break; // run up
-            case 'PageDown':   ch = 'J'.charCodeAt(0); break; // run down
-        }
-        if (ch !== null) e.preventDefault();
-    }
-
-    if (ch !== null) {
-        pushInput(ch);
+    // Import browser input dynamically to avoid circular deps
+    // This will be removed after browser_bootstrap.js is updated
+    if (typeof document !== 'undefined') {
+        import('./browser_input.js').then(mod => {
+            mod.initBrowserInput();
+        });
     }
 }
 
+/**
+ * Push a key into the input queue.
+ * Used by browser adapter and replay system.
+ */
 export function pushInput(ch) {
     if (inputResolver) {
         const resolve = inputResolver;
@@ -118,14 +66,16 @@ export function pushInput(ch) {
     }
 }
 
-// Get a character of input (async)
-// This is the JS equivalent of C's nhgetch()
-// C ref: winprocs.h win_nhgetch
+/**
+ * Get a character of input (async).
+ * This is the JS equivalent of C's nhgetch().
+ * C ref: winprocs.h win_nhgetch
+ */
 export function nhgetch() {
     // Clear message acknowledgement flag when user presses a key
     // C ref: win/tty/topl.c - toplin gets set to TOPLINE_EMPTY after keypress
-    if (typeof window !== 'undefined' && window.gameDisplay) {
-        window.gameDisplay.messageNeedsMore = false;
+    if (_gameDisplay) {
+        _gameDisplay.messageNeedsMore = false;
     }
 
     // Replay mode: pull from replay buffer
@@ -151,18 +101,21 @@ export function nhgetch() {
     });
 }
 
-// Get a line of input (async)
-// C ref: winprocs.h win_getlin
+/**
+ * Get a line of input (async).
+ * C ref: winprocs.h win_getlin
+ */
 export async function getlin(prompt, display) {
     let line = '';
+    const disp = display || _gameDisplay;
 
     // Helper to update display
     const updateDisplay = () => {
-        if (display) {
+        if (disp) {
             // Clear the message row and display prompt + current input
             // Don't use putstr_message as it concatenates short messages
-            display.clearRow(0);
-            display.putstr(0, 0, prompt + line, CLR_WHITE);
+            disp.clearRow(0);
+            disp.putstr(0, 0, prompt + line, CLR_WHITE);
         }
     };
 
@@ -173,11 +126,11 @@ export async function getlin(prompt, display) {
         const ch = await nhgetch();
         if (ch === 13 || ch === 10) { // Enter
             // Clear topMessage to prevent message concatenation issues
-            if (display) display.topMessage = null;
+            if (disp) disp.topMessage = null;
             return line;
         } else if (ch === 27) { // ESC
             // Clear topMessage to prevent message concatenation issues
-            if (display) display.topMessage = null;
+            if (disp) disp.topMessage = null;
             return null; // cancelled
         } else if (ch === 8 || ch === 127) { // Backspace
             if (line.length > 0) {
@@ -191,8 +144,10 @@ export async function getlin(prompt, display) {
     }
 }
 
-// Yes/no/quit prompt (async)
-// C ref: winprocs.h win_yn_function
+/**
+ * Yes/no/quit prompt (async).
+ * C ref: winprocs.h win_yn_function
+ */
 export async function ynFunction(query, choices, def, display) {
     let prompt = query;
     if (choices) {
@@ -203,7 +158,8 @@ export async function ynFunction(query, choices, def, display) {
     }
     prompt += ' ';
 
-    if (display) display.putstr_message(prompt);
+    const disp = display || _gameDisplay;
+    if (disp) disp.putstr_message(prompt);
 
     while (true) {
         const ch = await nhgetch();
@@ -226,9 +182,11 @@ export async function ynFunction(query, choices, def, display) {
     }
 }
 
-// Gather typed digits into a number; return the next non-digit
-// C ref: cmd.c:4851 get_count()
-// Returns: { count: number, key: number }
+/**
+ * Gather typed digits into a number; return the next non-digit.
+ * C ref: cmd.c:4851 get_count()
+ * Returns: { count: number, key: number }
+ */
 export async function getCount(firstKey, maxCount, display) {
     let cnt = 0;
     let key = firstKey || 0;
@@ -237,6 +195,8 @@ export async function getCount(firstKey, maxCount, display) {
     const LARGEST_INT = 32767; // C ref: global.h:133 LARGEST_INT (2^15 - 1)
     const MAX_COUNT = maxCount || LARGEST_INT;
     const ERASE_CHAR = 127; // DEL
+
+    const disp = display || _gameDisplay;
 
     // If first key is provided and it's a digit, use it
     if (key && isDigit(key)) {
@@ -280,11 +240,11 @@ export async function getCount(firstKey, maxCount, display) {
         // Show "Count: N" when cnt > 9 or after backspace
         // C ref: cmd.c:4911 - shows count when cnt > 9 || backspaced || echoalways
         if (cnt > 9 || backspaced) {
-            if (display) {
+            if (disp) {
                 if (backspaced && !cnt && !showzero) {
-                    display.putstr_message('Count: ');
+                    disp.putstr_message('Count: ');
                 } else {
-                    display.putstr_message(`Count: ${cnt}`);
+                    disp.putstr_message(`Count: ${cnt}`);
                 }
             }
             backspaced = false;
@@ -299,7 +259,73 @@ function isDigit(ch) {
     return ch >= 48 && ch <= 57; // '0' = 48, '9' = 57
 }
 
-// Clear the input queue
+/**
+ * Clear the input queue.
+ */
 export function clearInputQueue() {
     inputQueue.length = 0;
+}
+
+// --- Injectable Input Queue Factory ---
+// For headless/test environments that need their own isolated input queue
+
+/**
+ * Create an isolated input queue for headless/test use.
+ * Returns an input adapter with pushKey and nhgetch methods.
+ */
+export function createInputQueue() {
+    const queue = [];
+    let resolver = null;
+
+    return {
+        /**
+         * Push a key into the queue.
+         */
+        pushKey(ch) {
+            if (resolver) {
+                const r = resolver;
+                resolver = null;
+                r(ch);
+            } else {
+                queue.push(ch);
+            }
+        },
+
+        /**
+         * Get next key from queue (async).
+         * Throws if queue is empty (for test environments that should have all keys pre-loaded).
+         */
+        async nhgetch() {
+            if (queue.length > 0) {
+                return queue.shift();
+            }
+            // For headless mode, we might want to wait or throw
+            // Default: wait for pushKey (useful for interactive headless)
+            return new Promise(resolve => {
+                resolver = resolve;
+            });
+        },
+
+        /**
+         * Check if queue has pending input.
+         */
+        hasInput() {
+            return queue.length > 0;
+        },
+
+        /**
+         * Clear the queue.
+         */
+        clear() {
+            queue.length = 0;
+            resolver = null;
+        },
+
+        /**
+         * Get queue length (for debugging).
+         */
+        get length() {
+            return queue.length;
+        }
+    };
 }

@@ -8,7 +8,7 @@ import { NORMAL_SPEED, A_DEX, A_CON,
          FEMALE, MALE, TERMINAL_COLS } from './config.js';
 import { initRng, rn2, rnd, rn1, getRngState, setRngState, getRngCallCount, setRngCallCount } from './rng.js';
 import { Display, CLR_GRAY } from './display.js';
-import { initInput, nhgetch, getCount, getlin } from './input.js';
+import { nhgetch, getCount, getlin } from './input.js';
 import { FOV } from './vision.js';
 import { Player, roles, races, validRacesForRole, validAlignsForRoleRace,
          needsGenderMenu, rankOf, godForRoleAlign, isGoddess, greetingForRole,
@@ -117,6 +117,17 @@ export class NetHackGame {
         }
     }
 
+    // Emit runtime bindings hook for adapters to configure input/display
+    _emitRuntimeBindings() {
+        if (typeof this.deps.hooks?.onRuntimeBindings === 'function') {
+            this.deps.hooks.onRuntimeBindings({
+                game: this,
+                flags: this.flags,
+                display: this.display,
+            });
+        }
+    }
+
     // Initialize a new game
     // C ref: allmain.c early_init() + moveloop_preamble()
     async init() {
@@ -131,9 +142,6 @@ export class NetHackGame {
             this.display = new Display('game');
         }
 
-        // Initialize input (browser-specific, will be injected in Phase 2)
-        initInput();
-
         // Handle reset option — prompt to delete all saved data
         if (opts.reset) {
             await this.handleReset();
@@ -143,13 +151,8 @@ export class NetHackGame {
         // loadFlags() merges: C defaults < JS overrides < localStorage < URL params
         this.flags = loadFlags();
 
-        // Expose flags and display globally for input handler
-        // (flags for number_pad mode, display for message acknowledgement)
-        // TODO Phase 2: inject these via deps instead of globals
-        if (typeof window !== 'undefined') {
-            window.gameFlags = this.flags;
-            window.gameDisplay = this.display;
-        }
+        // Emit onRuntimeBindings hook for adapters to set up input/display references
+        this._emitRuntimeBindings();
 
         // Check for saved game before RNG init
         const saveData = loadSave();
