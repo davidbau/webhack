@@ -2382,17 +2382,22 @@ export function map(data) {
         contents = data.contents;
     }
 
+    // C ref: sp_lev.c mapfrag_fromstr() calls stripdigits() before computing
+    // dimensions or applying map cells.
+    mapStr = String(mapStr).replace(/[0-9]/g, '');
+
     // Parse map string into lines.
     // C ref: sp_lev.c mapfrag_fromstr() keeps leading blank lines from Lua
     // [[...]] literals, so we preserve them here for parity.
-    // Trailing blanks after the final newline are ignored (C behavior).
-    // Explicit-coordinate object-form maps can opt into preserving trailing
-    // blank rows exactly.
+    // C preserves intentional trailing blank rows and only ignores the final
+    // synthetic empty segment introduced by a terminal '\n'.
     let lines = mapStr.split('\n');
     const preserveExactBlankLines = !!(data && typeof data === 'object'
         && (data.coord !== undefined || data.x !== undefined || data.y !== undefined));
     if (!preserveExactBlankLines) {
-        while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+        if (lines.length > 0 && lines[lines.length - 1] === '' && mapStr.endsWith('\n')) {
+            lines.pop();
+        }
     }
 
     const height = lines.length;
@@ -3089,37 +3094,7 @@ export function room(opts = {}) {
     let roomX, roomY, roomW, roomH;
     let splitDone = false; // Set true when create_room_splev already called split_rects
 
-    if (x >= 0 && y >= 0 && w > 0 && h > 0 && levelState.roomDepth > 0) {
-        // Nested room with fixed coordinates
-        // C's create_room makes dimension RNG calls even for fixed-coord nested rooms
-        // Nested rooms skip litstate_rnd (lighting already determined by parent)
-        if (DEBUG) {
-            console.log(`des.room(): NESTED room with fixed coords, using create_room_splev: x=${x}, y=${y}, w=${w}, h=${h}`);
-        }
-
-        const roomCalc = create_room_splev(x, y, w, h, xalign, yalign,
-                                           rtype, lit, levelState.depth || 1, true, true); // skipLitstate=true, forceRandomize=true for nested
-
-        if (!roomCalc) {
-            if (DEBUG) {
-                console.log(`des.room(): create_room_splev failed for nested room`);
-            }
-            return false;
-        }
-
-        // Extract coordinates from calculated room
-        roomX = roomCalc.lx;
-        roomY = roomCalc.ly;
-        roomW = roomCalc.hx - roomCalc.lx + 1;
-        roomH = roomCalc.hy - roomCalc.ly + 1;
-        lit = roomCalc.rlit;
-
-        if (DEBUG) {
-            console.log(`des.room(): nested room via create_room_splev at (${roomX},${roomY}) size ${roomW}x${roomH}`);
-        }
-
-        // Skip to nested room build_room call and room creation below
-    } else if (x >= 0 && y >= 0 && w > 0 && h > 0) {
+    if (x >= 0 && y >= 0 && w > 0 && h > 0 && levelState.roomDepth === 0) {
         // Top-level fixed position room - use direct coordinate conversion
 
         if (DEBUG) {
@@ -3209,7 +3184,8 @@ export function room(opts = {}) {
             }
         }
     } else if (levelState.roomDepth > 0) {
-        // Nested room with random/partial placement - use create_subroom algorithm
+        // Nested room creation always uses create_subroom().
+        // C ref: sp_lev.c build_room() calls create_subroom() whenever parent room exists.
         // C ref: sp_lev.c:2805-2807 — build_room calls create_subroom when parent exists
         // C ref: sp_lev.c:1668-1707 — create_subroom randomizes dims relative to parent
         const parentRoom = levelState.currentRoom;
@@ -4880,36 +4856,36 @@ export function door(state_or_opts, x, y) {
     }
 
     // C ref: sp_lev.c lspo_door() doorstates2i + rnddoor()
-    let doorMask;
+    let msk;
     switch (String(state).toLowerCase()) {
         case 'open':
-            doorMask = D_ISOPEN;
+            msk = D_ISOPEN;
             break;
         case 'closed':
-            doorMask = D_CLOSED;
+            msk = D_CLOSED;
             break;
         case 'locked':
-            doorMask = D_LOCKED;
+            msk = D_LOCKED;
             break;
         case 'nodoor':
-            doorMask = D_NODOOR;
+            msk = D_NODOOR;
             break;
         case 'broken':
-            doorMask = D_BROKEN;
+            msk = D_BROKEN;
             break;
         case 'secret':
-            doorMask = D_SECRET;
+            msk = D_SECRET;
             break;
         case 'random':
-            {
-                const states = [D_NODOOR, D_BROKEN, D_ISOPEN, D_CLOSED, D_LOCKED];
-                doorMask = states[rn2(states.length)];
-            }
+            msk = -1;
             break;
         default:
-            doorMask = D_CLOSED;
+            msk = D_CLOSED;
             break;
     }
+    const doorMask = (msk === -1)
+        ? [D_NODOOR, D_BROKEN, D_ISOPEN, D_CLOSED, D_LOCKED][rn2(5)]
+        : msk;
 
     // x/y omitted => create random wall door within current room.
     if (doorX === -1 && doorY === -1) {
@@ -4926,7 +4902,9 @@ export function door(state_or_opts, x, y) {
         const wallMask = wallMap[String(wall || 'all').toLowerCase()] ?? WALL_ANY;
         const dd = {
             secret: (doorMask === D_SECRET) ? 1 : 0,
-            mask: doorMask,
+            // C ref: lspo_door() passes original msk; random must stay -1
+            // so create_door() performs its own door-state RNG.
+            mask: msk,
             pos,
             wall: wallMask
         };
