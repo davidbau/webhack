@@ -1,18 +1,11 @@
-// test/comparison/session_runner.test.js -- DEPRECATED: Use split test files instead
+// test/comparison/session_runner.test.js -- DEPRECATED: Use sessions.test.js instead
 //
 // ⚠️  DEPRECATION NOTICE ⚠️
-// This unified test runner loads all 157 session files (~19MB) during test discovery,
-// causing memory exhaustion on constrained systems. Use the split test files instead:
+// This legacy runner remains only for compatibility and may be removed.
+// The canonical session test entrypoint is:
 //
-//   - chargen.test.js  (90 files, ~10MB) - Character generation tests
-//   - special.test.js  (42 files, ~5MB)  - Special level tests
-//   - map.test.js      (5 files, ~1MB)   - Map generation tests
-//   - gameplay.test.js (12 files, ~2MB)  - Gameplay session tests
-//   - other.test.js    (8 files, ~1MB)   - Option and selfplay tests
-//
-// Run individual suites:
-//   node --test test/comparison/chargen.test.js
-//   node --test test/comparison/map.test.js
+//   npm run test:session
+//   # or: node --test test/comparison/sessions.test.js
 //
 // This file remains for compatibility but may be removed in the future.
 //

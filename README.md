@@ -116,23 +116,21 @@ Straying from the path (of proper HTTP serving) leads to certain doom.
 
 *You hear a sound reminiscent of a test suite passing.*
 
-498 unit tests, 96 golden C-comparison sessions, and E2E browser tests:
+Unit tests, C-parity session tests, and E2E browser tests run through three
+official commands:
 
 ```bash
 npm install          # install puppeteer for E2E tests
-npm test             # run all tests
+npm test             # unit + session
+npm run test:all     # unit + session + e2e
 npm run test:unit    # unit tests only
+npm run test:session # session tests only
 npm run test:e2e     # E2E browser tests only
 ```
 
-The session tests replay recorded sessions against the original
-C NetHack binary, verifying bit-identical RNG, screen output, and
-dungeon maps:
-
-```bash
-npm run test:session       # session tests (via node:test wrapper)
-npm run test:session:raw   # raw session runner with verbose output
-```
+Session tests replay recorded C reference sessions against the JS game to verify
+RNG traces, screen output, and map grids through one runner path:
+`test/comparison/sessions.test.js`.
 
 ### Test Infrastructure Setup
 

@@ -152,7 +152,7 @@ webhack/
 │   │   └── gameplay.e2e.test.js
 │   │
 │   └── comparison/            ── C Comparison Testing ──
-│       ├── session_runner.test.js  Session replay test runner
+│       ├── sessions.test.js       Session replay test entrypoint
 │       ├── gen_rng_log.js     Generate JS RNG logs
 │       ├── gen_typ_grid.js    Generate JS terrain grids
 │       ├── sessions/          96 golden session files (.session.json)
@@ -395,7 +395,7 @@ in a unified format (see `docs/SESSION_FORMAT.md`). Two session types:
 - **`"gameplay"`** -- full playthrough with RNG traces, screens, and step data
 - **`"map"`** -- terrain type grids at multiple dungeon depths
 
-**Session runner** (`test/comparison/session_runner.test.js`): Replays each
+**Session runner** (`test/comparison/sessions.test.js`): Replays each
 session through the JS engine, comparing RNG traces call-by-call, screen
 output character-by-character, and terrain grids cell-by-cell.
 
