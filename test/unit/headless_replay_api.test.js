@@ -248,6 +248,78 @@ describe('HeadlessDisplay', () => {
     });
 });
 
+describe('HeadlessGame.replayStep (Phase 4)', () => {
+    it('executes a command and returns result', async () => {
+        const game = await HeadlessGame.start(12345, { wizard: true });
+        const result = await game.replayStep('.');
+
+        assert.ok(result, 'Should return result');
+        assert.ok('tookTime' in result, 'Result should have tookTime');
+        assert.ok(Array.isArray(result.screen), 'Result should have screen');
+        assert.ok(Array.isArray(result.typGrid), 'Result should have typGrid');
+    });
+
+    it('handles count prefix', async () => {
+        const game = await HeadlessGame.start(12345, { wizard: true });
+        const initialTurn = game.turnCount;
+
+        // Execute with count prefix of 3 (wait 3 times)
+        const result = await game.replayStep('.', { countPrefix: 3 });
+
+        // Turn count should advance more than once
+        assert.ok(game.turnCount > initialTurn, 'Turn count should advance');
+    });
+
+    it('result includes screen and typGrid', async () => {
+        const game = await HeadlessGame.start(12345, { wizard: true });
+        const result = await game.replayStep('.');
+
+        assert.strictEqual(result.screen.length, TERMINAL_ROWS);
+        assert.strictEqual(result.typGrid.length, ROWNO);
+    });
+});
+
+describe('HeadlessGame.isCountPrefixDigit', () => {
+    it('returns true for digits 0-9', () => {
+        for (let i = 0; i <= 9; i++) {
+            assert.strictEqual(HeadlessGame.isCountPrefixDigit(String(i)), true);
+        }
+    });
+
+    it('returns false for non-digits', () => {
+        assert.strictEqual(HeadlessGame.isCountPrefixDigit('a'), false);
+        assert.strictEqual(HeadlessGame.isCountPrefixDigit('.'), false);
+        assert.strictEqual(HeadlessGame.isCountPrefixDigit(' '), false);
+    });
+});
+
+describe('HeadlessGame.accumulateCountPrefix', () => {
+    it('accumulates digit into count', () => {
+        const result = HeadlessGame.accumulateCountPrefix(0, '5');
+        assert.strictEqual(result.newCount, 5);
+        assert.strictEqual(result.isDigit, true);
+    });
+
+    it('accumulates multiple digits', () => {
+        let count = 0;
+        count = HeadlessGame.accumulateCountPrefix(count, '1').newCount;
+        count = HeadlessGame.accumulateCountPrefix(count, '2').newCount;
+        count = HeadlessGame.accumulateCountPrefix(count, '3').newCount;
+        assert.strictEqual(count, 123);
+    });
+
+    it('caps at 32767', () => {
+        const result = HeadlessGame.accumulateCountPrefix(10000, '9');
+        assert.strictEqual(result.newCount, 32767);
+    });
+
+    it('returns isDigit false for non-digits', () => {
+        const result = HeadlessGame.accumulateCountPrefix(5, 'a');
+        assert.strictEqual(result.isDigit, false);
+        assert.strictEqual(result.newCount, 5);
+    });
+});
+
 describe('HeadlessGame.generateStartupWithRng (Phase 3)', () => {
     it('generates grid with correct dimensions', () => {
         const result = HeadlessGame.generateStartupWithRng(12345, {});

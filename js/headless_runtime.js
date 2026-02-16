@@ -772,6 +772,134 @@ HeadlessGame.generateStartupWithRng = function generateStartupWithRng(seed, opti
     };
 };
 
+// ---------------------------------------------------------------------------
+// Replay Step API (Phase 4)
+// ---------------------------------------------------------------------------
+
+// Execute a replay step with count prefix and continuation handling.
+// This encapsulates the command execution semantics that belong in core.
+// options: { countPrefix, skipMonsterMove, skipTurnEnd }
+// Returns: { tookTime, result, screen, typGrid }
+HeadlessGame.prototype.replayStep = async function replayStep(key, options = {}) {
+    const ch = typeof key === 'string' ? key.charCodeAt(0) : key;
+
+    // Handle count prefix if provided
+    if (options.countPrefix && options.countPrefix > 0) {
+        this.commandCount = options.countPrefix;
+        this.multi = options.countPrefix;
+        if (this.multi > 0) this.multi--;
+        this.cmdKey = ch;
+    } else {
+        this.commandCount = 0;
+        this.multi = 0;
+    }
+
+    // Execute the command
+    const result = await rhack(ch, this);
+
+    // Handle timed actions (monster movement and turn end)
+    if (result && result.tookTime && !options.skipTurnEnd) {
+        if (!options.skipMonsterMove) {
+            settrack(this.player);
+            movemon(this.map, this.player, this.display, this.fov);
+        }
+        this.simulateTurnEnd();
+
+        // Handle occupation continuation (multi-turn actions like eating)
+        while (this.occupation) {
+            const occ = this.occupation;
+            const cont = occ.fn(this);
+            const finishedOcc = !cont ? occ : null;
+            if (!cont) {
+                this.occupation = null;
+            }
+            if (!options.skipMonsterMove) {
+                settrack(this.player);
+                movemon(this.map, this.player, this.display, this.fov);
+            }
+            this.simulateTurnEnd();
+            if (finishedOcc && typeof finishedOcc.onFinishAfterTurn === 'function') {
+                finishedOcc.onFinishAfterTurn(this);
+            }
+        }
+
+        // Handle multi-count repeats (e.g., "10s" for 10 searches)
+        while (this.multi > 0) {
+            this.multi--;
+            const repeated = await rhack(this.cmdKey, this);
+            if (!repeated || !repeated.tookTime) break;
+            if (!options.skipMonsterMove) {
+                settrack(this.player);
+                movemon(this.map, this.player, this.display, this.fov);
+            }
+            this.simulateTurnEnd();
+
+            // Handle occupation in repeated commands
+            while (this.occupation) {
+                const occ = this.occupation;
+                const cont = occ.fn(this);
+                const finishedOcc = !cont ? occ : null;
+                if (!cont) {
+                    this.occupation = null;
+                }
+                if (!options.skipMonsterMove) {
+                    settrack(this.player);
+                    movemon(this.map, this.player, this.display, this.fov);
+                }
+                this.simulateTurnEnd();
+                if (finishedOcc && typeof finishedOcc.onFinishAfterTurn === 'function') {
+                    finishedOcc.onFinishAfterTurn(this);
+                }
+            }
+        }
+    }
+
+    // Update display
+    this.renderCurrentScreen();
+
+    // Check for game over
+    if (this.player.hp <= 0) {
+        this.gameOver = true;
+        this.gameOverReason = 'died';
+    }
+
+    return {
+        tookTime: result?.tookTime || false,
+        moved: result?.moved || false,
+        result,
+        screen: this.getScreen(),
+        typGrid: this.getTypGrid(),
+    };
+};
+
+// Check if a key is a count prefix digit (0-9)
+HeadlessGame.isCountPrefixDigit = function isCountPrefixDigit(key) {
+    const ch = typeof key === 'string' ? key.charCodeAt(0) : key;
+    return ch >= 48 && ch <= 57; // '0'-'9'
+};
+
+// Parse count prefix from a key
+HeadlessGame.parseCountPrefixDigit = function parseCountPrefixDigit(key) {
+    const ch = typeof key === 'string' ? key.charCodeAt(0) : key;
+    if (ch >= 48 && ch <= 57) {
+        return ch - 48;
+    }
+    return null;
+};
+
+// Accumulate count prefix (used when building up multi-digit counts)
+// Returns: { newCount, isDigit }
+HeadlessGame.accumulateCountPrefix = function accumulateCountPrefix(currentCount, key) {
+    const digit = HeadlessGame.parseCountPrefixDigit(key);
+    if (digit !== null) {
+        return {
+            newCount: Math.min(32767, (currentCount * 10) + digit),
+            isDigit: true,
+        };
+    }
+    return { newCount: currentCount, isDigit: false };
+};
+
 // Helper to consume an RNG entry (replay RNG call from session)
 function consumeRngEntryHelper(entry) {
     const atIdx = entry.indexOf(' @ ');
