@@ -40,7 +40,7 @@ import { roles } from './player.js';
 import {
     ARROW, DART, ROCK, BOULDER, LARGE_BOX, CHEST, GOLD_PIECE, CORPSE,
     STATUE, TALLOW_CANDLE, WAX_CANDLE, BELL, KELP_FROND,
-    MACE, TWO_HANDED_SWORD, BOW, FOOD_RATION, RING_MAIL, PLATE_MAIL, FAKE_AMULET_OF_YENDOR,
+    MACE, TWO_HANDED_SWORD, BOW, FOOD_RATION, CRAM_RATION, LEMBAS_WAFER, RING_MAIL, PLATE_MAIL, FAKE_AMULET_OF_YENDOR,
     POT_WATER, EXPENSIVE_CAMERA, EGG, CREAM_PIE, MELON, ACID_VENOM, BLINDING_VENOM,
     WEAPON_CLASS, TOOL_CLASS, FOOD_CLASS, GEM_CLASS, WAND_CLASS,
     ARMOR_CLASS, SCROLL_CLASS, POTION_CLASS, RING_CLASS, SPBOOK_CLASS,
@@ -323,7 +323,7 @@ export function update_rect_pool_for_room(room) {
     for (let i = rect_cnt - 1; i >= 0; i--) {
         const r = intersect(rects[i], r2);
         if (r) {
-            split_rects(rects[i], r2);
+            split_rects(rects[i], r);
         }
     }
 
@@ -1015,15 +1015,22 @@ function branchPlacementForEnd(branch, onEnd1) {
     return { placement: goesUp ? 'stair-up' : 'stair-down' };
 }
 
-function isBranchLevel(dnum, dlevel) {
-    if (!Number.isInteger(dnum) || !Number.isInteger(dlevel)) return false;
+function getBranchAtLevel(dnum, dlevel) {
+    const cdnum = Number.isInteger(dnum) ? dnum : DUNGEONS_OF_DOOM;
+    if (!Number.isInteger(dlevel)) return null;
     for (const br of _branchTopology) {
-        if ((br.end1.dnum === dnum && br.end1.dlevel === dlevel)
-            || (br.end2.dnum === dnum && br.end2.dlevel === dlevel)) {
-            return true;
+        if (br.end1.dnum === cdnum && br.end1.dlevel === dlevel) {
+            return { branch: br, onEnd1: true };
+        }
+        if (br.end2.dnum === cdnum && br.end2.dlevel === dlevel) {
+            return { branch: br, onEnd1: false };
         }
     }
-    return false;
+    return null;
+}
+
+function isBranchLevel(dnum, dlevel) {
+    return !!getBranchAtLevel(dnum, dlevel);
 }
 
 // C-faithful branch placement resolution for special-level LR_BRANCH handling.
@@ -1033,7 +1040,8 @@ function isBranchLevel(dnum, dlevel) {
 // - BR_NO_END* => one-way stair (or none on blocked side)
 // - BR_STAIR => stair, direction based on end1_up and which end we're on
 export function resolveBranchPlacementForLevel(dnum, dlevel) {
-    if (!Number.isFinite(dnum) || !Number.isFinite(dlevel)) {
+    const cdnum = Number.isFinite(dnum) ? dnum : DUNGEONS_OF_DOOM;
+    if (!Number.isFinite(dlevel)) {
         return { placement: 'none' };
     }
 
@@ -1044,13 +1052,9 @@ export function resolveBranchPlacementForLevel(dnum, dlevel) {
     }
 
     // Exact topology if available (normal gameplay path).
-    for (const br of _branchTopology) {
-        if (br.end1.dnum === dnum && br.end1.dlevel === dlevel) {
-            return branchPlacementForEnd(br, true);
-        }
-        if (br.end2.dnum === dnum && br.end2.dlevel === dlevel) {
-            return branchPlacementForEnd(br, false);
-        }
+    const info = getBranchAtLevel(cdnum, dlevel);
+    if (info) {
+        return branchPlacementForEnd(info.branch, info.onEnd1);
     }
 
     return { placement: 'none' };
@@ -3318,10 +3322,22 @@ export function fill_ordinary_room(map, croom, depth, bonusItems) {
     if (bonusItems) {
         const pos = somexyspace(map, croom);
         if (pos) {
-            // At depth 1: branch to surface exists but doesn't connect to mines,
-            // so mines food check (Is_branchlev) fails. Falls to Oracle check.
-            // C ref: u.uz.dnum == oracle_level.dnum && u.uz.dlevel < oracle_level.dlevel
-            if (rn2(3)) {
+            const curDnum = Number.isInteger(map?._genDnum) ? map._genDnum : DUNGEONS_OF_DOOM;
+            const curDlevel = Number.isInteger(map?._genDlevel) ? map._genDlevel : depth;
+            const uzBranch = getBranchAtLevel(curDnum, curDlevel)?.branch || null;
+            const branchTouchesMines = !!uzBranch
+                && curDnum !== GNOMISH_MINES
+                && (uzBranch.end1.dnum === GNOMISH_MINES || uzBranch.end2.dnum === GNOMISH_MINES);
+            if (branchTouchesMines) {
+                const otyp = (rn2(5) < 3)
+                    ? FOOD_RATION
+                    : (rn2(2) ? CRAM_RATION : LEMBAS_WAFER);
+                const food = mksobj(otyp, true, false);
+                if (food) {
+                    food.ox = pos.x; food.oy = pos.y;
+                    map.objects.push(food);
+                }
+            } else if (curDnum === DUNGEONS_OF_DOOM && curDlevel < 5 && rn2(3)) {
                 // Create supply chest (2/3 chance)
                 // C ref: mklev.c:1033-1034
                 const chest = mksobj(rn2(3) ? CHEST : LARGE_BOX, false, false);
@@ -4855,6 +4871,8 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
 
     const map = new GameMap();
     map.clear();
+    map._genDnum = Number.isInteger(dnum) ? dnum : DUNGEONS_OF_DOOM;
+    map._genDlevel = Number.isInteger(dlevel) ? dlevel : depth;
     map._isInvocationLevel = !!opts.invocationLevel
         || (dnum === GEHENNOM && dlevel === 9);
 
@@ -4979,6 +4997,30 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
                     loc.typ = STAIRS;
                     loc.flags = 1; // up (branch goes up to surface)
                     map.upstair = { x: pos.x, y: pos.y };
+                }
+            }
+        }
+    }
+
+    // C ref: mklev.c:1367-1376 — place_branch(Is_branchlev(&u.uz), 0, 0)
+    // For non-first levels, only execute when this level is an actual branch endpoint.
+    if (depth > 1) {
+        const branchDnum = Number.isInteger(dnum) ? dnum : DUNGEONS_OF_DOOM;
+        const branchDlevel = Number.isInteger(dlevel) ? dlevel : depth;
+        const branchPlacement = resolveBranchPlacementForLevel(branchDnum, branchDlevel).placement;
+        if (_branchTopology.length && branchPlacement && branchPlacement !== 'none') {
+            const candidateRoom = generate_stairs_find_room(map);
+            if (candidateRoom) {
+                const pos = somexyspace(map, candidateRoom);
+                if (pos) {
+                    const prev = map._branchPlacementHint;
+                    map._branchPlacementHint = branchPlacement;
+                    try {
+                        placeBranchFeature(map, pos.x, pos.y);
+                    } finally {
+                        if (prev === undefined) delete map._branchPlacementHint;
+                        else map._branchPlacementHint = prev;
+                    }
                 }
             }
         }

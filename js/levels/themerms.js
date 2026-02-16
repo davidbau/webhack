@@ -1165,6 +1165,16 @@ export function post_themerooms_generate() {
 
 export function themeroom_fill(rm) {
    const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_THEMEROOMS === '1';
+   // C parity: Lua mkroom table exposes room dimensions; ensure callbacks
+   // relying on rm.width/rm.height behave consistently.
+   if (rm && !Number.isFinite(rm.width)
+       && Number.isFinite(rm.lx) && Number.isFinite(rm.hx)) {
+      rm.width = (rm.hx - rm.lx + 1);
+   }
+   if (rm && !Number.isFinite(rm.height)
+       && Number.isFinite(rm.ly) && Number.isFinite(rm.hy)) {
+      rm.height = (rm.hy - rm.ly + 1);
+   }
    if (DEBUG) {
       console.log(`themeroom_fill() called for room at (${rm.lx},${rm.ly})`);
    }
