@@ -1,6 +1,6 @@
-# Mazes of Menace
+# Menace
 
-NetHack in Your Browser
+**NetHack 3.7 Royal Jelly — vibe-coded by The Hive**
 
 *You feel a strange vibration under your feet.*
 
@@ -11,26 +11,26 @@ lies in its fidelity to the original C source.
 
 **Play it now:** [https://mazesofmenace.net/](https://mazesofmenace.net/)
 
-## An Experiment in Vibe Coding
+## Royal Jelly: An Experiment in Vibe Coding
 
-*You hear the strains of an out-of-tune harpsichord.*
+*You hear a low buzzing.*
 
 This project was created as an experiment in **vibe coding** -- building
-a complex, faithful game port by collaborating with an AI coding assistant
-(Claude) rather than writing every line by hand.
+a complex, faithful game port by collaborating with LLM coding agents
+rather than writing every line by hand.
 
-The entire codebase -- 32 JavaScript modules, 498 passing unit tests,
-96 golden C-comparison sessions, and a suite of Python test harness
-scripts -- was produced through natural-language conversation. The human
-provided direction, taste, and domain knowledge about NetHack; the AI
-wrote the code, tests, and documentation.
+The entire codebase -- 50+ JavaScript modules, 500+ passing unit tests,
+170+ golden C-comparison sessions, and a suite of Python test harness
+scripts -- was produced through natural-language conversation with AI
+agents. The human provided direction, taste, and domain knowledge about
+NetHack; the agents wrote the code, tests, and documentation.
 
 The goal was to see how far vibe coding can go on a project that demands
 real fidelity: porting thousands of lines of C game logic to JavaScript
 while preserving NetHack's distinctive feel, mechanics, and visual style
 -- including bit-identical PRNG alignment with the original C binary.
 
-The DevTeam thinks this is uncanny.
+This is the **Royal Jelly** — the sweet output of The Hive.
 
 ## Architecture
 
@@ -90,7 +90,7 @@ effects, polymorph, full inventory management (wear/wield/quaff/read/zap),
 and many other subsystems. NetHack has ~150,000 lines of C -- this port
 covers the core loop and early gameplay.
 
-The DevTeam is aware of this.
+The Hive is aware of this.
 
 ## Running Locally
 

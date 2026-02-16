@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Play NetHack in your browser - A classic roguelike dungeon crawler adventure. Explore the Mazes of Menace and retrieve the Amulet of Yendor.">
     <meta name="theme-color" content="#f9f7f1">
-    <title>NetHack JS -- Mazes of Menace</title>
+    <title>NetHack Royal Jelly -- Mazes of Menace</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
     <!-- Open Graph / Social Media -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="NetHack JS -- Mazes of Menace">
+    <meta property="og:title" content="NetHack Royal Jelly -- Mazes of Menace">
     <meta property="og:description" content="Play NetHack in your browser - A classic roguelike dungeon crawler adventure.">
     <meta property="og:site_name" content="NetHack JS">
     <style>
@@ -483,7 +483,7 @@
         <nav id="nav" role="navigation" aria-label="Main navigation">
             <a href="guidebook/" target="nh-guidebook" tabindex="-1">How to Play NetHack</a>
             <a href="spoilers/" target="nh-spoilers" tabindex="-1">Spoilers</a>
-            <a href="https://github.com/davidbau/webhack#readme" target="_blank" tabindex="-1">About This Project</a>
+            <a href="https://github.com/davidbau/menace#readme" target="_blank" tabindex="-1">About This Project</a>
         </nav>
         <div id="controls">
             <button id="panel-toggle" title="Show/hide side panels" aria-label="Toggle side panels" tabindex="-1">☰</button>
@@ -553,7 +553,7 @@
             performance.mark('ui-ready');
         }
 
-        console.log('%cNetHack JS - Mazes of Menace', 'font-size: 18px; font-weight: bold; color: #6b2c2c;');
+        console.log('%cNetHack Royal Jelly - Mazes of Menace', 'font-size: 18px; font-weight: bold; color: #6b2c2c;');
         console.log('%cHave fun exploring the dungeons!', 'color: #4a2020; font-style: italic;');
     })();
 
@@ -567,7 +567,7 @@
         var hoverPanel = document.getElementById('hover-panel');
         var panelToggle = document.getElementById('panel-toggle');
         var gameDiv = document.getElementById('game');
-        var storageKey = 'webhack-panels-hidden';
+        var storageKey = 'menace-panels-hidden';
         var autoHidden = false;
 
         function userWantsHidden() {
@@ -697,7 +697,7 @@
         // Load saved theme
         let savedTheme = 'light';
         try {
-            savedTheme = localStorage.getItem('nh-theme') || 'light';
+            savedTheme = localStorage.getItem('menace-theme') || 'light';
         } catch(e) {}
         if (savedTheme === 'dark') {
             document.body.classList.add('dark-mode');
@@ -706,7 +706,7 @@
         // Load and apply saved font size
         let savedFontSize = '16';
         try {
-            savedFontSize = localStorage.getItem('nh-font-size') || '16';
+            savedFontSize = localStorage.getItem('menace-font-size') || '16';
         } catch(e) {}
 
         /**
@@ -732,7 +732,7 @@
             document.body.classList.toggle('dark-mode');
             const isDark = document.body.classList.contains('dark-mode');
             try {
-                localStorage.setItem('nh-theme', isDark ? 'dark' : 'light');
+                localStorage.setItem('menace-theme', isDark ? 'dark' : 'light');
             } catch(e) {}
         });
 
@@ -740,26 +740,26 @@
         fontSmaller.addEventListener('click', function() {
             let size = 16;
             try {
-                size = parseInt(localStorage.getItem('nh-font-size')) || 16;
+                size = parseInt(localStorage.getItem('menace-font-size')) || 16;
             } catch(e) {}
             size = Math.max(12, size - 2);
             applyFontSize(size);
             if (window._checkPanelFit) requestAnimationFrame(window._checkPanelFit);
             try {
-                localStorage.setItem('nh-font-size', size);
+                localStorage.setItem('menace-font-size', size);
             } catch(e) {}
         });
 
         fontLarger.addEventListener('click', function() {
             let size = 16;
             try {
-                size = parseInt(localStorage.getItem('nh-font-size')) || 16;
+                size = parseInt(localStorage.getItem('menace-font-size')) || 16;
             } catch(e) {}
             size = Math.min(24, size + 2);
             applyFontSize(size);
             if (window._checkPanelFit) requestAnimationFrame(window._checkPanelFit);
             try {
-                localStorage.setItem('nh-font-size', size);
+                localStorage.setItem('menace-font-size', size);
             } catch(e) {}
         });
     })();
@@ -803,7 +803,7 @@
         const gameDiv = document.getElementById('game');
         let savedFontSize = null;
         try {
-            savedFontSize = localStorage.getItem('nh-font-size');
+            savedFontSize = localStorage.getItem('menace-font-size');
         } catch(e) {}
         if (!savedFontSize || !gameDiv) return;
 
@@ -876,7 +876,7 @@
     </script>
 
     <!-- ES6 Module entry point -->
-    <script type="module" src="js/browser_bootstrap.js"></script>
+    <script type="module" src="js/menace.js"></script>
 
     <!-- Fallback for browsers without module support -->
     <noscript>

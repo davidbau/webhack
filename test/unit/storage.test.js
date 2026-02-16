@@ -595,9 +595,9 @@ describe('Save/load game (localStorage, v2 format)', () => {
     });
 
     it('deleteSave removes the save', () => {
-        store.set('webhack-save', '{"version":2}');
+        store.set('menace-save', '{"version":2}');
         deleteSave();
-        assert.equal(store.has('webhack-save'), false);
+        assert.equal(store.has('menace-save'), false);
     });
 
     it('loadSave returns null when no save exists', () => {
@@ -605,12 +605,12 @@ describe('Save/load game (localStorage, v2 format)', () => {
     });
 
     it('loadSave returns null for corrupt data', () => {
-        store.set('webhack-save', 'not-json');
+        store.set('menace-save', 'not-json');
         assert.equal(loadSave(), null);
     });
 
     it('loadSave returns null for wrong version', () => {
-        store.set('webhack-save', JSON.stringify({ version: 999 }));
+        store.set('menace-save', JSON.stringify({ version: 999 }));
         assert.equal(loadSave(), null);
     });
 
@@ -779,7 +779,7 @@ describe('Flags (localStorage)', () => {
     });
 
     it('loadFlags merges saved with defaults for new keys', () => {
-        store.set('webhack-options', JSON.stringify({ pickup: true }));
+        store.set('menace-options', JSON.stringify({ pickup: true }));
         const flags = loadFlags();
         assert.equal(flags.pickup, true);
         assert.equal(flags.showexp, false); // default (matches C)
@@ -787,20 +787,20 @@ describe('Flags (localStorage)', () => {
     });
 
     it('handles corrupt data gracefully', () => {
-        store.set('webhack-options', 'not-json');
+        store.set('menace-options', 'not-json');
         const flags = loadFlags();
         assert.equal(flags.pickup, false); // default (matches C)
     });
 
     it('migrates old autopickup key to pickup', () => {
-        store.set('webhack-options', JSON.stringify({ autopickup: false }));
+        store.set('menace-options', JSON.stringify({ autopickup: false }));
         const flags = loadFlags();
         assert.equal(flags.pickup, false);
         assert.equal(flags.autopickup, undefined); // old key removed
     });
 
     it('migrates old showExp key to showexp', () => {
-        store.set('webhack-options', JSON.stringify({ showExp: false }));
+        store.set('menace-options', JSON.stringify({ showExp: false }));
         const flags = loadFlags();
         assert.equal(flags.showexp, false);
     });
@@ -971,7 +971,7 @@ describe('hasSave', () => {
     });
 
     it('returns true when a save exists', () => {
-        store.set('webhack-save', '{"version":2}');
+        store.set('menace-save', '{"version":2}');
         assert.equal(hasSave(), true);
     });
 });
@@ -990,15 +990,15 @@ describe('listSavedData / clearAllData (reset feature)', () => {
     });
 
     it('listSavedData finds a saved game', () => {
-        store.set('webhack-save', '{"version":2}');
+        store.set('menace-save', '{"version":2}');
         const items = listSavedData();
         assert.equal(items.length, 1);
         assert.equal(items[0].label, 'Saved game');
     });
 
     it('listSavedData finds bones files with depth labels', () => {
-        store.set('webhack-bones-3', '{}');
-        store.set('webhack-bones-7', '{}');
+        store.set('menace-bones-3', '{}');
+        store.set('menace-bones-7', '{}');
         const items = listSavedData();
         assert.equal(items.length, 2);
         const labels = items.map(i => i.label).sort();
@@ -1006,50 +1006,50 @@ describe('listSavedData / clearAllData (reset feature)', () => {
     });
 
     it('listSavedData finds options/flags', () => {
-        store.set('webhack-options', '{}');
+        store.set('menace-options', '{}');
         const items = listSavedData();
         assert.equal(items.length, 1);
         assert.equal(items[0].label, 'Options/flags');
     });
 
     it('listSavedData finds high scores', () => {
-        store.set('webhack-topten', '[]');
+        store.set('menace-topten', '[]');
         const items = listSavedData();
         assert.equal(items.length, 1);
         assert.equal(items[0].label, 'High scores');
     });
 
     it('listSavedData finds all types together', () => {
-        store.set('webhack-save', '{}');
-        store.set('webhack-bones-2', '{}');
-        store.set('webhack-bones-5', '{}');
-        store.set('webhack-options', '{}');
-        store.set('webhack-topten', '[]');
+        store.set('menace-save', '{}');
+        store.set('menace-bones-2', '{}');
+        store.set('menace-bones-5', '{}');
+        store.set('menace-options', '{}');
+        store.set('menace-topten', '[]');
         store.set('unrelated-key', 'should be ignored');
         const items = listSavedData();
         assert.equal(items.length, 5);
     });
 
-    it('listSavedData ignores non-webhack keys', () => {
+    it('listSavedData ignores non-menace keys', () => {
         store.set('other-app-data', '{}');
         store.set('some-key', 'value');
         const items = listSavedData();
         assert.equal(items.length, 0);
     });
 
-    it('clearAllData removes all webhack keys', () => {
-        store.set('webhack-save', '{}');
-        store.set('webhack-bones-2', '{}');
-        store.set('webhack-bones-5', '{}');
-        store.set('webhack-options', '{}');
-        store.set('webhack-topten', '[]');
+    it('clearAllData removes all menace keys', () => {
+        store.set('menace-save', '{}');
+        store.set('menace-bones-2', '{}');
+        store.set('menace-bones-5', '{}');
+        store.set('menace-options', '{}');
+        store.set('menace-topten', '[]');
         store.set('unrelated-key', 'should survive');
         clearAllData();
-        assert.equal(store.has('webhack-save'), false);
-        assert.equal(store.has('webhack-bones-2'), false);
-        assert.equal(store.has('webhack-bones-5'), false);
-        assert.equal(store.has('webhack-options'), false);
-        assert.equal(store.has('webhack-topten'), false);
+        assert.equal(store.has('menace-save'), false);
+        assert.equal(store.has('menace-bones-2'), false);
+        assert.equal(store.has('menace-bones-5'), false);
+        assert.equal(store.has('menace-options'), false);
+        assert.equal(store.has('menace-topten'), false);
         assert.equal(store.get('unrelated-key'), 'should survive');
     });
 
@@ -1059,10 +1059,10 @@ describe('listSavedData / clearAllData (reset feature)', () => {
     });
 
     it('listSavedData then clearAllData round-trip', () => {
-        store.set('webhack-save', '{}');
-        store.set('webhack-bones-4', '{}');
-        store.set('webhack-options', '{}');
-        store.set('webhack-topten', '[]');
+        store.set('menace-save', '{}');
+        store.set('menace-bones-4', '{}');
+        store.set('menace-options', '{}');
+        store.set('menace-topten', '[]');
         const before = listSavedData();
         assert.equal(before.length, 4);
         clearAllData();

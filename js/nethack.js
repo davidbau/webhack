@@ -145,7 +145,7 @@ export class NetHackGame {
         // C ref: allmain.c -- welcome messages
         const wizStr = this.wizard ? ' [WIZARD MODE]' : '';
         const seedStr = urlOpts.seed !== null ? ` (seed:${seed})` : '';
-        this.display.putstr_message(`NetHack JS -- Welcome to the Mazes of Menace!${wizStr}${seedStr}`);
+        this.display.putstr_message(`NetHack Royal Jelly -- Welcome to the Mazes of Menace!${wizStr}${seedStr}`);
 
         // Player selection
         // C ref: In wizard mode, auto-selects Valkyrie/Human/Female/Neutral
@@ -315,7 +315,7 @@ export class NetHackGame {
         this.display.clearScreen();
         this.display.putstr(0, 4, "NetHack, Copyright 1985-2026", CLR_GRAY);
         this.display.putstr(0, 5, "         By Stichting Mathematisch Centrum and M. Stephenson.", CLR_GRAY);
-        this.display.putstr(0, 6, `         Version 3.7.0 JS Port, built ${new Date().toLocaleDateString()}.`, CLR_GRAY);
+        this.display.putstr(0, 6, "         Version 3.7.0 Royal Jelly — vibe-coded by The Hive.", CLR_GRAY);
         this.display.putstr(0, 7, "         See license for details.", CLR_GRAY);
 
         // Phase 1: "Shall I pick character's race, role, gender and alignment for you?"

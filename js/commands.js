@@ -1953,7 +1953,7 @@ async function handleHelp(game) {
 
     if (c === 'a') {
         // About NetHack
-        display.putstr_message(`${VERSION_STRING} -- a game by the NetHack DevTeam.`);
+        display.putstr_message(`${VERSION_STRING}`);
     } else if (c === 'b') {
         // Long description
         const text = await fetchDataFile('dat/help.txt');

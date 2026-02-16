@@ -1,7 +1,7 @@
 // topten.js -- High score list persistence and display
 // C ref: topten.c — struct toptenentry, topten(), outentry()
 
-const TOPTEN_KEY = 'webhack-topten';
+const TOPTEN_KEY = 'menace-topten';
 const MAX_ENTRIES = 100; // C ref: sysopt.entrymax
 
 // Safe localStorage access

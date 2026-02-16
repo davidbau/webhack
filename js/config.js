@@ -5,7 +5,7 @@
 export const VERSION_MAJOR = 3;
 export const VERSION_MINOR = 7;
 export const PATCHLEVEL = 0;
-export const VERSION_STRING = `NetHack JS Version ${VERSION_MAJOR}.${VERSION_MINOR}.${PATCHLEVEL}`;
+export const VERSION_STRING = `NetHack ${VERSION_MAJOR}.${VERSION_MINOR}.${PATCHLEVEL} Royal Jelly — vibe-coded by The Hive`;
 
 // Map dimensions (global.h)
 export const COLNO = 80;   // number of columns
