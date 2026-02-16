@@ -197,6 +197,9 @@ export class NetHackGame {
         if (this.flags.tutorial) {
             await this._maybeDoTutorial();
         }
+
+        // Notify that gameplay is starting
+        this._emitGameplayStart();
     }
 
     async _maybeDoTutorial() {
@@ -249,6 +252,18 @@ export class NetHackGame {
         this.fov.compute(this.map, this.player.x, this.player.y);
         this.display.renderMap(this.map, this.player, this.fov, this.flags);
         this.display.renderStatus(this.player);
+    }
+
+    _emitGameplayStart() {
+        if (typeof this.hooks.onGameplayStart === 'function') {
+            this.hooks.onGameplayStart({ game: this });
+        }
+    }
+
+    _emitGameOver() {
+        if (typeof this.hooks.onGameOver === 'function') {
+            this.hooks.onGameOver({ game: this, reason: this.gameOverReason });
+        }
     }
 
     // Restore game state from a save.
@@ -323,6 +338,9 @@ export class NetHackGame {
         this.display.renderMap(this.map, this.player, this.fov, this.flags);
         this.display.renderStatus(this.player);
         this.display.putstr_message('Game restored.');
+
+        // Notify that gameplay is starting (restored game)
+        this._emitGameplayStart();
         return true;
     }
 
@@ -1489,6 +1507,7 @@ export class NetHackGame {
 
         // Game over
         await this.showGameOver();
+        this._emitGameOver();
     }
 
     // Check if multi-command sequence should be interrupted

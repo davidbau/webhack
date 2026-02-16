@@ -40,6 +40,7 @@
             --font-mono: "DejaVu Sans Mono", "Courier New", "Lucida Console", monospace;
             --font-size-sm: 13px;
             --font-size-md: 16px;
+            --game-font-size: 16px;
 
             /* Transitions */
             --transition-fast: 0.2s;
@@ -96,7 +97,7 @@
             flex-wrap: wrap;
             gap: var(--spacing-lg);
             padding: var(--spacing-sm) 0;
-            font-size: var(--font-size-sm);
+            font-size: calc(var(--game-font-size) * 0.8);
             justify-content: center;
             width: 100%;
             order: -2;  /* Ensure nav appears first */
@@ -138,7 +139,7 @@
             border: 2px solid var(--color-accent);
             color: var(--color-accent);
             padding: 0.4em 0.8em;
-            font-size: 14px;
+            font-size: calc(var(--game-font-size) * 0.875);
             font-weight: 600;
             cursor: pointer;
             border-radius: 4px;
@@ -333,6 +334,11 @@
 
         .side-panel.hidden {
             display: none;
+        }
+
+        /* Hide side panels until gameplay is active */
+        body:not(.gameplay-active) .side-panel {
+            visibility: hidden;
         }
 
         /* ============================================================
@@ -715,6 +721,9 @@
          * @param {string|number} size - Font size in pixels
          */
         function applyFontSize(size) {
+            // Update CSS custom property for nav/controls scaling
+            document.documentElement.style.setProperty('--game-font-size', size + 'px');
+
             // Apply to game div - will cascade to terminal when it's created
             gameDiv.style.fontSize = size + 'px';
 

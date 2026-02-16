@@ -1,4 +1,4 @@
-// browser_bootstrap.js -- Browser-only game startup wiring.
+// menace.js -- Browser-only game startup wiring.
 // Keeps DOM, URL, and window lifecycle logic out of the NetHackGame core.
 
 import { Display } from './display.js';
@@ -58,6 +58,12 @@ window.addEventListener('DOMContentLoaded', async () => {
                 window.gameInstance = runningGame;
                 window.gameFlags = flags;
                 window.gameDisplay = display;
+            },
+            onGameplayStart: () => {
+                document.body.classList.add('gameplay-active');
+            },
+            onGameOver: () => {
+                document.body.classList.remove('gameplay-active');
             },
         },
     });
