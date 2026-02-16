@@ -343,7 +343,7 @@ describe('Top ten: getPlayerRank', () => {
 // ========================================================================
 describe('Top ten: TOPTEN_KEY', () => {
     it('is the expected localStorage key', () => {
-        assert.equal(TOPTEN_KEY, 'webhack-topten');
+        assert.equal(TOPTEN_KEY, 'menace-topten');
     });
 });
 

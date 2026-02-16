@@ -25,10 +25,10 @@ import { Player } from './player.js';
 import { GameMap, makeRoom } from './map.js';
 import { getDiscoveryState, setDiscoveryState } from './discovery.js';
 
-const SAVE_KEY = 'webhack-save';
-const BONES_KEY_PREFIX = 'webhack-bones-';
-const OPTIONS_KEY = 'webhack-options';
-const TOPTEN_KEY = 'webhack-topten';
+const SAVE_KEY = 'menace-save';
+const BONES_KEY_PREFIX = 'menace-bones-';
+const OPTIONS_KEY = 'menace-options';
+const TOPTEN_KEY = 'menace-topten';
 const SAVE_VERSION = 2;
 
 // Safe localStorage access -- returns null when unavailable (e.g. Node.js tests)
@@ -434,7 +434,7 @@ export function hasSave() {
     try { return s.getItem(SAVE_KEY) !== null; } catch (e) { return false; }
 }
 
-// List all webhack save/bones entries in localStorage.
+// List all menace save/bones entries in localStorage.
 // Returns array of { key, label } describing each stored item.
 export function listSavedData() {
     const s = storage();
@@ -458,7 +458,7 @@ export function listSavedData() {
     return items;
 }
 
-// Delete all webhack data from localStorage.
+// Delete all menace data from localStorage.
 export function clearAllData() {
     const s = storage();
     if (!s) return;

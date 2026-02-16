@@ -50,7 +50,7 @@ export function getKeylog() {
         keys: [...keys],
         metadata: {
             date: new Date().toISOString(),
-            source: 'webhack-js',
+            source: 'menace-js',
         },
     };
     // Add turn count from game instance if available
@@ -78,7 +78,7 @@ export function getNextReplayKey() {
 // Start replay: store data in sessionStorage and navigate with seed + options in URL
 export function startReplay(data) {
     if (typeof window === 'undefined') return;
-    sessionStorage.setItem('webhack-replay', JSON.stringify(data));
+    sessionStorage.setItem('menace-replay', JSON.stringify(data));
     // Build URL with seed and option params
     const url = new URL(window.location.href);
     // Clear existing params
@@ -113,13 +113,13 @@ export function saveKeylog() {
 // --- Module init: check sessionStorage for pending replay ---
 if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
     try {
-        const replayData = sessionStorage.getItem('webhack-replay');
+        const replayData = sessionStorage.getItem('menace-replay');
         if (replayData) {
             const data = JSON.parse(replayData);
             replayMode = true;
             replayKeys = data.keys || [];
             replayIndex = 0;
-            sessionStorage.removeItem('webhack-replay');
+            sessionStorage.removeItem('menace-replay');
             window.SKIP_ANIMATION_DELAYS = true;
         }
     } catch (e) {
