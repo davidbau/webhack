@@ -40,14 +40,32 @@ export function getSessionScreenLines(screenHolder) {
 
 // Get startup data from a v3 session.
 // V3 format: startup is the first step with key === null and action === 'startup'
+// Also checks for top-level startup field for sessions that use rngCalls instead of full trace.
 export function getSessionStartup(session) {
+    // Check for top-level startup field (used by some wizard transition sessions)
+    if (session?.startup) {
+        const rng = Array.isArray(session.startup.rng) ? session.startup.rng : [];
+        return {
+            rng,
+            rngCalls: Number.isInteger(session.startup.rngCalls)
+                ? session.startup.rngCalls
+                : rng.length,
+            typGrid: session.startup.typGrid,
+            screen: session.startup.screen,
+            screenAnsi: session.startup.screenAnsi,
+        };
+    }
+
     if (!session?.steps?.length) return null;
 
     const firstStep = session.steps[0];
     if (firstStep.key === null && firstStep.action === 'startup') {
+        const rng = firstStep.rng || [];
         return {
-            rng: firstStep.rng || [],
-            rngCalls: (firstStep.rng || []).length,
+            rng,
+            rngCalls: Number.isInteger(firstStep.rngCalls)
+                ? firstStep.rngCalls
+                : rng.length,
             typGrid: firstStep.typGrid,
             screen: firstStep.screen,
             screenAnsi: firstStep.screenAnsi,
@@ -69,16 +87,28 @@ export function getSessionCharacter(session) {
     };
 }
 
+// Normalize a step to ensure rngCalls is available
+function normalizeStep(step) {
+    if (!step) return step;
+    const rng = Array.isArray(step.rng) ? step.rng : [];
+    return {
+        ...step,
+        rng,
+        rngCalls: Number.isInteger(step.rngCalls) ? step.rngCalls : rng.length,
+    };
+}
+
 // Get gameplay steps (excluding startup step in v3 format)
+// Normalizes steps to ensure rngCalls is available
 export function getSessionGameplaySteps(session) {
     if (!session?.steps) return [];
 
     // Skip first step if it's startup (key === null)
-    if (session.steps.length > 0 && session.steps[0].key === null) {
-        return session.steps.slice(1);
-    }
+    const steps = session.steps.length > 0 && session.steps[0].key === null
+        ? session.steps.slice(1)
+        : session.steps;
 
-    return session.steps;
+    return steps.map(normalizeStep);
 }
 
 // Check if the first step has a 'burst' of RNG from startup

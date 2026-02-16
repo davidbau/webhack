@@ -73,8 +73,20 @@ async function runGameplayResult(session) {
         }
 
         const startup = getSessionStartup(session);
-        if (startup?.rng?.length || replay.startup?.rng?.length) {
-            const cmp = compareRngArrays(replay.startup?.rng || [], startup?.rng || []);
+        // Compare startup RNG - prefer full trace, fall back to call count
+        if (startup?.rng?.length > 0) {
+            const cmp = compareRngArrays(replay.startup?.rng || [], startup.rng);
+            recordRng(result, cmp.matched, cmp.total, cmp.firstDivergence);
+        } else if (Number.isInteger(startup?.rngCalls)) {
+            const actualCalls = (replay.startup?.rng || []).length;
+            const matched = actualCalls === startup.rngCalls ? 1 : 0;
+            recordRng(result, matched, 1, matched ? null : {
+                expected: String(startup.rngCalls),
+                actual: String(actualCalls),
+                stage: 'startup',
+            });
+        } else if (replay.startup?.rng?.length > 0) {
+            const cmp = compareRngArrays(replay.startup?.rng || [], []);
             recordRng(result, cmp.matched, cmp.total, cmp.firstDivergence);
         }
         if (startup?.typGrid) {
@@ -93,11 +105,27 @@ async function runGameplayResult(session) {
         for (let i = 0; i < count; i++) {
             const cStep = steps[i];
             const jStep = jsSteps[i];
-            const rngCmp = compareRngArrays(jStep?.rng || [], cStep?.rng || []);
-            rngMatched += rngCmp.matched;
-            rngTotal += rngCmp.total;
-            if (!result.firstDivergence && rngCmp.firstDivergence) {
-                result.firstDivergence = { ...rngCmp.firstDivergence, step: i };
+
+            // Compare step RNG - prefer full trace, fall back to call count
+            if (cStep.rng?.length > 0) {
+                const rngCmp = compareRngArrays(jStep?.rng || [], cStep.rng);
+                rngMatched += rngCmp.matched;
+                rngTotal += rngCmp.total;
+                if (!result.firstDivergence && rngCmp.firstDivergence) {
+                    result.firstDivergence = { ...rngCmp.firstDivergence, step: i };
+                }
+            } else if (Number.isInteger(cStep.rngCalls)) {
+                const actualCalls = (jStep?.rng || []).length;
+                rngTotal += 1;
+                if (actualCalls === cStep.rngCalls) {
+                    rngMatched += 1;
+                } else if (!result.firstDivergence) {
+                    result.firstDivergence = {
+                        step: i,
+                        expected: String(cStep.rngCalls),
+                        actual: String(actualCalls),
+                    };
+                }
             }
 
             const cScreen = getSessionScreenLines(cStep);
