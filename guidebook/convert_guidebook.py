@@ -1307,6 +1307,7 @@ def convert_guidebook(input_file, output_file):
 
 
 if __name__ == '__main__':
-    input_file = '../docs/reference/Guidebook.mn'
-    output_file = 'guidebook.md'
+    import sys
+    input_file = sys.argv[1] if len(sys.argv) > 1 else '../docs/reference/Guidebook.mn'
+    output_file = sys.argv[2] if len(sys.argv) > 2 else 'guidebook.md'
     convert_guidebook(input_file, output_file)

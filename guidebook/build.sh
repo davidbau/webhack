@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Build script for the NetHack Guidebook (HTML version)
-# Source: ../docs/reference/Guidebook.mn (nroff)
-# Converter: convert_guidebook.py (nroff → Markdown)
-# Template: template.html (pandoc HTML5 template)
+# Build script for the NetHack Guidebook (Menace Edition)
+#
+# Pipeline:
+#   1. Guidebook.mn (nroff) → guidebook-base.md (via convert_guidebook.py)
+#   2. guidebook-base.md + menace-supplement.md → guidebook.md (via merge_supplement.py)
+#   3. guidebook.md → index.html (via pandoc)
+#
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -19,9 +22,13 @@ if ! command -v python3 &>/dev/null; then
   exit 1
 fi
 
-echo "=== Converting Guidebook.mn → guidebook.md ==="
-python3 convert_guidebook.py
-echo "    → guidebook.md"
+echo "=== Converting Guidebook.mn → guidebook-base.md ==="
+python3 convert_guidebook.py ../docs/reference/Guidebook.mn guidebook-base.md
+echo "    → guidebook-base.md"
+
+echo "=== Merging Menace supplement ==="
+python3 merge_supplement.py guidebook-base.md menace-supplement.md guidebook.md
+echo "    → guidebook.md (sections 9.2-9.18 replaced)"
 
 echo "=== Building Guidebook HTML ==="
 pandoc guidebook.md \
