@@ -777,7 +777,7 @@ export async function replaySession(seed, session, opts = {}) {
             const deferredResult = await rhack(moveCh, game);
             if (deferredResult && deferredResult.tookTime) {
                 settrack(game.player);
-                movemon(game.map, game.player, game.display, game.fov);
+                movemon(game.map, game.player, game.display, game.fov, game);
                 game.simulateTurnEnd();
             }
             game.renderCurrentScreen();
@@ -804,7 +804,7 @@ export async function replaySession(seed, session, opts = {}) {
             const isAcknowledge = key === ' ' || key === '\n' || key === '\r';
             if (isAcknowledge) {
                 settrack(game.player);
-                movemon(game.map, game.player, game.display, game.fov);
+                movemon(game.map, game.player, game.display, game.fov, game);
                 game.simulateTurnEnd();
                 pendingTransitionTurn = false;
                 game.renderCurrentScreen();
@@ -945,10 +945,22 @@ export async function replaySession(seed, session, opts = {}) {
 
         // Some captured sessions include raw Ctrl-D bytes that were not accepted
         // as a command by tty input (no prompt, no RNG, no time).
+        // Keep a narrow guard so we don't swallow real kick-prefix commands
+        // whose direction and effects are captured in the following step.
+        const nextStep = allSteps[stepIndex + 1] || null;
+        const nextLooksLikeKickFollowup = !!(nextStep
+            && typeof nextStep.key === 'string'
+            && nextStep.key.length === 1
+            && 'hjklyubn'.includes(nextStep.key)
+            && (
+                (nextStep.rng || []).some((e) => typeof e === 'string' && e.includes('kick_door('))
+                || /Whammm|Thwack|As you kick|You kick|Ouch/.test((nextStep.screen?.[0] || ''))
+            ));
         if (!pendingCommand && step.key === '\u0004'
             && ((step.rng && step.rng.length) || 0) === 0
             && stepMsg === ''
-            && ((stepScreen[0] || '').trim() === '')) {
+            && ((stepScreen[0] || '').trim() === '')
+            && !nextLooksLikeKickFollowup) {
             pushStepResult(
                 [],
                 opts.captureScreens ? game.display.getScreenLines() : undefined,
@@ -1030,6 +1042,27 @@ export async function replaySession(seed, session, opts = {}) {
                     game.player.hpmax = parseInt(hpm[2]);
                 }
             }
+        };
+        const applyTimedTurn = () => {
+            // C trace behavior: stair transitions consume time but do not run
+            // immediate end-of-turn effects in steps where no turn-end RNG is
+            // captured for that transition command.
+            const isLevelTransition = step.action === 'descend' || step.action === 'ascend';
+            const expectedStepRng = step.rng || [];
+            const expectsTransitionTurnEnd = expectedStepRng.some((entry) =>
+                typeof entry === 'string'
+                && (entry.includes('mcalcmove(')
+                    || entry.includes('moveloop_core(')
+                    || entry.includes('gethungry('))
+            );
+            if (isLevelTransition && !expectsTransitionTurnEnd) {
+                return;
+            }
+            // C ref: allmain.c moveloop_core():
+            // monster movement occurs before once-per-turn bookkeeping;
+            // settrack() happens during turn setup before moves++ work.
+            movemon(game.map, game.player, game.display, game.fov, game);
+            game.simulateTurnEnd();
         };
 
         if (pendingCommand) {
@@ -1120,6 +1153,10 @@ export async function replaySession(seed, session, opts = {}) {
             if (ch !== 1 && game.multi === 0) {
                 lastCommand = { key: ch, count: game.commandCount || 0 };
             }
+            game.advanceRunTurn = async () => {
+                applyTimedTurn();
+                syncHpFromStepScreen();
+            };
             const commandPromise = rhack(execCh, game);
             const settled = await Promise.race([
                 commandPromise.then(v => ({ done: true, value: v })),
@@ -1136,6 +1173,7 @@ export async function replaySession(seed, session, opts = {}) {
                     }
                     pushInput(32);
                     const dismissed = await commandPromise;
+                    game.advanceRunTurn = null;
                     result = dismissed || { moved: false, tookTime: false };
                 } else {
                     // Command is waiting for additional input (direction/item/etc.).
@@ -1144,11 +1182,13 @@ export async function replaySession(seed, session, opts = {}) {
                     if (opts.captureScreens) {
                         capturedScreenOverride = game.display.getScreenLines();
                     }
+                    game.advanceRunTurn = null;
                     pendingCommand = commandPromise;
                     pendingKind = (ch === 35) ? 'extended-command' : null;
                     result = { moved: false, tookTime: false };
                 }
             } else {
+                game.advanceRunTurn = null;
                 result = settled.value;
             }
         }
@@ -1167,41 +1207,67 @@ export async function replaySession(seed, session, opts = {}) {
             result = await rhack(nextCh, game);
         }
 
-        const applyTimedTurn = () => {
-            // C trace behavior: stair transitions consume time but do not run
-            // immediate end-of-turn RNG effects on the destination level in the
-            // same captured step.
-            const isLevelTransition = step.action === 'descend' || step.action === 'ascend';
-            const expectedStepRng = step.rng || [];
-            const expectsTransitionTurnEnd = expectedStepRng.some((entry) =>
-                typeof entry === 'string'
-                && (entry.includes('mcalcmove(')
-                    || entry.includes('moveloop_core(')
-                    || entry.includes('gethungry('))
-            );
-            if (isLevelTransition && !expectsTransitionTurnEnd) {
-                return;
-            }
-            // C ref: allmain.c — record hero position before movemon on turns
-            // where the full end-of-turn processing runs.
-            settrack(game.player);
-            if (!isLevelTransition) {
-                movemon(game.map, game.player, game.display, game.fov);
-            }
-            game.simulateTurnEnd();
-        };
-
-        // If the command took time, run monster movement and turn effects
+        // If the command took time, run monster movement and turn effects.
+        // Running/rushing can pack multiple movement steps into one command.
         if (result && result.tookTime) {
-            applyTimedTurn();
+            const timedSteps = Math.max(1, Number.isInteger(result.runSteps) ? result.runSteps : 1);
+            for (let i = 0; i < timedSteps; i++) {
+                applyTimedTurn();
+            }
+            if (game.multi > 0 && typeof game.shouldInterruptMulti === 'function'
+                && game.shouldInterruptMulti()) {
+                game.multi = 0;
+            }
             // Run occupation continuation turns (multi-turn eating, etc.)
             // C ref: allmain.c moveloop_core() — occupation runs before next input
             while (game.occupation) {
                 const occ = game.occupation;
+                let interruptedOcc = false;
+                const debugOcc = (typeof process !== 'undefined' && process.env.DEBUG_OCC === '1');
+                if (debugOcc) {
+                    let hostiles = 0;
+                    let nearest = 999;
+                    let nearestMon = null;
+                    const px = game.player?.x ?? 0;
+                    const py = game.player?.y ?? 0;
+                    for (const mon of game.map?.monsters || []) {
+                        if (!mon || mon.dead || mon.tame || mon.peaceful) continue;
+                        const dx = Math.abs((mon.mx ?? 0) - px);
+                        const dy = Math.abs((mon.my ?? 0) - py);
+                        const d = Math.max(dx, dy);
+                        if (d <= 1) hostiles++;
+                        if (d < nearest) {
+                            nearest = d;
+                            nearestMon = `${mon.type?.name || mon.name || 'mon'}@${mon.mx},${mon.my}`;
+                        }
+                    }
+                    console.error(
+                        `[occ] step=${stepIndex} pre multi=${game.multi} ` +
+                        `hostiles_adj=${hostiles} nearest=${nearest} ${nearestMon || ''} ` +
+                        `hp=${game.player?.hp}/${game.player?.hpmax}`
+                    );
+                }
                 const cont = occ.fn(game);
                 const finishedOcc = !cont ? occ : null;
+                if (debugOcc) {
+                    console.error(`[occ] step=${stepIndex} postfn multi=${game.multi} cont=${!!cont}`);
+                }
+                if (typeof game.shouldInterruptMulti === 'function'
+                    && game.shouldInterruptMulti()) {
+                    game.multi = 0;
+                    if (game.flags?.verbose !== false && occ?.occtxt) {
+                        game.display.putstr_message(`You stop ${occ.occtxt}.`);
+                    }
+                    game.occupation = null;
+                    interruptedOcc = true;
+                    if (debugOcc) console.error(`[occ] step=${stepIndex} interrupted`);
+                } else
                 if (!cont) {
                     game.occupation = null;
+                    if (debugOcc) console.error(`[occ] step=${stepIndex} completed`);
+                }
+                if (interruptedOcc) {
+                    continue;
                 }
                 applyTimedTurn();
                 // Keep replay HP aligned to captured turn-state during multi-turn actions.
@@ -1214,11 +1280,49 @@ export async function replaySession(seed, session, opts = {}) {
             // C ref: allmain.c moveloop() — multi-count repeats execute before
             // accepting the next keyboard input.
             while (game.multi > 0) {
+                const debugMulti = (typeof process !== 'undefined' && process.env.DEBUG_MULTI === '1');
+                if (debugMulti) {
+                    let hostiles = 0;
+                    const px = game.player?.x ?? 0;
+                    const py = game.player?.y ?? 0;
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            if (dx === 0 && dy === 0) continue;
+                            const mon = game.map?.monsterAt?.(px + dx, py + dy);
+                            if (mon && !mon.dead && !mon.tame && !mon.peaceful) hostiles++;
+                        }
+                    }
+                    console.error(
+                        `[multi] step=${stepIndex} pre multi=${game.multi} ` +
+                        `hostiles_adj=${hostiles} hp=${game.player?.hp}/${game.player?.hpmax}`
+                    );
+                }
+                // C ref: allmain.c:519-526 lookaround() can clear multi before
+                // the next repeated command executes; this should not consume
+                // an additional turn when it interrupts.
+                if (typeof game.shouldInterruptMulti === 'function'
+                    && game.shouldInterruptMulti()) {
+                    game.multi = 0;
+                    break;
+                }
                 game.multi--;
                 const repeated = await rhack(game.cmdKey, game);
+                if (debugMulti) {
+                    console.error(
+                        `[multi] step=${stepIndex} postcmd multi=${game.multi} ` +
+                        `tookTime=${!!repeated?.tookTime}`
+                    );
+                }
                 if (!repeated || !repeated.tookTime) break;
                 applyTimedTurn();
                 syncHpFromStepScreen();
+                // C ref: allmain.c interrupt_multi() — stop counted commands
+                // when an adjacent hostile appears.
+                if (game.multi > 0 && typeof game.shouldInterruptMulti === 'function'
+                    && game.shouldInterruptMulti()) {
+                    game.multi = 0;
+                    break;
+                }
                 if (game.player.justHealedLegs
                     && (game.cmdKey === 46 || game.cmdKey === 115)
                     && (stepScreen[0] || '').includes('Your leg feels better.  You stop searching.')) {

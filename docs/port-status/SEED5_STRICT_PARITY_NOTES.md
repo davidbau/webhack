@@ -120,3 +120,55 @@ Date: 2026-02-15 (later checkpoint)
 - C reports `mfndpos=5` at the relevant sub-turn while JS currently reports a
   larger candidate set in one of the equivalent pet turns, indicating further
   `mfndpos`/pet-candidate filtering parity work remains.
+
+---
+
+Date: 2026-02-16
+
+## Additional Progress
+
+- `seed204_multidigit_wait_gameplay` strict RNG parity restored to full pass
+  (`2918/2918`) by porting C occupation-stop timing from monster movement.
+- `seed5_gnomish_mines_gameplay` first divergence moved substantially later:
+  from step 59 to step 201, with matched RNG increasing from 5955 to 12153
+  during this pass.
+- Seed gameplay baselines remained stable:
+  - `seed1_gameplay` pass (`5981/5981`)
+  - `seed2_wizard_fountains_gameplay` pass (`6629/6629`)
+  - `seed3_gameplay` pass (`2388/2388`)
+  - `seed4_selfplay_150turns_gameplay` pass (`7300/7300`)
+
+## Additional C-Faithful Fixes
+
+1. `dochugw` occupation interruption parity in monster phase.
+   - C source path: `monmove.c` (`dochugw`) + `allmain.c` (`stop_occupation`).
+   - JS now stops occupation when a newly noticed hostile threat moves into
+     range during `movemon`, rather than only via pre-input nearby checks.
+
+2. Kick-prefix replay handling for raw `^D` steps.
+   - Replay runner previously treated certain zero-RNG `^D` rows as ignorable
+     noise unconditionally.
+   - For keylog sessions where `^D` is the kick prefix and the directional
+     follow-up is captured on the next step, this dropped real command state.
+   - Fix: keep the noise-skip path narrow and avoid skipping when the next step
+     clearly matches a kick follow-up (`kick_door` RNG/message signature).
+
+3. Level-transition turn-end replay parity refinement.
+   - For descend/ascend steps that explicitly contain turn-end RNG signatures,
+     replay now executes full timed-turn flow (including `movemon`) in that
+     same step, matching C capture boundaries.
+
+4. `mfndpos` monster-vs-monster attack gating tightened toward C.
+   - Removed non-C generic hostile-vs-tame/peaceful attack allowance.
+   - Kept movement-into-occupied-square allowance to C-style special aggression
+     cases (plus existing tame-pet behavior already used in early seeds).
+
+## What We Learned
+
+- A large class of divergences came from replay command-state attribution
+  rather than core dungeon RNG: dropping a prefix key (`^D`) can shift entire
+  downstream movement/combat streams.
+- Occupation stop timing must include the monster-phase threat check from
+  `dochugw`, not just pre-input `monster_nearby`/adjacency checks.
+- When transition steps include explicit C turn-end RNG, replay should not
+  short-circuit movement bookkeeping on destination level for that step.

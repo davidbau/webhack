@@ -18,11 +18,12 @@ import { couldsee, m_cansee, do_clear_area } from './vision.js';
 import { can_teleport, noeyes, perceives } from './mondata.js';
 import { PM_GRID_BUG, PM_IRON_GOLEM, PM_SHOPKEEPER, mons,
          PM_LEPRECHAUN, PM_XAN, PM_YELLOW_LIGHT, PM_BLACK_LIGHT,
+         PM_PURPLE_WORM, PM_BABY_PURPLE_WORM, PM_SHRIEKER,
          AT_NONE, AT_CLAW, AT_BITE, AT_KICK, AT_BUTT, AT_TUCH, AT_STNG, AT_WEAP,
          AD_PHYS,
          AD_ACID, AD_ENCH,
          M1_FLY, M1_SWIM, M1_AMPHIBIOUS, M1_AMORPHOUS, M1_CLING, M1_SEE_INVIS, S_MIMIC,
-         MZ_TINY, MZ_SMALL, MR_FIRE, MR_SLEEP, G_FREQ, M3_INFRAVISION } from './monsters.js';
+         MZ_TINY, MZ_SMALL, MR_FIRE, MR_SLEEP, G_FREQ } from './monsters.js';
 import { STATUE_TRAP, MAGIC_TRAP, VIBRATING_SQUARE, RUST_TRAP, FIRE_TRAP,
          SLP_GAS_TRAP, BEAR_TRAP, PIT, SPIKED_PIT, HOLE, TRAPDOOR,
          WEB, ANTI_MAGIC, MAGIC_PORTAL } from './symbols.js';
@@ -30,6 +31,7 @@ import { STATUE_TRAP, MAGIC_TRAP, VIBRATING_SQUARE, RUST_TRAP, FIRE_TRAP,
 const MTSZ = 4;           // C ref: monst.h — track history size
 const SQSRCHRADIUS = 5;   // C ref: dogmove.c — object search radius
 const FARAWAY = 127;      // C ref: hack.h — large distance sentinel
+const BOLT_LIM = 8;       // C ref: hack.h BOLT_LIM (threat radius baseline)
 
 function attackVerb(type) {
     switch (type) {
@@ -210,33 +212,62 @@ function m_avoid_kicked_loc(mon, nx, ny, player) {
     return nx === kl.x && ny === kl.y && dist2(nx, ny, player.x, player.y) <= 2;
 }
 
-// C ref: monmove.c set_apparxy() + mon_can_see_you().
+// C ref: monmove.c set_apparxy().
 // Track monster's apparent player coordinates (mux/muy), which can differ from
 // actual player position when monster cannot currently perceive the hero.
 function set_apparxy(mon, map, player) {
-    if (mon.tame) {
+    let mx = Number.isInteger(mon.mux) ? mon.mux : 0;
+    let my = Number.isInteger(mon.muy) ? mon.muy : 0;
+
+    // C ref: set_apparxy() early-return path.
+    if (mon.tame || (mx === player.x && my === player.y)) {
         mon.mux = player.x;
         mon.muy = player.y;
         return;
     }
-    const mdat = mons[mon.mndx] || {};
-    const hasSeeInvis = !!(mdat.flags1 & M1_SEE_INVIS);
-    const hasInfra = !!(mdat.flags3 & M3_INFRAVISION);
-    const playerLoc = map.at(player.x, player.y);
-    const playerLit = !!playerLoc?.lit;
-    const playerInfravisible = player.infravisible !== false;
-    const canSeePos = m_cansee(mon, map, player.x, player.y);
-    const canSeeInvisible = !player.invisible || hasSeeInvis;
-    const canPerceiveInDark = playerLit || (hasInfra && playerInfravisible);
 
-    if (canSeePos && canSeeInvisible && canPerceiveInDark) {
+    const mdat = mons[mon.mndx] || mon.type || {};
+    const monCanSee = mon.mcansee !== false;
+    const notseen = (!monCanSee || (player.invisible && !perceives(mdat)));
+    // We currently do not model displacement at runtime.
+    const notthere = false;
+    let displ = notseen ? 1 : 0;
+
+    if (!displ) {
         mon.mux = player.x;
         mon.muy = player.y;
-    } else if (!Number.isInteger(mon.mux) || !Number.isInteger(mon.muy)) {
-        // Keep parity with C zeromonst initialization semantics.
-        mon.mux = 0;
-        mon.muy = 0;
+        return;
     }
+
+    // C ref: gotu = notseen ? !rn2(3) : notthere ? !rn2(4) : FALSE.
+    const gotu = notseen ? !rn2(3) : (notthere ? !rn2(4) : false);
+
+    if (!gotu) {
+        let tryCnt = 0;
+        do {
+            if (++tryCnt > 200) {
+                mx = player.x;
+                my = player.y;
+                break;
+            }
+            mx = player.x - displ + rn2(2 * displ + 1);
+            my = player.y - displ + rn2(2 * displ + 1);
+            const loc = map.at(mx, my);
+            const closedDoor = !!loc && IS_DOOR(loc.typ) && (loc.flags & (D_CLOSED | D_LOCKED));
+            const blocked = !loc || !(ACCESSIBLE(loc.typ) && !closedDoor);
+            if (!isok(mx, my)) continue;
+            if (displ !== 2 && mx === mon.mx && my === mon.my) continue;
+            if ((mx !== player.x || my !== player.y) && blocked) continue;
+            if (!couldsee(mx, my)) continue;
+            break;
+        } while (true);
+    } else {
+        mx = player.x;
+        my = player.y;
+    }
+
+    mon.mux = mx;
+    mon.muy = my;
 }
 
 // C ref: mon.c:3243 corpse_chance() RNG.
@@ -399,11 +430,21 @@ function mfndpos(mon, map, player) {
             const monAtPos = map.monsterAt(nx, ny);
             // C ref: MON_AT + mm_aggression/mm_displacement gating:
             // occupied positions are only included when monster-vs-monster
-            // interaction is allowed for this pair. Minimal C-faithful subset:
-            // tame pets can target hostile (non-peaceful, non-tame) monsters.
+            // interaction is allowed for this pair.
+            // Important: C mm_aggression is narrow (not generic hostile-vs-tame).
             let allowMAttack = false;
-            if (monAtPos && !monAtPos.dead && allowM) {
-                allowMAttack = !monAtPos.tame && !monAtPos.peaceful;
+            if (monAtPos && !monAtPos.dead) {
+                if (allowM) {
+                    allowMAttack = !monAtPos.tame && !monAtPos.peaceful;
+                } else {
+                    // C ref: mon.c mm_aggression() special cases.
+                    // Keep only implemented combinations here.
+                    const attackerIdx = mon.mndx;
+                    const defenderIdx = monAtPos.mndx;
+                    const isPurpleWorm = attackerIdx === PM_PURPLE_WORM || attackerIdx === PM_BABY_PURPLE_WORM;
+                    const isShrieker = defenderIdx === PM_SHRIEKER;
+                    allowMAttack = isPurpleWorm && isShrieker;
+                }
             }
             if (monAtPos && !allowMAttack) continue;
 
@@ -610,16 +651,43 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player) {
 // Move all monsters on the level
 // C ref: mon.c movemon() — multi-pass loop until no monster can move
 // Called from gameLoop after hero action, BEFORE mcalcmove.
-export function movemon(map, player, display, fov) {
+export function movemon(map, player, display, fov, game = null) {
     let anyMoved;
     do {
         anyMoved = false;
         for (const mon of map.monsters) {
             if (mon.dead) continue;
             if (mon.movement >= NORMAL_SPEED) {
+                const oldx = mon.mx;
+                const oldy = mon.my;
+                const alreadySawMon = !!(game && game.occupation && couldsee(map, player, oldx, oldy));
                 mon.movement -= NORMAL_SPEED;
                 anyMoved = true;
                 dochug(mon, map, player, display, fov);
+                // C ref: monmove.c dochugw() threat-notice interruption gate.
+                // If an occupied hero newly notices a hostile, attack-capable
+                // monster close enough to threaten, stop the occupation now.
+                if (game && game.occupation && !mon.dead) {
+                    const attacks = mon.type?.attacks || [];
+                    const noAttacks = !attacks.some((a) => a && a.type !== AT_NONE);
+                    const threatRangeSq = (BOLT_LIM + 1) * (BOLT_LIM + 1);
+                    const oldDist = dist2(oldx, oldy, player.x, player.y);
+                    const newDist = dist2(mon.mx, mon.my, player.x, player.y);
+                    const canSeeNow = couldsee(map, player, mon.mx, mon.my);
+                    const couldSeeOld = couldsee(map, player, oldx, oldy);
+                    if (!mon.peaceful
+                        && !noAttacks
+                        && newDist <= threatRangeSq
+                        && (!alreadySawMon || !couldSeeOld || oldDist > threatRangeSq)
+                        && canSeeNow
+                        && mon.mcanmove !== false) {
+                        if (game.flags?.verbose !== false) {
+                            game.display.putstr_message(`You stop ${game.occupation.occtxt}.`);
+                        }
+                        game.occupation = null;
+                        game.multi = 0;
+                    }
+                }
             }
         }
     } while (anyMoved);
@@ -724,12 +792,12 @@ function dochug(mon, map, player, display, fov) {
     // C ref: monmove.c:882-887 — short-circuit OR evaluation
     // This determines whether monster wanders/moves (condition TRUE)
     // or falls through to Phase 4 attack (condition FALSE)
-    // C ref: distfleeck(monmove.c) — nearby = inrange && monnear(mtmp,mux,muy).
-    // We approximate inrange with player's couldsee() visibility and use mux/muy
-    // when present (fallback to current player location for unmapped monsters).
-    const inrange = couldsee(map, player, mon.mx, mon.my);
-    const targetX = player.x;
-    const targetY = player.y;
+    // C ref: distfleeck(monmove.c): inrange/nearby are based on the monster's
+    // remembered hero position (mux,muy), not always current player coords.
+    const targetX = Number.isInteger(mon.mux) ? mon.mux : player.x;
+    const targetY = Number.isInteger(mon.muy) ? mon.muy : player.y;
+    const BOLT_LIM = 8;
+    const inrange = dist2(mon.mx, mon.my, targetX, targetY) <= (BOLT_LIM * BOLT_LIM);
     const nearby = inrange && monnear(mon, targetX, targetY);
     const M2_WANDER = 0x800000;
     const isWanderer = !!(mon.type && mon.type.flags2 & M2_WANDER);
@@ -750,6 +818,15 @@ function dochug(mon, map, player, display, fov) {
         const playerHasGoldNow = playerHasGold(player);
         const monHasGold = hasGold(mon.minvent);
         if (!playerHasGoldNow && (monHasGold || rn2(2))) phase3Cond = true;
+    }
+    if (typeof process !== 'undefined' && process.env.DEBUG_DOG_GATE === '1' && mon.tame) {
+        console.error(
+            `[dog-gate] call=${typeof getRngCallCount === 'function' ? getRngCallCount() : '?'} `
+            + `pet=${mon.type?.name} at=${mon.mx},${mon.my} target=${targetX},${targetY} `
+            + `inrange=${inrange} nearby=${nearby} phase3=${phase3Cond} `
+            + `peaceful=${!!mon.peaceful} mpeaceful=${!!mon.mpeaceful} `
+            + `tame=${!!mon.tame} mtame=${mon.mtame ?? 0}`
+        );
     }
     if (!phase3Cond && isWanderer) phase3Cond = !rn2(4);
     // skip Conflict check
@@ -1660,7 +1737,8 @@ function m_move(mon, map, player) {
             let skipThis = false;
             for (let j = 0; j < jcnt; j++) {
                 if (nx === mon.mtrack[j].x && ny === mon.mtrack[j].y) {
-                    if (rn2(4 * (cnt - j))) {
+                    const denom = 4 * (cnt - j);
+                    if (rn2(denom)) {
                         skipThis = true;
                         break;
                     }

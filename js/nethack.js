@@ -1231,14 +1231,29 @@ export class NetHackGame {
             // C ref: allmain.c moveloop_core() — occupation check before input
             if (this.occupation) {
                 const occ = this.occupation;
+                let interruptedOcc = false;
                 const cont = occ.fn(this);
                 const finishedOcc = !cont ? occ : null;
+                if (this.shouldInterruptMulti()) {
+                    this.multi = 0;
+                    if (this.flags?.verbose !== false && occ?.occtxt) {
+                        this.display.putstr_message(`You stop ${occ.occtxt}.`);
+                    }
+                    this.occupation = null;
+                    interruptedOcc = true;
+                } else
                 if (!cont) {
                     this.occupation = null;
                 }
+                if (interruptedOcc) {
+                    this.fov.compute(this.map, this.player.x, this.player.y);
+                    this.display.renderMap(this.map, this.player, this.fov, this.flags);
+                    this.display.renderStatus(this.player);
+                    continue;
+                }
                 // Occupation turn takes time: run full turn effects
                 settrack(this.player);
-                movemon(this.map, this.player, this.display, this.fov);
+                movemon(this.map, this.player, this.display, this.fov, this);
                 this.processTurnEnd();
                 if (this.player.isDead) {
                     this.gameOver = true;
@@ -1262,7 +1277,7 @@ export class NetHackGame {
                 if (result.tookTime) {
                     // Run turn effects
                     settrack(this.player);
-                    movemon(this.map, this.player, this.display, this.fov);
+                    movemon(this.map, this.player, this.display, this.fov, this);
                     this.processTurnEnd();
                     if (this.player.isDead) {
                         this.gameOver = true;
@@ -1343,7 +1358,24 @@ export class NetHackGame {
             }
 
             // Process command
+            // C-faithful running: allow run commands to advance one timed turn
+            // per movement step instead of batching all movement first.
+            this.advanceRunTurn = async () => {
+                settrack(this.player);
+                movemon(this.map, this.player, this.display, this.fov, this);
+                this.processTurnEnd();
+
+                if (this.player.isDead) {
+                    if (!this.player.deathCause) {
+                        this.player.deathCause = 'died';
+                    }
+                    this.gameOver = true;
+                    this.gameOverReason = 'killed';
+                    savebones(this);
+                }
+            };
             const result = await rhack(ch, this);
+            this.advanceRunTurn = null;
 
             // C ref: allmain.c:948 interrupt_multi() — check for interruptions
             // Interrupt multi-command sequences if something interesting happens
@@ -1371,7 +1403,7 @@ export class NetHackGame {
 
                 // Move monsters
                 // C ref: allmain.c moveloop_core() -> movemon()
-                movemon(this.map, this.player, this.display, this.fov);
+                movemon(this.map, this.player, this.display, this.fov, this);
 
                 // C ref: allmain.c — new turn setup (after both hero and monsters done)
                 this.processTurnEnd();
@@ -1491,11 +1523,23 @@ export class NetHackGame {
 
         // C ref: allmain.c:289-295 regen_hp()
         // heal = (u.ulevel + ACURR(A_CON)) > rn2(100); only when hp < max
+        let reachedFullHealth = false;
         if (this.player.hp < this.player.hpmax) {
             const con = this.player.attributes ? this.player.attributes[A_CON] : 10;
             const heal = (this.player.level + con) > rn2(100) ? 1 : 0;
             if (heal) {
                 this.player.hp = Math.min(this.player.hp + heal, this.player.hpmax);
+                reachedFullHealth = (this.player.hp === this.player.hpmax);
+            }
+        }
+        // C ref: allmain.c regen_hp() -> interrupt_multi("You are in full health.")
+        if (reachedFullHealth
+            && this.multi > 0
+            && !this.travelPath?.length
+            && !this.runMode) {
+            this.multi = 0;
+            if (this.flags?.verbose !== false) {
+                this.display.putstr_message('You are in full health.');
             }
         }
 

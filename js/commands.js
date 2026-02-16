@@ -2,7 +2,7 @@
 // Mirrors cmd.c from the C source.
 // Maps keyboard input to game actions.
 
-import { COLNO, ROWNO, DOOR, STAIRS, LADDER, FOUNTAIN, SINK, THRONE, ALTAR, GRAVE,
+import { COLNO, ROWNO, DOOR, CORR, SCORR, STAIRS, LADDER, FOUNTAIN, SINK, THRONE, ALTAR, GRAVE,
          POOL, LAVAPOOL, IRONBARS, TREE, ROOM, IS_DOOR, D_CLOSED, D_LOCKED,
          D_ISOPEN, D_NODOOR, D_BROKEN, ACCESSIBLE, IS_WALL, MAXLEVEL, VERSION_STRING, ICE,
          isok, A_STR, A_DEX, A_CON, A_WIS } from './config.js';
@@ -121,10 +121,9 @@ export async function rhack(ch, game) {
         return handleRun(RUN_KEYS[c], player, map, display, fov, game);
     }
 
-    // Period = wait/search
-    if (c === '.' || c === 's') {
+    function performWaitSearch(cmd) {
         // C ref: do.c cmd_safety_prevention() — prevent wait/search when hostile adjacent
-        // Gated on flags.safe_wait (default true) and !multi (always 0 for non-counted)
+        // only when not in counted-repeat mode.
         if (game && game.flags && game.flags.safe_wait && !game.menuRequested && !(game.multi > 0)) {
             let monNearby = false;
             for (let dx = -1; dx <= 1 && !monNearby; dx++) {
@@ -137,8 +136,7 @@ export async function rhack(ch, game) {
                 }
             }
             if (monNearby) {
-                // C ref: do.c cmd_safety_prevention() has distinct wait vs search warnings.
-                if (c === 's') {
+                if (cmd === 's') {
                     display.putstr_message("You already found a monster.  Use 'm' prefix to force another search.");
                 } else {
                     display.putstr_message("Are you waiting to get hit?  Use 'm' prefix to force a no-op (to rest).");
@@ -146,12 +144,30 @@ export async function rhack(ch, game) {
                 return { moved: false, tookTime: false };
             }
         }
-        // C ref: cmd.c -- '.' is rest, 's' is search
-        if (c === 's') {
-            // C ref: detect.c dosearch0() -- check adjacent squares for hidden things
+        if (cmd === 's') {
             dosearch0(player, map, display, game);
-        } 
+        }
         return { moved: false, tookTime: true };
+    }
+
+    // Period = wait/search
+    if (c === '.' || c === 's') {
+        const result = performWaitSearch(c);
+        // C ref: cmd.c set_occupation(..., "waiting"/"searching", gm.multi)
+        // for counted repeats of rest/search. timed_occupation executes the
+        // command then decrements multi each turn.
+        if (result.tookTime && game && game.multi > 0 && !game.occupation) {
+            const occCmd = c;
+            game.occupation = {
+                occtxt: occCmd === 's' ? 'searching' : 'waiting',
+                fn(g) {
+                    performWaitSearch(occCmd);
+                    if (g.multi > 0) g.multi--;
+                    return g.multi > 0;
+                },
+            };
+        } 
+        return result;
     }
 
     // Pick up
@@ -872,10 +888,18 @@ function maybeSmudgeEngraving(map, x1, y1, x2, y2) {
 // C ref: cmd.c do_run() -> hack.c domove() with context.run
 async function handleRun(dir, player, map, display, fov, game) {
     let steps = 0;
+    let tookTimeAny = false;
+    const hasRunTurnHook = typeof game?.advanceRunTurn === 'function';
     while (steps < 80) { // safety limit
         const result = await handleMovement(dir, player, map, display, game);
+        if (result.tookTime) tookTimeAny = true;
         if (!result.moved) break;
         steps++;
+
+        // C-faithful run timing: each successful run step advances time once.
+        if (hasRunTurnHook && result.tookTime) {
+            await game.advanceRunTurn();
+        }
 
         // Stop if we see a monster, item, or interesting feature
         fov.compute(map, player.x, player.y);
@@ -886,19 +910,26 @@ async function handleRun(dir, player, map, display, fov, game) {
         display.renderMap(map, player, fov);
         display.renderStatus(player);
 
-        // Small delay for visual effect
-        await new Promise(resolve => setTimeout(resolve, 30));
     }
-    return { moved: steps > 0, tookTime: steps > 0 };
+    return {
+        moved: steps > 0,
+        tookTime: hasRunTurnHook ? false : tookTimeAny,
+        runSteps: hasRunTurnHook ? 0 : steps,
+    };
 }
 
 // Check if running should stop
 // C ref: hack.c lookaround() -- checks for interesting things while running
 function checkRunStop(map, player, fov, dir) {
-    // Check for visible monsters
+    // C-like behavior: don't stop for any distant visible monster; only nearby
+    // threats should break a run.
     for (const mon of map.monsters) {
         if (mon.dead) continue;
-        if (fov.canSee(mon.mx, mon.my)) return true;
+        // C-like run lookaround should not stop for obviously non-threatening pets.
+        if (mon.tame || mon.peaceful || mon.mpeaceful) continue;
+        const dx = Math.abs(mon.mx - player.x);
+        const dy = Math.abs(mon.my - player.y);
+        if (dx <= 1 && dy <= 1 && fov.canSee(mon.mx, mon.my)) return true;
     }
 
     // Check for objects at current position
@@ -909,20 +940,19 @@ function checkRunStop(map, player, fov, dir) {
     const loc = map.at(player.x, player.y);
     if (loc && (loc.typ === STAIRS || loc.typ === FOUNTAIN)) return true;
 
-    // Check if we're at a junction (corridor branches)
-    let exits = 0;
-    for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
-            if (dx === 0 && dy === 0) continue;
+    // Only treat corridor forks as run-stoppers.
+    if (loc && (loc.typ === CORR || loc.typ === SCORR)) {
+        let exits = 0;
+        const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+        for (const [dx, dy] of dirs) {
             const nx = player.x + dx;
             const ny = player.y + dy;
-            if (isok(nx, ny)) {
-                const nloc = map.at(nx, ny);
-                if (nloc && ACCESSIBLE(nloc.typ)) exits++;
-            }
+            if (!isok(nx, ny)) continue;
+            const nloc = map.at(nx, ny);
+            if (nloc && ACCESSIBLE(nloc.typ)) exits++;
         }
+        if (exits > 2) return true;
     }
-    if (exits > 2) return true; // at a junction
 
     return false;
 }
@@ -2214,6 +2244,16 @@ export function dosearch0(player, map, display, game = null) {
                     if (game && Number.isInteger(game.multi) && game.multi > 0) {
                         game.multi = 0;
                     }
+                }
+            }
+            // C ref: detect.c mfind0() in dosearch0() can interrupt explicit
+            // counted searches when an adjacent monster is discovered.
+            // Keep this minimal (no extra messaging/RNG) to preserve replay
+            // parity where visible adjacent monsters should halt count search.
+            const mon = map.monsterAt(nx, ny);
+            if (mon && !mon.dead && !mon.tame && !mon.peaceful) {
+                if (game && Number.isInteger(game.multi) && game.multi > 0) {
+                    game.multi = 0;
                 }
             }
         }
