@@ -747,6 +747,7 @@ export function setLevelContext(map, depth) {
     levelState.roomStack = [];
     levelState.roomDepth = 0;
     levelState.currentRoom = null;
+    levelState.finalizeContext = null;
     // C ref: gi.in_mk_themerooms — set during themed room generation
     // Affects needfill default: themed rooms default to FILL_NONE (0), not FILL_NORMAL (1)
     levelState.inThemerooms = true;
@@ -766,6 +767,7 @@ export function clearLevelContext() {
     levelState.roomStack = [];
     levelState.roomDepth = 0;
     levelState.currentRoom = null;
+    levelState.finalizeContext = null;
     levelState.inThemerooms = false;
 }
 
@@ -5301,8 +5303,7 @@ export function altar(opts) {
         let specialAlign = A_NONE;
         // C-level metadata plumbing is incomplete; these known special-level
         // alignments are already mirrored in makelevel().
-        if (specialName.startsWith('oracle')) specialAlign = A_NEUTRAL;
-        else if (specialName.startsWith('medusa')) specialAlign = A_CHAOTIC;
+        if (specialName.startsWith('medusa')) specialAlign = A_CHAOTIC;
         // Tutorial traces show AM_SPLEV_RANDOM consuming induced_align(80)'s
         // rn2(100) gate rather than plain rn2(3) fallback.
         else if (specialName.startsWith('tut-')) specialAlign = A_LAWFUL;
@@ -5888,17 +5889,16 @@ function executeDeferredMonster(deferred) {
         const ctx = levelState.finalizeContext || {};
         const specialName = typeof ctx.specialName === 'string' ? ctx.specialName : '';
         const tutorialLike = !!levelState.map?.flags?.is_tutorial || specialName.startsWith('tut-');
-        // Tutorial replay fidelity uses induced_align(80); keep existing one-draw
-        // fallback elsewhere until full alignment metadata is wired everywhere.
-        if (!tutorialLike) {
+        const oracleLike = specialName.startsWith('oracle');
+        if (!tutorialLike && !oracleLike) {
             rn2(3);
             return;
         }
         const dnum = Number.isFinite(ctx.dnum) ? ctx.dnum : undefined;
         const dungeonAlign = (dnum !== undefined) ? (DUNGEON_ALIGN_BY_DNUM[dnum] ?? A_NONE) : A_NONE;
         let specialAlign = A_NONE;
-        if (specialName.startsWith('oracle')) specialAlign = A_NEUTRAL;
-        else if (specialName.startsWith('medusa')) specialAlign = A_CHAOTIC;
+        if (oracleLike) specialAlign = A_NEUTRAL;
+        if (specialName.startsWith('medusa')) specialAlign = A_CHAOTIC;
         else if (specialName.startsWith('tut-')) specialAlign = A_LAWFUL;
         induced_align(80, specialAlign, dungeonAlign);
     }
