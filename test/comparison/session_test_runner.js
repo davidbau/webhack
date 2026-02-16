@@ -1,10 +1,7 @@
 // test/comparison/session_test_runner.js -- Shared test logic for session replay
 //
-// Exports test functions and helpers used by type-specific test files:
-//   - runMapSession()
-//   - runGameplaySession()
-//   - runChargenSession()
-//   - runSpecialLevelSession()
+// Exports: runMapSession(), runGameplaySession(), runChargenSession(),
+// runSpecialLevelSession() for use by type-specific test files.
 
 import { it, before, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -338,13 +335,9 @@ export function runSpecialLevelSession(file, session) {
     });
 }
 
-// ---------------------------------------------------------------------------
-// CLI mode: re-export from bundle_runner.js for backwards compatibility
-// ---------------------------------------------------------------------------
-
+// CLI mode: re-export from bundle_runner.js
 export { runSessionBundle, runSessionCli } from './bundle_runner.js';
 
-// CLI entry point
 if (process.argv[1] && process.argv[1].endsWith('session_test_runner.js')) {
     import('./bundle_runner.js').then(({ runSessionCli }) => {
         runSessionCli().catch((error) => {

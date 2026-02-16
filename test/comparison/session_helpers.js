@@ -65,10 +65,8 @@ export {
     normalizeSession,
 } from './session_loader.js';
 
-// Re-export HeadlessDisplay from headless_runtime.js
 export { HeadlessDisplay };
 
-// Import helpers we need internally
 import {
     toCompactRng,
     rngCallPart,
@@ -77,11 +75,7 @@ import {
 } from './comparators.js';
 import { getPreStartupRngEntries } from './session_loader.js';
 
-// ---------------------------------------------------------------------------
-// Grid extraction
-// ---------------------------------------------------------------------------
-
-// Extract a typ grid from a map object: 21 rows of 80 integers
+// Grid extraction: 21 rows of 80 integers
 export function extractTypGrid(map) {
     const grid = [];
     for (let y = 0; y < ROWNO; y++) {
@@ -95,10 +89,7 @@ export function extractTypGrid(map) {
     return grid;
 }
 
-// ---------------------------------------------------------------------------
-// RNG consumption (for replaying session RNG)
-// ---------------------------------------------------------------------------
-
+// RNG consumption for replaying session RNG
 function consumeRngEntry(entry) {
     const call = rngCallPart(entry);
     const match = call.match(/^([a-z0-9_]+)\(([^)]*)\)=/i);
@@ -125,11 +116,7 @@ function consumeRngEntries(entries) {
     for (const entry of entries || []) consumeRngEntry(entry);
 }
 
-// ---------------------------------------------------------------------------
-// Sequential map generation
-// ---------------------------------------------------------------------------
-
-// Generate levels 1→maxDepth sequentially on one continuous RNG stream.
+// Sequential map generation: levels 1→maxDepth on one continuous RNG stream
 export function generateMapsSequential(seed, maxDepth) {
     initrack();
     initRng(seed);
@@ -205,10 +192,7 @@ export function generateMapsWithRng(seed, maxDepth) {
     return { grids, maps, rngLogs };
 }
 
-// ---------------------------------------------------------------------------
 // Startup generation with RNG
-// ---------------------------------------------------------------------------
-
 const ROLE_INDEX = {};
 for (let i = 0; i < roles.length; i++) ROLE_INDEX[roles[i].name] = i;
 
@@ -258,10 +242,7 @@ export function generateStartupWithRng(seed, session) {
     };
 }
 
-// ---------------------------------------------------------------------------
 // HeadlessGame for session replay
-// ---------------------------------------------------------------------------
-
 class HeadlessGame {
     constructor(player, map, opts = {}) {
         this.player = player;
@@ -329,24 +310,12 @@ class HeadlessGame {
 
         for (const mon of this.map.monsters) {
             if (mon.dead) continue;
-            if (mon.fleetim && mon.fleetim > 0) {
-                mon.fleetim--;
-                if (mon.fleetim <= 0) {
-                    mon.fleetim = 0;
-                    mon.flee = false;
-                }
-            }
-        }
-
-        for (const mon of this.map.monsters) {
-            if (mon.dead) continue;
+            if (mon.fleetim > 0 && --mon.fleetim <= 0) { mon.fleetim = 0; mon.flee = false; }
             mon.movement += this.mcalcmove(mon);
         }
-
         if (!rn2(70) && !(this.map?.flags?.nomongen) && !(this.map?.flags?.is_tutorial)) {
             makemon(null, 0, 0, 0, this.player.dungeonLevel, this.map);
         }
-
         if (this.player.hp < this.player.hpmax) {
             const con = this.player.attributes ? this.player.attributes[A_CON] : 10;
             const heal = (this.player.level + con) > rn2(100) ? 1 : 0;
@@ -361,68 +330,42 @@ class HeadlessGame {
 
         const moves = this.turnCount + 1;
         if (moves % 10 === 0) {
-            if (this.player.hunger > 1000) {
-                exercise(this.player, A_DEX, false);
-            } else if (this.player.hunger > 150) {
-                exercise(this.player, A_CON, true);
-            } else if (this.player.hunger > 50) {
-                // no exercise
-            } else if (this.player.hunger > 0) {
-                exercise(this.player, A_STR, false);
-            } else {
-                exercise(this.player, A_CON, false);
-            }
-            if (this.player.restingTurn) {
-                exercise(this.player, A_STR, true);
-            }
+            const h = this.player.hunger;
+            if (h > 1000) exercise(this.player, A_DEX, false);
+            else if (h > 150) exercise(this.player, A_CON, true);
+            else if (h > 50) { /* no exercise */ }
+            else if (h > 0) exercise(this.player, A_STR, false);
+            else exercise(this.player, A_CON, false);
+            if (this.player.restingTurn) exercise(this.player, A_STR, true);
         }
-        if (moves % 5 === 0 && (this.player.woundedLegsTimeout || 0) > 0) {
-            exercise(this.player, A_DEX, false);
-        }
-
+        if (moves % 5 === 0 && (this.player.woundedLegsTimeout || 0) > 0) exercise(this.player, A_DEX, false);
         exerchk(this.player, moves);
-
         const dex = this.player.attributes ? this.player.attributes[A_DEX] : 14;
-        if (!rn2(40 + dex * 3)) {
-            rnd(3);
-        }
-
-        if (moves >= this.seerTurn) {
-            this.seerTurn = moves + rn1(31, 15);
-        }
+        if (!rn2(40 + dex * 3)) rnd(3);
+        if (moves >= this.seerTurn) this.seerTurn = moves + rn1(31, 15);
     }
 
     dosounds() {
-        const playerInShop = (() => {
-            const loc = this.map?.at?.(this.player.x, this.player.y);
-            if (!loc || !Number.isFinite(loc.roomno)) return false;
-            const ridx = loc.roomno - ROOMOFFSET;
-            const room = this.map?.rooms?.[ridx];
-            return !!(room && Number.isFinite(room.rtype) && room.rtype >= SHOPBASE);
-        })();
-        const tendedShop = (this.map?.monsters || []).some((m) => m && !m.dead && m.isshk);
         const f = this.map.flags;
-        if (f.nfountains && !rn2(400)) { rn2(3); }
-        if (f.nsinks && !rn2(300)) { rn2(2); }
-        if (f.has_court && !rn2(200)) { return; }
+        if (f.nfountains && !rn2(400)) rn2(3);
+        if (f.nsinks && !rn2(300)) rn2(2);
+        if (f.has_court && !rn2(200)) return;
         if (f.has_swamp && !rn2(200)) { rn2(2); return; }
         if (f.has_vault && !rn2(200)) { rn2(2); return; }
-        if (f.has_beehive && !rn2(200)) { return; }
-        if (f.has_morgue && !rn2(200)) { return; }
+        if (f.has_beehive && !rn2(200)) return;
+        if (f.has_morgue && !rn2(200)) return;
         if (f.has_barracks && !rn2(200)) { rn2(3); return; }
-        if (f.has_zoo && !rn2(200)) { return; }
+        if (f.has_zoo && !rn2(200)) return;
         if (f.has_shop && !rn2(200)) {
-            if (tendedShop && !playerInShop) {
-                const which = rn2(2);
-                if (which === 0) {
-                    this.display.putstr_message('You hear someone cursing shoplifters.');
-                } else {
-                    this.display.putstr_message('You hear the chime of a cash register.');
-                }
-            }
+            const loc = this.map?.at?.(this.player.x, this.player.y);
+            const ridx = loc && Number.isFinite(loc.roomno) ? loc.roomno - ROOMOFFSET : -1;
+            const room = ridx >= 0 ? this.map?.rooms?.[ridx] : null;
+            const playerInShop = room && Number.isFinite(room.rtype) && room.rtype >= SHOPBASE;
+            const tendedShop = (this.map?.monsters || []).some(m => m && !m.dead && m.isshk);
+            if (tendedShop && !playerInShop) rn2(2);
             return;
         }
-        if (f.has_temple && !rn2(200)) { return; }
+        if (f.has_temple && !rn2(200)) return;
     }
 
     changeLevel(depth) {
@@ -457,10 +400,7 @@ class HeadlessGame {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Session replay
-// ---------------------------------------------------------------------------
-
 export async function replaySession(seed, session, opts = {}) {
     const verbose = opts.verbose || false;
     const sessionOpts = session.options || {};
