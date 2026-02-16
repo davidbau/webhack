@@ -125,13 +125,13 @@ npm run test:unit    # unit tests only
 npm run test:e2e     # E2E browser tests only
 ```
 
-The C comparison tests replay recorded sessions against the original
+The session tests replay recorded sessions against the original
 C NetHack binary, verifying bit-identical RNG, screen output, and
 dungeon maps:
 
 ```bash
-node --test test/comparison/session_runner.test.js
-node --test test/comparison/c_vs_js_golden.test.js
+npm run test:session       # session tests (via node:test wrapper)
+npm run test:session:raw   # raw session runner with verbose output
 ```
 
 ### Test Infrastructure Setup
