@@ -1,5 +1,29 @@
 # Core Replay Unification Plan
 
+## Status: COMPLETE (claude2 branch)
+
+All phases of the plan have been implemented on the `claude2` branch.
+See `test/baseline.json` for detailed phase completion tracking.
+
+### Summary of Changes
+
+**Core APIs Added to `js/headless_runtime.js`:**
+- `HeadlessGame.start(seed, options)` - Canonical async init path
+- `sendKey(key)` / `sendKeys(keys)` - Execute commands
+- `getTypGrid()` / `getScreen()` - State capture
+- `enableRngLogging()` / `getRngLog()` / `clearRngLog()` - RNG instrumentation
+- `teleportToLevel(depth)` / `revealMap()` - Wizard mode helpers
+- `checkpoint(phase)` - Debug state capture
+- `replayStep(key, options)` - Replay with count prefix handling
+- `generateMapsWithRng(seed, maxDepth)` - Map generation API
+- `generateStartupWithRng(seed, options)` - Startup generation API
+
+**Unit Tests Added:** 60 tests (43 replay API + 17 comparator)
+
+**Documentation:** Migration path documented in session_runtime.js
+
+---
+
 ## Purpose
 
 This document replaces the previous cleanup plan.

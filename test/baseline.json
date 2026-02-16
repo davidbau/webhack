@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "phase": 1,
-  "generatedAt": "2026-02-16T14:15:00Z",
-  "commit": "a0c36d92",
+  "phase": 7,
+  "generatedAt": "2026-02-16T14:45:00Z",
+  "commit": "500f5bd5",
   "branch": "claude2",
   "nodeVersion": "v25.6.0",
   "platform": "darwin/arm64",
@@ -66,40 +66,67 @@
   },
   "fileBaselines": {
     "js/headless_runtime.js": {
-      "lines": 1102,
-      "role": "Core game headless support + replay API (expanded in Phase 1)"
+      "lines": 1486,
+      "role": "Core game headless support + full replay API"
     },
     "test/comparison/session_runtime.js": {
-      "lines": 1457,
-      "role": "Game-aware test code - target for elimination"
+      "lines": 1469,
+      "role": "Session replay runtime with migration to core documented"
     },
     "test/comparison/session_helpers.js": {
       "lines": 41,
       "role": "Re-exports facade - game-unaware"
     },
     "test/comparison/comparators.js": {
-      "lines": 150,
-      "role": "Pure comparison functions - game-unaware"
+      "lines": 250,
+      "role": "Pure comparison functions with diagnostic formatters"
     },
     "test/comparison/session_loader.js": {
       "lines": 200,
       "role": "Session file loading - game-unaware"
     }
   },
+  "unitTests": {
+    "headless_replay_api.test.js": 43,
+    "comparators.test.js": 17,
+    "total": 60
+  },
   "exitCriteria": {
     "phase0": "Baseline artifact exists for regression comparison",
     "phase0_achieved": true,
-    "phase1": "Core exposes stable replay API used by tests without harness gameplay imports",
+    "phase1": "Core exposes stable replay API",
     "phase1_achieved": true,
     "phase1_commit": "a0c36d92",
-    "phase1_additions": [
-      "HeadlessGame.start(seed, options)",
-      "sendKey() / sendKeys()",
-      "getTypGrid() / getScreen() / getAnsiScreen()",
-      "enableRngLogging() / getRngLog() / clearRngLog()",
-      "teleportToLevel() / revealMap()",
-      "checkpoint()",
-      "23 unit tests for replay API"
-    ]
-  }
+    "phase2": "Map/special generation uses core HeadlessGame.generateMapsWithRng",
+    "phase2_achieved": true,
+    "phase2_commit": "9d13f024",
+    "phase3": "Startup/chargen uses core HeadlessGame.generateStartupWithRng",
+    "phase3_achieved": true,
+    "phase3_commit": "62746006",
+    "phase4": "Core owns replay step semantics (count prefix, occupation)",
+    "phase4_achieved": true,
+    "phase4_commit": "3de5e40a",
+    "phase5": "Harness documents migration path to core APIs",
+    "phase5_achieved": true,
+    "phase5_commit": "0c732b1f",
+    "phase6": "Comparators include diagnostic context and formatters",
+    "phase6_achieved": true,
+    "phase6_commit": "500f5bd5",
+    "phase7": "Final cleanup and documentation complete",
+    "phase7_achieved": true
+  },
+  "coreReplayApiAdditions": [
+    "HeadlessGame.start(seed, options)",
+    "HeadlessGame.sendKey(key) / sendKeys(keys)",
+    "HeadlessGame.getTypGrid() / getScreen() / getAnsiScreen()",
+    "HeadlessGame.enableRngLogging() / getRngLog() / clearRngLog()",
+    "HeadlessGame.teleportToLevel(depth) / revealMap()",
+    "HeadlessGame.checkpoint(phase)",
+    "HeadlessGame.replayStep(key, options)",
+    "HeadlessGame.isCountPrefixDigit(key) / accumulateCountPrefix()",
+    "HeadlessGame.generateMapsWithRng(seed, maxDepth)",
+    "HeadlessGame.generateStartupWithRng(seed, options)",
+    "HeadlessGame.getRoleIndex(roleName)",
+    "extractTypGridFromMap(map)"
+  ]
 }
