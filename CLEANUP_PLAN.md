@@ -1,4 +1,15 @@
-# Session Test Infrastructure Cleanup Plan
+# Test Infrastructure Unification Plan
+
+## How To Use This Document
+
+This is both:
+1. **A design doc** for maintainers making architectural changes
+2. **A tutorial** for contributors who need to understand why these changes are needed
+3. **An execution guide** with code snippets and file references
+
+If you are new to this codebase, read sections in order. If you are implementing, jump to the phased plan and file map sections.
+
+---
 
 ## Background: How Session Testing Works
 
@@ -32,6 +43,7 @@ Over time, the test infrastructure grew a parallel implementation of the game. I
 - It reads configuration from URL parameters
 - It creates a DOM-based Display for canvas rendering
 - It prompts the user interactively for character selection
+- It calls `window.location.reload()` directly
 
 None of this works in a Node.js test environment. Rather than refactor `NetHackGame` to be testable, a parallel `HeadlessGame` was created.
 
@@ -43,11 +55,25 @@ None of this works in a Node.js test environment. Rather than refactor `NetHackG
 
 When we fix a bug in one, we must remember to fix the other. When we forget, tests pass but the actual game is broken (or vice versa).
 
-## Rationale: Why Unify the Infrastructure
+---
+
+## Motivation: Why This Cleanup Matters
+
+Right now, test infrastructure is carrying game behavior that should live in the game itself. That creates three recurring problems:
+
+1. **Paradoxical failures**: A session test can fail because replay code is wrong even when game code is right.
+2. **Slow iteration**: Fixes require touching test internals and game internals together.
+3. **Drift risk**: Multiple headless implementations diverge over time.
+
+For C parity work, this is especially expensive. We need session tests to be a trustworthy probe of core behavior, not a second game engine.
+
+---
+
+## Principles: Why Unify the Infrastructure
 
 ### Principle 1: Test What Users Play
 
-The fundamental testing principle is violated when test code runs different code than production. Our goal is to verify that `NetHackGame` matches C NetHack. If tests run `HeadlessGame` instead, we're verifying the wrong thing.
+The fundamental testing principle is violated when test code runs different code than production.
 
 **Before (current):**
 ```
@@ -71,409 +97,549 @@ NetHackGame ◄──replays─────┘  (the actual game!)
 If tests pass, the real game matches C.
 ```
 
-### Principle 2: Dependency Injection Over Duplication
-
-The reason `HeadlessGame` exists is that `NetHackGame` has hardcoded dependencies:
-- `new Display('game')` - creates DOM canvas
-- `getUrlParams()` - reads browser URL
-- `nhgetch()` - waits for user keyboard input
-
-The solution is **dependency injection**: let the caller provide these dependencies.
-
-```javascript
-// Before: hardcoded
-class NetHackGame {
-    async init() {
-        this.display = new Display('game');  // Only works in browser
-    }
-}
-
-// After: injectable
-class NetHackGame {
-    constructor(options = {}) {
-        this.display = options.display || new Display('game');
-    }
-}
-
-// Test code:
-const game = new NetHackGame({ display: new HeadlessDisplay() });
-```
-
-This pattern is standard in testable software design. It lets us:
-- Test with `HeadlessDisplay` (captures screen as text)
-- Play in browser with `Display` (renders to canvas)
-- Add future displays (ANSI terminal, accessibility, etc.)
-
-### Principle 3: Single Source of Truth
+### Principle 2: Single Source of Behavior Truth
 
 When logic exists in one place, there's one place to understand it, one place to fix bugs, and one place to verify correctness.
 
-**Current state (multiple sources of truth):**
-- Chargen menus: `nethack.js` AND `session_test_runner.js`
+**Current state (multiple sources):**
 - Turn processing: `nethack.js` AND `session_helpers.js`
-- Level changes: `nethack.js` AND `session_helpers.js`
+- Chargen menus: `nethack.js` AND `session_test_runner.js`
+- Headless execution: `session_helpers.js` AND `headless_game.js` AND `selfplay/headless_runner.js`
 
-**After cleanup (single source of truth):**
+**After cleanup (single source):**
 - All game logic: `nethack.js`
-- All display logic: `display.js` + `headless_display.js` (same interface)
-- All test logic: `session_test_runner.js` (comparison only, no game logic)
+- All headless execution: one shared runtime
 
-### Principle 4: Wizard Mode Is a Testing Necessity
+### Principle 3: Adapters at the Edges
 
-C NetHack's wizard mode (`-D` flag) exists specifically for debugging and testing. Key capabilities:
+Browser and headless should be wrappers, not alternate engines. The core game should be environment-agnostic; browser-specific code (DOM, URL params, canvas) lives in adapter modules.
 
-| Command | Purpose | Testing Use |
-|---------|---------|-------------|
-| Ctrl+V | Level teleport | Test map generation at any depth |
-| #wish | Create any item | Test item interactions |
-| Ctrl+E | Search everywhere | Verify map contents |
-| Ctrl+F | Reveal map | Compare against C map |
+### Principle 4: The Game Owns Behavior; Tests Only Drive and Observe
 
-Our current "wizard mode" only auto-selects Valkyrie/Human/Female/Neutral. To properly test map generation at dungeon levels 2-5, we need level teleport. The C test harness uses this:
+Session runner becomes: load session → feed keys → collect hooks → compare. No gameplay simulation in test code.
 
-```python
-# From gen_map_sessions.py
-wizard_level_teleport(session, depth)  # Sends Ctrl+V, types depth, Enter
-execute_dumpmap(session)               # Runs #dumpmap to capture map
-```
+### Principle 5: Deterministic Observability Hooks
 
-We need equivalent functionality in JS to test the same scenarios.
+Parity debugging needs first-class snapshots (RNG, screen, typ/flag/wall grids) emitted by the core, not reconstructed by test scaffolding.
 
-## Cost/Benefit Analysis
+---
 
-### Costs
+## Clarification: Test Categories vs Test Entry Points
 
-| Cost | Mitigation |
-|------|------------|
-| **~2-3 days of refactoring** | Phased approach allows incremental progress |
-| **Risk of introducing bugs** | Migration strategy keeps old code until new code verified |
-| **Learning curve for new APIs** | APIs are simpler than current dual-implementation |
+It is fine to keep many *logical* session categories (chargen, gameplay, map, special, interface, options).
 
-### Benefits
+But there must be only **three official ways of running tests**:
 
-| Benefit | Impact |
-|---------|--------|
-| **Eliminate 600+ lines of duplication** | Less code to maintain |
-| **Single source of truth** | Fix bugs once, not twice |
-| **Test the actual game** | Higher confidence in correctness |
-| **Faster debugging** | Same code path for play and test |
-| **Foundation for future features** | Replay system, AI training, accessibility |
-| **Easier onboarding** | New contributors learn one implementation |
+1. `npm run test:unit` - Pure JS logic tests
+2. `npm run test:e2e` - Browser-based integration tests
+3. `npm run test:session` - Fast headless replay against C reference sessions
 
-### Why Now?
+That means one shared session runner path, even if it reports multiple logical session groups.
 
-1. **Critical mass of sessions**: We have 150+ session files; test infrastructure is used daily
-2. **Frequent duplication bugs**: Multiple recent bugs were fixed in one place but not the other
-3. **Map testing blocked**: Can't properly test map generation without wizard mode
-4. **Compounding cost**: Every new feature adds to both implementations
+---
 
-## Goal
+## Current State (Observed in Code)
 
-Unify the test infrastructure into three clean categories:
-1. **Unit tests** - Pure JS logic tests (existing, no changes needed)
-2. **E2E tests** - Browser-based integration tests (existing, no changes needed)
-3. **Session tests** - Fast headless replay against C reference sessions
+### Symptoms
 
-The session test runner should be simple and avoid mixing test logic with game logic. All NetHack behavior should live in `nethack.js`.
+1. `js/nethack.js` mixes core game lifecycle with browser wiring (`window`, URL params, DOM boot)
+2. `js/input.js` assumes browser globals and DOM listeners
+3. `test/comparison/session_helpers.js` includes a large custom `HeadlessGame` with turn processing and level logic (~600 lines)
+4. `test/comparison/session_test_runner.js` rebuilds chargen/menu behavior that already exists in game code (~150 lines)
+5. Multiple headless implementations exist:
+   - `test/comparison/session_helpers.js`
+   - `selfplay/runner/headless_runner.js`
+   - `test/comparison/headless_game.js`
+   - `selfplay/interface/js_adapter.js`
+6. Session execution fans out into pseudo-categories with category-specific behavior
+7. Legacy runner paths remain (`session_runner.test.js`, interface runners)
 
-## Current Problems
+### Why This Is Unstable
 
-### 1. Duplicated Game Logic (~600 lines)
-`session_helpers.js` contains a `HeadlessGame` class that duplicates most of `NetHackGame`:
-- `simulateTurnEnd()` duplicates `processTurnEnd()`
-- `mcalcmove()`, `shouldInterruptMulti()`, `dosounds()` are copy-pasted
-- Bug fixes must be applied in two places
+When replay logic has to implement command semantics, turn scheduling, and level transitions, the runner is no longer neutral. It becomes another behavior surface that can diverge from `NetHackGame`.
 
-### 2. Chargen Menu Builders in Test Code (~150 lines)
-`session_test_runner.js` rebuilds chargen screens to compare against C:
-- `buildRoleMenuLines()`, `buildRaceMenuLines()`, etc.
-- Duplicates display logic from `nethack.js`
-- Fragile: changes to chargen UI require updating both places
+---
 
-### 3. No Clean Headless Interface
-`NetHackGame` is designed for interactive browser play:
-- Initialization reads URL params, creates DOM-based Display
-- No way to inject custom Display/Input for testing
-- No way to pass "command line options" programmatically
-
-### 4. Incomplete Wizard Mode
-Current wizard mode only auto-selects character. Missing:
-- Level teleport (Ctrl+V in C NetHack)
-- Map dump command (#dumpmap)
-- Other debug commands needed for map testing
-
-### 5. Multiple Test Runners with Different Approaches
-- `session_test_runner.js` - library of test functions
-- `session_helpers.js` - HeadlessGame + utilities
-- `headless_game.js` - separate interface-only HeadlessGame
-- Tests scattered across chargen.test.js, map.test.js, gameplay.test.js, etc.
-
-## Architecture After Cleanup
+## Target State (Architecture)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     nethack.js                                  │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │  NetHackGame                                                ││
-│  │  - constructor(options)  // seed, wizard, display, etc.     ││
-│  │  - parityInit(session)   // init from session options       ││
-│  │  - feedKey(key)          // inject keystroke                ││
-│  │  - getTypGrid()          // extract current map grid        ││
-│  │  - getRngLog()           // get RNG trace                   ││
-│  │  - wizardLevelTeleport() // ^V equivalent                   ││
-│  └─────────────────────────────────────────────────────────────┘│
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │  Exported Utilities (for test comparison)                   ││
-│  │  - buildRoleMenuLines(), buildRaceMenuLines(), etc.         ││
-│  │  - renderChargenScreen(state) → screen lines                ││
-│  └─────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   HeadlessDisplay                               │
-│  - 80x24 character grid                                         │
-│  - putstr(), renderMap(), renderStatus(), etc.                  │
-│  - getScreenLines() → string[]                                  │
-│  - Implements same interface as browser Display                 │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│               session_test_runner.js (simplified)               │
-│  - Load session JSON                                            │
-│  - Create NetHackGame with HeadlessDisplay                      │
-│  - game.parityInit(session.options)                             │
-│  - For each step: feedKey(), compare RNG/screen/grid            │
-│  - Report results                                               │
-│  (NO game logic - just orchestration)                           │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     js/nethack.js (Core)                                │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  NetHackGame                                                      │  │
+│  │  - constructor(options, dependencies)                             │  │
+│  │  - init()              // start game from options                 │  │
+│  │  - feedKey(key)        // inject keystroke, process command       │  │
+│  │  - Hooks: onStartup, onStep, onLevelGenerated                     │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  Exported Utilities                                               │  │
+│  │  - buildRoleMenuLines(), buildRaceMenuLines(), etc.               │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+              │                              │
+              ▼                              ▼
+┌─────────────────────────┐    ┌─────────────────────────────────────────┐
+│  Browser Adapter        │    │  Headless Runtime (shared)              │
+│  - DOM Display          │    │  - HeadlessDisplay                      │
+│  - DOM Input listeners  │    │  - Memory-based input queue             │
+│  - URL params           │    │  - Used by: session tests, selfplay     │
+│  - localStorage         │    │                                         │
+└─────────────────────────┘    └─────────────────────────────────────────┘
+                                             │
+                                             ▼
+                               ┌─────────────────────────────────────────┐
+                               │  session_test_runner.js (simplified)    │
+                               │  - Load session JSON                    │
+                               │  - Normalize v1/v2/v3 format            │
+                               │  - Create game with headless runtime    │
+                               │  - Feed keys, collect hook outputs      │
+                               │  - Compare against expected             │
+                               │  (NO game logic - just orchestration)   │
+                               └─────────────────────────────────────────┘
 ```
 
-## Implementation Plan
+### What Changes
 
-### Phase 1: Refactor NetHackGame Constructor
+1. Core game engine is reusable and injectable
+2. Browser concerns are adapter code
+3. Headless execution uses the same core path as browser gameplay
+4. Session runner becomes: load session → feed keys → collect hooks → compare
+5. One shared headless runtime for session tests AND selfplay
 
-**File: js/nethack.js**
+### What Does Not Change
 
-Add options-based constructor that accepts:
+1. Logical session purposes can remain varied (chargen, map, gameplay, etc.)
+2. Session corpus format is stable (v3)
+3. Existing C harness tooling remains unchanged
+
+---
+
+## API Design
+
+### Initialization Options (Command-Line Equivalent)
+
+```javascript
+const options = {
+  // RNG
+  seed: 42,
+
+  // Mode
+  wizard: true,
+
+  // Character (like .nethackrc)
+  name: "Wizard",
+  role: "Valkyrie",
+  race: "human",
+  gender: "female",
+  align: "neutral",
+
+  // Game flags
+  flags: {
+    symset: "DECgraphics",
+    autopickup: false,
+    time: false,
+    showexp: true,
+  },
+
+  // Hooks for observability
+  hooks: {
+    onStartup: (snapshot) => { ... },
+    onStep: ({ key, action, rng, screen, turn }) => { ... },
+    onLevelGenerated: ({ depth, typGrid, flagGrid }) => { ... },
+  }
+};
+```
+
+### Dependency Injection Contract
+
+```javascript
+const dependencies = {
+  // Input provider
+  input: {
+    nhgetch: async () => keyCode,
+    getlin: async (prompt) => string,
+    pushKey: (key) => void,
+  },
+
+  // Display provider
+  display: {
+    putstr: (row, col, text, color) => void,
+    renderMap: (map, player, fov, flags) => void,
+    renderStatus: (player) => void,
+    putstr_message: (msg) => void,
+    clearScreen: () => void,
+    getScreenLines: () => string[],  // For testing
+  },
+
+  // Storage provider (optional)
+  storage: {
+    loadSave: () => saveData,
+    saveGame: (data) => void,
+    loadFlags: () => flags,
+    saveFlags: (flags) => void,
+  },
+
+  // Lifecycle callbacks
+  lifecycle: {
+    restart: () => void,           // Instead of window.location.reload()
+    replaceUrlParams: (params) => void,
+  }
+};
+
+// Construction
+const game = new NetHackGame(options, dependencies);
+await game.init();
+```
+
+### Core Methods
 
 ```javascript
 class NetHackGame {
-    constructor(options = {}) {
-        // Core state
-        this.player = new Player();
-        this.map = null;
-        this.display = options.display || null;  // Allow injection
-        this.fov = new FOV();
-        this.levels = {};
-        this.gameOver = false;
-        this.turnCount = 0;
+  constructor(options = {}, dependencies = {}) { ... }
 
-        // Options (like C command line flags)
-        this.seed = options.seed ?? null;
-        this.wizard = options.wizard ?? false;
-        this.enableRngLog = options.enableRngLog ?? false;
+  // Initialize game (replaces current init() browser-coupled version)
+  async init() { ... }
 
-        // Character options (like .nethackrc)
-        this.charOptions = {
-            name: options.name ?? null,
-            role: options.role ?? null,
-            race: options.race ?? null,
-            gender: options.gender ?? null,
-            align: options.align ?? null,
-        };
-    }
-}
-```
+  // Inject keystroke and process (for replay)
+  async feedKey(key) {
+    this.dependencies.input.pushKey(key);
+    // Process command via rhack()
+    // Emit onStep hook with results
+  }
 
-### Phase 2: Add parityInit() Method
+  // Wizard mode commands
+  wizardLevelTeleport(targetDepth) {
+    if (!this.wizard) throw new Error('Requires wizard mode');
+    // Save current level, generate/load target, place player
+  }
 
-Initialize game state from session options without interactive prompts:
-
-```javascript
-async parityInit(sessionOptions) {
-    // Set seed and init RNG
-    this.seed = sessionOptions.seed;
-    initRng(this.seed);
-    setGameSeed(this.seed);
-
-    if (this.enableRngLog) {
-        enableRngLog();
-    }
-
-    // Set character from options (skip chargen UI)
-    const roleIdx = ROLE_INDEX[sessionOptions.role];
-    this.player.initRole(roleIdx);
-    this.player.name = sessionOptions.name;
-    this.player.race = RACE_INDEX[sessionOptions.race];
-    this.player.gender = sessionOptions.gender === 'female' ? FEMALE : MALE;
-    this.player.alignment = ALIGN_MAP[sessionOptions.align];
-    this.player.wizard = sessionOptions.wizard;
-    this.wizard = sessionOptions.wizard;
-
-    // Init level generation
-    setMakemonPlayerContext(this.player);
-    initLevelGeneration(this.player.roleIndex);
-
-    // Generate first level
-    this.changeLevel(1);
-    this.placePlayerOnLevel();
-
-    // Post-level init
-    const initResult = simulatePostLevelInit(this.player, this.map, 1);
-    this.seerTurn = initResult.seerTurn;
-}
-```
-
-### Phase 3: Add Keystroke Injection
-
-```javascript
-// Inject a keystroke and process it
-feedKey(key) {
-    // Push key to input buffer
-    pushInput(key);
-
-    // Process the command (call rhack or menu handler)
-    // Return any messages/state changes
-}
-
-// Get current RNG log
-getRngLog() {
-    return getRngLog();
-}
-
-// Extract typGrid from current map
-getTypGrid() {
+  // State extraction (called by hooks or directly)
+  getTypGrid() {
     const grid = [];
     for (let y = 0; y < ROWNO; y++) {
-        const row = [];
-        for (let x = 0; x < COLNO; x++) {
-            row.push(this.map.levl[x][y].typ);
-        }
-        grid.push(row);
+      const row = [];
+      for (let x = 0; x < COLNO; x++) {
+        row.push(this.map.levl[x][y].typ);
+      }
+      grid.push(row);
     }
     return grid;
+  }
+
+  getRngLog() {
+    return getRngLog();
+  }
 }
 ```
 
-### Phase 4: Add Wizard Mode Commands
+---
 
+## Phased Execution Plan
+
+### Phase 0: Baseline and Guardrails
+
+**Motivation:** We need confidence that refactor failures are detected quickly.
+
+**Tasks:**
+1. Capture baseline pass/fail counts and runtime for unit/e2e/session
+2. Add temporary side-by-side old/new session runner diff capability
+3. Document current test counts: ~1467 unit, ~142 session pass, ~32 session fail
+
+**Exit Criteria:**
+- Baseline metrics stored in repo (e.g., `test/baseline.json`)
+- Can run old and new runner and diff results
+
+---
+
+### Phase 1: Extract Reusable Core from `js/nethack.js`
+
+**Motivation:** Session runner cannot be simple until game core is constructible without browser boot.
+
+**Current state (js/nethack.js lines 34-165):**
 ```javascript
-// Wizard mode level teleport (Ctrl+V equivalent)
-wizardLevelTeleport(targetDepth) {
-    if (!this.wizard) {
-        throw new Error('Level teleport requires wizard mode');
+class NetHackGame {
+    constructor() {
+        // Hardcoded initialization
     }
 
-    // Save current level
-    this.levels[this.player.dungeonLevel] = this.map;
+    async init() {
+        const urlOpts = getUrlParams();        // Browser-coupled
+        this.display = new Display('game');    // DOM-coupled
+        initInput();                           // Browser-coupled
+        // ...
+    }
+}
+```
 
-    // Generate or load target level
-    if (!this.levels[targetDepth]) {
-        this.changeLevel(targetDepth);
-    } else {
-        this.map = this.levels[targetDepth];
-        this.player.dungeonLevel = targetDepth;
+**Target state:**
+```javascript
+// js/core.js - Environment-agnostic core
+export class NetHackGame {
+    constructor(options = {}, dependencies = {}) {
+        this.options = options;
+        this.deps = dependencies;
+        this.display = dependencies.display || null;
+        // ...
     }
 
-    // Place player
-    this.placePlayerOnLevel();
-    this.fov.compute(this.map, this.player.x, this.player.y);
+    async init() {
+        // Use this.options instead of URL params
+        // Use this.deps.display instead of new Display()
+        // Use this.deps.input instead of global input
+    }
+}
+
+// js/browser_bootstrap.js - Browser adapter
+import { NetHackGame } from './core.js';
+import { Display } from './display.js';
+import { createBrowserInput } from './input.js';
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const options = getUrlParams();
+    const deps = {
+        display: new Display('game'),
+        input: createBrowserInput(),
+        storage: createBrowserStorage(),
+        lifecycle: {
+            restart: () => window.location.reload(),
+        }
+    };
+    const game = new NetHackGame(options, deps);
+    await game.init();
+    game.run();
+});
+```
+
+**Tasks:**
+1. Export core class/module from `js/nethack.js` split
+2. Move `DOMContentLoaded` startup into browser bootstrap module
+3. Move URL option parsing into adapter layer
+4. Replace direct `window.location.reload()` calls with lifecycle callbacks
+
+**Exit Criteria:**
+- Browser behavior unchanged (e2e tests pass)
+- Core can be imported in Node without DOM errors
+
+**Files Changed:**
+| File | Change |
+|------|--------|
+| `js/nethack.js` | Split into core + keep browser bootstrap |
+| `js/browser_bootstrap.js` | NEW - Browser-specific startup |
+| `js/core.js` | NEW (optional) - Or keep in nethack.js with exports |
+
+---
+
+### Phase 2: Introduce Injectable I/O Runtime
+
+**Motivation:** Core should never depend directly on `document` or `window` for input flow.
+
+**Current state (js/input.js):**
+```javascript
+// Hardcoded DOM dependencies
+document.addEventListener('keydown', handler);
+window.gameFlags = ...;
+```
+
+**Target state:**
+```javascript
+// js/input.js - Reusable input queue
+export function createInputQueue() {
+    const queue = [];
+    return {
+        pushKey: (key) => queue.push(key),
+        async nhgetch() {
+            while (queue.length === 0) {
+                await new Promise(r => setTimeout(r, 10));
+            }
+            return queue.shift();
+        },
+        // ...
+    };
+}
+
+// js/browser_input.js - Browser adapter
+export function createBrowserInput() {
+    const inputQueue = createInputQueue();
+    document.addEventListener('keydown', (e) => {
+        inputQueue.pushKey(e.keyCode);
+    });
+    return inputQueue;
 }
 ```
 
-### Phase 5: Export Chargen Menu Builders
+**Tasks:**
+1. Refactor `js/input.js` into reusable queue + browser listener adapter
+2. Ensure core consumes injected `nhgetch`/`getlin` path
+3. Formalize display interface (document required methods)
 
-Move chargen screen builders to exports:
+**Exit Criteria:**
+- Core runs under in-memory input/display
+- Browser adapter still passes e2e tests
+
+**Files Changed:**
+| File | Change |
+|------|--------|
+| `js/input.js` | Split into queue + browser adapter |
+| `js/browser_input.js` | NEW - Browser-specific input |
+
+---
+
+### Phase 3: Build One Shared Headless Runtime
+
+**Motivation:** Duplicated headless engines are the current drift source.
+
+**Current headless implementations:**
+- `test/comparison/session_helpers.js` - HeadlessGame class (~600 lines)
+- `test/comparison/headless_game.js` - Interface-only HeadlessGame
+- `selfplay/runner/headless_runner.js` - Selfplay headless
+- `selfplay/interface/js_adapter.js` - Headless display path
+
+**Target: One shared runtime**
 
 ```javascript
-// js/nethack.js or js/chargen.js
-export function buildRoleMenuLines(raceIdx, gender, align, rfilter) {
-    // Current _showRoleMenu logic, extracted to pure function
-}
+// js/headless_runtime.js
+import { NetHackGame } from './core.js';
 
-export function buildRaceMenuLines(roleIdx, gender, align, rfilter) {
-    // Current _showRaceMenu logic
-}
-
-// etc.
-```
-
-### Phase 6: Create HeadlessDisplay
-
-**File: js/headless_display.js**
-
-```javascript
 export class HeadlessDisplay {
     constructor() {
         this.screen = Array(24).fill(null).map(() => Array(80).fill(' '));
         this.messages = [];
     }
 
-    // Implement Display interface
-    putstr(row, col, text, color) { ... }
-    renderMap(map, player, fov, flags) { ... }
-    renderStatus(player) { ... }
-    putstr_message(msg) { ... }
-    clearScreen() { ... }
+    putstr(row, col, text, color) {
+        for (let i = 0; i < text.length && col + i < 80; i++) {
+            this.screen[row][col + i] = text[i];
+        }
+    }
 
-    // Test utilities
+    renderMap(map, player, fov, flags) { /* ... */ }
+    renderStatus(player) { /* ... */ }
+    putstr_message(msg) { this.messages.push(msg); }
+    clearScreen() { /* ... */ }
+
     getScreenLines() {
         return this.screen.map(row => row.join(''));
     }
 }
-```
 
-### Phase 7: Simplify Session Test Runner
+export function createHeadlessInput() {
+    const queue = [];
+    return {
+        pushKey: (key) => queue.push(key),
+        async nhgetch() {
+            if (queue.length === 0) {
+                throw new Error('Input queue empty - test may be missing keystrokes');
+            }
+            return queue.shift();
+        },
+    };
+}
 
-**File: test/comparison/session_test_runner.js**
-
-```javascript
-import { NetHackGame } from '../../js/nethack.js';
-import { HeadlessDisplay } from '../../js/headless_display.js';
-import { compareRng, compareGrids } from './comparison_utils.js';
-
-export async function runSession(sessionPath) {
-    const session = JSON.parse(fs.readFileSync(sessionPath));
+export async function createHeadlessGame(options = {}) {
     const display = new HeadlessDisplay();
+    const input = createHeadlessInput();
 
-    const game = new NetHackGame({
+    const game = new NetHackGame(options, {
         display,
-        enableRngLog: true,
-        wizard: session.options.wizard,
+        input,
+        storage: createNullStorage(),
+        lifecycle: { restart: () => {} },
     });
 
-    await game.parityInit(session.options);
+    await game.init();
+
+    return { game, display, input };
+}
+```
+
+**Tasks:**
+1. Create shared headless runtime package (`js/headless_runtime.js`)
+2. Port session runner to use it
+3. Port selfplay runner to use it
+4. Remove local `HeadlessGame` duplicates
+
+**Exit Criteria:**
+- One headless game path in repository
+- Session and selfplay use same runtime
+- ~600 lines of duplicated code removed
+
+**Files Changed:**
+| File | Change |
+|------|--------|
+| `js/headless_runtime.js` | NEW - Shared headless runtime |
+| `test/comparison/session_helpers.js` | Remove HeadlessGame class |
+| `test/comparison/headless_game.js` | DELETE |
+| `selfplay/runner/headless_runner.js` | Use shared runtime |
+| `selfplay/interface/js_adapter.js` | Use shared runtime |
+
+---
+
+### Phase 4: Rewrite Session Runner Around Core Hooks
+
+**Motivation:** Session infra should observe, not emulate.
+
+**Current state:** Session runner has heuristics to emulate behavior, chargen menu reconstruction, turn processing logic.
+
+**Target replay contract:**
+
+```javascript
+// test/comparison/session_test_runner.js
+import { createHeadlessGame } from '../../js/headless_runtime.js';
+import { normalizeSession } from './session_loader.js';
+import { compareRng, compareGrids, compareScreen } from './comparators.js';
+
+export async function runSession(sessionPath) {
+    const raw = JSON.parse(fs.readFileSync(sessionPath));
+    const session = normalizeSession(raw);  // Handle v1/v2/v3 differences
+
+    const { game, display, input } = await createHeadlessGame({
+        seed: session.seed,
+        wizard: session.options.wizard,
+        name: session.options.name,
+        role: session.options.role,
+        race: session.options.race,
+        gender: session.options.gender,
+        align: session.options.align,
+        flags: session.options.flags,
+        hooks: {
+            onStep: (data) => stepResults.push(data),
+            onLevelGenerated: (data) => levelResults.push(data),
+        }
+    });
 
     const results = { passed: true, steps: [] };
+    const stepResults = [];
+    const levelResults = [];
 
     for (const step of session.steps) {
         if (step.key !== null) {
-            game.feedKey(step.key);
+            await game.feedKey(step.key);
         }
 
-        // Compare RNG
+        // Compare using hook outputs
         if (step.rng) {
             const cmp = compareRng(game.getRngLog(), step.rng);
             if (cmp.index !== -1) {
                 results.passed = false;
                 results.firstDivergence = cmp;
+                break;
             }
         }
 
-        // Compare screen (for chargen/interface)
         if (step.screen) {
-            const screen = display.getScreenLines();
-            // Compare...
+            const cmp = compareScreen(display.getScreenLines(), step.screen);
+            if (!cmp.match) {
+                results.passed = false;
+                results.screenDiff = cmp;
+            }
         }
 
-        // Compare typGrid (for map sessions)
         if (step.typGrid) {
-            const grid = game.getTypGrid();
-            const diffs = compareGrids(grid, step.typGrid);
+            const diffs = compareGrids(game.getTypGrid(), step.typGrid);
             if (diffs.length > 0) {
                 results.passed = false;
+                results.gridDiffs = diffs;
             }
         }
     }
@@ -482,58 +648,235 @@ export async function runSession(sessionPath) {
 }
 ```
 
-### Phase 8: Delete Redundant Files
+**Tasks:**
+1. Build normalized session loader (handle v1/v2/v3 format differences)
+2. Build single replay driver (feed keys, collect hook outputs)
+3. Split pure comparators into helper modules
+4. Remove replay heuristics that implement gameplay logic
+5. Remove chargen menu reconstruction (use exports from core)
 
-After migration:
-- Delete `session_helpers.js` HeadlessGame class
-- Delete `headless_game.js`
-- Simplify `session_test_runner.js` to ~200 lines
-- Remove chargen menu builders from test code
+**Exit Criteria:**
+- One session replay path for all session files
+- No gameplay/turn logic in session helper modules
+- Session runner is ~200 lines (down from ~1100)
 
-## Files Changed
+**Files Changed:**
+| File | Change |
+|------|--------|
+| `test/comparison/session_test_runner.js` | Rewrite to ~200 lines |
+| `test/comparison/session_loader.js` | NEW - Format normalization |
+| `test/comparison/comparators.js` | NEW - Pure comparison functions |
+| `test/comparison/session_helpers.js` | Keep only utilities, remove game logic |
+
+---
+
+### Phase 5: Wizard Mode and Wizard-Only Action Fidelity
+
+**Motivation:** Fast C parity work depends on wizard workflows, especially level teleport.
+
+**C NetHack wizard mode capabilities:**
+| Command | Purpose | Testing Use |
+|---------|---------|-------------|
+| Ctrl+V | Level teleport | Test map generation at any depth |
+| #wish | Create any item | Test item interactions |
+| Ctrl+F | Reveal map | Compare against C map |
+| Ctrl+E | Detect | Verify monster placement |
+
+**Implementation:**
+
+```javascript
+// In NetHackGame class
+wizardLevelTeleport(targetDepth) {
+    if (!this.wizard) {
+        throw new Error('Level teleport requires wizard mode');
+    }
+
+    // Save current level to cache
+    this.levels[this.player.dungeonLevel] = this.map;
+
+    // Generate or retrieve target level
+    if (!this.levels[targetDepth]) {
+        // Generate new level
+        this.player.dungeonLevel = targetDepth;
+        this.map = new GameMap();
+        makelevel(this.map, targetDepth);
+        this.levels[targetDepth] = this.map;
+    } else {
+        // Load cached level
+        this.map = this.levels[targetDepth];
+        this.player.dungeonLevel = targetDepth;
+    }
+
+    // Place player at stairs
+    this.placePlayerOnLevel();
+    this.fov.compute(this.map, this.player.x, this.player.y);
+
+    // Emit hook
+    this.emitHook('onLevelGenerated', {
+        depth: targetDepth,
+        typGrid: this.getTypGrid(),
+    });
+}
+```
+
+**Tasks:**
+1. Ensure wizard mode is option-driven in core init
+2. Implement wizard commands:
+   - Level teleport (Ctrl+V)
+   - Map reveal (Ctrl+F)
+3. Add targeted unit/session fixtures for wizard transitions
+
+**Exit Criteria:**
+- Wizard sessions run through unified runner without custom replay branches
+- Can test map generation at depths 1-5 via level teleport
+
+---
+
+### Phase 6: Standardize Scripts and Docs on 3 Run Paths
+
+**Motivation:** Tooling confusion remains unless scripts and docs are explicit.
+
+**Target package.json:**
+```json
+{
+  "scripts": {
+    "test": "npm run test:unit && npm run test:session",
+    "test:all": "npm run test:unit && npm run test:session && npm run test:e2e",
+    "test:unit": "node --test test/unit/*.test.js",
+    "test:e2e": "node --test --test-concurrency=1 test/e2e/*.test.js",
+    "test:session": "node --test test/comparison/sessions.test.js"
+  }
+}
+```
+
+**Tasks:**
+1. Update `package.json` scripts to canonical three categories
+2. Ensure session wrappers delegate to one session runner only
+3. Update docs (`docs/TESTING.md`, `README.md`)
+4. Remove references to deprecated runners
+
+**Exit Criteria:**
+- Repo docs and CI only advertise `unit`, `e2e`, `session` as primary paths
+
+---
+
+### Phase 7: Remove Legacy Runners and Duplicates
+
+**Motivation:** Keeping old paths invites regression and confusion.
+
+**Files to remove:**
+- `test/comparison/headless_game.js`
+- `test/comparison/session_runner.test.js`
+- `test/comparison/interface_test_runner.test.js`
+- Chargen menu reconstruction in `session_test_runner.js` (moved to core exports)
+
+**Tasks:**
+1. Remove deprecated runner files
+2. Remove duplicated chargen/menu reconstruction in session runner
+3. Remove stale interface runner variants
+4. Final cleanup of `session_helpers.js`
+
+**Exit Criteria:**
+- No dead alternate session runner paths remain
+- One headless implementation
+- Session runner is ~200 lines
+
+---
+
+## File-Level Refactor Map
+
+### Core and Runtime
+
+| File | Current State | Target State |
+|------|---------------|--------------|
+| `js/nethack.js` | Mixed core + browser | Split: core logic + exports |
+| `js/browser_bootstrap.js` | N/A | NEW: Browser-specific startup |
+| `js/input.js` | Browser-coupled | Split: queue + browser adapter |
+| `js/headless_runtime.js` | N/A | NEW: Shared headless runtime |
+| `js/storage.js` | Mixed | Adapter pattern for browser/null storage |
+
+### Session Infrastructure
+
+| File | Current State | Target State |
+|------|---------------|--------------|
+| `session_helpers.js` | HeadlessGame + utilities (~1900 lines) | Utilities only (~300 lines) |
+| `session_test_runner.js` | Complex with game logic (~1100 lines) | Simple driver (~200 lines) |
+| `session_loader.js` | N/A | NEW: v1/v2/v3 normalization |
+| `comparators.js` | N/A | NEW: Pure comparison functions |
+| `sessions.test.js` | Wrapper | Simplified wrapper |
+
+### Selfplay
+
+| File | Current State | Target State |
+|------|---------------|--------------|
+| `selfplay/runner/headless_runner.js` | Custom headless | Use shared runtime |
+| `selfplay/interface/js_adapter.js` | Headless display | Use shared HeadlessDisplay |
+
+### Legacy Removals
 
 | File | Action |
 |------|--------|
-| `js/nethack.js` | Add options constructor, parityInit, feedKey, getTypGrid, wizardLevelTeleport |
-| `js/headless_display.js` | NEW - Extract/create HeadlessDisplay |
-| `js/chargen.js` | NEW (optional) - Export menu builders |
-| `test/comparison/session_test_runner.js` | Simplify to ~200 lines |
-| `test/comparison/session_helpers.js` | Remove HeadlessGame (~600 lines), keep utilities |
 | `test/comparison/headless_game.js` | DELETE |
-| `test/comparison/comparison_utils.js` | NEW - Extract compareRng, compareGrids |
-| `test/comparison/sessions.test.js` | Simplify to use new runner |
+| `test/comparison/session_runner.test.js` | DELETE |
+| `test/comparison/interface_test_runner.test.js` | DELETE |
 
-## Benefits
+---
 
-1. **Single source of truth**: All game logic in `nethack.js`
-2. **Faster development**: Fix bugs once, tests automatically verify
-3. **Cleaner tests**: Test code only does comparison, not game simulation
-4. **Better wizard mode**: Can test map generation at any depth
-5. **Easier debugging**: Same code path for interactive and headless
+## Risks and Mitigations
 
-## Migration Strategy
+| Risk | Mitigation |
+|------|------------|
+| Behavior regressions from core extraction | Side-by-side old/new runner checks during migration |
+| Hidden browser assumptions in core path | Lint/check policy for `window`/`document` usage in core modules |
+| Legacy sparse captures rely on current replay heuristics | Move compatibility to schema normalizer; mark unsupported edge cases |
+| Contributor confusion during transition | Docs and scripts updated in same PR series |
+| Performance regression | Capture baseline timing; verify no slowdown |
 
-1. **Phase 1-4**: Add new APIs to NetHackGame (non-breaking)
-2. **Phase 5-6**: Create HeadlessDisplay (parallel to old code)
-3. **Phase 7**: Create new simplified runner (can coexist)
-4. **Phase 8**: Switch sessions.test.js to new runner
-5. **Phase 9**: Delete old code after verifying all tests pass
+---
 
-## Open Questions
+## CI and Performance Targets
 
-1. Should HeadlessDisplay live in `js/` or `test/`? (Recommend `js/` since it implements the Display interface)
+1. Session runtime should be at or below baseline after migration
+2. Re-runs must be deterministic
+3. Add timing metrics for:
+   - Total session runtime
+   - Per-session runtime
+   - Startup/generation time
 
-2. How to handle async input in feedKey()? (May need to make it async or use a command queue)
+---
 
-3. Should parityInit() consume RNG for chargen even when skipping UI? (Yes, for faithful parity)
+## Acceptance Criteria
 
-4. Keep separate test files per type (chargen.test.js, map.test.js) or unify? (Recommend unify into sessions.test.js)
+Cleanup is complete when all are true:
+
+- [ ] Only three official run categories: `unit`, `e2e`, `session`
+- [ ] Session tests have one execution path
+- [ ] Session infrastructure does not implement game turn mechanics
+- [ ] Core game initializes from explicit options without URL dependency
+- [ ] One shared headless runtime used by session and selfplay
+- [ ] Wizard mode and level teleport work in unified session flow
+- [ ] Legacy runner duplicates removed
+- [ ] ~600 lines of duplicated game logic eliminated
+
+---
+
+## Recommended PR Sequence
+
+| PR | Description | Risk Level |
+|----|-------------|------------|
+| PR 1 | Core extraction scaffolding + browser bootstrap split | Medium |
+| PR 2 | Injected input/display/lifecycle interfaces | Medium |
+| PR 3 | Shared headless runtime introduction | Low |
+| PR 4 | Unified session loader + runner (behind feature flag) | Medium |
+| PR 5 | Switch `test:session` to new runner; temporary comparison mode | High |
+| PR 6 | Migrate selfplay to shared runtime | Low |
+| PR 7 | Remove old runner paths; finalize docs/scripts | Low |
 
 ---
 
 ## Appendix A: Display Interface Methods
 
-HeadlessDisplay must implement these methods from `js/display.js`:
+HeadlessDisplay must implement these methods:
 
 ```javascript
 // Core rendering
@@ -543,51 +886,47 @@ clearScreen()                            // Clear entire screen
 renderMap(map, player, fov, flags)       // Render dungeon map
 renderStatus(player)                     // Render status lines (bottom 2 rows)
 
-// Menu rendering (for chargen)
+// Menu rendering
 renderChargenMenu(lines, isFirstMenu)    // Render chargen menu screen
 showMenu(items, prompt, flags)           // General menu display
 
 // Message handling
 acknowledgeMessages()                    // Handle --More-- prompts
-getMessages()                            // Get current message buffer
 
-// Screen extraction (test-only)
+// Test utilities
 getScreenLines()                         // Return string[24] of screen content
-getScreenAnsi()                          // Return ANSI-escaped screen (optional)
 ```
 
-## Appendix B: Session Format Reference
+---
 
-### v3 Session Structure
+## Appendix B: Session Format Reference (v3)
 
 ```javascript
 {
   "version": 3,
-  "seed": 1,                           // RNG seed
-  "source": "c",                       // "c" or "js"
-  "type": "gameplay",                  // "chargen" | "gameplay" | "map" | "special" | "interface"
+  "seed": 1,
+  "source": "c",
+  "type": "gameplay",  // chargen | gameplay | map | special | interface
   "options": {
     "name": "Wizard",
-    "role": "Valkyrie",                // Role name (not index)
-    "race": "human",                   // Race name
-    "gender": "female",                // "male" | "female"
-    "align": "neutral",                // "lawful" | "neutral" | "chaotic"
-    "wizard": true,                    // Wizard mode flag
-    "symset": "DECgraphics",           // Symbol set
-    "autopickup": false,
-    "pickup_types": ""
+    "role": "Valkyrie",
+    "race": "human",
+    "gender": "female",
+    "align": "neutral",
+    "wizard": true,
+    "symset": "DECgraphics",
+    "autopickup": false
   },
   "steps": [
     {
-      "key": null,                     // null for startup, char code otherwise
-      "action": "startup",             // Action name for debugging
-      "rng": ["rn2(2)=1 @ file.c:123", ...],  // RNG calls during this step
-      "screen": ["line1", "line2", ...],       // Plain text screen (24 lines)
-      "screenAnsi": ["...", ...],              // ANSI-escaped screen (optional)
-      "typGrid": [[1,2,3,...], ...]            // Map grid (for map sessions)
+      "key": null,           // null for startup
+      "action": "startup",
+      "rng": ["rn2(2)=1 @ file.c:123", ...],
+      "screen": ["line1", ...],
+      "typGrid": [[1,2,3,...], ...]
     },
     {
-      "key": 104,                      // 'h' = move west
+      "key": 104,            // 'h' = move west
       "action": "move",
       "rng": [...]
     }
@@ -595,45 +934,25 @@ getScreenAnsi()                          // Return ANSI-escaped screen (optional
 }
 ```
 
-### Session Types
-
-| Type | Description | Key Fields |
-|------|-------------|------------|
-| `chargen` | Character creation flow | steps with screen comparisons |
-| `gameplay` | Turn-by-turn play | steps with RNG traces |
-| `map` | Level generation | levels array with typGrid |
-| `special` | Special level generation | levels with levelName |
-| `interface` | Menu/UI testing | steps with screen comparisons |
+---
 
 ## Appendix C: RNG Integration
 
-### Current RNG API (js/rng.js)
-
 ```javascript
-// Core functions
-initRng(seed)                    // Initialize PRNG with seed
-rn2(n)                           // Random 0..n-1
-rnd(n)                           // Random 1..n
-rn1(x, y)                        // Random x..x+y-1
+// js/rng.js API
+initRng(seed)           // Initialize PRNG
+rn2(n)                  // Random 0..n-1
+rnd(n)                  // Random 1..n
+enableRngLog()          // Start recording
+disableRngLog()         // Stop recording
+getRngLog()             // Get array: ["rn2(12)=5 @ func(file.c:123)", ...]
+clearRngLog()           // Clear log
 
-// Logging (for parity testing)
-enableRngLog()                   // Start recording calls
-disableRngLog()                  // Stop recording
-getRngLog()                      // Get array of logged calls
-clearRngLog()                    // Clear the log
-
-// Log entry format: "rn2(12)=5 @ functionName(file.c:123)"
-```
-
-### RNG Comparison Logic (to keep in comparison_utils.js)
-
-```javascript
+// Comparison (in comparators.js)
 function compareRng(jsRng, sessionRng) {
-    // Normalize both arrays (strip wrapper calls like rne/rnz)
-    const jsCompact = jsRng.map(toCompact);
-    const sessCompact = sessionRng.filter(s => !isMidlog(s)).map(toCompact);
+    const jsCompact = jsRng.map(e => e.split('@')[0].trim());
+    const sessCompact = sessionRng.filter(e => !e.startsWith('>')).map(e => e.split('@')[0].trim());
 
-    // Find first divergence
     for (let i = 0; i < Math.max(jsCompact.length, sessCompact.length); i++) {
         if (jsCompact[i] !== sessCompact[i]) {
             return { index: i, js: jsCompact[i], session: sessCompact[i] };
@@ -641,17 +960,9 @@ function compareRng(jsRng, sessionRng) {
     }
     return { index: -1 };  // No divergence
 }
-
-function toCompact(entry) {
-    // "rn2(12)=5 @ file.c:123" → "rn2(12)=5"
-    return entry.split('@')[0].trim();
-}
-
-function isMidlog(s) {
-    // Filter mid-level trace entries (>entry / <exit)
-    return s && (s.startsWith('>') || s.startsWith('<'));
-}
 ```
+
+---
 
 ## Appendix D: Existing Code References
 
@@ -659,58 +970,44 @@ function isMidlog(s) {
 
 | Line | Current Code | Change Needed |
 |------|--------------|---------------|
-| 34 | `constructor()` | Add `options` parameter |
-| 71-165 | `async init()` | Keep for browser, add `parityInit()` alternative |
-| 126-135 | Wizard mode auto-select | Extract to reusable function |
-| 279-313 | `playerSelection()` | Keep for browser, skip in `parityInit()` |
-| ~500 | `changeLevel()` | Reuse in `wizardLevelTeleport()` |
+| 34 | `constructor()` | Add `options`, `dependencies` parameters |
+| 71-165 | `async init()` | Use injected deps instead of globals |
+| 77 | `this.display = new Display('game')` | Use `dependencies.display` |
+| 80 | `initInput()` | Use `dependencies.input` |
+| 126-135 | Wizard auto-select | Keep, but use options |
 
 ### session_helpers.js
 
 | Line | Code | Action |
 |------|------|--------|
-| 578-800 | `class HeadlessGame` | DELETE (use NetHackGame) |
-| 213-320 | RNG comparison functions | MOVE to comparison_utils.js |
-| 1790+ | `class HeadlessDisplay` | MOVE to js/headless_display.js |
+| 578-800 | `class HeadlessGame` | DELETE - use shared runtime |
+| 213-320 | RNG comparison | MOVE to comparators.js |
+| 1790+ | `class HeadlessDisplay` | MOVE to headless_runtime.js |
 
 ### session_test_runner.js
 
 | Line | Code | Action |
 |------|------|--------|
-| 282-501 | Chargen menu builders | DELETE (use exports from nethack.js) |
-| 629-662 | `deriveChargenState()` | DELETE (game tracks state internally) |
+| 282-501 | Chargen menu builders | DELETE - export from nethack.js |
+| 629-662 | `deriveChargenState()` | DELETE - game tracks state |
 
-## Appendix E: Test Commands
+---
 
-After cleanup, these commands should work:
+## Appendix E: Test Commands After Cleanup
 
 ```bash
-# Run all tests
-npm test
+# Primary test commands
+npm test                    # unit + session (fast, default)
+npm run test:all            # unit + session + e2e (comprehensive)
 
-# Run only unit tests
-npm run test:unit
+# Individual categories
+npm run test:unit           # Pure JS logic tests
+npm run test:session        # Session replay tests
+npm run test:e2e            # Browser integration tests
 
-# Run only session tests
-npm run test:sessions
-
-# Run single session
-node test/comparison/session_test_runner.js sessions/seed1_gameplay.session.json
-
-# Run sessions by type
-node test/comparison/session_test_runner.js --type=chargen
-node test/comparison/session_test_runner.js --type=map
-
-# Verbose output
-node test/comparison/session_test_runner.js --verbose
+# Session runner CLI
+node test/comparison/session_test_runner.js                    # All sessions
+node test/comparison/session_test_runner.js --type=chargen     # Filter by type
+node test/comparison/session_test_runner.js --verbose          # Verbose output
+node test/comparison/session_test_runner.js path/to/file.json  # Single session
 ```
-
-## Appendix F: Verification Checklist
-
-After each phase, verify:
-
-- [ ] `npm run test:unit` passes (no regressions)
-- [ ] `npm run test:sessions` shows same pass/fail counts
-- [ ] Browser gameplay still works (`npm run serve`)
-- [ ] No new lint errors
-- [ ] No increase in test runtime (should decrease)
