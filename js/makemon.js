@@ -154,10 +154,10 @@ let _makemonLevelCtx = {
 let _rndmonTraceInvocation = 0;
 
 function shouldTraceRndmon() {
-    if (typeof process === 'undefined') return false;
-    if (process.env.WEBHACK_RNDMON_TRACE !== '1') return false;
-    const start = Number.parseInt(process.env.WEBHACK_RNDMON_TRACE_START || '0', 10);
-    const count = Number.parseInt(process.env.WEBHACK_RNDMON_TRACE_COUNT || '20', 10);
+    const env = (typeof process !== 'undefined' && process.env) ? process.env : {};
+    if (env.WEBHACK_RNDMON_TRACE !== '1') return false;
+    const start = Number.parseInt(env.WEBHACK_RNDMON_TRACE_START || '0', 10);
+    const count = Number.parseInt(env.WEBHACK_RNDMON_TRACE_COUNT || '20', 10);
     return _rndmonTraceInvocation >= start && _rndmonTraceInvocation < (start + count);
 }
 
