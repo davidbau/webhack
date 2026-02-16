@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "phase": 0,
-  "generatedAt": "2026-02-16T13:24:00Z",
-  "commit": "c24ea900",
+  "phase": 1,
+  "generatedAt": "2026-02-16T14:15:00Z",
+  "commit": "a0c36d92",
   "branch": "claude2",
   "nodeVersion": "v25.6.0",
   "platform": "darwin/arm64",
@@ -66,8 +66,8 @@
   },
   "fileBaselines": {
     "js/headless_runtime.js": {
-      "lines": 977,
-      "role": "Core game headless support - target for expansion"
+      "lines": 1102,
+      "role": "Core game headless support + replay API (expanded in Phase 1)"
     },
     "test/comparison/session_runtime.js": {
       "lines": 1457,
@@ -88,6 +88,18 @@
   },
   "exitCriteria": {
     "phase0": "Baseline artifact exists for regression comparison",
-    "achieved": true
+    "phase0_achieved": true,
+    "phase1": "Core exposes stable replay API used by tests without harness gameplay imports",
+    "phase1_achieved": true,
+    "phase1_commit": "a0c36d92",
+    "phase1_additions": [
+      "HeadlessGame.start(seed, options)",
+      "sendKey() / sendKeys()",
+      "getTypGrid() / getScreen() / getAnsiScreen()",
+      "enableRngLogging() / getRngLog() / clearRngLog()",
+      "teleportToLevel() / revealMap()",
+      "checkpoint()",
+      "23 unit tests for replay API"
+    ]
   }
 }
