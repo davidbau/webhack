@@ -663,6 +663,7 @@
                 return;
             }
             togglePanels();
+            this.blur();
         });
 
         // Restore user preference
@@ -734,6 +735,7 @@
             try {
                 localStorage.setItem('menace-theme', isDark ? 'dark' : 'light');
             } catch(e) {}
+            this.blur();
         });
 
         // Font size controls
@@ -748,6 +750,7 @@
             try {
                 localStorage.setItem('menace-font-size', size);
             } catch(e) {}
+            this.blur();
         });
 
         fontLarger.addEventListener('click', function() {
@@ -761,6 +764,7 @@
             try {
                 localStorage.setItem('menace-font-size', size);
             } catch(e) {}
+            this.blur();
         });
     })();
 
