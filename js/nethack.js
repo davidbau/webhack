@@ -30,8 +30,33 @@ import { startRecording, getKeylog, saveKeylog, startReplay } from './keylog.js'
 
 // --- Game State ---
 // C ref: decl.h -- globals are accessed via NH object (see DECISIONS.md #7)
-class NetHackGame {
-    constructor() {
+export class NetHackGame {
+    /**
+     * Construct a new game instance.
+     *
+     * @param {Object} options - Game configuration (like command-line args)
+     *   @param {number} [options.seed] - RNG seed (null = random)
+     *   @param {boolean} [options.wizard] - Enable wizard mode
+     *   @param {string} [options.name] - Player name
+     *   @param {string} [options.role] - Player role (e.g., "Valkyrie")
+     *   @param {string} [options.race] - Player race (e.g., "human")
+     *   @param {string} [options.gender] - Player gender ("male"/"female")
+     *   @param {string} [options.align] - Player alignment ("lawful"/"neutral"/"chaotic")
+     *   @param {boolean} [options.reset] - Show reset dialog
+     *   @param {Object} [options.flags] - Game flags (autopickup, etc.)
+     *
+     * @param {Object} deps - Runtime dependencies (injected I/O adapters)
+     *   @param {Object} [deps.display] - Display implementation
+     *   @param {Object} [deps.input] - Input implementation (nhgetch, getlin)
+     *   @param {Object} [deps.storage] - Storage implementation
+     *   @param {Object} [deps.lifecycle] - Lifecycle callbacks (restart, replaceUrlParams)
+     *   @param {Object} [deps.hooks] - Observability hooks (onStartup, onStep, onLevelGenerated)
+     */
+    constructor(options = {}, deps = {}) {
+        // Store injected configuration
+        this.options = options;
+        this.deps = deps;
+
         this.player = new Player();
         this.map = null;
         this.display = null;
@@ -66,21 +91,51 @@ class NetHackGame {
         };
     }
 
+    // Restart the game (uses lifecycle callback if available)
+    _restart() {
+        if (this.deps.lifecycle?.restart) {
+            this.deps.lifecycle.restart();
+        } else if (typeof window !== 'undefined') {
+            this._restart();
+        }
+    }
+
+    // Replace URL params (uses lifecycle callback if available)
+    _replaceUrlParams(params) {
+        if (this.deps.lifecycle?.replaceUrlParams) {
+            this.deps.lifecycle.replaceUrlParams(params);
+        } else if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            for (const [key, value] of Object.entries(params)) {
+                if (value === null) {
+                    url.searchParams.delete(key);
+                } else {
+                    url.searchParams.set(key, value);
+                }
+            }
+            window.history.replaceState({}, '', url.toString());
+        }
+    }
+
     // Initialize a new game
     // C ref: allmain.c early_init() + moveloop_preamble()
     async init() {
-        // Parse URL params
-        const urlOpts = getUrlParams();
-        this.wizard = urlOpts.wizard;
+        // Use options passed to constructor (from URL params or direct config)
+        const opts = this.options;
+        this.wizard = opts.wizard || false;
 
-        // Initialize display
-        this.display = new Display('game');
+        // Initialize display from deps or create browser display
+        if (this.deps.display) {
+            this.display = this.deps.display;
+        } else {
+            this.display = new Display('game');
+        }
 
-        // Initialize input
+        // Initialize input (browser-specific, will be injected in Phase 2)
         initInput();
 
-        // Handle ?reset=1 — prompt to delete all saved data
-        if (urlOpts.reset) {
+        // Handle reset option — prompt to delete all saved data
+        if (opts.reset) {
             await this.handleReset();
         }
 
@@ -90,21 +145,24 @@ class NetHackGame {
 
         // Expose flags and display globally for input handler
         // (flags for number_pad mode, display for message acknowledgement)
-        window.gameFlags = this.flags;
-        window.gameDisplay = this.display;
+        // TODO Phase 2: inject these via deps instead of globals
+        if (typeof window !== 'undefined') {
+            window.gameFlags = this.flags;
+            window.gameDisplay = this.display;
+        }
 
         // Check for saved game before RNG init
         const saveData = loadSave();
         if (saveData) {
-            const restored = await this.restoreFromSave(saveData, urlOpts);
+            const restored = await this.restoreFromSave(saveData, opts);
             if (restored) return;
             // User declined restore -- delete save (NetHack tradition)
             deleteSave();
         }
 
-        // Initialize RNG with seed from URL or random
-        const seed = urlOpts.seed !== null
-            ? urlOpts.seed
+        // Initialize RNG with seed from options or random
+        const seed = opts.seed !== undefined && opts.seed !== null
+            ? opts.seed
             : Math.floor(Math.random() * 0xFFFFFFFF);
         this.seed = seed;
         initRng(seed);
@@ -112,12 +170,14 @@ class NetHackGame {
 
         // Start keystroke recording for reproducibility
         startRecording(seed, this.flags);
-        window.gameInstance = this;
+        if (typeof window !== 'undefined') {
+            window.gameInstance = this;
+        }
 
         // Show welcome message
         // C ref: allmain.c -- welcome messages
         const wizStr = this.wizard ? ' [WIZARD MODE]' : '';
-        const seedStr = urlOpts.seed !== null ? ` (seed:${seed})` : '';
+        const seedStr = opts.seed !== undefined && opts.seed !== null ? ` (seed:${seed})` : '';
         this.display.putstr_message(`NetHack JS -- Welcome to the Mazes of Menace!${wizStr}${seedStr}`);
 
         // Player selection
@@ -298,7 +358,7 @@ class NetHackGame {
         const pickC = String.fromCharCode(pickCh);
 
         if (pickC === 'q') {
-            window.location.reload();
+            this._restart();
             return;
         }
 
@@ -525,7 +585,7 @@ class NetHackGame {
             if (roleIdx < 0) {
                 const result = await this._showRoleMenu(raceIdx, gender, align, isFirstMenu);
                 isFirstMenu = false;
-                if (result.action === 'quit') { window.location.reload(); return; }
+                if (result.action === 'quit') { this._restart(); return; }
                 if (result.action === 'pick-race') { raceIdx = -1; roleIdx = -1; continue; }
                 if (result.action === 'pick-gender') { gender = -1; roleIdx = -1; continue; }
                 if (result.action === 'pick-align') { align = -128; roleIdx = -1; continue; }
@@ -556,7 +616,7 @@ class NetHackGame {
                 } else {
                     const result = await this._showRaceMenu(roleIdx, gender, align, isFirstMenu);
                     isFirstMenu = false;
-                    if (result.action === 'quit') { window.location.reload(); return; }
+                    if (result.action === 'quit') { this._restart(); return; }
                     if (result.action === 'pick-role') { roleIdx = -1; raceIdx = -1; gender = -1; align = -128; continue; }
                     if (result.action === 'pick-gender') { gender = -1; continue; }
                     if (result.action === 'pick-align') { align = -128; continue; }
@@ -580,7 +640,7 @@ class NetHackGame {
                 } else {
                     const result = await this._showGenderMenu(roleIdx, raceIdx, align, isFirstMenu);
                     isFirstMenu = false;
-                    if (result.action === 'quit') { window.location.reload(); return; }
+                    if (result.action === 'quit') { this._restart(); return; }
                     if (result.action === 'pick-role') { roleIdx = -1; raceIdx = -1; gender = -1; align = -128; continue; }
                     if (result.action === 'pick-race') { raceIdx = -1; gender = -1; continue; }
                     if (result.action === 'pick-align') { align = -128; continue; }
@@ -605,7 +665,7 @@ class NetHackGame {
                 } else {
                     const result = await this._showAlignMenu(roleIdx, raceIdx, gender, isFirstMenu);
                     isFirstMenu = false;
-                    if (result.action === 'quit') { window.location.reload(); return; }
+                    if (result.action === 'quit') { this._restart(); return; }
                     if (result.action === 'pick-role') { roleIdx = -1; raceIdx = -1; gender = -1; align = -128; continue; }
                     if (result.action === 'pick-race') { raceIdx = -1; align = -128; continue; }
                     if (result.action === 'pick-gender') { gender = -1; align = -128; continue; }
@@ -985,7 +1045,7 @@ class NetHackGame {
         const ch = await nhgetch();
         const c = String.fromCharCode(ch);
 
-        if (c === 'q') { window.location.reload(); return false; }
+        if (c === 'q') { this._restart(); return false; }
         // Both 'y' and '*' accept (as shown in menu: "y * Yes")
         return c === 'y' || c === '*';
     }
@@ -1186,10 +1246,8 @@ class NetHackGame {
                 this.display.clearRow(2 + i);
             }
         }
-        // Remove ?reset from URL and reload clean
-        const url = new URL(window.location.href);
-        url.searchParams.delete('reset');
-        window.history.replaceState({}, '', url.toString());
+        // Remove ?reset from URL
+        this._replaceUrlParams({ reset: null });
     }
 
     // Main game loop
@@ -1630,7 +1688,7 @@ class NetHackGame {
         this.display.putstr(0, row, 'Play again? [yn] ', 14);
         const ch = await nhgetch();
         if (String.fromCharCode(ch) === 'y') {
-            window.location.reload();
+            this._restart();
         }
     }
 
@@ -1656,22 +1714,5 @@ class NetHackGame {
     }
 }
 
-// --- Entry Point ---
-// Start the game when the page loads
-window.addEventListener('DOMContentLoaded', async () => {
-    // Register keylog console APIs
-    window.get_keylog = () => {
-        const kl = getKeylog();
-        console.log(JSON.stringify(kl, null, 2));
-        return kl;
-    };
-    window.run_keylog = async (src) => {
-        let data = typeof src === 'string' ? await (await fetch(src)).json() : src;
-        startReplay(data);
-    };
-    window.save_keylog = saveKeylog;
-
-    const game = new NetHackGame();
-    await game.init();
-    await game.gameLoop();
-});
+// Export utilities needed by browser bootstrap
+export { getKeylog, saveKeylog, startReplay };
