@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { NetHackGame } from '../../js/nethack.js';
 import { createInputQueue } from '../../js/input.js';
 import { createHeadlessGame, HeadlessDisplay } from '../../js/headless_runtime.js';
-import { COLNO, ROWNO } from '../../js/config.js';
+import { COLNO, ROWNO, STONE } from '../../js/config.js';
 
 function queueLine(input, text) {
     for (const ch of String(text)) {
@@ -68,5 +68,56 @@ describe('wizard mode init and commands', () => {
                 assert.equal(loc.lit, true);
             }
         }
+    });
+
+    it('Ctrl+T teleports to requested accessible coordinates in wizard mode', async () => {
+        const game = createHeadlessGame(9, 11, { wizard: true });
+        const before = { x: game.player.x, y: game.player.y };
+        const target = game.map.dnstair;
+        assert.ok(target, 'Expected downstairs coordinates');
+
+        queueLine(game.input, `${target.x},${target.y}`);
+        const result = await game.executeCommand(20); // Ctrl+T
+
+        assert.equal(result.tookTime, true);
+        assert.equal(game.player.x, target.x);
+        assert.equal(game.player.y, target.y);
+        assert.ok(before.x !== target.x || before.y !== target.y, 'Expected teleport destination to differ from start');
+    });
+
+    it('Ctrl+T rejects inaccessible coordinates in wizard mode', async () => {
+        const game = createHeadlessGame(9, 11, { wizard: true });
+        const before = { x: game.player.x, y: game.player.y };
+
+        let stone = null;
+        for (let y = 0; y < ROWNO && !stone; y++) {
+            for (let x = 0; x < COLNO; x++) {
+                const loc = game.map.at(x, y);
+                if (loc?.typ === STONE) {
+                    stone = { x, y };
+                    break;
+                }
+            }
+        }
+        assert.ok(stone, 'Expected at least one stone tile');
+
+        queueLine(game.input, `${stone.x},${stone.y}`);
+        const result = await game.executeCommand(20); // Ctrl+T
+
+        assert.equal(result.tookTime, false);
+        assert.equal(game.player.x, before.x);
+        assert.equal(game.player.y, before.y);
+    });
+
+    it('Ctrl+T is unavailable when wizard mode is off', async () => {
+        const game = createHeadlessGame(9, 11, { wizard: false });
+        const before = { x: game.player.x, y: game.player.y };
+
+        queueLine(game.input, '1,1');
+        const result = await game.executeCommand(20); // Ctrl+T
+
+        assert.equal(result.tookTime, false);
+        assert.equal(game.player.x, before.x);
+        assert.equal(game.player.y, before.y);
     });
 });
