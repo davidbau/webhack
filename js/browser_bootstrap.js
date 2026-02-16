@@ -10,9 +10,15 @@ import { getKeylog, saveKeylog, startReplay } from './keylog.js';
 function createBrowserLifecycle() {
     return {
         restart: () => window.location.reload(),
-        clearResetParam: () => {
+        replaceUrlParams: (params) => {
             const url = new URL(window.location.href);
-            url.searchParams.delete('reset');
+            for (const [key, value] of Object.entries(params || {})) {
+                if (value === null || value === undefined) {
+                    url.searchParams.delete(key);
+                } else {
+                    url.searchParams.set(key, String(value));
+                }
+            }
             window.history.replaceState({}, '', url.toString());
         },
     };
@@ -33,6 +39,7 @@ function registerKeylogApis() {
 
 window.addEventListener('DOMContentLoaded', async () => {
     registerKeylogApis();
+    const opts = getUrlParams();
 
     const game = new NetHackGame({
         display: new Display('game'),
@@ -47,6 +54,10 @@ window.addEventListener('DOMContentLoaded', async () => {
         },
     });
 
-    await game.init(getUrlParams());
+    await game.init({
+        seed: opts.seed,
+        wizard: opts.wizard,
+        reset: opts.reset,
+    });
     await game.gameLoop();
 });

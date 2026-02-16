@@ -78,10 +78,10 @@ export class NetHackGame {
         }
     }
 
-    _runLifecycle(name) {
+    _runLifecycle(name, ...args) {
         const fn = this.lifecycle[name];
         if (typeof fn === 'function') {
-            return fn(this);
+            return fn(...args);
         }
         return undefined;
     }
@@ -1210,7 +1210,7 @@ export class NetHackGame {
             }
         }
         // Remove ?reset from URL and reload clean.
-        this._runLifecycle('clearResetParam');
+        this._runLifecycle('replaceUrlParams', { reset: null });
     }
 
     // Main game loop
