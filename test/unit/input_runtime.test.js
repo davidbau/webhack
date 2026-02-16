@@ -8,6 +8,7 @@ import {
     pushInput,
     nhgetch,
     clearInputQueue,
+    ynFunction,
 } from '../../js/input.js';
 import { mapBrowserKeyToNhCode } from '../../js/browser_input.js';
 
@@ -47,6 +48,23 @@ describe('input runtime primitives', () => {
 
         pushInput('y'.charCodeAt(0));
         await p;
+    });
+
+    it('ynFunction uses runtime display when explicit display is omitted', async () => {
+        const prompts = [];
+        const runtime = createInputQueue();
+        runtime.getDisplay = () => ({
+            putstr_message(msg) {
+                prompts.push(msg);
+            },
+        });
+        setInputRuntime(runtime);
+        pushInput('y'.charCodeAt(0));
+
+        const result = await ynFunction('Proceed?', 'yn', 'n'.charCodeAt(0));
+        assert.equal(result, 'y'.charCodeAt(0));
+        assert.equal(prompts.length, 1);
+        assert.match(prompts[0], /Proceed\?/);
     });
 });
 

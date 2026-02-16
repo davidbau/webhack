@@ -16,7 +16,9 @@ export function mapBrowserKeyToNhCode(e, flags = {}) {
     // Handle numeric keypad in number_pad mode
     // C ref: cmd.c number_pad handling - digits 1-9,0 map to directions + inventory
     // Standard layout: 7=NW 8=N 9=NE 4=W 5=. 6=E 1=SW 2=S 3=SE 0=i
-    const DOM_KEY_LOCATION_NUMPAD = 3;
+    const DOM_KEY_LOCATION_NUMPAD = (typeof KeyboardEvent !== 'undefined')
+        ? KeyboardEvent.DOM_KEY_LOCATION_NUMPAD
+        : 3;
     if (flags?.number_pad && e.location === DOM_KEY_LOCATION_NUMPAD) {
         const numpadMap = {
             '0': 'i'.charCodeAt(0),  // inventory

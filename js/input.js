@@ -84,9 +84,7 @@ export function clearInputQueue() {
 // This is the JS equivalent of C's nhgetch().
 // C ref: winprocs.h win_nhgetch
 export function nhgetch() {
-    const display = (typeof activeInputRuntime.getDisplay === 'function')
-        ? activeInputRuntime.getDisplay()
-        : null;
+    const display = getRuntimeDisplay();
 
     // Clear message acknowledgement flag when user presses a key.
     // C ref: win/tty/topl.c - toplin gets set to TOPLINE_EMPTY after keypress
@@ -113,15 +111,17 @@ export function nhgetch() {
 // Get a line of input (async)
 // C ref: winprocs.h win_getlin
 export async function getlin(prompt, display) {
+    const runtimeDisplay = getRuntimeDisplay();
+    const disp = display || runtimeDisplay;
     let line = '';
 
     // Helper to update display
     const updateDisplay = () => {
-        if (display) {
+        if (disp) {
             // Clear the message row and display prompt + current input.
             // Don't use putstr_message as it concatenates short messages.
-            display.clearRow(0);
-            display.putstr(0, 0, prompt + line, CLR_WHITE);
+            disp.clearRow(0);
+            disp.putstr(0, 0, prompt + line, CLR_WHITE);
         }
     };
 
@@ -132,11 +132,11 @@ export async function getlin(prompt, display) {
         const ch = await nhgetch();
         if (ch === 13 || ch === 10) { // Enter
             // Clear topMessage to prevent message concatenation issues
-            if (display) display.topMessage = null;
+            if (disp) disp.topMessage = null;
             return line;
         } else if (ch === 27) { // ESC
             // Clear topMessage to prevent message concatenation issues
-            if (display) display.topMessage = null;
+            if (disp) disp.topMessage = null;
             return null; // cancelled
         } else if (ch === 8 || ch === 127) { // Backspace
             if (line.length > 0) {
@@ -153,6 +153,8 @@ export async function getlin(prompt, display) {
 // Yes/no/quit prompt (async)
 // C ref: winprocs.h win_yn_function
 export async function ynFunction(query, choices, def, display) {
+    const runtimeDisplay = getRuntimeDisplay();
+    const disp = display || runtimeDisplay;
     let prompt = query;
     if (choices) {
         prompt += ` [${choices}]`;
@@ -162,7 +164,7 @@ export async function ynFunction(query, choices, def, display) {
     }
     prompt += ' ';
 
-    if (display) display.putstr_message(prompt);
+    if (disp) disp.putstr_message(prompt);
 
     while (true) {
         const ch = await nhgetch();
@@ -189,6 +191,8 @@ export async function ynFunction(query, choices, def, display) {
 // C ref: cmd.c:4851 get_count()
 // Returns: { count: number, key: number }
 export async function getCount(firstKey, maxCount, display) {
+    const runtimeDisplay = getRuntimeDisplay();
+    const disp = display || runtimeDisplay;
     let cnt = 0;
     let key = firstKey || 0;
     let backspaced = false;
@@ -239,11 +243,11 @@ export async function getCount(firstKey, maxCount, display) {
         // Show "Count: N" when cnt > 9 or after backspace
         // C ref: cmd.c:4911 - shows count when cnt > 9 || backspaced || echoalways
         if (cnt > 9 || backspaced) {
-            if (display) {
+            if (disp) {
                 if (backspaced && !cnt && !showzero) {
-                    display.putstr_message('Count: ');
+                    disp.putstr_message('Count: ');
                 } else {
-                    display.putstr_message(`Count: ${cnt}`);
+                    disp.putstr_message(`Count: ${cnt}`);
                 }
             }
             backspaced = false;
@@ -256,4 +260,11 @@ export async function getCount(firstKey, maxCount, display) {
 // Helper: check if character code is a digit '0'-'9'
 function isDigit(ch) {
     return ch >= 48 && ch <= 57; // '0' = 48, '9' = 57
+}
+
+function getRuntimeDisplay() {
+    if (typeof activeInputRuntime.getDisplay === 'function') {
+        return activeInputRuntime.getDisplay();
+    }
+    return null;
 }
