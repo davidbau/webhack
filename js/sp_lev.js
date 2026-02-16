@@ -950,7 +950,7 @@ function create_room_splev(x, y, w, h, xalign, yalign, rtype, rlit, depth, skipL
         // Returns false if no space available, true on success
         // Pass `rlit` (not pre-resolved) so dungeon.js can call litstate_rnd at the right time
         const success = create_room(levelState.map, x, y, w, h, xalign, yalign,
-                                     rtype, rlit, depth, false);
+                                     rtype, rlit, depth, !!levelState.inThemerooms);
 
         if (!success) {
             return null;
@@ -3063,6 +3063,7 @@ export function room(opts = {}) {
     // Special levels use fixed coordinates, not BSP rectangle selection
     const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_ROOMS === '1';
     const DEBUG_BUILD = typeof process !== 'undefined' && process.env.DEBUG_BUILD_ROOM === '1';
+    const inThemerooms = !!levelState.inThemerooms;
 
     // C ref: sp_lev.c — build_room() RNG ordering differs based on room type:
     // Fixed-position rooms: build_room rn2(100) → litstate_rnd → create_room
@@ -3277,7 +3278,7 @@ export function room(opts = {}) {
             }
 
             const success = create_room(levelState.map, x, y, w, h, xalign, yalign,
-                                        rtype, lit, levelState.depth || 1, false);
+                                        rtype, lit, levelState.depth || 1, inThemerooms);
 
             if (!success) {
                 if (DEBUG) {
@@ -3384,7 +3385,7 @@ export function room(opts = {}) {
             }
             const success = create_room(levelState.map, roomCalc.x, roomCalc.y, roomCalc.w, roomCalc.h,
                                        roomCalc.xalign, roomCalc.yalign, roomCalc.rtype, lit,
-                                       roomCalc.depth, false);
+                                       roomCalc.depth, inThemerooms);
             if (DEBUG_BUILD) {
                 console.log(`  [RNG ${getRngCallCount()}] create_room() done, success=${success}`);
             }
