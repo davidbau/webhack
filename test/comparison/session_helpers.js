@@ -1,7 +1,7 @@
 // test/comparison/session_helpers.js -- Shared utilities for session replay tests
 //
 // Provides grid comparison, structural validation, and sequential map generation
-// used by session_runner.test.js.
+// used by session_test_runner.js and sessions.test.js.
 
 import {
     COLNO, ROWNO, STONE, VWALL, HWALL, TLCORNER, TRCORNER, BLCORNER, BRCORNER,

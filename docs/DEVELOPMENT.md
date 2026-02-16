@@ -24,11 +24,11 @@ npm install
 npm run serve
 # Open http://localhost:8080
 
-# Run all fast tests (unit + E2E)
+# Run all fast tests (unit + session)
 npm test
 
-# Run everything including session comparison
-npm test && node --test test/comparison/session_runner.test.js
+# Run everything (unit + session + e2e)
+npm run test:all
 ```
 
 ## Project Structure
@@ -96,7 +96,7 @@ test/
     ├── sessions/      96 gameplay + chargen session JSON files (C-captured)
     ├── maps/          C map sessions with RNG traces (for divergence debugging)
     ├── golden/        ISAAC64 reference values (4 seeds)
-    ├── session_runner.test.js   Unified test runner
+    ├── sessions.test.js         Unified node:test wrapper
     ├── session_helpers.js       Grid compare, RNG compare, structural tests
     ├── gen_typ_grid.js          JS map generation (for comparison)
     ├── gen_rng_log.js           Generate JS RNG logs
@@ -120,11 +120,11 @@ npm run test:unit
 # E2E tests — browser rendering via Puppeteer
 npm run test:e2e
 
-# Session comparison — dungeon generation at 17 seeds × 5 depths
-node --test test/comparison/session_runner.test.js
+# Session comparison — replay C reference sessions
+npm run test:session
 
 # Everything at once
-npm test && node --test test/comparison/session_runner.test.js
+npm run test:all
 ```
 
 ### Session Tests In Detail
@@ -164,7 +164,7 @@ python3 test/comparison/c-harness/gen_map_sessions.py 42 5 --with-rng
 python3 test/comparison/c-harness/gen_chargen_sessions.py 42 v h f n Valkyrie
 
 # Session runner auto-discovers all C-captured files
-node --test test/comparison/session_runner.test.js
+npm run test:session
 ```
 
 ## Common Development Tasks
@@ -182,7 +182,7 @@ When working on C-vs-JS parity, follow this rule:
 ### Modifying the dungeon generator
 
 1. Make your changes in `js/dungeon.js` (or related modules)
-2. Run `node --test test/comparison/session_runner.test.js` — failures
+2. Run `npm run test:session` — failures
    show exactly which cells changed and at which seed/depth
 3. If the change is intentional and matches C, the C reference data
    doesn't change. If the C binary also changed, regenerate:
@@ -208,7 +208,7 @@ When a map doesn't match C:
 ```bash
 # The session runner compares per-call and reports the first mismatch:
 #   RNG diverges at call 1449: JS="rn2(100)=37" session="rn2(1000)=377"
-node --test test/comparison/session_runner.test.js
+npm run test:session
 
 # To regenerate C traces after a patch change:
 python3 test/comparison/c-harness/gen_map_sessions.py --from-config
@@ -281,7 +281,7 @@ and outcomes.
    - `session_seeds.sessions` for full gameplay sessions
    - `chargen_seeds.sessions` for character creation sessions
 2. Regenerate: `python3 test/comparison/c-harness/gen_map_sessions.py --from-config`
-3. The session runner auto-discovers the new file
+3. `npm run test:session` auto-discovers the new file
 
 ### Character creation sessions
 

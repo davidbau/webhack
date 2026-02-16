@@ -81,7 +81,7 @@ changed), turn number, and depth.
 1. Edit `seeds.json` — append moves to the sequence (e.g., add `.....`
    for 5 wait turns after a `>` descent).
 2. Run `run_session.py --from-config` (or the single-seed command).
-3. Run `node --test test/comparison/session_runner.test.js` to see results.
+3. Run `npm run test:session` to see results.
 
 ## Planning Move Sequences
 

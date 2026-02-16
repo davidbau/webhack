@@ -233,7 +233,7 @@ The `init=FALSE` means `mksobj_init` is skipped, so only `rnd(2)` + `mksobj_post
 ## Verification
 
 1. `npm test` — unit tests pass (466+ tests)
-2. `node --test test/comparison/session_runner.test.js` — measure improvement
+2. `npm run test:session` — measure improvement
    - Current: 617 pass, 83 fail (approximate)
    - Target: seed1 step 66 should advance past call 1309 (mkshop)
    - Ideally: full step 66 alignment (~2615 RNG calls matching C)

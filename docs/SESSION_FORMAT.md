@@ -16,8 +16,8 @@ and full gameplay replay.
 - **`"map"`** — terrain type grids at multiple dungeon depths (no gameplay)
 - **`"gameplay"`** — full playthrough with RNG traces, screens, and step data
 
-All data fields are optional except `version` and `seed`. The test runner
-(`session_runner.test.js`) verifies whatever fields are present and skips
+All data fields are optional except `version` and `seed`. The session test entrypoint
+(`sessions.test.js`) verifies whatever fields are present and skips
 the rest. This means a minimal session with just a seed and one typGrid is
 a valid test.
 
