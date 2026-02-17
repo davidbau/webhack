@@ -1157,7 +1157,10 @@ export async function replaySession(seed, session, opts = {}) {
             }
             // C ref: doextcmd() accepts single-key shorthand after '#'.
             // Trace captures '#', then one key (e.g. 'O') without explicit Enter.
-            if (pendingKind === 'extended-command' && step.key.length === 1) {
+            if (pendingKind === 'extended-command'
+                && step.key.length === 1
+                && step.key !== '\r'
+                && step.key !== '\n') {
                 pushInput(13);
                 // Only inject shorthand Enter once; extended commands can
                 // continue into nested prompts (getlin/menus) afterward.

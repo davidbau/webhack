@@ -181,6 +181,31 @@ async function waitForStableScreen(display, {
     return latest;
 }
 
+function buildReplayInput(session) {
+    const normalizedSteps = Array.isArray(session?.steps) ? session.steps : [];
+    const startup = session?.startup || null;
+    const hasEmbeddedStartup = normalizedSteps.length > 0
+        && normalizedSteps[0]?.key === null
+        && normalizedSteps[0]?.action === 'startup';
+    const steps = (!hasEmbeddedStartup && startup)
+        ? [{
+            key: null,
+            action: 'startup',
+            rng: Array.isArray(startup.rng) ? startup.rng : [],
+            screen: Array.isArray(startup.screen) ? startup.screen : [],
+            screenAnsi: Array.isArray(startup.screenAnsi) ? startup.screenAnsi : null,
+            typGrid: startup.typGrid ?? null,
+        }, ...normalizedSteps]
+        : normalizedSteps;
+
+    return {
+        ...(session.raw || {}),
+        options: session.raw?.options || session.meta?.options || {},
+        startup: startup || session.raw?.startup || null,
+        steps,
+    };
+}
+
 async function replayInterfaceSession(session) {
     if (typeof globalThis.window === 'undefined') {
         globalThis.window = { location: { search: '' } };
@@ -201,6 +226,7 @@ async function replayInterfaceSession(session) {
     const display = new HeadlessDisplay();
     const input = createHeadlessInput();
     const game = new NetHackGame({ display, input });
+    const replayInput = buildReplayInput(session);
     const subtype = session.meta.regen?.subtype;
     const replaySessionInterface = subtype === 'options' || subtype === 'tutorial';
     const inGameInterface = subtype === 'options' || session.meta.options?.wizard === true;
@@ -212,7 +238,7 @@ async function replayInterfaceSession(session) {
         replayFlags.customcolors = true;
         replayFlags.customsymbols = true;
         replayFlags.symset = 'DECgraphics, active, handler=DEC';
-        return replaySession(session.meta.seed, session.raw, {
+        return replaySession(session.meta.seed, replayInput, {
             captureScreens: true,
             startupBurstInFirstStep: false,
             flags: replayFlags,
@@ -238,7 +264,7 @@ async function replayInterfaceSession(session) {
     const startupRng = (getRngLog() || []).slice(0, prevRngCount);
 
     const recordedSteps = [];
-    const sourceSteps = Array.isArray(session.raw?.steps) ? session.raw.steps : [];
+    const sourceSteps = Array.isArray(replayInput?.steps) ? replayInput.steps : [];
     for (let i = 1; i < sourceSteps.length; i++) {
         const key = sourceSteps[i]?.key;
         if (typeof key !== 'string' || key.length === 0) continue;
@@ -306,6 +332,7 @@ async function runGameplayResult(session) {
     const start = Date.now();
 
     try {
+        const replayInput = buildReplayInput(session);
         const sessionStartup = getSessionStartup(session.raw) || session.raw?.startup || {};
         const gameplaySteps = getSessionGameplaySteps(session.raw) || [];
         const startupBurst = hasStartupBurstInFirstStep(session.raw);
@@ -320,7 +347,7 @@ async function runGameplayResult(session) {
         if (replayFlags.DECgraphics) {
             replayFlags.symset = 'DECgraphics, active, handler=DEC';
         }
-        const replay = await replaySession(session.meta.seed, session.raw, {
+        const replay = await replaySession(session.meta.seed, replayInput, {
             captureScreens: true,
             // Keep startup as a distinct channel so gameplay step indexing is stable.
             startupBurstInFirstStep: false,

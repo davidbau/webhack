@@ -41,6 +41,23 @@ function deriveType(raw, fileName) {
     return 'gameplay';
 }
 
+function decodeSessionKey(key) {
+    if (key === null || key === undefined) return null;
+    if (typeof key !== 'string') return key;
+    if (key === '\\r') return '\r';
+    if (key === '\\n') return '\n';
+    if (key === '\\t') return '\t';
+    if (key === '\\b') return '\b';
+    if (key === '\\f') return '\f';
+    if (/^\\x[0-9a-fA-F]{2}$/.test(key)) {
+        return String.fromCharCode(parseInt(key.slice(2), 16));
+    }
+    if (/^\\u[0-9a-fA-F]{4}$/.test(key)) {
+        return String.fromCharCode(parseInt(key.slice(2), 16));
+    }
+    return key;
+}
+
 function normalizeStep(step, index) {
     const row = step || {};
     const rng = Array.isArray(row.rng) ? row.rng : [];
@@ -48,7 +65,7 @@ function normalizeStep(step, index) {
     const hasExplicitRngTrace = Array.isArray(row.rng);
     return {
         index,
-        key: row.key ?? null,
+        key: decodeSessionKey(row.key),
         action: row.action || null,
         rng,
         rngCalls: hasExplicitRngCalls ? row.rngCalls : (hasExplicitRngTrace ? rng.length : null),
