@@ -16,7 +16,7 @@ import { nhgetch, ynFunction, getlin } from './input.js';
 import { playerAttackMonster } from './combat.js';
 import { makemon, setMakemonPlayerContext } from './makemon.js';
 import { mons, PM_LIZARD, PM_LICHEN, PM_NEWT } from './monsters.js';
-import { doname } from './mkobj.js';
+import { doname, next_ident } from './mkobj.js';
 import { observeObject, getDiscoveriesMenuLines } from './discovery.js';
 import { showPager } from './pager.js';
 import { handleZap } from './zap.js';
@@ -1201,20 +1201,40 @@ async function handleWield(player, display) {
         return { moved: false, tookTime: false };
     }
 
-    display.putstr_message(`Wield what? [${weapons.map(w => w.invlet).join('')} or - for bare hands]`);
+    // C ref: wield.c getobj() prompt format for wield command.
+    // Keep wording/options aligned for session screen parity.
+    const letters = weapons.map(w => w.invlet).join('');
+    display.putstr_message(`What do you want to wield? [- ${letters} or ?*]`);
     const ch = await nhgetch();
     const c = String.fromCharCode(ch);
 
     if (c === '-') {
         player.weapon = null;
-        display.putstr_message('You are now empty-handed.');
+        if (typeof display.clearRow === 'function') display.clearRow(0);
+        display.topMessage = null;
+        display.putstr_message('You are bare handed.');
         // C ref: wield.c:dowield returns ECMD_TIME (wielding takes a turn)
         return { moved: false, tookTime: true };
     }
 
     const weapon = weapons.find(w => w.invlet === c);
     if (weapon) {
+        // C ref: wield.c dowield() — selecting uswapwep triggers doswapweapon().
+        if (player.swapWeapon && weapon === player.swapWeapon) {
+            const oldwep = player.weapon || null;
+            player.weapon = player.swapWeapon;
+            player.swapWeapon = oldwep;
+            if (player.swapWeapon) {
+                display.putstr_message(`${player.swapWeapon.invlet} - ${doname(player.swapWeapon, player)}.`);
+            } else {
+                display.putstr_message('You have no secondary weapon readied.');
+            }
+            return { moved: false, tookTime: true };
+        }
         player.weapon = weapon;
+        if (player.swapWeapon === weapon) {
+            player.swapWeapon = null;
+        }
         display.putstr_message(`${weapon.invlet} - ${weapon.name} (weapon in hand).`);
         // C ref: wield.c:dowield returns ECMD_TIME (wielding takes a turn)
         return { moved: false, tookTime: true };
@@ -1399,10 +1419,20 @@ async function handleEat(player, display, game) {
 
     const item = food.find(f => f.invlet === c);
     if (item) {
+        // C ref: eat.c doesplit() path for stacked comestibles:
+        // splitobj() creates a single-item object and consumes next_ident() (rnd(2)).
+        const eatingFromStack = ((item.quan || 1) > 1 && item.oclass === FOOD_CLASS);
+        const eatenItem = eatingFromStack
+            ? { ...item, quan: 1, o_id: next_ident() }
+            : item;
+        if (eatingFromStack) {
+            item.quan = (item.quan || 1) - 1;
+        }
+
         let corpseTasteIdx = null;
         // C ref: eat.c eatcorpse() RNG used by taint/rotting checks.
-        if (item.otyp === CORPSE) {
-            const cnum = Number.isInteger(item.corpsenm) ? item.corpsenm : -1;
+        if (eatenItem.otyp === CORPSE) {
+            const cnum = Number.isInteger(eatenItem.corpsenm) ? eatenItem.corpsenm : -1;
             const nonrotting = (cnum === PM_LIZARD || cnum === PM_LICHEN);
             if (!nonrotting) {
                 rn2(20); // rotted denominator
@@ -1411,9 +1441,9 @@ async function handleEat(player, display, game) {
             rn2(10); // palatable taste gate
             corpseTasteIdx = rn2(5);  // palatable message choice index
         }
-        const od = objectData[item.otyp];
-        const cnum = Number.isInteger(item.corpsenm) ? item.corpsenm : -1;
-        const isCorpse = item.otyp === CORPSE && cnum >= 0 && cnum < mons.length;
+        const od = objectData[eatenItem.otyp];
+        const cnum = Number.isInteger(eatenItem.corpsenm) ? eatenItem.corpsenm : -1;
+        const isCorpse = eatenItem.otyp === CORPSE && cnum >= 0 && cnum < mons.length;
         // C ref: eat.c eatcorpse() overrides reqtime to 3 + (corpse weight >> 6).
         const reqtime = isCorpse
             ? (3 + ((mons[cnum].weight || 0) >> 6))
@@ -1443,7 +1473,7 @@ async function handleEat(player, display, game) {
         usedtime++;
         doBite();
         if (!isCorpse) {
-            display.putstr_message(`You begin eating the ${item.name}.`);
+            display.putstr_message(`You begin eating the ${eatenItem.name}.`);
         }
 
         if (reqtime > 1) {
@@ -1453,13 +1483,14 @@ async function handleEat(player, display, game) {
                     const idx = Math.max(0, Math.min(tastes.length - 1, corpseTasteIdx));
                     const verb = idx === 0 ? 'tastes' : 'is';
                     display.putstr_message(
-                        `This ${item.name} ${verb} ${tastes[idx]}.  `
-                        + `You finish eating the ${item.name}.--More--`
+                        `This ${eatenItem.name} ${verb} ${tastes[idx]}.  `
+                        + `You finish eating the ${eatenItem.name}.--More--`
                     );
                 } else {
-                    display.putstr_message(`You finish eating the ${item.name}.`);
+                    // C ref: eat.c done_eating() generic multi-turn completion line.
+                    display.putstr_message("You're finally finished.");
                 }
-                player.removeFromInventory(item);
+                if (!eatingFromStack) player.removeFromInventory(item);
                 if (isCorpse && cnum === PM_NEWT) {
                     // C ref: eat.c eye_of_newt_buzz() from cpostfx(PM_NEWT).
                     if (rn2(3) || (3 * (player.pw || 0) <= 2 * (player.pwmax || 0))) {
@@ -1493,14 +1524,14 @@ async function handleEat(player, display, game) {
                     doBite();
                     return 1; // continue
                 },
-                txt: `eating ${item.name}`,
+                txt: `eating ${eatenItem.name}`,
                 xtime: reqtime,
                 onFinishAfterTurn: finishEatingAfterTurn,
             };
         } else {
             // Single-turn food — eat instantly
-            player.removeFromInventory(item);
-            display.putstr_message(`This ${item.name} is delicious!`);
+            if (!eatingFromStack) player.removeFromInventory(item);
+            display.putstr_message(`This ${eatenItem.name} is delicious!`);
         }
         return { moved: false, tookTime: true };
     }
