@@ -680,7 +680,9 @@ export async function replaySession(seed, session, opts = {}) {
         dungeonAlignOverride: startDungeonAlign,
         flags: (opts.flags && typeof opts.flags === 'object') ? opts.flags : undefined,
     });
-    game.display.flags.DECgraphics = session.screenMode === 'decgraphics';
+    const sessionSymset = session?.options?.symset || session?.meta?.options?.symset;
+    const decgraphicsMode = session.screenMode === 'decgraphics' || sessionSymset === 'DECgraphics';
+    game.display.flags.DECgraphics = !!decgraphicsMode;
     const firstStepScreen = getSessionScreenLines(session.steps?.[0] || {});
     let inTutorialPrompt = isTutorialPromptScreen(firstStepScreen);
     let pendingTutorialStart = false;

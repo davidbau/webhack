@@ -53,11 +53,23 @@ function createReplayResult(session) {
     return result;
 }
 
+function setFirstDivergence(result, channel, divergence) {
+    if (!divergence) return;
+    if (!result.firstDivergences) result.firstDivergences = {};
+    if (!result.firstDivergences[channel]) {
+        result.firstDivergences[channel] = { channel, ...divergence };
+    }
+    if (!result.firstDivergence) {
+        result.firstDivergence = { channel, ...divergence };
+    }
+}
+
 function recordRngComparison(result, actual, expected, context = {}) {
     const cmp = compareRng(actual, expected);
     const divergence = cmp.firstDivergence
-        ? { channel: 'rng', ...cmp.firstDivergence, ...context }
+        ? { ...cmp.firstDivergence, ...context }
         : null;
+    setFirstDivergence(result, 'rng', divergence);
     recordRng(result, cmp.matched, cmp.total, divergence);
 }
 
@@ -80,6 +92,54 @@ function normalizeInterfaceLineForComparison(line) {
 
 function normalizeInterfaceScreenLines(lines) {
     return (Array.isArray(lines) ? lines : []).map((line) => normalizeInterfaceLineForComparison(line));
+}
+
+const DEC_TO_UNICODE = {
+    l: '\u250c',
+    q: '\u2500',
+    k: '\u2510',
+    x: '\u2502',
+    m: '\u2514',
+    j: '\u2518',
+    n: '\u253c',
+    t: '\u251c',
+    u: '\u2524',
+    v: '\u2534',
+    w: '\u252c',
+    '~': '\u00b7',
+    a: '\u00b7',
+};
+
+function normalizeGameplayScreenLines(lines, session, { captured = false, prependCol0 = true } = {}) {
+    const decgraphics = session?.meta?.options?.symset === 'DECgraphics';
+    return (Array.isArray(lines) ? lines : []).map((line, row) => {
+        let out = String(line || '').replace(/\r$/, '').replace(/[\x0e\x0f]/g, '');
+        if (captured && prependCol0 && row >= 1 && row <= 21) out = ` ${out}`;
+        if (decgraphics && row >= 1 && row <= 21) {
+            out = [...out].map((ch) => DEC_TO_UNICODE[ch] || ch).join('');
+        }
+        return out;
+    });
+}
+
+function compareGameplayScreens(actualLines, expectedLines, session) {
+    const normalizedActual = normalizeGameplayScreenLines(actualLines, session, {
+        captured: false,
+        prependCol0: false,
+    });
+    const normalizedExpectedWithPad = normalizeGameplayScreenLines(expectedLines, session, {
+        captured: true,
+        prependCol0: true,
+    });
+    const normalizedExpectedNoPad = normalizeGameplayScreenLines(expectedLines, session, {
+        captured: true,
+        prependCol0: false,
+    });
+    const withPad = compareScreenLines(normalizedActual, normalizedExpectedWithPad);
+    if (withPad.match) return withPad;
+    const noPad = compareScreenLines(normalizedActual, normalizedExpectedNoPad);
+    if (noPad.match) return noPad;
+    return (withPad.matched >= noPad.matched) ? withPad : noPad;
 }
 
 function sleep(ms) {
@@ -219,10 +279,10 @@ async function runChargenResult(session) {
         if (session.startup?.typGrid) {
             const diffs = compareGrids(startup?.grid || [], session.startup.typGrid);
             recordGrids(result, diffs.length === 0 ? 1 : 0, 1);
-            if (!result.firstDivergence && diffs.length > 0) {
+            if (diffs.length > 0) {
                 const first = findFirstGridDiff(startup?.grid || [], session.startup.typGrid);
                 if (first) {
-                    result.firstDivergence = { channel: 'grid', stage: 'startup', ...first };
+                    setFirstDivergence(result, 'grid', { stage: 'startup', ...first });
                 }
             }
         }
@@ -243,9 +303,19 @@ async function runGameplayResult(session) {
     const start = Date.now();
 
     try {
+        const replayFlags = { ...DEFAULT_FLAGS };
+        if (session.meta.options?.autopickup === false) replayFlags.pickup = false;
+        if (session.meta.options?.symset === 'DECgraphics') replayFlags.DECgraphics = true;
+        replayFlags.bgcolors = true;
+        replayFlags.customcolors = true;
+        replayFlags.customsymbols = true;
+        if (replayFlags.DECgraphics) {
+            replayFlags.symset = 'DECgraphics, active, handler=DEC';
+        }
         const replay = await replaySession(session.meta.seed, session.raw, {
             captureScreens: true,
             startupBurstInFirstStep: false,
+            flags: replayFlags,
         });
         if (!replay || replay.error) {
             markFailed(result, replay?.error || 'Replay failed');
@@ -257,6 +327,13 @@ async function runGameplayResult(session) {
             recordRngComparison(result, replay.startup?.rng || [], session.startup.rng);
         } else if (Number.isInteger(session.startup?.rngCalls)) {
             const actualCalls = (replay.startup?.rng || []).length;
+            if (actualCalls !== session.startup.rngCalls) {
+                setFirstDivergence(result, 'rng', {
+                    expected: String(session.startup.rngCalls),
+                    actual: String(actualCalls),
+                    stage: 'startup',
+                });
+            }
             recordRng(result, actualCalls === session.startup.rngCalls ? 1 : 0, 1, {
                 expected: String(session.startup.rngCalls),
                 actual: String(actualCalls),
@@ -280,36 +357,32 @@ async function runGameplayResult(session) {
                 const rngCmp = compareRng(actual.rng || [], expected.rng);
                 rngMatched += rngCmp.matched;
                 rngTotal += rngCmp.total;
-                if (!result.firstDivergence && rngCmp.firstDivergence) {
-                    result.firstDivergence = { ...rngCmp.firstDivergence, step: i };
-                }
+                setFirstDivergence(result, 'rng', rngCmp.firstDivergence ? { ...rngCmp.firstDivergence, step: i } : null);
             } else if (Number.isInteger(expected.rngCalls)) {
                 const actualCalls = (actual.rng || []).length;
                 rngTotal += 1;
                 if (actualCalls === expected.rngCalls) {
                     rngMatched += 1;
-                } else if (!result.firstDivergence) {
-                    result.firstDivergence = {
+                } else {
+                    setFirstDivergence(result, 'rng', {
                         step: i,
                         expected: String(expected.rngCalls),
                         actual: String(actualCalls),
-                    };
+                    });
                 }
             } else {
                 const rngCmp = compareRng(actual.rng || [], []);
                 rngMatched += rngCmp.matched;
                 rngTotal += rngCmp.total;
-                if (!result.firstDivergence && rngCmp.firstDivergence) {
-                    result.firstDivergence = { ...rngCmp.firstDivergence, step: i };
-                }
+                setFirstDivergence(result, 'rng', rngCmp.firstDivergence ? { ...rngCmp.firstDivergence, step: i } : null);
             }
 
             if (expected.screen.length > 0) {
                 screensTotal++;
-                const screenCmp = compareScreenLines(actual.screen || [], expected.screen);
+                const screenCmp = compareGameplayScreens(actual.screen || [], expected.screen, session);
                 if (screenCmp.match) screensMatched++;
-                if (!screenCmp.match && !result.firstDivergence && screenCmp.firstDiff) {
-                    result.firstDivergence = { channel: 'screen', step: i, ...screenCmp.firstDiff };
+                if (!screenCmp.match && screenCmp.firstDiff) {
+                    setFirstDivergence(result, 'screen', { step: i, ...screenCmp.firstDiff });
                 }
             }
         }
@@ -342,6 +415,13 @@ async function runInterfaceResult(session) {
                 recordRngComparison(result, replay.startup?.rng || [], session.startup.rng, { stage: 'startup' });
             } else if (Number.isInteger(session.startup?.rngCalls)) {
                 const actualCalls = (replay.startup?.rng || []).length;
+                if (actualCalls !== session.startup.rngCalls) {
+                    setFirstDivergence(result, 'rng', {
+                        expected: String(session.startup.rngCalls),
+                        actual: String(actualCalls),
+                        stage: 'startup',
+                    });
+                }
                 recordRng(result, actualCalls === session.startup.rngCalls ? 1 : 0, 1, {
                     expected: String(session.startup.rngCalls),
                     actual: String(actualCalls),
@@ -387,8 +467,8 @@ async function runInterfaceResult(session) {
                 );
                 if (screenCmp.match) {
                     screensMatched++;
-                } else if (!result.firstDivergence && screenCmp.firstDiff) {
-                    result.firstDivergence = { channel: 'screen', step: i + 1, ...screenCmp.firstDiff };
+                } else if (screenCmp.firstDiff) {
+                    setFirstDivergence(result, 'screen', { step: i + 1, ...screenCmp.firstDiff });
                 }
             }
 
@@ -397,20 +477,18 @@ async function runInterfaceResult(session) {
                 const rngCmp = compareRng(actual.rng || [], expectedRng);
                 rngMatched += rngCmp.matched;
                 rngTotal += rngCmp.total;
-                if (!result.firstDivergence && rngCmp.firstDivergence) {
-                    result.firstDivergence = { ...rngCmp.firstDivergence, step: i + 1 };
-                }
+                setFirstDivergence(result, 'rng', rngCmp.firstDivergence ? { ...rngCmp.firstDivergence, step: i + 1 } : null);
             } else if (Number.isInteger(expected.rngCalls)) {
                 const actualCalls = (actual.rng || []).length;
                 rngTotal += 1;
                 if (actualCalls === expected.rngCalls) {
                     rngMatched += 1;
-                } else if (!result.firstDivergence) {
-                    result.firstDivergence = {
+                } else {
+                    setFirstDivergence(result, 'rng', {
                         step: i + 1,
                         expected: String(expected.rngCalls),
                         actual: String(actualCalls),
-                    };
+                    });
                 }
             }
         }
@@ -445,10 +523,10 @@ async function runMapResult(session) {
             if (level.typGrid) {
                 const diffs = compareGrids(generated?.grids?.[depth] || [], level.typGrid);
                 recordGrids(result, diffs.length === 0 ? 1 : 0, 1);
-                if (!result.firstDivergence && diffs.length > 0) {
+                if (diffs.length > 0) {
                     const first = findFirstGridDiff(generated?.grids?.[depth] || [], level.typGrid);
                     if (first) {
-                        result.firstDivergence = { channel: 'grid', depth, ...first };
+                        setFirstDivergence(result, 'grid', { depth, ...first });
                     }
                 }
             }
@@ -458,6 +536,13 @@ async function runMapResult(session) {
                 recordRngComparison(result, generatedRng, level.rng, { depth });
             } else if (Number.isInteger(level.rngCalls)) {
                 const rngCalls = generated?.rngLogs?.[depth]?.rngCalls;
+                if (rngCalls !== level.rngCalls) {
+                    setFirstDivergence(result, 'rng', {
+                        depth,
+                        expected: String(level.rngCalls),
+                        actual: String(rngCalls),
+                    });
+                }
                 recordRng(result, rngCalls === level.rngCalls ? 1 : 0, 1, {
                     depth,
                     expected: String(level.rngCalls),
