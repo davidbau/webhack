@@ -182,7 +182,7 @@ export function playerAttackMonster(player, monster, display, map) {
 
 // Monster attacks the player
 // C ref: mhitu.c mattacku() -> mattackm core
-export function monsterAttackPlayer(monster, player, display) {
+export function monsterAttackPlayer(monster, player, display, game = null) {
     if (!monster.attacks || monster.attacks.length === 0) return;
     if (monster.passive) return; // passive monsters don't initiate attacks
 
@@ -242,6 +242,16 @@ export function monsterAttackPlayer(monster, player, display) {
             // rn2(3) distance + rn2(6) chance, for physical attacks
             rn2(3);
             rn2(6);
+
+            // C ref: allmain.c stop_occupation() via mhitu.c attack flow.
+            // A successful monster hit interrupts timed occupations/repeats.
+            if (game && game.occupation) {
+                if (game.occupation.occtxt === 'waiting' || game.occupation.occtxt === 'searching') {
+                    display.putstr_message(`You stop ${game.occupation.occtxt}.`);
+                }
+                game.occupation = null;
+                game.multi = 0;
+            }
 
             if (died) {
                 if (player.wizard) {

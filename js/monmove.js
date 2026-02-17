@@ -716,7 +716,7 @@ export function movemon(map, player, display, fov, game = null) {
                 const alreadySawMon = !!(game && game.occupation && couldsee(map, player, oldx, oldy));
                 mon.movement -= NORMAL_SPEED;
                 anyMoved = true;
-                dochug(mon, map, player, display, fov);
+                dochug(mon, map, player, display, fov, game);
                 // C ref: monmove.c dochugw() threat-notice interruption gate.
                 // If an occupied hero newly notices a hostile, attack-capable
                 // monster close enough to threaten, stop the occupation now.
@@ -734,7 +734,7 @@ export function movemon(map, player, display, fov, game = null) {
                         && (!alreadySawMon || !couldSeeOld || oldDist > threatRangeSq)
                         && canSeeNow
                         && mon.mcanmove !== false) {
-                        if (game.flags?.verbose !== false) {
+                        if (game.occupation.occtxt === 'waiting') {
                             game.display.putstr_message(`You stop ${game.occupation.occtxt}.`);
                         }
                         game.occupation = null;
@@ -755,7 +755,7 @@ export function movemon(map, player, display, fov, game = null) {
 // ========================================================================
 
 // C ref: monmove.c dochug() — process one monster's turn
-function dochug(mon, map, player, display, fov) {
+function dochug(mon, map, player, display, fov, game = null) {
     // C ref: special-level "waiting" monsters are initialized to remain inert
     // until explicitly disturbed/engaged by scripted flow.
     if (mon.waiting && map?.flags?.is_tutorial) return;
@@ -914,7 +914,7 @@ function dochug(mon, map, player, display, fov) {
         // We do not model full distfleeck scared state yet, but should still
         // avoid off-range attacks.
         if (!mon.peaceful && nearby && !mon.flee) {
-            monsterAttackPlayer(mon, player, display);
+            monsterAttackPlayer(mon, player, display, game);
         }
     }
 }
@@ -1097,12 +1097,12 @@ function best_target(mon, forced, map, player) {
 // For early game pets (dogs/cats), they have no ranged attacks,
 // but best_target still evaluates targets (consuming RNG via score_targ).
 // The actual attack path (mattackm) is not reached for melee-only pets.
-function pet_ranged_attk(mon, map, player, display) {
+function pet_ranged_attk(mon, map, player, display, game = null) {
     const mtarg = best_target(mon, false, map, player);
     // C ref: dogmove.c:912-970 — if target exists, pet may attempt attack.
     if (!mtarg) return 0;
     if (mtarg.isPlayer) {
-        monsterAttackPlayer(mon, player, display);
+        monsterAttackPlayer(mon, player, display, game);
         return 1; // acted (MMOVE_DONE)
     }
     // For melee-only pets, mattackm is relevant only when target is adjacent.
@@ -1530,7 +1530,7 @@ function dog_move(mon, map, player, display, fov, after = false) {
     // Even if pet has no ranged attacks, best_target still evaluates
     // all visible monsters and calls score_targ (consuming rnd(5) each).
     if (!do_eat) {
-        const ranged = pet_ranged_attk(mon, map, player, display);
+        const ranged = pet_ranged_attk(mon, map, player, display, null);
         if (ranged) return 0;
     }
 

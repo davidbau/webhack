@@ -926,8 +926,16 @@ export async function replaySession(seed, session, opts = {}) {
             continue;
         }
 
+        const isCountPrefixDigit = !!(
+            !pendingCommand
+            && typeof step.key === 'string'
+            && step.key.length === 1
+            && step.key >= '0'
+            && step.key <= '9'
+        );
         // Keep blocking prompts/messages visible while waiting for more input.
-        if (!pendingCommand) {
+        // C preserves existing topline while entering the first count digit.
+        if (!pendingCommand && !isCountPrefixDigit) {
             game.display.clearRow(0);
             game.display.topMessage = null;
         }
@@ -1013,11 +1021,19 @@ export async function replaySession(seed, session, opts = {}) {
         }
 
         // C ref: cmd.c:4958 — digit keys start count prefix accumulation.
-        // Record a zero-RNG step and carry the count to the next command step.
+        // First digit keeps prior topline; continued count (or leading zero)
+        // updates topline to "Count: N". No time/RNG is consumed.
         const ch0 = step.key.charCodeAt(0);
         if (!pendingCommand && step.key.length === 1 && ch0 >= 48 && ch0 <= 57) { // '0'-'9'
+            const hadCount = pendingCount > 0;
             const digit = ch0 - 48;
             pendingCount = Math.min(32767, (pendingCount * 10) + digit);
+            if (hadCount || digit === 0) {
+                game.display.clearRow(0);
+                game.display.topMessage = null;
+                game.display.putstr_message(`Count: ${pendingCount}`);
+            }
+            game.renderCurrentScreen();
             pushStepResult(
                 [],
                 opts.captureScreens ? game.display.getScreenLines() : undefined,
@@ -1128,7 +1144,19 @@ export async function replaySession(seed, session, opts = {}) {
                 }
             }
         };
-        const applyTimedTurn = () => {
+        const applyTimedTurn = (replaceTurnMessages = false) => {
+            let restorePutstr = null;
+            if (replaceTurnMessages && game?.display && typeof game.display.putstr_message === 'function') {
+                const originalPutstr = game.display.putstr_message.bind(game.display);
+                game.display.putstr_message = (msg) => {
+                    game.display.clearRow(0);
+                    game.display.topMessage = null;
+                    return originalPutstr(msg);
+                };
+                restorePutstr = () => {
+                    game.display.putstr_message = originalPutstr;
+                };
+            }
             // C trace behavior: stair transitions consume time but do not run
             // immediate end-of-turn effects in steps where no turn-end RNG is
             // captured for that transition command.
@@ -1141,6 +1169,7 @@ export async function replaySession(seed, session, opts = {}) {
                     || entry.includes('gethungry('))
             );
             if (isLevelTransition && !expectsTransitionTurnEnd) {
+                if (restorePutstr) restorePutstr();
                 return;
             }
             // C ref: allmain.c moveloop_core():
@@ -1148,6 +1177,7 @@ export async function replaySession(seed, session, opts = {}) {
             // settrack() happens during turn setup before moves++ work.
             movemon(game.map, game.player, game.display, game.fov, game);
             game.simulateTurnEnd();
+            if (restorePutstr) restorePutstr();
         };
 
         if (pendingCommand) {
@@ -1239,7 +1269,7 @@ export async function replaySession(seed, session, opts = {}) {
                 lastCommand = { key: ch, count: game.commandCount || 0 };
             }
             game.advanceRunTurn = async () => {
-                applyTimedTurn();
+                applyTimedTurn(true);
                 syncHpFromStepScreen();
             };
             const commandPromise = rhack(execCh, game);
@@ -1297,6 +1327,11 @@ export async function replaySession(seed, session, opts = {}) {
         if (result && result.tookTime) {
             const timedSteps = Math.max(1, Number.isInteger(result.runSteps) ? result.runSteps : 1);
             for (let i = 0; i < timedSteps; i++) {
+                if ((game.multi > 0 || game.occupation) && game?.display) {
+                    game.display.clearRow(0);
+                    game.display.topMessage = null;
+                    game.display.messageNeedsMore = false;
+                }
                 applyTimedTurn();
             }
             if (game.multi > 0 && typeof game.shouldInterruptMulti === 'function'
@@ -1307,8 +1342,9 @@ export async function replaySession(seed, session, opts = {}) {
             // C ref: allmain.c moveloop_core() — occupation runs before next input
             while (game.occupation) {
                 const occ = game.occupation;
-                let interruptedOcc = false;
                 const debugOcc = (typeof process !== 'undefined' && process.env.DEBUG_OCC === '1');
+                game.display.clearRow(0);
+                game.display.topMessage = null;
                 if (debugOcc) {
                     let hostiles = 0;
                     let nearest = 999;
@@ -1337,22 +1373,12 @@ export async function replaySession(seed, session, opts = {}) {
                 if (debugOcc) {
                     console.error(`[occ] step=${stepIndex} postfn multi=${game.multi} cont=${!!cont}`);
                 }
-                if (typeof game.shouldInterruptMulti === 'function'
-                    && game.shouldInterruptMulti()) {
-                    game.multi = 0;
-                    if (game.flags?.verbose !== false && occ?.occtxt) {
+                if (!cont) {
+                    if (occ?.occtxt === 'waiting') {
                         game.display.putstr_message(`You stop ${occ.occtxt}.`);
                     }
                     game.occupation = null;
-                    interruptedOcc = true;
-                    if (debugOcc) console.error(`[occ] step=${stepIndex} interrupted`);
-                } else
-                if (!cont) {
-                    game.occupation = null;
                     if (debugOcc) console.error(`[occ] step=${stepIndex} completed`);
-                }
-                if (interruptedOcc) {
-                    continue;
                 }
                 applyTimedTurn();
                 // Keep replay HP aligned to captured turn-state during multi-turn actions.
@@ -1401,13 +1427,6 @@ export async function replaySession(seed, session, opts = {}) {
                 if (!repeated || !repeated.tookTime) break;
                 applyTimedTurn();
                 syncHpFromStepScreen();
-                // C ref: allmain.c interrupt_multi() — stop counted commands
-                // when an adjacent hostile appears.
-                if (game.multi > 0 && typeof game.shouldInterruptMulti === 'function'
-                    && game.shouldInterruptMulti()) {
-                    game.multi = 0;
-                    break;
-                }
                 if (game.player.justHealedLegs
                     && (game.cmdKey === 46 || game.cmdKey === 115)
                     && (stepScreen[0] || '').includes('Your leg feels better.  You stop searching.')) {
@@ -1421,9 +1440,12 @@ export async function replaySession(seed, session, opts = {}) {
                     const cont = occ.fn(game);
                     const finishedOcc = !cont ? occ : null;
                     if (!cont) {
+                        if (occ?.occtxt === 'waiting') {
+                            game.display.putstr_message(`You stop ${occ.occtxt}.`);
+                        }
                         game.occupation = null;
                     }
-                    applyTimedTurn();
+                    applyTimedTurn(true);
                     syncHpFromStepScreen();
                     if (finishedOcc && typeof finishedOcc.onFinishAfterTurn === 'function') {
                         finishedOcc.onFinishAfterTurn(game);

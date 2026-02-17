@@ -6,6 +6,8 @@ Scope: replace simulation/stub behavior with faithful C NetHack logic while keep
 
 - [~] Replace simplified `dochug` condition flow in `js/monmove.js` with full C checks/order.
 - [x] Added C leprechaun movement clause and effective blind-monster vision gate.
+- [x] 2026-02-17 checkpoint: wired monster-hit `stop_occupation` semantics through combat/monmove paths (`monsterAttackPlayer(..., game)`), and tightened replay count-prefix + timed-occupation handling.
+  - Result: gameplay suite remained stable at `6/19` passing while `seed100_multidigit_gameplay` improved (`rng 2709/2777 -> 2716/2745`, `screens 4/9 -> 6/9`), with no regressions in other passing gameplay seeds.
 - [ ] Replace partial pet melee path with fuller `mattackm`/`passivemm` semantics in `js/monmove.js`.
 - [~] Complete trap-trigger effects in movement path (`js/commands.js`) for common traps with C-like RNG side effects.
 - [x] Added concrete effects + RNG calls for `SLP_GAS_TRAP`, `FIRE_TRAP`, `PIT`, `SPIKED_PIT`.

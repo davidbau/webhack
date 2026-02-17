@@ -1314,13 +1314,16 @@ export class NetHackGame {
                 const finishedOcc = !cont ? occ : null;
                 if (this.shouldInterruptMulti()) {
                     this.multi = 0;
-                    if (this.flags?.verbose !== false && occ?.occtxt) {
+                    if (occ?.occtxt === 'waiting') {
                         this.display.putstr_message(`You stop ${occ.occtxt}.`);
                     }
                     this.occupation = null;
                     interruptedOcc = true;
                 } else
                 if (!cont) {
+                    if (occ?.occtxt === 'waiting') {
+                        this.display.putstr_message(`You stop ${occ.occtxt}.`);
+                    }
                     this.occupation = null;
                 }
                 if (interruptedOcc) {

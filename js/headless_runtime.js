@@ -539,13 +539,18 @@ export class HeadlessGame {
                 const finishedOcc = !cont ? occ : null;
                 if (this.shouldInterruptMulti()) {
                     this.multi = 0;
-                    if (this.flags?.verbose !== false && occ?.occtxt) {
+                    if (occ?.occtxt === 'waiting') {
                         this.display.putstr_message(`You stop ${occ.occtxt}.`);
                     }
                     this.occupation = null;
                     interruptedOcc = true;
                 } else
-                if (!cont) this.occupation = null;
+                if (!cont) {
+                    if (occ?.occtxt === 'waiting') {
+                        this.display.putstr_message(`You stop ${occ.occtxt}.`);
+                    }
+                    this.occupation = null;
+                }
                 if (interruptedOcc) continue;
                 if (!options.skipMonsterMove) {
                     settrack(this.player);
@@ -580,13 +585,18 @@ export class HeadlessGame {
                     const finishedOcc = !cont ? occ : null;
                     if (this.shouldInterruptMulti()) {
                         this.multi = 0;
-                        if (this.flags?.verbose !== false && occ?.occtxt) {
+                        if (occ?.occtxt === 'waiting') {
                             this.display.putstr_message(`You stop ${occ.occtxt}.`);
                         }
                         this.occupation = null;
                         interruptedOcc = true;
                     } else
-                    if (!cont) this.occupation = null;
+                    if (!cont) {
+                        if (occ?.occtxt === 'waiting') {
+                            this.display.putstr_message(`You stop ${occ.occtxt}.`);
+                        }
+                        this.occupation = null;
+                    }
                     if (interruptedOcc) continue;
                     if (!options.skipMonsterMove) {
                         settrack(this.player);
