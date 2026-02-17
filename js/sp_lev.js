@@ -1263,9 +1263,11 @@ export function setFinalizeContext(ctx = null) {
 export function setSpecialLevelDepth(depth) {
     if (Number.isFinite(depth)) {
         levelState.levelDepth = depth;
+        levelState.depth = depth;
         setLevelDepth(depth);
     } else {
         levelState.levelDepth = undefined;
+        levelState.depth = 1;
         setLevelDepth(1);
     }
 }
@@ -3156,79 +3158,56 @@ export function room(opts = {}) {
     let splitDone = false; // Set true when create_room_splev already called split_rects
 
     if (x >= 0 && y >= 0 && w > 0 && h > 0 && levelState.roomDepth === 0) {
-        // Top-level fixed position room - use direct coordinate conversion
-
+        // C ref: build_room() for top-level fixed rooms calls create_room()
+        // directly, so keep the same path (including check_room/split_rects).
         if (DEBUG) {
             console.log(`des.room(): FIXED position x=${x}, y=${y}, w=${w}, h=${h}, xalign=${xalign}, yalign=${yalign}, rtype=${rtype}, lit=${lit}, depth=${levelState.roomDepth}`);
         }
 
-        // C ref: sp_lev.c:1510 — litstate_rnd called with r->rlit from room template
-        // C ref: sp_lev.c:2803 — build_room passes r->rlit to create_room
-        // If rlit >= 0, litstate_rnd returns immediately without calling RNG
-        // If rlit < 0, litstate_rnd calls rnd() and rn2(77) to determine lighting
-        if (DEBUG_BUILD) {
-            console.log(`  [RNG ${getRngCallCount()}] Calling litstate_rnd(${lit}, ${levelState.depth || 1})`);
+        if (!levelState.map) {
+            console.error('des.room(): no map available for fixed-position create_room');
+            return false;
         }
-        lit = litstate_rnd(lit, levelState.depth || 1);
-        if (DEBUG_BUILD) {
-            console.log(`  [RNG ${getRngCallCount()}] litstate_rnd -> ${lit}`);
+        const success = create_room(levelState.map, x, y, w, h, xalign, yalign,
+            rtype, lit, levelState.depth || 1, inThemerooms);
+        if (!success) {
+            if (levelState.roomFailureCallback) {
+                levelState.roomFailureCallback();
+            }
+            return false;
         }
 
-        // C ref: sp_lev.c:1598-1619 — Convert grid coordinates to absolute map coordinates
-        // Top-level rooms use grid coordinates (1-5) that get converted to map positions
-        // Nested rooms use relative coordinates within parent (no conversion)
-        if (levelState.roomDepth === 0) {
-            const cdiv = (num, den) => Math.trunc(num / den);
-            // Grid to absolute conversion (C: xabs = (((xtmp - 1) * COLNO) / 5) + 1)
-            roomX = cdiv(((x - 1) * COLNO), 5) + 1;
-            roomY = cdiv(((y - 1) * ROWNO), 5) + 1;
+        const room = levelState.map.rooms[levelState.map.rooms.length - 1];
+        const OROOM_LOCAL = 0;
+        const THEMEROOM_LOCAL = 1;
+        if (rtype === OROOM_LOCAL || rtype === THEMEROOM_LOCAL) {
+            room.needfill = (filled !== undefined) ? filled : (levelState.inThemerooms ? 0 : FILL_NORMAL);
+        }
 
-            // Apply alignment offset (C ref: sp_lev.c:1605-1619)
-            const COLNO_DIV5 = cdiv(COLNO, 5);  // 16
-            const ROWNO_DIV5 = cdiv(ROWNO, 5);  // 4
+        roomX = room.lx;
+        roomY = room.ly;
+        roomW = room.hx - room.lx + 1;
+        roomH = room.hy - room.ly + 1;
+        splitDone = true; // create_room already split the rect pool
 
-            // xalign/yalign already converted by alignMap: 1=LEFT/TOP, 3=CENTER, 5=RIGHT/BOTTOM
-            // Apply horizontal alignment
-            if (xalign === 5) { // RIGHT
-                roomX += COLNO_DIV5 - w;
-            } else if (xalign === 3) { // CENTER
-                roomX += cdiv((COLNO_DIV5 - w), 2);
-            }
-            // LEFT (1) needs no offset
-
-            // Apply vertical alignment
-            if (yalign === 5) { // BOTTOM
-                roomY += ROWNO_DIV5 - h;
-            } else if (yalign === 3) { // CENTER
-                roomY += cdiv((ROWNO_DIV5 - h), 2);
-            }
-            // TOP (1) needs no offset
-
-            roomW = w;
-            roomH = h;
-
-            if (DEBUG) {
-                console.log(`  Grid conversion: (${x},${y}) -> absolute (${roomX},${roomY}), align=${xalign},${yalign}`);
-            }
-        } else {
-            // Nested room uses relative coordinates within parent
-            // C ref: sp_lev.c create_subroom() - x,y are relative to parent room
+        if (contents && typeof contents === 'function') {
             const parentRoom = levelState.currentRoom;
-            if (parentRoom) {
-                roomX = parentRoom.lx + x;
-                roomY = parentRoom.ly + y;
-            } else {
-                // Fallback if no parent (shouldn't happen for nested rooms)
-                roomX = x;
-                roomY = y;
-            }
-            roomW = w;
-            roomH = h;
+            levelState.roomStack.push(parentRoom);
+            levelState.roomDepth++;
 
-            if (DEBUG) {
-                console.log(`  Nested room: relative (${x},${y}) -> absolute (${roomX},${roomY}) within parent`);
+            room.width = roomW;
+            room.height = roomH;
+            levelState.currentRoom = room;
+
+            try {
+                contents(room);
+            } finally {
+                levelState.currentRoom = levelState.roomStack.pop();
+                levelState.roomDepth--;
             }
         }
+
+        return true;
     } else if (levelState.roomDepth > 0) {
         // Nested room creation always uses create_subroom().
         // C ref: sp_lev.c build_room() calls create_subroom() whenever parent room exists.
@@ -3649,18 +3628,15 @@ export function room(opts = {}) {
     levelState.map.rooms.push(room);
     levelState.map.nroom = levelState.map.rooms.length;
 
-    // C ref: rect.c split_rects() — Split BSP rectangle pool around this room
-    // This is needed for randomly-placed rooms (procedural and themed)
-    // C behavior: Rooms with random placement (x=-1,y=-1) split the rectangle pool
-    // Fixed-position rooms (like oracle's x=3,y=3) do NOT split - they bypass BSP entirely
-    // Nested rooms (subrooms) also do NOT split - C ref: create_subroom() has no split_rects call
-    // If create_room_splev already called split_rects (with correct rndpos), skip this
-    if (levelState.roomDepth === 0 && isRandomPlacement && !splitDone) {
+    // C ref: sp_lev.c create_room() always split_rects() for top-level rooms,
+    // including fixed-position rooms. Only subrooms skip rect splitting.
+    // If create_room/create_room_splev already split (splitDone=true), skip.
+    if (levelState.roomDepth === 0 && !splitDone) {
         if (DEBUG_BUILD) {
             console.log(`  des.room(): calling update_rect_pool_for_room (splitDone=${splitDone})`);
         }
         update_rect_pool_for_room(room);
-    } else if (DEBUG_BUILD && levelState.roomDepth === 0 && isRandomPlacement) {
+    } else if (DEBUG_BUILD && levelState.roomDepth === 0) {
         console.log(`  des.room(): SKIPPING update_rect_pool_for_room (splitDone=${splitDone})`);
     }
 
@@ -5921,8 +5897,16 @@ function executeDeferredMonster(deferred) {
             // (AM_SPLEV_RANDOM -> induced_align()) before coordinate selection.
             consumeInducedAlignRng();
         }
-        const coordX = (x !== undefined) ? x : rn2(60) + 10;
-        const coordY = (y !== undefined) ? y : rn2(15) + 3;
+        let coordX;
+        let coordY;
+        if (deferred.deferCoord) {
+            const pos = getLocationCoord(deferred.rawX, deferred.rawY, GETLOC_DRY, deferred.room || null);
+            coordX = pos.x;
+            coordY = pos.y;
+        } else {
+            coordX = (x !== undefined) ? x : rn2(60) + 10;
+            coordY = (y !== undefined) ? y : rn2(15) + 3;
+        }
         if (immediateParity) {
             // C ref: create_monster() with no class/id -> makemon(NULL, ...).
             createMonster(null, coordX, coordY);
