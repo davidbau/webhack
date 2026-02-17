@@ -228,12 +228,14 @@ async function replayInterfaceSession(session) {
     const game = new NetHackGame({ display, input });
     const replayInput = buildReplayInput(session);
     const subtype = session.meta.regen?.subtype;
+    const sessionTutorial = session.meta?.options?.tutorial;
     const replaySessionInterface = subtype === 'options' || subtype === 'tutorial';
     const inGameInterface = subtype === 'options' || session.meta.options?.wizard === true;
     if (replaySessionInterface) {
         const replayFlags = { ...DEFAULT_FLAGS };
         if (session.meta.options?.autopickup === false) replayFlags.pickup = false;
         if (session.meta.options?.symset === 'DECgraphics') replayFlags.DECgraphics = true;
+        if (typeof sessionTutorial === 'boolean') replayFlags.tutorial = sessionTutorial;
         replayFlags.bgcolors = true;
         replayFlags.customcolors = true;
         replayFlags.customsymbols = true;
@@ -244,10 +246,17 @@ async function replayInterfaceSession(session) {
             flags: replayFlags,
         });
     }
-    if (subtype === 'startup' || subtype === 'tutorial') {
+    const startupOptions = {};
+    if (subtype === 'startup') {
         // C startup interface captures are recorded after login-derived name selection.
         // Mirror that state so replay starts at autopick prompt rather than name prompt.
-        globalThis.localStorage.setItem('webhack-options', JSON.stringify({ name: 'wizard' }));
+        startupOptions.name = 'wizard';
+    }
+    if (typeof sessionTutorial === 'boolean') {
+        startupOptions.tutorial = sessionTutorial;
+    }
+    if (Object.keys(startupOptions).length > 0) {
+        globalThis.localStorage.setItem('webhack-options', JSON.stringify(startupOptions));
     } else {
         globalThis.localStorage.removeItem('webhack-options');
     }

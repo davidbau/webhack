@@ -4,7 +4,7 @@
 "source":"c",
 "type":"interface",
 "regen":{"mode": "interface", "subtype": "startup"},
-"options":{"description": "Game startup sequence including tutorial prompt"},
+"options":{"description": "Game startup sequence including tutorial prompt", "tutorial": true},
 "steps":[
 {"key": null, "action": "startup", "rng": [], "screen": "Shall I pick character's race, role, gender and alignment for you? [ynaq]\n\n\n\nNetHack, Copyright 1985-2026\n\u001b[9CBy Stichting Mathematisch Centrum and M. Stephenson.\n\u001b[9CVersion 3.7.0-132 MacOS Work-in-progress, built Feb 15 2026 06:18:16.\n\u001b[9CSee license for details."},
 {"key": "n", "action": "decline-autopick", "rng": [], "screen": " \u001b[7mPick a role or profession\n\u001b[0m\n <role> <race> <gender> <alignment>\n\n a - an Archeologist\n b - a Barbarian\n c - a Caveman/Cavewoman\n h - a Healer\n k - a Knight\n m - a Monk\n p - a Priest/Priestess\n r - a Rogue\n R - a Ranger\n s - a Samurai\n t - a Tourist\n v - a Valkyrie\n w - a Wizard\n * * Random\n / - Pick race first\n \" - Pick gender first\n [ - Pick alignment first\n ~ - Set role/race/&c filtering\n q - Quit\n (end)"},

@@ -141,7 +141,8 @@ def capture_startup_sequence():
             'subtype': 'startup',
         },
         'options': {
-            'description': 'Game startup sequence including tutorial prompt'
+            'description': 'Game startup sequence including tutorial prompt',
+            'tutorial': True,
         },
         'steps': steps
     }

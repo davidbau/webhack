@@ -550,8 +550,8 @@ const C_DEFAULTS = {
     implicit_uncursed: true, legacy: true, mail: true,
     pickup_stolen: true, pickup_thrown: true,
     safe_pet: true, safe_wait: true, silent: true, sortpack: true,
-    sparkle: true, splash_screen: true, status_updates: true,
-    tips: true, tombstone: true, travel: true, tutorial: true,
+    sparkle: true, splash_screen: true, status_updates: true, tutorial: true,
+    tips: true, tombstone: true, travel: true,
     use_darkgray: true, use_inverse: true, verbose: true,
 
     // Boolean: OFF in C
@@ -571,6 +571,7 @@ const C_DEFAULTS = {
 // JS-specific overrides from C defaults
 const JS_OVERRIDES = {
     DECgraphics: true,  // C has DECgraphics off; we use box-drawing by default
+    tutorial: false,    // JS default: skip tutorial query unless explicitly enabled
 };
 
 // Computed: the effective defaults for this JS port
