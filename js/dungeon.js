@@ -62,7 +62,7 @@ import {
     VLADS_TOWER,
     TUTORIAL
 } from './special_levels.js';
-import { setLevelContext, clearLevelContext, initLuaMT, setSpecialLevelDepth, setFinalizeContext } from './sp_lev.js';
+import { setLevelContext, clearLevelContext, initLuaMT, setSpecialLevelDepth, setFinalizeContext, reset_level as resetSpecialLevelState } from './sp_lev.js';
 import {
     themerooms_generate as themermsGenerate,
     post_level_generate as themeroomsPostLevelGenerate,
@@ -2190,6 +2190,21 @@ export function somexy(croom, map) {
     // C ref: mkroom.c somexy() irregular path — !edge && roomno == i
     if (croom.irregular) {
         const i = croom.roomnoidx + ROOMOFFSET;
+        // Special-level JS maps may not yet carry C-style roomno/edge topology.
+        // In that case, fall back to the non-irregular sampling path below.
+        let hasMatchingRoomno = false;
+        for (let x = croom.lx; x <= croom.hx && !hasMatchingRoomno; x++) {
+            for (let y = croom.ly; y <= croom.hy; y++) {
+                const loc = map.at(x, y);
+                if (loc && !loc.edge && loc.roomno === i) {
+                    hasMatchingRoomno = true;
+                    break;
+                }
+            }
+        }
+        if (!hasMatchingRoomno) {
+            // Continue into standard room/subroom rejection logic.
+        } else {
         while (try_cnt++ < 100) {
             const x = somex(croom);
             const y = somey(croom);
@@ -2206,6 +2221,7 @@ export function somexy(croom, map) {
             }
         }
         return null;
+        }
     }
 
     if (!croom.nsubrooms) {
@@ -4885,6 +4901,10 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
             setMakemonLevelContext({ dungeonAlign: specialAlign });
 
             if (DEBUG) console.log(`Generating special level: ${special.name} at (${useDnum}, ${useDlevel})`);
+            // C ref: special level generation starts with fresh sp_lev coder state.
+            // Without this reset, room/rect/deferred state leaks across levels and
+            // shifts special-level RNG/placement behavior.
+            resetSpecialLevelState();
             // C parity: special-level depth-sensitive logic should use absolute depth,
             // not branch-local dlevel.
             setSpecialLevelDepth(depth);
