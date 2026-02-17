@@ -1433,9 +1433,15 @@ def run_session_entry(entry, sessions_dir):
     # Apply character preset if specified
     char = copy.copy(CHARACTER_PRESETS.get('valkyrie', {}))
     if 'character' in entry:
-        preset = entry['character'].lower()
-        if preset in CHARACTER_PRESETS:
-            char = copy.copy(CHARACTER_PRESETS[preset])
+        char_spec = entry['character']
+        if isinstance(char_spec, str):
+            # String preset name like "wizard"
+            preset = char_spec.lower()
+            if preset in CHARACTER_PRESETS:
+                char = copy.copy(CHARACTER_PRESETS[preset])
+        elif isinstance(char_spec, dict):
+            # Direct character options dict
+            char = copy.copy(char_spec)
     # Update global CHARACTER for this process
     CHARACTER.clear()
     CHARACTER.update(char)

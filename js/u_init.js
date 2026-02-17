@@ -1178,6 +1178,7 @@ function equipInitialGear(player) {
     // C ref: worn.c setworn()/setuwep() during startup inventory setup.
     // Equip one armor piece per slot category and wield first usable melee weapon.
     player.weapon = null;
+    player.swapWeapon = null;
     player.armor = null;
     player.shield = null;
     player.helmet = null;
@@ -1218,8 +1219,14 @@ function equipInitialGear(player) {
         if (item.oclass !== WEAPON_CLASS) continue;
         const info = objectData[item.otyp];
         if (info && info.dir !== 0) {
-            player.weapon = item;
-            break;
+            if (!player.weapon) {
+                player.weapon = item;
+            } else if (!player.swapWeapon) {
+                // C ref: startup sets up an alternate weapon slot (uswapwep)
+                // for classes with multiple starting weapons (e.g. Valkyrie).
+                player.swapWeapon = item;
+                break;
+            }
         }
     }
 }

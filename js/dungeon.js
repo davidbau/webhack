@@ -400,7 +400,17 @@ export function check_room(map, lowx, ddx, lowy, ddy, vault, inThemerooms) {
         if (!conflict) break;
     }
 
-    return { lowx, ddx: hix - lowx, lowy, ddy: hiy - lowy };
+    const outDdx = hix - lowx;
+    const outDdy = hiy - lowy;
+
+    // C ref: sp_lev.c check_room() performs the in_mk_themerooms
+    // "all dimensions changed" rejection again after shrink resolution.
+    if (inThemerooms && (s_lowx !== lowx) && (s_ddx !== outDdx)
+        && (s_lowy !== lowy) && (s_ddy !== outDdy)) {
+        return null;
+    }
+
+    return { lowx, ddx: outDdx, lowy, ddy: outDdy };
 }
 
 // C ref: mkmap.c litstate_rnd() -- determine if room is lit

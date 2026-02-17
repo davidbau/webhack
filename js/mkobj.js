@@ -1079,6 +1079,8 @@ export function doname(obj, player) {
             } else {
                 result += ' (wielded)';
             }
+        } else if (player.swapWeapon === obj) {
+            result += ' (alternate weapon; not wielded)';
         } else if (
             player.armor === obj
             || player.shield === obj

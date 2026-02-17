@@ -11,7 +11,7 @@ import { monsterAttackPlayer } from './combat.js';
 import { CORPSE, FOOD_CLASS, COIN_CLASS, BOULDER, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS,
          PICK_AXE, DWARVISH_MATTOCK, SKELETON_KEY, LOCK_PICK, CREDIT_CARD,
          UNICORN_HORN, SCR_SCARE_MONSTER } from './objects.js';
-import { doname, mkcorpstat } from './mkobj.js';
+import { doname, mkcorpstat, next_ident } from './mkobj.js';
 import { observeObject } from './discovery.js';
 import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT,
          POISON, UNDEF, TABU } from './dog.js';
@@ -788,14 +788,24 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player) {
                 && could_reach_item(map, mon, obj.ox, obj.oy)) {
                 if (rn2(20) < edog.apport + 3) {
                     if (rn2(udist) || !rn2(edog.apport)) {
-                        // Pick up the object
-                        map.removeObject(obj);
+                        // C ref: dogmove.c:452-454 — splitobj when carrying
+                        // only part of a stack; leave remainder on the floor.
+                        let picked = obj;
+                        const quan = obj.quan || 1;
+                        if (carryamt > 0 && carryamt < quan) {
+                            obj.quan = quan - carryamt;
+                            // C ref: splitobj() allocates a new object, consuming
+                            // next_ident() via newobj().
+                            picked = { ...obj, quan: carryamt, o_id: next_ident() };
+                        } else {
+                            map.removeObject(obj);
+                        }
                         if (!mon.minvent) mon.minvent = [];
-                        mon.minvent.push(obj);
+                        mon.minvent.push(picked);
                         // C ref: dogmove.c "The <pet> picks up <obj>." when observed.
                         if (display && player && couldsee(map, player, mon.mx, mon.my)) {
-                            observeObject(obj);
-                            display.putstr_message(`The ${mon.name} picks up ${doname(obj, null)}.`);
+                            observeObject(picked);
+                            display.putstr_message(`The ${mon.name} picks up ${doname(picked, null)}.`);
                         }
                     }
                 }
