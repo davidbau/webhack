@@ -116,6 +116,12 @@ for (let i = 0; i < assignments.length; i++) {
     const maxXP = extractInt(text, /XP progression:\s+maxXL=\d+\s+maxXP=(\d+)/);
     const xl2 = extractString(text, /XP progression:.*XL2_turn=([^\s]+)/);
     const xl3 = extractString(text, /XP progression:.*XL3_turn=([^\s]+)/);
+    const targetAssign = extractInt(text, /Explore telemetry:.*\bassign=(\d+)/);
+    const targetComplete = extractInt(text, /Explore telemetry:.*\bcomplete=(\d+)/);
+    const abandonNoProgress = extractInt(text, /Explore telemetry:.*\babandonNoProgress=(\d+)/);
+    const failedAdds = extractInt(text, /Explore telemetry:.*\bfailedAdd=(\d+)/);
+    const doorOpen = extractInt(text, /Explore telemetry:.*\bdoorOpen=(\d+)/);
+    const doorKick = extractInt(text, /Explore telemetry:.*\bdoorKick=(\d+)/);
 
     const row = {
         role: a.role,
@@ -126,11 +132,17 @@ for (let i = 0; i < assignments.length; i++) {
         maxXP: Number.isFinite(maxXP) ? maxXP : null,
         xl2: xl2 || 'never',
         xl3: xl3 || 'never',
+        targetAssign: Number.isFinite(targetAssign) ? targetAssign : null,
+        targetComplete: Number.isFinite(targetComplete) ? targetComplete : null,
+        abandonNoProgress: Number.isFinite(abandonNoProgress) ? abandonNoProgress : null,
+        failedAdds: Number.isFinite(failedAdds) ? failedAdds : null,
+        doorOpen: Number.isFinite(doorOpen) ? doorOpen : null,
+        doorKick: Number.isFinite(doorKick) ? doorKick : null,
         ok: out.status === 0,
     };
     results.push(row);
 
-    console.log(`  -> depth=${row.depth ?? 'NA'} cause=${row.cause} maxXL=${row.maxXL ?? 'NA'} maxXP=${row.maxXP ?? 'NA'} xl2=${row.xl2} xl3=${row.xl3}`);
+    console.log(`  -> depth=${row.depth ?? 'NA'} cause=${row.cause} maxXL=${row.maxXL ?? 'NA'} maxXP=${row.maxXP ?? 'NA'} xl2=${row.xl2} xl3=${row.xl3} assign=${row.targetAssign ?? 'NA'} complete=${row.targetComplete ?? 'NA'} noProg=${row.abandonNoProgress ?? 'NA'} failedAdd=${row.failedAdds ?? 'NA'} doorOpen=${row.doorOpen ?? 'NA'} doorKick=${row.doorKick ?? 'NA'}`);
     if (!row.ok && opts.verboseFailures) {
         console.log(`  status=${out.status} signal=${out.signal || 'none'} error=${out.error ? (out.error.code || out.error.message) : 'none'}`);
         console.log('  stderr/stdout (failure):');
@@ -145,14 +157,31 @@ const avgDepth = validDepths.length > 0 ? (validDepths.reduce((a, b) => a + b, 0
 const reached3 = results.filter(r => (r.depth || 0) >= 3).length;
 const reachedXL2 = results.filter(r => (r.maxXL || 0) >= 2).length;
 const reachedXL3 = results.filter(r => (r.maxXL || 0) >= 3).length;
+const avgAssign = avgOf(results.map(r => r.targetAssign));
+const avgComplete = avgOf(results.map(r => r.targetComplete));
+const avgNoProg = avgOf(results.map(r => r.abandonNoProgress));
+const avgFailedAdds = avgOf(results.map(r => r.failedAdds));
+const avgDoorOpen = avgOf(results.map(r => r.doorOpen));
+const avgDoorKick = avgOf(results.map(r => r.doorKick));
 console.log(`  Survived: ${survived}/${results.length}`);
 console.log(`  Avg depth: ${Number.isFinite(avgDepth) ? avgDepth.toFixed(3) : 'NA'}`);
 console.log(`  Reached depth>=3: ${reached3}/${results.length}`);
 console.log(`  Reached XL2+: ${reachedXL2}/${results.length}`);
 console.log(`  Reached XL3+: ${reachedXL3}/${results.length}`);
+console.log(`  Explore avg: assign=${fmtAvg(avgAssign)} complete=${fmtAvg(avgComplete)} noProg=${fmtAvg(avgNoProg)} failedAdd=${fmtAvg(avgFailedAdds)} doorOpen=${fmtAvg(avgDoorOpen)} doorKick=${fmtAvg(avgDoorKick)}`);
 console.log('\nPer-role results');
 for (const r of results) {
-    console.log(`  role=${r.role} seed=${r.seed} depth=${r.depth ?? 'NA'} cause=${r.cause} maxXL=${r.maxXL ?? 'NA'} maxXP=${r.maxXP ?? 'NA'} xl2=${r.xl2} xl3=${r.xl3}`);
+    console.log(`  role=${r.role} seed=${r.seed} depth=${r.depth ?? 'NA'} cause=${r.cause} maxXL=${r.maxXL ?? 'NA'} maxXP=${r.maxXP ?? 'NA'} xl2=${r.xl2} xl3=${r.xl3} assign=${r.targetAssign ?? 'NA'} complete=${r.targetComplete ?? 'NA'} noProg=${r.abandonNoProgress ?? 'NA'} failedAdd=${r.failedAdds ?? 'NA'} doorOpen=${r.doorOpen ?? 'NA'} doorKick=${r.doorKick ?? 'NA'}`);
+}
+
+function avgOf(values) {
+    const nums = values.filter(v => Number.isFinite(v));
+    if (nums.length === 0) return NaN;
+    return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
+
+function fmtAvg(v) {
+    return Number.isFinite(v) ? v.toFixed(2) : 'NA';
 }
 
 function resolveSeedPool(options) {

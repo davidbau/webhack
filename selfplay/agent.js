@@ -121,6 +121,17 @@ export class Agent {
             firstXpLevel3Turn: null,
             died: false,
             deathCause: '',
+            targetAssignments: 0,
+            targetReassignments: 0,
+            targetCompletions: 0,
+            targetAbandonsInvalid: 0,
+            targetAbandonsNoPath: 0,
+            targetAbandonsNoProgress: 0,
+            failedTargetAdds: 0,
+            failedTargetClears: 0,
+            systematicFrontierResets: 0,
+            doorOpenAttempts: 0,
+            doorKickAttempts: 0,
         };
     }
 
@@ -148,6 +159,38 @@ export class Agent {
 
     _downstairsKey(depth, x, y) {
         return `${depth}:${x},${y}`;
+    }
+
+    _setCommittedTarget(x, y, path, dist = null) {
+        const prev = this.committedTarget;
+        if (prev) {
+            if (prev.x !== x || prev.y !== y) {
+                this.stats.targetReassignments++;
+            }
+        } else {
+            this.stats.targetAssignments++;
+        }
+        this.committedTarget = { x, y };
+        this.committedPath = path || null;
+        this.consecutiveWaits = 0;
+        this.targetStuckCount = 0;
+        this.lastCommittedDistance = dist;
+    }
+
+    _addFailedTarget(key) {
+        if (!this.failedTargets.has(key)) {
+            this.failedTargets.add(key);
+            this.stats.failedTargetAdds++;
+            return true;
+        }
+        return false;
+    }
+
+    _clearFailedTargets() {
+        if (this.failedTargets.size > 0) {
+            this.failedTargets.clear();
+            this.stats.failedTargetClears++;
+        }
     }
 
     _pickAdjacentWalkableMove(level, px, py) {
@@ -316,7 +359,7 @@ export class Agent {
                     this.visitedFrontierCells.clear();
                     this.committedTarget = null;
                     this.committedPath = null;
-                    this.failedTargets.clear();
+                    this._clearFailedTargets();
                     this.consecutiveFailedMoves = 0;
                     // Reset search tracking
                     this.searchSessionTurn = null;
@@ -673,7 +716,7 @@ export class Agent {
                     const dist = Math.max(Math.abs(target.x - px), Math.abs(target.y - py));
                     if (dist <= 3) {
                         const tKey = target.y * 80 + target.x;
-                        this.failedTargets.add(tKey);
+                        this._addFailedTarget(tKey);
                         blacklisted++;
                     }
                 }
@@ -683,7 +726,7 @@ export class Agent {
                     const dist = Math.max(Math.abs(cand.x - px), Math.abs(cand.y - py));
                     if (dist <= 3) {
                         const cKey = cand.y * 80 + cand.x;
-                        this.failedTargets.add(cKey);
+                        this._addFailedTarget(cKey);
                         blacklisted++;
                     }
                 }
@@ -1638,7 +1681,7 @@ export class Agent {
 
                 // Clear failed targets to allow re-exploration
                 const oldSize = this.failedTargets.size;
-                this.failedTargets.clear();
+                this._clearFailedTargets();
                 console.log(`[SEARCH-ESCAPE] Cleared ${oldSize} failed targets, attempting far exploration`);
 
                 // Try far exploration to break out
@@ -1703,7 +1746,7 @@ export class Agent {
                     if (frontier.length > 30) {
                         // Every 30 turns of being stuck, clear the blacklist and do random moves
                         if (this.levelStuckCounter % 30 === 0) {
-                            this.failedTargets.clear();
+                            this._clearFailedTargets();
                             const directions = ['h', 'j', 'k', 'l', 'y', 'u', 'b', 'n'];
                             const randomDir = directions[Math.floor(this._rng() * directions.length)];
                             return { type: 'random_move', key: randomDir, reason: `stuck with ${frontier.length} frontier cells, clearing blacklist and random move` };
@@ -1717,7 +1760,7 @@ export class Agent {
                             const dist = Math.max(Math.abs(target.x - px), Math.abs(target.y - py));
                             if (dist <= 5) {
                                 const tKey = target.y * 80 + target.x;
-                                this.failedTargets.add(tKey);
+                                this._addFailedTarget(tKey);
                                 blacklistedCount++;
                             }
                         }
@@ -1727,7 +1770,7 @@ export class Agent {
                             const dist = Math.max(Math.abs(cand.x - px), Math.abs(cand.y - py));
                             if (dist <= 3) {
                                 const cKey = cand.y * 80 + cand.x;
-                                this.failedTargets.add(cKey);
+                                this._addFailedTarget(cKey);
                                 blacklistedCount++;
                             }
                         }
@@ -1940,7 +1983,7 @@ export class Agent {
                                 this.searchCandidateStuckCount = (this.searchCandidateStuckCount || 0) + 1;
                                 if (this.searchCandidateStuckCount >= 5) {
                                     console.log(`[SEARCH] Abandoning search candidate (${candidate.x},${candidate.y}) - no progress in 5 turns`);
-                                    this.failedTargets.add(candKey);
+                                    this._addFailedTarget(candKey);
                                     this.lastSearchCandidate = null;
                                     this.searchCandidateStuckCount = 0;
                                     this.lastSearchCandidateDistance = null;
@@ -2072,7 +2115,12 @@ export class Agent {
                         if (this.failedTargets.has(tKey)) continue;
                         const path = findPath(level, px, py, target.x, target.y, { allowUnexplored: true });
                         if (path.found) {
-                            this.committedTarget = { x: target.x, y: target.y };
+                            this._setCommittedTarget(
+                                target.x,
+                                target.y,
+                                path,
+                                Math.max(Math.abs(target.x - px), Math.abs(target.y - py))
+                            );
                             // Reset stuckCounter to give the agent a chance to reach this target
                             // before abandoning it on the next turn
                             this.stuckCounter = 0;
@@ -2615,6 +2663,7 @@ export class Agent {
                 }
 
                 // Reached target and no unexplored adjacents - clear and find next
+                this.stats.targetCompletions++;
                 this.committedTarget = null;
                 this.committedPath = null;
                 this.targetStuckCount = 0;
@@ -2648,6 +2697,7 @@ export class Agent {
             // Keep target if: still a frontier OR we're very close to it
             if (!stillFrontier && !veryClose) {
                 console.log(`[COMMIT] Abandoning target (${tx},${ty}): stillFrontier=${stillFrontier}, distToTarget=${distToTarget}, veryClose=${veryClose}`);
+                this.stats.targetAbandonsInvalid++;
                 this.committedTarget = null;
                 this.committedPath = null;
                 this.targetStuckCount = 0;
@@ -2688,7 +2738,8 @@ export class Agent {
                         if (this.targetStuckCount >= 5) {
                             console.log(`[COMMIT] Abandoning target (${tx},${ty}) - no progress in 5 turns (dist=${distToTarget})`);
                             const tKey = ty * 80 + tx;
-                            this.failedTargets.add(tKey);
+                            this._addFailedTarget(tKey);
+                            this.stats.targetAbandonsNoProgress++;
                             this.committedTarget = null;
                             this.committedPath = null;
                             this.targetStuckCount = 0;
@@ -2708,7 +2759,8 @@ export class Agent {
                     // Can't reach target - blacklist immediately
                     console.log(`[COMMIT] Abandoning target (${tx},${ty}) - path not found`);
                     const tKey = ty * 80 + tx;
-                    this.failedTargets.add(tKey);
+                    this._addFailedTarget(tKey);
+                    this.stats.targetAbandonsNoPath++;
                     this.committedTarget = null;
                     this.committedPath = null;
                     this.targetStuckCount = 0;
@@ -2734,7 +2786,7 @@ export class Agent {
         // When stuck exploring (moving but not progressing), clear blacklist
         // to allow reconsidering distant targets that may have been prematurely blacklisted
         if (isStuckExploring && this.turnNumber % 50 === 0) {
-            this.failedTargets.clear();
+            this._clearFailedTargets();
         }
 
         // PRIORITY: Systematic frontier clearing mode
@@ -2778,23 +2830,20 @@ export class Agent {
                         this.visitedFrontierCells.add(cellKey);
 
                         // Commit to this target
-                        this.committedTarget = { x: nearestCell.x, y: nearestCell.y };
-                        this.committedPath = path;
-                        this.consecutiveWaits = 0;
-                        this.targetStuckCount = 0;
-                        this.lastCommittedDistance = nearestDist;
+                        this._setCommittedTarget(nearestCell.x, nearestCell.y, path, nearestDist);
 
                         return this._followPath(path, 'explore', `systematic frontier clearing to (${nearestCell.x},${nearestCell.y})`);
                     } else {
                         // Can't reach this cell - mark as failed
                         const cellKey = nearestCell.y * 80 + nearestCell.x;
-                        this.failedTargets.add(cellKey);
+                        this._addFailedTarget(cellKey);
                         this.visitedFrontierCells.add(cellKey);  // Also mark as visited to avoid retrying
                     }
                 }
             } else {
                 // All frontier cells have been visited - clear the set and try again
                 console.log(`[SYSTEMATIC-FRONTIER] All ${frontier.length} frontier cells visited, resetting for another pass`);
+                this.stats.systematicFrontierResets++;
                 this.visitedFrontierCells.clear();
             }
         }
@@ -2851,6 +2900,7 @@ export class Agent {
                             if (door.type === 'door_locked') {
                                 // Locked door - kick it
                                 console.log(`[DOOR-SYSTEMATIC] kicking locked door at (${door.x},${door.y}) [adjacent]`);
+                                this.stats.doorKickAttempts++;
                                 if (!this.pendingLockedDoor) {
                                     this.pendingLockedDoor = { x: door.x, y: door.y, attempts: 0, nonAdjacentTurns: 0 };
                                 }
@@ -2858,6 +2908,7 @@ export class Agent {
                             } else {
                                 // Closed door - open it with 'o' command + direction
                                 console.log(`[DOOR-SYSTEMATIC] opening door_closed at (${door.x},${door.y})`);
+                                this.stats.doorOpenAttempts++;
                                 this.pendingDoorDir = dir;
                                 this.justOpenedDoor = { x: door.x, y: door.y }; // Mark for perception fix
                                 return { type: 'open', key: 'o', reason: `opening door at (${door.x},${door.y})` };
@@ -2940,9 +2991,12 @@ export class Agent {
             const dest = explorationPath.path[explorationPath.path.length - 1];
             const destKey = dest.y * 80 + dest.x;
             if (!this.failedTargets.has(destKey)) {
-                this.committedTarget = { x: dest.x, y: dest.y };
-                this.committedPath = explorationPath;
-                this.consecutiveWaits = 0;
+                this._setCommittedTarget(
+                    dest.x,
+                    dest.y,
+                    explorationPath,
+                    Math.max(Math.abs(dest.x - px), Math.abs(dest.y - py))
+                );
                 if (isStuckExploring) {
                     return this._followPath(explorationPath, 'explore', `[STUCK-FAR] exploring toward distant (${dest.x},${dest.y})`);
                 }
@@ -3158,7 +3212,7 @@ export class Agent {
                     // Clear committed target since current path is blocked
                     if (this.committedTarget) {
                         const tKey = this.committedTarget.y * 80 + this.committedTarget.x;
-                        this.failedTargets.add(tKey);
+                        this._addFailedTarget(tKey);
                         this.committedTarget = null;
                         this.committedPath = null;
                     }
@@ -3173,7 +3227,7 @@ export class Agent {
                 // If we've failed to move repeatedly, blacklist committed target
                 if (this.consecutiveFailedMoves >= 3 && this.committedTarget) {
                     const tKey = this.committedTarget.y * 80 + this.committedTarget.x;
-                    this.failedTargets.add(tKey);
+                    this._addFailedTarget(tKey);
                     this.committedTarget = null;
                     this.committedPath = null;
                 }
