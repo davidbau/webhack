@@ -83,6 +83,15 @@ export function assessMonsterDanger(monsterChar, playerHP, playerMaxHP, playerLe
         return DangerLevel.MEDIUM;
     }
 
+    // 'x' class (e.g., xans/xorns depending on context) has produced repeated
+    // early-floor deaths in C runs; avoid casual melee until we're stronger.
+    if (monsterChar === 'x') {
+        if (playerLevel < 4 || playerHP < playerMaxHP * 0.8) {
+            return DangerLevel.HIGH;
+        }
+        return DangerLevel.MEDIUM;
+    }
+
     // Uppercase = more dangerous (with some exceptions)
     const isUppercase = monsterChar === monsterChar.toUpperCase() && monsterChar.match(/[A-Z]/);
 

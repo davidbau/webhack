@@ -47,3 +47,12 @@
   - increased subprocess `maxBuffer` to avoid output-buffer failures during long C runs.
   - improved failure diagnostics (`status`/`signal`/`error`) for subprocess failures.
   - default seed pools updated to unique 13-seed ranges (`train=21..33`, `holdout=31..43`) for class-balanced evaluations without seed cycling.
+
+## 2026-02-17 - Keep: Early `x` Threat Upgrade in Danger Model
+
+- Change: in `selfplay/brain/danger.js`, classify lowercase `x` monsters as at least `MEDIUM` threat and usually `HIGH` threat until stronger (`XL<4` or HP<80%).
+- Why: repeated early deaths in held-out games involved `x` encounters being treated too casually.
+- Validation gates (C NetHack role matrix, 1200 turns, key-delay=0):
+  - Train `21..30`: unchanged vs baseline (`survived 7/13`, `avg depth 1.846`, `depth>=3 5/13`, `XL2+ 2/13`).
+  - Holdout `31..40`: improved depth/progression with no survival regression (`survived 8/13` unchanged, `avg depth 1.462` vs `1.385`, `XL2+ 2/13` vs `1/13`).
+- Net: keep.
