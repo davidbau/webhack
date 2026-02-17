@@ -163,6 +163,6 @@ alignment combination defined in `seeds.json`.
 - RNG log lines look like: `2808 rn2(12) = 2 @ mon.c:1145`.
   The session tools strip the index and compact the format.
 - Mid-level trace entries (`>funcname` / `<funcname`) come from the
-  `005-midlog-infrastructure.patch` and are preserved in session RNG arrays.
+  `009-midlog-infrastructure.patch` and are preserved in session RNG arrays.
 - Set `NETHACK_SEED` yourself to run the C binary interactively for manual
   investigation.

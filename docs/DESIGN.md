@@ -170,10 +170,14 @@ webhack/
 │           ├── plan_session.py    Session planning helper
 │           └── patches/
 │               ├── 001-deterministic-seed.patch
-│               ├── 002-map-dumper.patch
-│               ├── 003-prng-logging.patch
-│               ├── 004-obj-dumper.patch
-│               └── 005-midlog-infrastructure.patch
+│               ├── 002-fixed-datetime-for-replay.patch
+│               ├── 003-map-dumper.patch
+│               ├── 004-prng-logging.patch
+│               ├── 005-obj-dumper.patch
+│               ├── 006-deterministic-qsort.patch
+│               ├── 007-keylog-input-tracing.patch
+│               ├── 008-checkpoint-snapshots.patch
+│               └── 009-midlog-infrastructure.patch
 │
 ├── spoilers/                  ── Spoiler Guide (separate site) ──
 │   ├── guide.md               Guide source (Markdown)

@@ -6,7 +6,7 @@ index 899f72b4a..02b6ae642 100644
  extern void init_random(int(*fn)(int));
  extern void reseed_random(int(*fn)(int));
  extern void shuffle_int_array(int *, int) NONNULLARG1;
-+/* PRNG call logging (003-prng-logging patch) */
++/* PRNG call logging (004-prng-logging patch) */
 +extern void rng_log_init(void);
 +extern void rng_log_set_caller(const char *, int, const char *);
  
@@ -21,7 +21,7 @@ index a52258a4e..d147e6fad 100644
  #include "decl.h"
  
 +/*
-+ * PRNG call logging macros (003-prng-logging patch).
++ * PRNG call logging macros (004-prng-logging patch).
 + *
 + * These use a C preprocessor trick: function-like macros only match
 + * when followed by '('.  So `init_random(rn2)` passes the bare function
@@ -271,7 +271,7 @@ index 881c1666e..46ff058d2 100644
      boolean plsel_once = FALSE;
  
      early_init(argc, argv);
-+    rng_log_init();  /* 003-prng-logging: open log if NETHACK_RNGLOG is set */
++    rng_log_init();  /* 004-prng-logging: open log if NETHACK_RNGLOG is set */
  
  #if defined(__APPLE__)
      {

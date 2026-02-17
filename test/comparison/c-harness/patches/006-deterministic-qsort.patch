@@ -1,0 +1,113 @@
+diff --git a/include/extern.h b/include/extern.h
+index c8ee05bb..7954f033 100644
+--- a/include/extern.h
++++ b/include/extern.h
+@@ -2732,6 +2732,10 @@ extern void shuffle_int_array(int *, int) NONNULLARG1;
+ /* PRNG call logging (004-prng-logging patch) */
+ extern void rng_log_init(void);
+ extern void rng_log_set_caller(const char *, int, const char *);
++/* Deterministic qsort wrapper (006-deterministic-qsort patch) */
++extern void nh_deterministic_qsort(void *, size_t, size_t,
++                                   int (QSORTCALLBACK *)(const void *,
++                                                         const void *));
+ 
+ /* ### role.c ### */
+ 
+diff --git a/include/hack.h b/include/hack.h
+index 094b02f8..63be3d43 100644
+--- a/include/hack.h
++++ b/include/hack.h
+@@ -1571,6 +1571,16 @@ typedef uint32_t mmflags_nht;     /* makemon MM_ flags */
+ #include "savefile.h"
+ #include "decl.h"
+ 
++/*
++ * Harness determinism: replace libc qsort() with deterministic variant.
++ * This removes implementation-dependent equal-key ordering drift.
++ * Suppress in the implementation unit to avoid self-recursion.
++ */
++#if !defined(DETERMINISTIC_QSORT_IMPL)
++#define qsort(base, nmemb, size, compar) \
++    nh_deterministic_qsort((base), (nmemb), (size), (compar))
++#endif
++
+ /*
+  * PRNG call logging macros (004-prng-logging patch).
+  *
+diff --git a/src/hacklib.c b/src/hacklib.c
+index 50be4169..1d872fcb 100644
+--- a/src/hacklib.c
++++ b/src/hacklib.c
+@@ -4,8 +4,65 @@
+ /* Copyright (c) Robert Patrick Rankin, 1991                      */
+ /* NetHack may be freely redistributed.  See license for details. */
+ 
++#define DETERMINISTIC_QSORT_IMPL
+ #include "hack.h" /* for config.h+extern.h */
+ 
++struct nh_qsort_index {
++    size_t idx;
++};
++
++static const unsigned char *nh_qsort_base = (const unsigned char *) 0;
++static size_t nh_qsort_size = 0;
++static int (QSORTCALLBACK *nh_qsort_cmp_fn)(const void *, const void *) = 0;
++
++static int QSORTCALLBACK
++nh_qsort_idx_cmp(const void *va, const void *vb)
++{
++    const struct nh_qsort_index *a = (const struct nh_qsort_index *) va;
++    const struct nh_qsort_index *b = (const struct nh_qsort_index *) vb;
++    int c = (*nh_qsort_cmp_fn)((const void *) (nh_qsort_base + (a->idx * nh_qsort_size)),
++                               (const void *) (nh_qsort_base + (b->idx * nh_qsort_size)));
++    if (c)
++        return c;
++    if (a->idx < b->idx)
++        return -1;
++    return (a->idx > b->idx);
++}
++
++/* Deterministic replacement for libc qsort(), preserving original order
++ * for equal-key elements regardless of platform libc behavior.
++ */
++void
++nh_deterministic_qsort(void *base, size_t nmemb, size_t size,
++                       int (QSORTCALLBACK *compar)(const void *, const void *))
++{
++    unsigned char *bytes = (unsigned char *) base;
++    struct nh_qsort_index *order;
++    unsigned char *tmp;
++    size_t i;
++
++    if (!base || !compar || size == 0 || nmemb < 2)
++        return;
++
++    order = (struct nh_qsort_index *) malloc(nmemb * sizeof *order);
++    tmp = (unsigned char *) malloc(nmemb * size);
++    if (!order || !tmp) {
++        if (tmp)
++            free((genericptr_t) tmp);
++        if (order)
++            free((genericptr_t) order);
++        return;
++    }
++    for (i = 0; i < nmemb; ++i)
++        order[i].idx = i;
++
++    nh_qsort_base = bytes;
++    nh_qsort_size = size;
++    nh_qsort_cmp_fn = compar;
++    qsort((void *) order, nmemb, sizeof *order, nh_qsort_idx_cmp);
++
++    for (i = 0; i < nmemb; ++i)
++        (void) memcpy((void *) (tmp + (i * size)),
++                      (const void *) (bytes + (order[i].idx * size)), size);
++    (void) memcpy((void *) bytes, (const void *) tmp, nmemb * size);
++
++    free((genericptr_t) tmp);
++    free((genericptr_t) order);
++}
++
+ /*=
+     Assorted 'small' utility routines.  They're virtually independent of
+     NetHack.

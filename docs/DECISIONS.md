@@ -398,7 +398,7 @@ suggested.  Instead of porting `o_init()` (which shuffles object appearances
 we advance the PRNG by the exact number of consumed values.
 
 The skip count (257 for seed=42) was determined empirically using the C PRNG
-logger (`003-prng-logging.patch`), which logs every RNG call with file:line
+logger (`004-prng-logging.patch`), which logs every RNG call with file:line
 information.
 
 **Future:** When we port `o_init()`, `dungeon.c` init, etc., the skip count

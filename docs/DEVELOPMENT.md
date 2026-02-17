@@ -399,7 +399,7 @@ Patches live in `test/comparison/c-harness/patches/` and are applied by
 `setup.sh`. To add one:
 
 1. Make changes in `nethack-c/nethack/`
-2. `cd nethack-c/nethack && git diff > ../../test/comparison/c-harness/patches/003-your-patch.patch`
+2. `cd nethack-c/nethack && git diff > ../../test/comparison/c-harness/patches/010-your-patch.patch`
 3. Add the `git apply` line to `setup.sh`
 4. Run `bash test/comparison/c-harness/setup.sh` to verify
 
@@ -410,23 +410,35 @@ Patches live in `test/comparison/c-harness/patches/` and are applied by
 The C harness builds a patched NetHack 3.7 binary for ground-truth comparison.
 The C source is **frozen at commit `79c688cc6`** and never modified directly —
 only patches in `test/comparison/c-harness/patches/` are applied on top.
-Five patches make the C binary testable:
+Nine patches make the C binary testable:
 
 **`001-deterministic-seed.patch`** — Reads `NETHACK_SEED` from the environment
 instead of `/dev/urandom`. Crucially, does NOT set `has_strong_rngseed`, so
 `reseed_random()` between levels becomes a no-op. One seed → deterministic game.
 
-**`002-map-dumper.patch`** — Adds the `#dumpmap` wizard command, which writes
+**`002-fixed-datetime-for-replay.patch`** — Forces deterministic startup datetime
+for harness captures so replay fixtures are reproducible across runs.
+
+**`003-map-dumper.patch`** — Adds the `#dumpmap` wizard command, which writes
 `levl[x][y].typ` as 21 rows of 80 space-separated integers to `NETHACK_DUMPMAP`.
 
-**`003-prng-logging.patch`** — When `NETHACK_RNGLOG` is set, logs every
+**`004-prng-logging.patch`** — When `NETHACK_RNGLOG` is set, logs every
 `rn2()`/`rnd()`/`d()` call with args, result, and caller context
 (`__func__`, `__FILE__`, `__LINE__`). Format: `rn2(12)=2 @ shuffle(o_init.c:128)`.
 
-**`004-obj-dumper.patch`** — Adds object inspection/dumping support for
+**`005-obj-dumper.patch`** — Adds object inspection/dumping support for
 verifying inventory and object creation against JS.
 
-**`005-midlog-infrastructure.patch`** — Enables mid-session RNG log control
+**`006-deterministic-qsort.patch`** — Replaces libc `qsort()` with a deterministic
+stable tie-break implementation in harness builds.
+
+**`007-keylog-input-tracing.patch`** — Captures key-level input traces for
+replay tooling and targeted diffing.
+
+**`008-checkpoint-snapshots.patch`** — Adds phase checkpoint snapshots tied to
+RNG call count during level generation.
+
+**`009-midlog-infrastructure.patch`** — Enables mid-session RNG log control
 for capturing traces at specific points during gameplay.
 
 ### Why raw terrain grids instead of terminal output?

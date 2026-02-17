@@ -1,6 +1,8 @@
+diff --git a/include/extern.h b/include/extern.h
+index 7954f033c..ca91f0cb0 100644
 --- a/include/extern.h
 +++ b/include/extern.h
-@@ -473,6 +473,7 @@
+@@ -473,6 +473,7 @@ extern char paranoid_ynq(boolean, const char *, boolean);
  extern boolean paranoid_query(boolean, const char *);
  extern void makemap_prepost(boolean, boolean);
  extern const char *ecname_from_fn(int (*)(void));
@@ -8,32 +10,19 @@
  
  /* ### date.c ### */
  
-@@ -2732,6 +2733,7 @@
- /* PRNG call logging (003-prng-logging patch) */
+@@ -2732,6 +2733,7 @@ extern void shuffle_int_array(int *, int) NONNULLARG1;
+ /* PRNG call logging (004-prng-logging patch) */
  extern void rng_log_init(void);
  extern void rng_log_set_caller(const char *, int, const char *);
 +extern int rng_log_get_call_count(void);
- /* Mid-level function tracing (005-midlog-infrastructure patch) */
- extern void midlog_enter(const char *, const char *, int, const char *);
- extern void midlog_exit_int(const char *, int, const char *, int, const char *);
---- a/src/rnd.c
-+++ b/src/rnd.c
-@@ -52,6 +52,12 @@
-     rng_caller_func = func;
- }
- 
-+int
-+rng_log_get_call_count(void)
-+{
-+    return rng_call_count;
-+}
-+
- static void
- rng_log_write(const char *func, const char *args, int result)
- {
+ /* Deterministic qsort wrapper (006-deterministic-qsort patch) */
+ extern void nh_deterministic_qsort(void *, size_t, size_t,
+                                    int (QSORTCALLBACK *)(const void *,
+diff --git a/src/cmd.c b/src/cmd.c
+index d77454878..843e21f50 100644
 --- a/src/cmd.c
 +++ b/src/cmd.c
-@@ -98,6 +98,7 @@
+@@ -98,6 +98,7 @@ staticfn int dosuspend_core(void);
  staticfn int dosh_core(void);
  staticfn int wiz_dumpmap(void);
  staticfn int wiz_dumpobj(void);
@@ -41,7 +30,7 @@
  staticfn int doherecmdmenu(void);
  staticfn int dotherecmdmenu(void);
  staticfn int doprev_message(void);
-@@ -150,6 +151,185 @@
+@@ -150,6 +151,185 @@ staticfn int dummyfunction(void);
  
  static const char *readchar_queue = "";
  
@@ -227,7 +216,7 @@
  /* for rejecting attempts to use wizard mode commands
   * Also used in wizcmds.c  */
  const char unavailcmd[] = "Unavailable command '%s'.";
-@@ -1136,6 +1316,23 @@
+@@ -1130,6 +1310,23 @@ wiz_dumpobj(void)
      return ECMD_OK;
  }
  
@@ -251,7 +240,7 @@
  /* temporary? hack, since level type codes aren't the same as screen
     symbols and only the latter have easily accessible descriptions.
     Also used by wizcmds.c */
-@@ -1726,6 +1923,8 @@
+@@ -1720,6 +1917,8 @@ struct ext_func_tab extcmdlist[] = {
                wiz_dumpmap, IFBURIED | AUTOCOMPLETE | WIZMODECMD, NULL },
      { '\0',   "dumpobj", "dump floor objects in fobj iteration order",
                wiz_dumpobj, IFBURIED | AUTOCOMPLETE | WIZMODECMD, NULL },
@@ -260,9 +249,11 @@
      { M('?'), "?", "list all extended commands",
                doextlist, IFBURIED | AUTOCOMPLETE | GENERALCMD | CMD_M_PREFIX,
                NULL },
+diff --git a/src/mkmaze.c b/src/mkmaze.c
+index 9c665a37e..fba2e0389 100644
 --- a/src/mkmaze.c
 +++ b/src/mkmaze.c
-@@ -701,6 +701,7 @@
+@@ -701,6 +701,7 @@ fixup_special(void)
      if (gl.lregions)
          free((genericptr_t) gl.lregions), gl.lregions = 0;
      gn.num_lregions = 0;
@@ -270,9 +261,28 @@
  }
  
  staticfn void
+diff --git a/src/rnd.c b/src/rnd.c
+index 695c156f0..7ee563a04 100644
+--- a/src/rnd.c
++++ b/src/rnd.c
+@@ -52,6 +52,12 @@ rng_log_set_caller(const char *file, int line, const char *func)
+     rng_caller_func = func;
+ }
+ 
++int
++rng_log_get_call_count(void)
++{
++    return rng_call_count;
++}
++
+ static void
+ rng_log_write(const char *func, const char *args, int result)
+ {
+diff --git a/src/sp_lev.c b/src/sp_lev.c
+index 2e1b4ab65..117817159 100644
 --- a/src/sp_lev.c
 +++ b/src/sp_lev.c
-@@ -3860,6 +3860,7 @@
+@@ -3860,6 +3860,7 @@ lspo_level_init(lua_State *L)
          init_lev.bg = (init_lev.init_style == LVLINIT_SWAMP) ? MOAT : STONE;
  
      splev_initlev(&init_lev);
@@ -280,7 +290,7 @@
  
      return 0;
  }
-@@ -6026,6 +6027,7 @@
+@@ -6026,6 +6027,7 @@ lspo_finalize_level(lua_State *L)
       */
      if (!svl.level.flags.corrmaze)
          wallification(1, 0, COLNO - 1, ROWNO - 1);
@@ -288,7 +298,7 @@
  
      if (L)
          flip_level_rnd(gc.coder->allow_flips, FALSE);
-@@ -6049,6 +6051,7 @@
+@@ -6049,6 +6051,7 @@ lspo_finalize_level(lua_State *L)
      }
  
      makemap_prepost(FALSE, wtower);
@@ -296,7 +306,7 @@
      iflags.lua_testing = FALSE;
      return 0;
  }
-@@ -6304,6 +6307,7 @@
+@@ -6304,6 +6307,7 @@ TODO: gc.coder->croom needs to be updated
      /* return selection where map locations were put */
      l_selection_push_copy(L, sel);
      selection_free(sel, TRUE);
@@ -304,7 +314,7 @@
  
      return 1;
  }
-@@ -6468,6 +6472,7 @@
+@@ -6468,6 +6472,7 @@ load_special(const char *name)
       */
      if (!svl.level.flags.corrmaze)
          wallification(1, 0, COLNO - 1, ROWNO - 1);
@@ -312,7 +322,7 @@
  
      flip_level_rnd(gc.coder->allow_flips, FALSE);
  
-@@ -6483,6 +6488,8 @@
+@@ -6483,6 +6488,8 @@ load_special(const char *name)
      if (gc.coder->premapped)
          premap_detect();
  
