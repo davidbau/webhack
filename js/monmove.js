@@ -8,9 +8,9 @@ import { COLNO, ROWNO, STONE, IS_WALL, IS_DOOR, IS_ROOM,
          NORMAL_SPEED, isok } from './config.js';
 import { rn2, rnd, c_d, getRngLog } from './rng.js';
 import { monsterAttackPlayer } from './combat.js';
-import { FOOD_CLASS, COIN_CLASS, BOULDER, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS,
+import { CORPSE, FOOD_CLASS, COIN_CLASS, BOULDER, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS,
          PICK_AXE, DWARVISH_MATTOCK } from './objects.js';
-import { doname } from './mkobj.js';
+import { doname, mkcorpstat } from './mkobj.js';
 import { observeObject } from './discovery.js';
 import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT,
          POISON, UNDEF, TABU } from './dog.js';
@@ -617,8 +617,13 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player) {
     if (mon.meating) return 0;
     const omx = mon.mx, omy = mon.my;
 
-    // C ref: droppables(mtmp) — check if pet has non-cursed inventory
-    const hasDrop = mon.minvent && mon.minvent.some(o => !o.cursed);
+    // C ref: dogmove.c droppables(mtmp) — worn/wielded items are not droppable.
+    const hasDrop = mon.minvent && mon.minvent.some((o) => {
+        if (!o || o.cursed) return false;
+        if (o.owornmask) return false;
+        if (mon.weapon && o === mon.weapon) return false;
+        return true;
+    });
 
     if (hasDrop) {
         // C ref: dogmove.c:411-421 — drop path
@@ -627,7 +632,11 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player) {
                 // relobj: drop all non-cursed inventory items
                 const keep = [];
                 for (const o of mon.minvent) {
-                    if (!o.cursed) {
+                    const droppable = !!o
+                        && !o.cursed
+                        && !o.owornmask
+                        && !(mon.weapon && o === mon.weapon);
+                    if (droppable) {
                         o.ox = omx; o.oy = omy;
                         map.objects.push(o);
                         if (display && player && couldsee(map, player, mon.mx, mon.my)) {
@@ -1148,7 +1157,13 @@ function dog_move(mon, map, player, display, fov, after = false) {
         : couldsee(map, player, omx, omy);
 
     // C ref: dogmove.c:498 — dog_has_minvent = (droppables(mtmp) != 0)
-    const dogHasMinvent = !!(mon.minvent && mon.minvent.length > 0);
+    // Worn/wielded items (like a worn saddle on pony) do not count.
+    const dogHasMinvent = !!(mon.minvent && mon.minvent.some((o) => {
+        if (!o) return false;
+        if (o.owornmask) return false;
+        if (mon.weapon && o === mon.weapon) return false;
+        return true;
+    }));
 
     // C ref: dogmove.c:545 — lighting check for apport branch
     const dogLoc = map.at(omx, omy);
@@ -1240,7 +1255,8 @@ function dog_move(mon, map, player, display, fov, after = false) {
                 // C ref: scan player inventory for DOGFOOD items
                 // Each dogfood() call consumes rn2(100) via obj_resists
                 for (const invObj of player.inventory) {
-                    if (dogfood(mon, invObj, turnCount) === DOGFOOD) {
+                    const invFood = dogfood(mon, invObj, turnCount);
+                    if (invFood === DOGFOOD) {
                         appr = 1;
                         break;
                     }
@@ -1356,54 +1372,64 @@ function dog_move(mon, map, player, display, fov, after = false) {
                     continue;
                 }
 
-                const roll = rnd(20); // C ref: mhitm.c mattackm to-hit roll
-
-                // C ref: mhitm.c mattackm() — strike = (find_mac(mdef) + m_lev) > dieroll.
-                const toHit = (target.mac ?? 10) + (mon.mlevel || 1);
-                const hit = toHit > roll;
-                if (hit) {
-                    const attk = mon.attacks && mon.attacks[0];
-                    const targetVisible = couldsee(map, player, target.mx, target.my);
-                    const suppressDetail = !!player.displacedPetThisTurn;
-                    if (display && mon.name && target.name && targetVisible && !suppressDetail) {
-                        display.putstr_message(`The ${mon.name} ${attackVerb(attk?.type)} the ${target.name}.`);
-                    }
-                    const dice = (attk && attk.dice) ? attk.dice : 1;
-                    const sides = (attk && attk.sides) ? attk.sides : 1;
-                    const dmg = c_d(Math.max(1, dice), Math.max(1, sides));
-
-                    // C ref: mhitm_knockback()
-                    rn2(3);
-                    rn2(6); // C ref: mhitm_knockback
-
-                    // Minimal pet-vs-monster damage/kill handling for replay parity.
-                    // C path: mattackm -> mhitm_knockback -> mon killed -> corpse_chance -> grow_up.
-                    target.mhp -= Math.max(1, dmg);
-                    if (target.mhp <= 0) {
-                        // C ref: mondied() drops monster inventory on death.
-                        if (Array.isArray(target.minvent) && target.minvent.length > 0) {
-                            for (const obj of target.minvent) {
-                                obj.ox = target.mx;
-                                obj.oy = target.my;
-                                map.objects.push(obj);
+                const attacks = (Array.isArray(mon.attacks) && mon.attacks.length > 0)
+                    ? mon.attacks.filter((a) => a && a.type !== AT_NONE)
+                    : [{ type: AT_CLAW, dice: 1, sides: 1 }];
+                for (let ai = 0; ai < attacks.length; ai++) {
+                    const attk = attacks[ai];
+                    const roll = rnd(20 + ai); // C ref: mhitm.c mattackm to-hit roll
+                    const toHit = (target.mac ?? 10) + (mon.mlevel || 1);
+                    const hit = toHit > roll;
+                    if (hit) {
+                        const targetVisible = couldsee(map, player, target.mx, target.my);
+                        const suppressDetail = !!player.displacedPetThisTurn;
+                        if (display && mon.name && target.name && targetVisible && !suppressDetail) {
+                            display.putstr_message(`The ${mon.name} ${attackVerb(attk?.type)} the ${target.name}.`);
+                        }
+                        const dice = (attk && attk.dice) ? attk.dice : 1;
+                        const sides = (attk && attk.sides) ? attk.sides : 1;
+                        const dmg = c_d(Math.max(1, dice), Math.max(1, sides));
+                        // C ref: mhitm.c mdamagem() rolls damage before knockback RNG.
+                        rn2(3);
+                        rn2(6);
+                        target.mhp -= Math.max(1, dmg);
+                        if (target.mhp <= 0) {
+                            if (Array.isArray(target.minvent) && target.minvent.length > 0) {
+                                for (const obj of target.minvent) {
+                                    obj.ox = target.mx;
+                                    obj.oy = target.my;
+                                    map.objects.push(obj);
+                                }
+                                target.minvent = [];
                             }
-                            target.minvent = [];
+                            target.dead = true;
+                            if (display && target.name) {
+                                display.putstr_message(`The ${target.name} is killed!`);
+                            }
+                            if (petCorpseChanceRoll(target) === 0) {
+                                const corpse = mkcorpstat(CORPSE, target.mndx || 0, true);
+                                corpse.ox = target.mx;
+                                corpse.oy = target.my;
+                                map.objects.push(corpse);
+                            }
+                            const victimLevel = Number.isInteger(target.m_lev) ? target.m_lev
+                                : (Number.isInteger(target.mlevel) ? target.mlevel
+                                    : (Number.isInteger(target.type?.level) ? target.type.level : 0));
+                            rnd(Math.max(1, victimLevel + 1)); // C ref: makemon.c grow_up(victim)
+                            consumePassivemmRng(mon, target, true, true);
+                            break;
+                        } else {
+                            consumePassivemmRng(mon, target, true, false);
+                            // C ref: dogmove.c retaliatory attack gate after
+                            // a successful non-lethal pet hit.
+                            rn2(4);
                         }
-                        target.dead = true;
-                        map.removeMonster(target);
-                        if (display && target.name) {
-                            display.putstr_message(`The ${target.name} is killed!`);
-                        }
-                        petCorpseChanceRoll(target);
-                        rnd(1); // C ref: makemon.c grow_up()
                     } else {
-                        consumePassivemmRng(mon, target, true, false);
+                        consumePassivemmRng(mon, target, false, false);
+                        if (display && mon.name && target.name) {
+                            display.putstr_message(`The ${mon.name} misses the ${target.name}.`);
+                        }
                     }
-                } else {
-                    consumePassivemmRng(mon, target, false, false);
-                }
-                if (!hit && display && mon.name && target.name) {
-                    display.putstr_message(`The ${mon.name} misses the ${target.name}.`);
                 }
                 return 0; // MMOVE_DONE-equivalent for this simplified path
             }

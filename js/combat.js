@@ -1,18 +1,17 @@
 // combat.js -- Combat system
 // Mirrors uhitm.c (hero hits monster) and mhitu.c (monster hits hero)
 
-import { rn2, rnd, d, c_d, rne, rnz } from './rng.js';
+import { rn2, rnd, d, c_d } from './rng.js';
 import { exercise } from './attrib_exercise.js';
 import { A_DEX, A_CON } from './config.js';
-import { rndmonnum } from './makemon.js';
 import {
     mons, G_FREQ, MZ_TINY, MZ_HUMAN, M2_NEUTER, M2_MALE, M2_FEMALE, M2_COLLECT,
     MZ_LARGE,
     AT_CLAW, AT_BITE, AT_KICK, AT_BUTT, AT_TUCH, AT_STNG, AT_WEAP,
     S_ZOMBIE, S_MUMMY, S_VAMPIRE, S_WRAITH, S_LICH, S_GHOST, S_DEMON, S_KOP,
 } from './monsters.js';
-import { CORPSE, FOOD_CLASS, FLESH, objectData } from './objects.js';
-import { mkobj, RANDOM_CLASS } from './mkobj.js';
+import { CORPSE, FOOD_CLASS, objectData } from './objects.js';
+import { mkobj, mkcorpstat, RANDOM_CLASS } from './mkobj.js';
 
 function isUndeadOrDemon(monsterType) {
     if (!monsterType) return false;
@@ -146,46 +145,14 @@ export function playerAttackMonster(player, monster, display, map) {
         const createCorpse = !rn2(corpsetmp);
 
         if (createCorpse) {
-            // C ref: mkobj.c:521 next_ident — assign object ID
-            rnd(2);
+            // C ref: mon.c make_corpse() default path:
+            // mkcorpstat(CORPSE, mtmp/mdat, CORPSTAT_INIT).
+            const corpse = mkcorpstat(CORPSE, monster.mndx || 0, true);
 
-            // C ref: mkobj.c:1210 mksobj(CORPSE, TRUE) — init=TRUE calls rndmonnum
-            // even though mkcorpstat overrides corpsenm afterward
-            const rndmndx = rndmonnum(1);
-
-            // C ref: mkobj.c:1218 sex determination for the randomly selected monster
-            // rn2(2) consumed unless monster is neuter, male, or female
-            if (rndmndx >= 0) {
-                const rndmon = mons[rndmndx];
-                const f2 = rndmon ? rndmon.flags2 || 0 : 0;
-                if (!(f2 & M2_NEUTER) && !(f2 & M2_FEMALE) && !(f2 & M2_MALE)) {
-                    rn2(2); // sex
-                }
-            }
-
-            // C ref: mkobj.c:1409 start_corpse_timeout — corpse rot timer
-            // Fox is not lizard/lichen, not rider, not troll
-            rnz(10); // rnz internally calls rn2(1000), rne(4), rn2(2)
-
-            // Place corpse on the map so pets can find it
+            // Place corpse on the map so pets can find it.
             if (map) {
-                const corpse = {
-                    otyp: CORPSE,
-                    oclass: FOOD_CLASS,
-                    material: FLESH,
-                    corpsenm: monster.mndx || 0,
-                    name: `${monster.name} corpse`,
-                    displayChar: '%',
-                    displayColor: 7,
-                    ox: monster.mx,
-                    oy: monster.my,
-                    cursed: false,
-                    blessed: false,
-                    oartifact: 0,
-                    // C ref: mkobj.c set_corpsenm() stamps corpse age with monstermoves.
-                    // During hero action, JS player.turns is one behind C's effective moves.
-                    age: (player?.turns || 0) + 1,
-                };
+                corpse.ox = monster.mx;
+                corpse.oy = monster.my;
                 map.objects.push(corpse);
             }
         }
