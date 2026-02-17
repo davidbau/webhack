@@ -2,11 +2,16 @@ diff --git a/include/extern.h b/include/extern.h
 index 959db5978..fdbd43f66 100644
 --- a/include/extern.h
 +++ b/include/extern.h
-@@ -2732,6 +2732,11 @@ extern void shuffle_int_array(int *, int) NONNULLARG1;
- /* PRNG call logging (003-prng-logging patch) */
+@@ -2732,10 +2732,14 @@ extern void shuffle_int_array(int *, int) NONNULLARG1;
+ /* PRNG call logging (004-prng-logging patch) */
  extern void rng_log_init(void);
  extern void rng_log_set_caller(const char *, int, const char *);
-+/* Mid-level function tracing (005-midlog-infrastructure patch) */
+ extern int rng_log_get_call_count(void);
+ /* Deterministic qsort wrapper (006-deterministic-qsort patch) */
+ extern void nh_deterministic_qsort(void *, size_t, size_t,
+                                    int (QSORTCALLBACK *)(const void *,
+                                                          const void *));
++/* Mid-level function tracing (009-midlog-infrastructure patch) */
 +extern void midlog_enter(const char *, const char *, int, const char *);
 +extern void midlog_exit_int(const char *, int, const char *, int, const char *);
 +extern void midlog_exit_void(const char *, const char *, int, const char *);
@@ -23,7 +28,7 @@ index 4f6bf9353..26da07c3f 100644
  #endif /* RNGLOG_IN_RND_C */
  
 +/*
-+ * Mid-level function tracing macros (005-midlog-infrastructure patch).
++ * Mid-level function tracing macros (009-midlog-infrastructure patch).
 + *
 + * These wrap calls to key functions with >entry/<exit log lines,
 + * interleaved with the RNG log.  Uses the same C99 self-reference
@@ -342,6 +347,18 @@ index 3830e3713..d60962dcb 100644
  #include "hack.h"
  #include "mfndpos.h"
  #include "artifact.h"
+@@ -908,8 +909,13 @@ dochug(struct monst *mtmp)
+         }
+ 
+         if (!status)
+-            status = m_move(mtmp, 0);
++            midlog_enter("m_move", __FILE__, __LINE__, __func__);
++            status = m_move(mtmp, 0);
++            midlog_exit_int("m_move", status,
++                            __FILE__, __LINE__, __func__);
+         if (mon_offmap(mtmp))
+             return 1;
+         if (status != MMOVE_DIED)
 diff --git a/src/mthrowu.c b/src/mthrowu.c
 index 613150656..e40e850bd 100644
 --- a/src/mthrowu.c
@@ -363,7 +380,7 @@ index 695c156f0..c7e6c2429 100644
  }
  
 +/*
-+ * Mid-level function tracing (005-midlog-infrastructure patch).
++ * Mid-level function tracing (009-midlog-infrastructure patch).
 + *
 + * Logs >entry and <exit markers for key functions, interleaved with the
 + * RNG call log.  Uses the same rng_logfile and rng_call_count.

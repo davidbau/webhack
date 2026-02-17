@@ -83,7 +83,7 @@ for patch in "$PATCHES_DIR"/*.patch; do
     if [ -f "$patch" ]; then
         PATCH_NAME=$(basename "$patch")
         echo "     Applying $PATCH_NAME..."
-        git apply "$patch"
+        git apply --recount "$patch"
         echo "     [OK] $PATCH_NAME applied"
     fi
 done
