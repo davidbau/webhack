@@ -112,6 +112,12 @@ def fixed_datetime_env():
     return f'NETHACK_FIXED_DATETIME={dt} ' if dt else ''
 
 
+def optional_trace_env():
+    """Pass-through for optional C-side trace toggles."""
+    sort_rooms = os.environ.get('NETHACK_SORT_ROOMS_TRACE', '')
+    return f'NETHACK_SORT_ROOMS_TRACE={sort_rooms} ' if sort_rooms else ''
+
+
 def has_calendar_luck_warning(content):
     lowered = content.lower()
     return (
@@ -855,6 +861,7 @@ def run_wizload_session(seed, output_json, level_name, verbose=False):
         cmd = (
             f'NETHACKDIR={INSTALL_DIR} '
             f'{fixed_datetime_env()}'
+            f'{optional_trace_env()}'
             f'NETHACK_SEED={seed} '
             f'NETHACK_RNGLOG={rng_log_file} '
             f'NETHACK_DUMPMAP={dumpmap_file} '
@@ -1038,6 +1045,7 @@ def run_chargen_session(seed, output_json, selections, tutorial_response='n', ve
         cmd = (
             f'NETHACKDIR={INSTALL_DIR} '
             f'{fixed_datetime_env()}'
+            f'{optional_trace_env()}'
             f'NETHACK_SEED={seed} '
             f'NETHACK_RNGLOG={rng_log_file} '
             f'HOME={RESULTS_DIR} '
@@ -1300,6 +1308,7 @@ def run_interface_session(seed, output_json, keys, verbose=False):
         cmd = (
             f'NETHACKDIR={INSTALL_DIR} '
             f'{fixed_datetime_env()}'
+            f'{optional_trace_env()}'
             f'NETHACK_SEED={seed} '
             f'NETHACK_RNGLOG={rng_log_file} '
             f'HOME={RESULTS_DIR} '
@@ -1615,6 +1624,7 @@ def run_session(seed, output_json, move_str, raw_moves=False, character=None):
         cmd = (
             f'NETHACKDIR={INSTALL_DIR} '
             f'{fixed_datetime_env()}'
+            f'{optional_trace_env()}'
             f'NETHACK_SEED={seed} '
             f'NETHACK_RNGLOG={rng_log_file} '
             f'NETHACK_DUMPMAP={dumpmap_file} '

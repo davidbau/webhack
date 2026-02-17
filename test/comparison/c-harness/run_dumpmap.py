@@ -45,6 +45,12 @@ def fixed_datetime_env():
     return f'NETHACK_FIXED_DATETIME={dt} ' if dt else ''
 
 
+def optional_trace_env():
+    """Pass-through for optional C-side trace toggles."""
+    sort_rooms = os.environ.get('NETHACK_SORT_ROOMS_TRACE', '')
+    return f'NETHACK_SORT_ROOMS_TRACE={sort_rooms} ' if sort_rooms else ''
+
+
 def has_calendar_luck_warning(content):
     lowered = content.lower()
     return (
@@ -311,12 +317,14 @@ def main():
         # Build the shell command with all env vars
         rnglog = os.environ.get('NETHACK_RNGLOG', '')
         rnglog_env = f'NETHACK_RNGLOG={rnglog} ' if rnglog else ''
+        trace_env = optional_trace_env()
         cmd = (
             f'{fixed_datetime_env()}'
             f'NETHACKDIR={INSTALL_DIR} '
             f'NETHACK_SEED={seed} '
             f'NETHACK_DUMPMAP={output_file} '
             f'{rnglog_env}'
+            f'{trace_env}'
             f'HOME={RESULTS_DIR} '
             f'TERM=xterm-256color '
             f'{NETHACK_BINARY} -u Wizard -D; '

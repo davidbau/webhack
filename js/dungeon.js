@@ -880,11 +880,21 @@ function bsdQsort(arr, cmpFn) {
 
 // C ref: mklev.c sort_rooms()
 function sort_rooms(map) {
+    const DEBUG_SORT_ROOMS = typeof process !== 'undefined' && process.env.DEBUG_SORT_ROOMS === '1';
     const n = map.nroom;
 
     // C ref: qsort(svr.rooms, svn.nroom, ...) sorts only main rooms.
     // Subrooms live beyond nroom and must not participate.
     const mainRooms = map.rooms.slice(0, n);
+    if (DEBUG_SORT_ROOMS) {
+        console.log(`> sort_rooms nroom=${n}`);
+        for (let i = 0; i < mainRooms.length; i++) {
+            const r = mainRooms[i];
+            const w = r.hx - r.lx + 1;
+            const h = r.hy - r.ly + 1;
+            console.log(`> [${i}] lx=${r.lx} ly=${r.ly} hx=${r.hx} hy=${r.hy} w=${w} h=${h} roomnoidx=${r.roomnoidx} rtype=${r.rtype}`);
+        }
+    }
     // C uses libc qsort(); Array.sort() is currently the closest practical
     // runtime match for equal-key ordering behavior in this environment.
     mainRooms.sort(mkroom_cmp);
@@ -912,6 +922,15 @@ function sort_rooms(map) {
     // Update roomnoidx on rooms
     for (let i = 0; i < n; i++) {
         map.rooms[i].roomnoidx = i;
+    }
+    if (DEBUG_SORT_ROOMS) {
+        console.log(`< sort_rooms nroom=${n}`);
+        for (let i = 0; i < n; i++) {
+            const r = map.rooms[i];
+            const w = r.hx - r.lx + 1;
+            const h = r.hy - r.ly + 1;
+            console.log(`< [${i}] lx=${r.lx} ly=${r.ly} hx=${r.hx} hy=${r.hy} w=${w} h=${h} roomnoidx=${r.roomnoidx} rtype=${r.rtype}`);
+        }
     }
 }
 
