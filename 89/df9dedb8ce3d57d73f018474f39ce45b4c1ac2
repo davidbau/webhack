@@ -1,0 +1,44 @@
+{
+  "commit": "89df9de",
+  "parent": "0d75edd",
+  "date": "2026-02-16T23:34:50-05:00",
+  "author": "David Bau",
+  "message": "c-harness: restore 9-patch stack and regenerate seed6 tourist session",
+  "stats": {
+    "total": 355,
+    "pass": 293,
+    "fail": 62,
+    "skip": 0,
+    "duration": 7
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 19,
+      "pass": 00,
+      "fail": 19
+    },
+    "map": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "special": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
