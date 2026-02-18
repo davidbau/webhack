@@ -5,37 +5,37 @@
   "author": "David Bau",
   "message": "Support NETHACKOPTIONS URL syntax and clear startup params",
   "stats": {
-    "total": 344,
-    "pass": 296,
-    "fail": 48,
+    "total": 475,
+    "pass": 447,
+    "fail": 28,
     "skip": 0,
-    "duration": 13
+    "duration": 9
   },
   "categories": {
     "chargen": {
-      "total": 0,
-      "pass": 00,
-      "fail": 00
+      "total": 91,
+      "pass": 91,
+      "fail": 0
     },
     "gameplay": {
-      "total": 13,
-      "pass": 00,
-      "fail": 13
+      "total": 19,
+      "pass": 7,
+      "fail": 12
     },
     "map": {
-      "total": 0,
-      "pass": 00,
-      "fail": 00
+      "total": 10,
+      "pass": 10,
+      "fail": 0
     },
     "special": {
-      "total": 0,
-      "pass": 00,
-      "fail": 00
+      "total": 50,
+      "pass": 50,
+      "fail": 0
     },
     "unit": {
-      "total": 0,
-      "pass": 00,
-      "fail": 00
+      "total": 296,
+      "pass": 285,
+      "fail": 11
     }
   },
   "regression": false,
