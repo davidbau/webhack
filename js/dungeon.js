@@ -2721,6 +2721,8 @@ function makeniche(map, depth, trap_type) {
                     // Can't fall through top level; use ROCKTRAP instead
                     actual_trap = ROCKTRAP;
                 }
+                // C ref: mklev.c makeniche() places trap in niche cell (xx, yy + dy).
+                maketrap(map, xx, yy + dy, actual_trap, depth);
                 // C ref: mklev.c:757-763 — trap engraving + wipe
                 const engr = TRAP_ENGRAVINGS[actual_trap];
                 if (engr) {
