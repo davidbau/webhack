@@ -237,7 +237,7 @@ async function waitForStableScreen(display, {
     return latest;
 }
 
-async function replayInterfaceSession(session) {
+function ensureSessionGlobals() {
     if (typeof globalThis.window === 'undefined') {
         globalThis.window = { location: { search: '' } };
     } else if (!globalThis.window.location) {
@@ -245,13 +245,27 @@ async function replayInterfaceSession(session) {
     } else if (typeof globalThis.window.location.search !== 'string') {
         globalThis.window.location.search = '';
     }
+
     const backing = new Map();
-    globalThis.localStorage = {
+    const storage = {
         getItem(key) { return backing.has(key) ? backing.get(key) : null; },
         setItem(key, value) { backing.set(key, String(value)); },
         removeItem(key) { backing.delete(key); },
         clear() { backing.clear(); },
     };
+    // Avoid invoking Node's built-in localStorage setter (which can warn
+    // when process-level localstorage flags are malformed in some envs).
+    Object.defineProperty(globalThis, 'localStorage', {
+        value: storage,
+        configurable: true,
+        enumerable: true,
+        writable: true,
+    });
+    return storage;
+}
+
+async function replayInterfaceSession(session) {
+    const storage = ensureSessionGlobals();
 
     const seed = session.meta.seed;
     const display = new HeadlessDisplay();
@@ -283,9 +297,9 @@ async function replayInterfaceSession(session) {
     if (subtype === 'startup' || subtype === 'tutorial') {
         // C startup interface captures are recorded after login-derived name selection.
         // Mirror that state so replay starts at autopick prompt rather than name prompt.
-        globalThis.localStorage.setItem('menace-options', JSON.stringify({ name: 'wizard' }));
+        storage.setItem('menace-options', JSON.stringify({ name: 'wizard' }));
     } else {
-        globalThis.localStorage.removeItem('menace-options');
+        storage.removeItem('menace-options');
     }
 
     enableRngLog();
@@ -719,6 +733,7 @@ async function runSpecialResult(session) {
 }
 
 export async function runSessionResult(session) {
+    ensureSessionGlobals();
     if (session.meta.type === 'chargen') return runChargenResult(session);
     if (session.meta.type === 'interface' && session.meta.regen?.subtype === 'chargen') {
         return runChargenResult(session);

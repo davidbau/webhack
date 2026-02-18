@@ -212,12 +212,23 @@ function indentBlock(text, indent = '  ') {
 
 describe('Session Tests', () => {
     test('all session comparisons', async () => {
+        const suiteStartMs = Date.now();
         const summaryRows = [];
         const failures = [];
         const loadErrors = [];
+        console.log(`[session] categories: ${TYPE_GROUPS.join(', ')}`);
 
         for (const type of TYPE_GROUPS) {
+            const typeStartMs = Date.now();
+            console.log(`[session] ${type}: running...`);
+            const heartbeat = setInterval(() => {
+                const elapsedSec = ((Date.now() - typeStartMs) / 1000).toFixed(1);
+                console.log(`[session] ${type}: still running (${elapsedSec}s)...`);
+            }, 15000);
+            if (typeof heartbeat.unref === 'function') heartbeat.unref();
             await loadTypeResults(type);
+            clearInterval(heartbeat);
+            const elapsedSec = ((Date.now() - typeStartMs) / 1000).toFixed(1);
             if (errorsByType.has(type)) {
                 const err = errorsByType.get(type);
                 loadErrors.push({ type, error: err });
@@ -228,12 +239,14 @@ describe('Session Tests', () => {
                     failed: 1,
                     modes: new Map([['load-error', 1]]),
                 });
+                console.log(`[session] ${type}: load error (${elapsedSec}s)`);
                 continue;
             }
 
             const rows = resultsByType.get(type) || [];
             const summary = summarizeRows(rows);
             summaryRows.push({ type, ...summary });
+            console.log(`[session] ${type}: ${summary.passed}/${summary.total} passed (${summary.failed} failed) (${elapsedSec}s)`);
             for (const row of rows) {
                 if (row.passed) continue;
                 failures.push({
@@ -249,6 +262,8 @@ describe('Session Tests', () => {
             if (a.type !== b.type) return a.type.localeCompare(b.type);
             return a.session.localeCompare(b.session);
         });
+        const totalElapsedSec = ((Date.now() - suiteStartMs) / 1000).toFixed(1);
+        console.log(`[session] completed in ${totalElapsedSec}s`);
 
         if (loadErrors.length > 0 || sortedFailures.length > 0) {
             const lines = ['Session failure details (aggregated):'];
