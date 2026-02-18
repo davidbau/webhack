@@ -527,6 +527,9 @@ export class HeadlessGame {
 
         const result = await rhack(ch, this);
         if (result && result.tookTime && !options.skipTurnEnd) {
+            // C ref: vision.c vision_recalc() runs during domove(), so FOV
+            // is up-to-date before movemon().  Recompute here to match.
+            this.fov.compute(this.map, this.player.x, this.player.y);
             if (!options.skipMonsterMove) {
                 settrack(this.player);
                 movemon(this.map, this.player, this.display, this.fov, this);
@@ -553,6 +556,7 @@ export class HeadlessGame {
                     this.occupation = null;
                 }
                 if (interruptedOcc) continue;
+                this.fov.compute(this.map, this.player.x, this.player.y);
                 if (!options.skipMonsterMove) {
                     settrack(this.player);
                     movemon(this.map, this.player, this.display, this.fov, this);
@@ -574,6 +578,7 @@ export class HeadlessGame {
                 this.multi--;
                 const repeated = await rhack(this.cmdKey, this);
                 if (!repeated || !repeated.tookTime) break;
+                this.fov.compute(this.map, this.player.x, this.player.y);
                 if (!options.skipMonsterMove) {
                     settrack(this.player);
                     movemon(this.map, this.player, this.display, this.fov, this);
@@ -599,6 +604,7 @@ export class HeadlessGame {
                         this.occupation = null;
                     }
                     if (interruptedOcc) continue;
+                    this.fov.compute(this.map, this.player.x, this.player.y);
                     if (!options.skipMonsterMove) {
                         settrack(this.player);
                         movemon(this.map, this.player, this.display, this.fov, this);
@@ -1071,6 +1077,8 @@ HeadlessGame.prototype.executeCommand = async function executeCommand(ch) {
     }
 
     if (result && result.tookTime) {
+        // C ref: vision_recalc() runs during domove(), update FOV before monsters act
+        this.fov.compute(this.map, this.player.x, this.player.y);
         movemon(this.map, this.player, this.display, this.fov, this);
         this.simulateTurnEnd();
         if (typeof this.hooks.onTurnAdvanced === 'function') {
