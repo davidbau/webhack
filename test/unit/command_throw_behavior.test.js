@@ -55,6 +55,7 @@ describe('throw behavior parity', () => {
         assert.equal(game.player.inventory[0].quan, 2);
         assert.equal(game.map.objects.length, 1);
         assert.equal(game.map.objects[0].quan, 1);
+        assert.equal(game.display.topMessage, null);
     });
 
     it('rejects throwing worn armor with C-style message', async () => {

@@ -1936,7 +1936,9 @@ async function handleThrow(player, map, display) {
             thrownItem.oy = player.y;
         }
         map.objects.push(thrownItem);
-        display.putstr_message(`You throw ${doname(thrownItem, null)}.`);
+        // C ref: dothrow.c throw_obj() does not print a generic single-throw
+        // message; clear the direction prompt instead of synthesizing one.
+        replacePromptMessage();
         return { moved: false, tookTime: true };
     }
 }
