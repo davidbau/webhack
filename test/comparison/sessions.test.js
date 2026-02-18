@@ -1,8 +1,8 @@
 /**
  * Session Tests - Node.js test runner wrapper
  *
- * Runs session_test_runner.js via runSessionBundle and reports
- * one subtest per session with detailed divergence output.
+ * Runs all sessions in a single parallel pool via runSessionBundle,
+ * then groups results by category for reporting.
  */
 
 import { describe, test } from 'node:test';
@@ -17,33 +17,13 @@ const TYPE_GROUPS = [
     'other',
 ];
 
-const resultsByType = new Map();
-const errorsByType = new Map();
-
-async function loadTypeResults(type) {
-    if (resultsByType.has(type) || errorsByType.has(type)) return;
-    try {
-        const bundle = await runSessionBundle({
-            verbose: false,
-            useGolden: false,
-            typeFilter: type,
-        });
-        const rows = (bundle?.results || []).filter((r) => (r.type || 'other') === type);
-        resultsByType.set(type, rows);
-    } catch (e) {
-        errorsByType.set(type, e);
-    }
-}
-
 function formatCallStack(stack) {
     if (!stack || stack.length === 0) return '';
-    // Format: >innermost >outer >outermost (reverse order for display)
     return ' ' + stack.map(s => s.split(' @ ')[0]).reverse().join(' ');
 }
 
 function formatRngEntry(raw, stack) {
     if (!raw) return '(missing)';
-    // Append call stack to the raw entry: rn2(5)=3 @ foo.c:32 >inner >outer
     const stackStr = formatCallStack(stack);
     return raw + stackStr;
 }
@@ -210,50 +190,64 @@ function indentBlock(text, indent = '  ') {
         .join('\n');
 }
 
+function progressBar(done, total, width = 30) {
+    const frac = total > 0 ? done / total : 0;
+    const filled = Math.round(frac * width);
+    const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(width - filled);
+    const pct = Math.round(frac * 100);
+    return `[${bar}] ${done}/${total} (${pct}%)`;
+}
+
 describe('Session Tests', () => {
     test('all session comparisons', async () => {
         const suiteStartMs = Date.now();
+        const isTTY = process.stderr.isTTY;
+
+        let bundle;
+        try {
+            bundle = await runSessionBundle({
+                verbose: false,
+                useGolden: false,
+                onProgress(done, total, result) {
+                    if (isTTY) {
+                        const elapsed = ((Date.now() - suiteStartMs) / 1000).toFixed(1);
+                        const status = result.passed ? 'ok' : 'FAIL';
+                        const name = result.session?.replace('.session.json', '') ?? '';
+                        const cols = process.stderr.columns || 80;
+                        const prefix = `\r${progressBar(done, total)}  ${elapsed}s  `;
+                        const label = `${status} ${name}`;
+                        const maxLabel = cols - prefix.length + 1 - 1;
+                        const truncated = maxLabel > 0 ? label.slice(0, maxLabel) : '';
+                        process.stderr.write(`${prefix}${truncated}\x1b[K`);
+                    }
+                },
+            });
+        } finally {
+            if (isTTY) process.stderr.write('\r\x1b[K');
+        }
+
+        const allResults = bundle?.results || [];
+        const totalElapsedSec = ((Date.now() - suiteStartMs) / 1000).toFixed(1);
+        console.log(`[session] ${allResults.length} sessions completed in ${totalElapsedSec}s`);
+
+        // Group results by type
+        const resultsByType = new Map();
+        for (const type of TYPE_GROUPS) resultsByType.set(type, []);
+        for (const r of allResults) {
+            const type = r.type && TYPE_GROUPS.includes(r.type) ? r.type : 'other';
+            resultsByType.get(type).push(r);
+        }
+
         const summaryRows = [];
         const failures = [];
-        const loadErrors = [];
-        console.log(`[session] categories: ${TYPE_GROUPS.join(', ')}`);
 
         for (const type of TYPE_GROUPS) {
-            const typeStartMs = Date.now();
-            console.log(`[session] ${type}: running...`);
-            const heartbeat = setInterval(() => {
-                const elapsedSec = ((Date.now() - typeStartMs) / 1000).toFixed(1);
-                console.log(`[session] ${type}: still running (${elapsedSec}s)...`);
-            }, 15000);
-            if (typeof heartbeat.unref === 'function') heartbeat.unref();
-            await loadTypeResults(type);
-            clearInterval(heartbeat);
-            const elapsedSec = ((Date.now() - typeStartMs) / 1000).toFixed(1);
-            if (errorsByType.has(type)) {
-                const err = errorsByType.get(type);
-                loadErrors.push({ type, error: err });
-                summaryRows.push({
-                    type,
-                    total: 0,
-                    passed: 0,
-                    failed: 1,
-                    modes: new Map([['load-error', 1]]),
-                });
-                console.log(`[session] ${type}: load error (${elapsedSec}s)`);
-                continue;
-            }
-
-            const rows = resultsByType.get(type) || [];
+            const rows = resultsByType.get(type);
             const summary = summarizeRows(rows);
             summaryRows.push({ type, ...summary });
-            console.log(`[session] ${type}: ${summary.passed}/${summary.total} passed (${summary.failed} failed) (${elapsedSec}s)`);
             for (const row of rows) {
                 if (row.passed) continue;
-                failures.push({
-                    type,
-                    session: row.session,
-                    details: getErrorMessage(row),
-                });
+                failures.push({ type, session: row.session, details: getErrorMessage(row) });
             }
         }
 
@@ -262,15 +256,9 @@ describe('Session Tests', () => {
             if (a.type !== b.type) return a.type.localeCompare(b.type);
             return a.session.localeCompare(b.session);
         });
-        const totalElapsedSec = ((Date.now() - suiteStartMs) / 1000).toFixed(1);
-        console.log(`[session] completed in ${totalElapsedSec}s`);
 
-        if (loadErrors.length > 0 || sortedFailures.length > 0) {
+        if (sortedFailures.length > 0) {
             const lines = ['Session failure details (aggregated):'];
-            for (const entry of loadErrors) {
-                const msg = entry.error?.stack || entry.error?.message || String(entry.error);
-                lines.push(`\n[${entry.type}] <load error>\n${indentBlock(msg)}`);
-            }
             for (const entry of sortedFailures) {
                 lines.push(`\n[${entry.type}] ${entry.session}\n${indentBlock(entry.details)}`);
             }

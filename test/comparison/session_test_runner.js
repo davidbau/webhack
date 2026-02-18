@@ -744,7 +744,7 @@ export async function runSessionResult(session) {
     return runGameplayResult(session);
 }
 
-async function runSessionsParallel(sessions, { numWorkers, verbose }) {
+async function runSessionsParallel(sessions, { numWorkers, verbose, onProgress }) {
     const workerPath = join(__dirname, 'session_worker.js');
     const results = new Array(sessions.length);
 
@@ -770,6 +770,9 @@ async function runSessionsParallel(sessions, { numWorkers, verbose }) {
                 if (msg.type === 'result') {
                     results[msg.id] = msg.result;
                     completed++;
+                    if (onProgress) {
+                        onProgress(completed, sessions.length, msg.result);
+                    }
                     if (verbose) {
                         console.log(formatResult(msg.result));
                     }
@@ -822,7 +825,8 @@ export async function runSessionBundle({
     typeFilter = null,
     sessionPath = null,
     failFast = false,
-    parallel = 0,
+    parallel = availableParallelism(),
+    onProgress = null,
 } = {}) {
     const sessions = loadAllSessions({
         sessionsDir: SESSIONS_DIR,
@@ -848,6 +852,7 @@ export async function runSessionBundle({
         results = await runSessionsParallel(sessions, {
             numWorkers: parallel,
             verbose,
+            onProgress,
         });
     } else {
         // Run sequentially
@@ -884,7 +889,7 @@ export async function runSessionCli() {
         typeFilter: null,
         sessionPath: null,
         failFast: false,
-        parallel: 0,
+        parallel: availableParallelism(),
     };
     const argv = process.argv.slice(2);
     for (let i = 0; i < argv.length; i++) {
@@ -892,6 +897,7 @@ export async function runSessionCli() {
         if (arg === '--verbose') args.verbose = true;
         else if (arg === '--golden') args.useGolden = true;
         else if (arg === '--fail-fast') args.failFast = true;
+        else if (arg === '--no-parallel') args.parallel = 0;
         else if (arg === '--parallel') args.parallel = availableParallelism();
         else if (arg.startsWith('--parallel=')) {
             const val = arg.slice('--parallel='.length);
