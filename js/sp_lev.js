@@ -6709,10 +6709,17 @@ export const nh = {
      * @param {string} config_string - Config string (e.g., "OPTIONS=mention_walls")
      */
     parse_config: (config_string) => {
-        // Stub: Config parsing only affects runtime behavior, not level generation
-        // Tutorial levels use this to set display options, but since we're just
-        // generating the level structure, we can safely ignore it
-        return;
+        if (!levelState.map || typeof config_string !== 'string') return;
+        const m = config_string.match(/^OPTIONS=(.*)$/i);
+        if (!m) return;
+        const opts = m[1].split(',').map(s => String(s).trim()).filter(Boolean);
+        for (const opt of opts) {
+            const neg = opt.startsWith('!');
+            const name = neg ? opt.slice(1) : opt;
+            if (name === 'mention_walls' || name === 'mention_decor' || name === 'lit_corridor') {
+                levelState.map.flags[name] = !neg;
+            }
+        }
     },
 };
 

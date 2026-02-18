@@ -855,6 +855,7 @@ export async function replaySession(seed, session, opts = {}) {
         game.player.dungeonLevel = 1;
         game.player.inTutorial = true;
         game.player.showExp = true;
+        if (game.map?.flags?.lit_corridor) game.flags.lit_corridor = true;
         game.placePlayerOnLevel('down');
         game.renderCurrentScreen();
     };

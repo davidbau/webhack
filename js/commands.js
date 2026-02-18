@@ -661,16 +661,14 @@ async function handleMovement(dir, player, map, display, game) {
 
     // Check terrain
     if (IS_WALL(loc.typ)) {
-        // Tutorial traces expect a terrain-identification message on blocked
-        // movement into walls.
-        if (map?.flags?.is_tutorial) {
+        if (map?.flags?.mention_walls || map?.flags?.is_tutorial) {
             display.putstr_message("It's a wall.");
         }
         return { moved: false, tookTime: false };
     }
 
     if (loc.typ === 0) { // STONE
-        if (map?.flags?.is_tutorial) {
+        if (map?.flags?.mention_walls || map?.flags?.is_tutorial) {
             display.putstr_message("It's a wall.");
         }
         return { moved: false, tookTime: false };

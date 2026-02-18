@@ -249,6 +249,7 @@ export class NetHackGame {
         this.player.dungeonLevel = 1;
         this.player.inTutorial = true;
         this.player.showExp = true;
+        if (this.map?.flags?.lit_corridor) this.flags.lit_corridor = true;
         this.placePlayerOnLevel('down');
 
         this.fov.compute(this.map, this.player.x, this.player.y);
