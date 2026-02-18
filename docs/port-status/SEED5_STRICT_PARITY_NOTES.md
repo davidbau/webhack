@@ -209,3 +209,37 @@ Date: 2026-02-17
 4. `Xp` formatting parity.
    - In showexp mode, status line 2 now renders as `Xp:<level>` rather than
      `Xp:<level>/<exp>`, matching captured C status format in replay sessions.
+
+---
+
+Date: 2026-02-18
+
+## Additional Progress
+
+- Seed5 strict gameplay replay improved materially via replay-step boundary
+  attribution work:
+  - RNG matched calls: `11175 -> 11893`
+  - first RNG divergence moved from step `44` to step `201`
+- Guard sessions remained stable while iterating:
+  - `seed42_inventory_wizard_gameplay` still passes
+  - `seed3_selfplay_20turns_gameplay` still passes
+
+## Additional C-Guided Learnings
+
+1. Step-boundary attribution can dominate apparent RNG divergence.
+   - For `seed5`, the first failure was not an immediate gameplay logic mismatch:
+     JS step 44 had trailing RNG that exactly matched the prefix of C step 45.
+   - Normalizing this replay boundary (without mutating core engine logic)
+     recovered a large block of parity.
+
+2. Prefix-overflow matching should be proof-based.
+   - Replay deferral only applies when:
+     - current step's expected RNG is a strict prefix of JS produced RNG, and
+     - overflow comparable calls are an exact prefix of next step expected calls.
+   - This keeps the normalization narrow and avoids broad heuristic shifts.
+
+3. Post-fix frontier now points at real `dog_move` logic.
+   - Current first RNG mismatch is in step 201 (`dog_move` stack), where C expects
+     `obj_resists`-driven `rn2(100)` in a spot JS currently produces `rn2(8)`.
+   - This indicates remaining divergence is in pet object-scan/goal branch order,
+     not early replay boundary handling.
