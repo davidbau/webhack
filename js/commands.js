@@ -1161,9 +1161,7 @@ async function handleOpen(player, map, display, game) {
     const c = String.fromCharCode(dirCh);
     const dir = DIRECTION_KEYS[c];
     if (!dir) {
-        if (game.flags.verbose) {
-            display.putstr_message("Never mind.");
-        }
+        display.putstr_message("Never mind.");
         return { moved: false, tookTime: false };
     }
 
@@ -1218,9 +1216,7 @@ async function handleClose(player, map, display, game) {
     const c = String.fromCharCode(dirCh);
     const dir = DIRECTION_KEYS[c];
     if (!dir) {
-        if (game.flags.verbose) {
-            display.putstr_message("Never mind.");
-        }
+        display.putstr_message("Never mind.");
         return { moved: false, tookTime: false };
     }
 
