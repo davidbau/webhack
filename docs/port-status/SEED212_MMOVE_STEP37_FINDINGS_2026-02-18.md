@@ -9,8 +9,8 @@ checkpoints.
 This note began as a step-37 `m_move` denominator mismatch investigation.
 After the landed fixes below, that blocker is cleared. Current state:
 
-- first screen divergence now appears later at gameplay `step 80`
-  (message/glyph text frame mismatch)
+- first screen divergence now appears later at gameplay `step 121`
+  (post-turn glyph placement mismatch)
 - first RNG divergence now appears at gameplay `step 90`, RNG index `20`:
   - JS: `rn2(24)=23 @ m_move(...)`
   - C: `rn2(5)=3 @ distfleeck(monmove.c:539)`
@@ -96,6 +96,26 @@ Observed effect on `seed212_valkyrie_wizard`:
 - RNG matched calls improved from `2305/11044` to `2475/10886`
 - first RNG divergence moved from step 38 to step 90
 - first screen divergence moved from step 38 to step 80
+
+## Inventory Action-Menu Refinement (same day)
+
+The step-80 screen drift was traced to inventory action-menu content for
+oil lamps:
+
+- missing `a - Light this light source`
+- missing `R - Rub this oil lamp`
+- stale right-side row tails due action rows not being cleared before redraw
+
+Fixes landed in `js/commands.js`:
+
+- add light-source and rub actions for lamp menu variants
+- clear each action row before writing menu lines
+
+Observed effect on `seed212_valkyrie_wizard`:
+
+- screen matched frames improved `148/407` -> `150/407`
+- first screen divergence moved from step 80 to step 121
+- first RNG divergence remains step 90 (`rn2(24)` vs C `distfleeck rn2(5)`)
 
 ## Additional Fix Landed During This Pass
 

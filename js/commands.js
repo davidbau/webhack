@@ -1539,9 +1539,18 @@ async function handleInventory(player, display, game) {
                 && !/^book of the dead$/i.test(rawName))
                 ? `spellbook of ${rawName}`
                 : rawName;
+            const lowerBaseName = baseName.toLowerCase();
             const noun = ((selected.quan || 1) > 1 && !baseName.endsWith('s'))
                 ? `${baseName}s`
                 : baseName;
+            const isLightSource = (
+                lowerBaseName === 'oil lamp'
+                || lowerBaseName === 'brass lantern'
+                || lowerBaseName === 'magic lamp'
+                || lowerBaseName === 'wax candle'
+                || lowerBaseName === 'tallow candle'
+            );
+            const isRubbableLamp = (lowerBaseName === 'oil lamp' || lowerBaseName === 'magic lamp');
             let menuOffx = 34;
             if (typeof display.setCell === 'function'
                 && Number.isInteger(display.cols)
@@ -1595,12 +1604,18 @@ async function handleInventory(player, display, game) {
                         '(end)',
                     ]
                     : [
+                        ...(isLightSource
+                            ? [selected.lamplit
+                                ? 'a - Snuff out this light source'
+                                : 'a - Light this light source']
+                            : []),
                         ...(baseName.toLowerCase() === 'stethoscope'
                             ? ['a - Listen through the stethoscope']
                             : []),
                         `c - Name this specific ${noun}`,
                         'd - Drop this item',
                         'i - Adjust inventory by assigning new letter',
+                        ...(isRubbableLamp ? [`R - Rub this ${noun}`] : []),
                         't - Throw this item',
                         'w - Wield this item in your hands',
                         '/ - Look up information about this',
@@ -1626,6 +1641,7 @@ async function handleInventory(player, display, game) {
             const stackActions = rawActions.map((line) => `${pad}${line}`);
             if (typeof display.putstr === 'function') {
                 for (let i = 0; i < stackActions.length; i++) {
+                    if (typeof display.clearRow === 'function') display.clearRow(i + 2);
                     display.putstr(0, i + 2, stackActions[i]);
                 }
             }

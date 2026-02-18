@@ -311,6 +311,16 @@ Practical rule: if an Enter step matches one turn and then misses an immediate
 follow-on monster-turn block, verify keypad Enter + pet-displacement handling
 and `cmdKey` bookkeeping before changing monster AI logic.
 
+### Inventory action menus can be parity-critical screen state
+
+Inventory submenu content is part of recorded screen parity, not cosmetic-only
+UI. Missing item-specific actions (for example oil-lamp `a - Light ...` and
+`R - Rub ...`) can become the first deterministic divergence even when RNG and
+movement are aligned.
+
+Practical rule: when screen divergence appears on an item-action frame, diff
+the exact action list and row-clearing behavior before touching turn logic.
+
 ---
 
 ## Phase Chronicles
