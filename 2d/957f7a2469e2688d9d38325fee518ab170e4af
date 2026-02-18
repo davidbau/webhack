@@ -1,0 +1,44 @@
+{
+  "commit": "2d957f7",
+  "parent": "4a7687c",
+  "date": "2026-02-17T04:20:33-05:00",
+  "author": "David Bau",
+  "message": "Improve nonwizard pet parity and restore unit regressions",
+  "stats": {
+    "total": 354,
+    "pass": 296,
+    "fail": 58,
+    "skip": 0,
+    "duration": 8
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 15,
+      "pass": 00,
+      "fail": 15
+    },
+    "map": {
+      "total": 7,
+      "pass": 00,
+      "fail": 7
+    },
+    "special": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
