@@ -43,7 +43,7 @@ import {
     RANDOM_CLASS,
 } from './mkobj.js';
 import { makemon, mkclass, rndmonnum_adj, NO_MM_FLAGS, MM_NOGRP, setMakemonRoleContext, setMakemonLevelContext, getMakemonRoleIndex, setMakemonInMklevContext } from './makemon.js';
-import { mons, S_HUMAN, S_UNICORN, PM_ELF, PM_HUMAN, PM_GNOME, PM_DWARF, PM_ORC, PM_ARCHEOLOGIST, PM_WIZARD, PM_MINOTAUR } from './monsters.js';
+import { mons, S_HUMAN, S_UNICORN, PM_ELF, PM_HUMAN, PM_GNOME, PM_DWARF, PM_ORC, PM_ARCHEOLOGIST, PM_WIZARD, PM_MINOTAUR, PM_GIANT_SPIDER } from './monsters.js';
 import { init_objects } from './o_init.js';
 import { roles } from './player.js';
 import {
@@ -727,15 +727,17 @@ function add_room_to_map(map, lowx, lowy, hix, hiy, lit, rtype, special) {
 function add_subroom_to_map(map, proom, lowx, lowy, hix, hiy, lit, rtype, special) {
     const croom = makeRoom();
     croom.needjoining = false;
-    // Subrooms use a pseudo room index beyond nroom (matches C pointer arithmetic)
+    // Keep subroom room numbers outside the main-room range so sort_rooms()
+    // remapping does not rewrite them.
     const nsubroom = map.nsubroom || 0;
-    const roomIdx = map.nroom + nsubroom;
+    const roomStoreIdx = map.nroom + nsubroom;
+    const roomnoIdx = MAXNROFROOMS + 1 + nsubroom;
     map.nsubroom = nsubroom + 1;
     // Add subroom to map.rooms array at index roomIdx (beyond main rooms)
     // In C, subrooms occupy indices [nroom..nroom+nsubroom) in the rooms array
-    map.rooms[roomIdx] = croom;
+    map.rooms[roomStoreIdx] = croom;
     do_room_or_subroom(map, croom, lowx, lowy, hix, hiy, lit, rtype,
-                       special, false, roomIdx);
+                       special, false, roomnoIdx);
     // Some special-level room construction paths build room-like objects
     // without full mkroom fields. Normalize here before attaching subrooms.
     if (!proom.sbrooms) proom.sbrooms = [];
@@ -3397,7 +3399,11 @@ export function fill_ordinary_room(map, croom, depth, bonusItems) {
     if (!rn2(3)) {
         const pos = somexyspace(map, croom);
         if (pos) {
-            makemon(null, pos.x, pos.y, MM_NOGRP, depth, map);
+            const tmonst = makemon(null, pos.x, pos.y, MM_NOGRP, depth, map);
+            if (tmonst && tmonst.mndx === PM_GIANT_SPIDER
+                && !occupied(map, pos.x, pos.y)) {
+                maketrap(map, pos.x, pos.y, WEB, depth);
+            }
         }
     }
 
