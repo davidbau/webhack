@@ -1,0 +1,44 @@
+{
+  "commit": "4c26df8",
+  "parent": "c52f0cc",
+  "date": "2026-02-17T20:20:12-05:00",
+  "author": "David Bau",
+  "message": "test: add 26 sessions to seeds.json, remove non-descending sessions",
+  "stats": {
+    "total": 333,
+    "pass": 296,
+    "fail": 37,
+    "skip": 0,
+    "duration": 30
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 2,
+      "pass": 00,
+      "fail": 2
+    },
+    "map": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "special": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
