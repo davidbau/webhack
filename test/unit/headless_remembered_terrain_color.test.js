@@ -42,3 +42,22 @@ test('headless remembered room floors use NO_COLOR tone', () => {
     assert.equal(display.colors[row][x], 8);
     assert.match(display.getScreenAnsiLines()[row], /\u001b\[0;90;40m/);
 });
+
+test('headless remembered objects keep remembered object color', () => {
+    const display = new HeadlessDisplay();
+    const map = new GameMap();
+    const x = 7;
+    const y = 7;
+    const row = y + 1;
+
+    const loc = map.at(x, y);
+    loc.seenv = 0xff;
+    loc.mem_obj = '$';
+    loc.mem_obj_color = 11;
+
+    const fov = { canSee: () => false };
+    display.renderMap(map, null, fov, { msg_window: false, DECgraphics: false, color: true });
+
+    assert.equal(display.grid[row][x], '$');
+    assert.equal(display.colors[row][x], 11);
+});

@@ -27,6 +27,7 @@ export function makeLocation() {
         mem_bg: 0,         // remembered background
         mem_trap: 0,       // remembered trap
         mem_obj: 0,        // remembered object
+        mem_obj_color: 0,  // remembered object color
         mem_invis: false,  // remembered invisible monster
         nondiggable: false, // W_NONDIGGABLE flag (set by bound_digging)
     };
@@ -156,6 +157,7 @@ export class GameMap {
                 loc.mem_bg = 0;
                 loc.mem_trap = 0;
                 loc.mem_obj = 0;
+                loc.mem_obj_color = 0;
                 loc.mem_invis = false;
             }
         }

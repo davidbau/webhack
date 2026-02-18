@@ -264,6 +264,16 @@ Practical rule: preserve startup **message/topline state** for replay, but do
 not blindly force startup map rows into later steps, or you'll create unrelated
 map-render diffs in wizard sessions.
 
+### Remembered object glyphs need remembered colors
+
+Out-of-sight object memory is not just a remembered character (`mem_obj`); C
+rendering behavior also preserves the remembered object color. If memory falls
+back to a fixed color (for example always black), gameplay sessions can show
+large color drift while RNG and geometry stay unchanged.
+
+Practical rule: store both remembered object glyph **and** color, and render
+that pair when tiles are unseen.
+
 ### Role index mapping
 
 The 13 roles are indexed 0–12 in C order. Wizard is index 12, not 13.

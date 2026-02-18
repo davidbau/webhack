@@ -1614,7 +1614,10 @@ export class HeadlessDisplay {
                     const loc = gameMap.at(x, y);
                     if (loc && loc.seenv) {
                         if (loc.mem_obj) {
-                            this.setCell(col, row, loc.mem_obj, CLR_BLACK);
+                            const rememberedObjColor = Number.isInteger(loc.mem_obj_color)
+                                ? loc.mem_obj_color
+                                : CLR_BLACK;
+                            this.setCell(col, row, loc.mem_obj, rememberedObjColor);
                             continue;
                         }
                         if (loc.mem_trap) {
@@ -1649,8 +1652,12 @@ export class HeadlessDisplay {
                     if (underObjs.length > 0) {
                         const underTop = underObjs[underObjs.length - 1];
                         loc.mem_obj = underTop.displayChar || 0;
+                        loc.mem_obj_color = Number.isInteger(underTop.displayColor)
+                            ? underTop.displayColor
+                            : CLR_GRAY;
                     } else {
                         loc.mem_obj = 0;
+                        loc.mem_obj_color = 0;
                     }
                     const hallu = !!player?.hallucinating;
                     const glyph = monsterMapGlyph(mon, hallu);
@@ -1662,12 +1669,16 @@ export class HeadlessDisplay {
                 if (objs.length > 0) {
                     const topObj = objs[objs.length - 1];
                     loc.mem_obj = topObj.displayChar || 0;
+                    loc.mem_obj_color = Number.isInteger(topObj.displayColor)
+                        ? topObj.displayColor
+                        : CLR_GRAY;
                     const hallu = !!player?.hallucinating;
                     const glyph = objectMapGlyph(topObj, hallu);
                     this.setCell(col, row, glyph.ch, glyph.color);
                     continue;
                 }
                 loc.mem_obj = 0;
+                loc.mem_obj_color = 0;
 
                 const trap = gameMap.trapAt(x, y);
                 if (trap && trap.tseen) {
@@ -1684,6 +1695,7 @@ export class HeadlessDisplay {
                     if (engr) {
                         const engrCh = (loc.typ === CORR || loc.typ === SCORR) ? '#' : '`';
                         loc.mem_obj = engrCh;
+                        loc.mem_obj_color = CLR_BRIGHT_BLUE;
                         this.setCell(col, row, engrCh, CLR_BRIGHT_BLUE);
                         continue;
                     }

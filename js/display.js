@@ -405,8 +405,11 @@ export class Display {
                         // C-like memory: remembered object glyph overlays
                         // remembered terrain when out of sight.
                         if (loc.mem_obj) {
-                            this.setCell(col, row, loc.mem_obj, CLR_BLACK);
-                            this.cellInfo[row][col] = { name: 'remembered object', desc: '(remembered)', color: CLR_BLACK };
+                            const rememberedObjColor = Number.isInteger(loc.mem_obj_color)
+                                ? loc.mem_obj_color
+                                : CLR_BLACK;
+                            this.setCell(col, row, loc.mem_obj, rememberedObjColor);
+                            this.cellInfo[row][col] = { name: 'remembered object', desc: '(remembered)', color: rememberedObjColor };
                             continue;
                         }
                         if (loc.mem_trap) {
@@ -453,8 +456,12 @@ export class Display {
                     if (underObjs.length > 0) {
                         const underTop = underObjs[underObjs.length - 1];
                         loc.mem_obj = underTop.displayChar || 0;
+                        loc.mem_obj_color = Number.isInteger(underTop.displayColor)
+                            ? underTop.displayColor
+                            : CLR_GRAY;
                     } else {
                         loc.mem_obj = 0;
+                        loc.mem_obj_color = 0;
                     }
                     const hallu = !!player?.hallucinating;
                     const glyph = monsterMapGlyph(mon, hallu);
@@ -470,6 +477,9 @@ export class Display {
                 if (objs.length > 0) {
                     const topObj = objs[objs.length - 1];
                     loc.mem_obj = topObj.displayChar || 0;
+                    loc.mem_obj_color = Number.isInteger(topObj.displayColor)
+                        ? topObj.displayColor
+                        : CLR_GRAY;
                     const hallu = !!player?.hallucinating;
                     const glyph = objectMapGlyph(topObj, hallu);
                     this.setCell(col, row, glyph.ch, glyph.color);
@@ -480,6 +490,7 @@ export class Display {
                     continue;
                 }
                 loc.mem_obj = 0;
+                loc.mem_obj_color = 0;
 
                 // Check for traps
                 const trap = gameMap.trapAt(x, y);
@@ -500,6 +511,7 @@ export class Display {
                     if (engr) {
                         const engrCh = (loc.typ === CORR || loc.typ === SCORR) ? '#' : '`';
                         loc.mem_obj = engrCh;
+                        loc.mem_obj_color = CLR_BRIGHT_BLUE;
                         this.setCell(col, row, engrCh, CLR_BRIGHT_BLUE);
                         this.cellInfo[row][col] = { name: 'engraving', desc: '', color: CLR_BRIGHT_BLUE };
                         continue;
