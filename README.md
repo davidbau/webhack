@@ -1,4 +1,4 @@
-# Menace
+# Mazes of Menace
 
 **NetHack 3.7 Royal Jelly — vibe-coded by The Hive**
 
