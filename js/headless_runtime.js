@@ -1300,8 +1300,13 @@ export class HeadlessDisplay {
             const line = lines[i];
             // First line (menu header) gets inverse video if it starts with space and contains text
             const isHeader = (i === 0 && line.trim().length > 0 && line.startsWith(' '));
-            const attr = isHeader ? 1 : 0;  // 1 = inverse video
-            this.putstr(offx, i, line, CLR_GRAY, attr);
+            if (isHeader) {
+                // C tty keeps leading padding space non-inverse, then inverts header text.
+                this.setCell(offx, i, ' ', CLR_GRAY, 0);
+                this.putstr(offx + 1, i, line.slice(1), CLR_GRAY, 1);
+            } else {
+                this.putstr(offx, i, line, CLR_GRAY, 0);
+            }
         }
 
         return offx;

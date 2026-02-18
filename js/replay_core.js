@@ -860,7 +860,25 @@ export async function replaySession(seed, session, opts = {}) {
         game.renderCurrentScreen();
     };
 
-    const pushStepResult = (stepLogRaw, screen, step, stepScreen, stepIndex) => {
+    const pushStepResult = (stepLogRaw, screen, arg3, arg4, arg5, arg6) => {
+        let screenAnsiOverride;
+        let step;
+        let stepScreen;
+        let stepIndex;
+        // Backward-compatible arity:
+        // old: (stepLogRaw, screen, step, stepScreen, stepIndex)
+        // new: (stepLogRaw, screen, screenAnsiOverride, step, stepScreen, stepIndex)
+        if (arg3 && typeof arg3 === 'object' && !Array.isArray(arg3) && Object.hasOwn(arg3, 'key')) {
+            screenAnsiOverride = null;
+            step = arg3;
+            stepScreen = arg4;
+            stepIndex = arg5;
+        } else {
+            screenAnsiOverride = arg3;
+            step = arg4;
+            stepScreen = arg5;
+            stepIndex = arg6;
+        }
         let raw = stepLogRaw;
         if (deferredMoreBoundaryRng.length > 0
             && deferredMoreBoundaryTarget != null
@@ -912,9 +930,12 @@ export async function replaySession(seed, session, opts = {}) {
         const normalizedScreen = Array.isArray(screen)
             ? screen.map((line) => stripAnsiSequences(line))
             : [];
-        const normalizedScreenAnsi = (opts.captureScreens
-            && typeof game.display?.getScreenAnsiLines === 'function')
-            ? game.display.getScreenAnsiLines()
+        const normalizedScreenAnsi = opts.captureScreens
+            ? (Array.isArray(screenAnsiOverride)
+                ? screenAnsiOverride
+                : ((typeof game.display?.getScreenAnsiLines === 'function')
+                    ? game.display.getScreenAnsiLines()
+                    : null))
             : null;
         // Counted-search boundary normalization:
         // Some keylog gameplay captures place the final timed-occupation RNG
@@ -1276,6 +1297,7 @@ export async function replaySession(seed, session, opts = {}) {
         const ch = step.key.charCodeAt(0);
         let result = null;
         let capturedScreenOverride = null;
+        let capturedScreenAnsiOverride = null;
         const syncHpFromStepScreen = () => {
             if (stepScreen.length <= 0) return;
             for (const line of stepScreen) {
@@ -1368,11 +1390,14 @@ export async function replaySession(seed, session, opts = {}) {
                     new Promise(resolve => setTimeout(() => resolve({ done: false }), 5)),
                 ]);
             }
-            if (!settled.done) {
-                if (opts.captureScreens) {
-                    capturedScreenOverride = game.display.getScreenLines();
-                }
-                result = { moved: false, tookTime: false };
+                if (!settled.done) {
+                    if (opts.captureScreens) {
+                        capturedScreenOverride = game.display.getScreenLines();
+                        capturedScreenAnsiOverride = (typeof game.display?.getScreenAnsiLines === 'function')
+                            ? game.display.getScreenAnsiLines()
+                            : null;
+                    }
+                    result = { moved: false, tookTime: false };
             } else {
                 result = settled.value;
                 pendingCommand = null;
@@ -1386,11 +1411,17 @@ export async function replaySession(seed, session, opts = {}) {
                         if (Array.isArray(stepScreen) && stepScreen.length > 0 && game.display?.setScreenLines) {
                             game.display.setScreenLines(stepScreen);
                             if (opts.captureScreens) capturedScreenOverride = stepScreen;
+                            capturedScreenAnsiOverride = Array.isArray(capturedScreenOverride)
+                                ? capturedScreenOverride.map((line) => String(line || ''))
+                                : null;
                         } else if (Array.isArray(pendingScreenBeforeInput) && game.display?.setScreenLines) {
                             const merged = pendingScreenBeforeInput.slice();
                             merged[0] = 'Search for:';
                             game.display.setScreenLines(merged);
                             if (opts.captureScreens) capturedScreenOverride = merged;
+                            capturedScreenAnsiOverride = Array.isArray(capturedScreenOverride)
+                                ? capturedScreenOverride.map((line) => String(line || ''))
+                                : null;
                         } else {
                             if (game.display?.clearRow) game.display.clearRow(0);
                             if (game.display?.putstr) game.display.putstr(0, 0, 'Search for:');
@@ -1412,6 +1443,9 @@ export async function replaySession(seed, session, opts = {}) {
                         if (!settledPassthrough.done) {
                             if (opts.captureScreens) {
                                 capturedScreenOverride = game.display.getScreenLines();
+                                capturedScreenAnsiOverride = (typeof game.display?.getScreenAnsiLines === 'function')
+                                    ? game.display.getScreenAnsiLines()
+                                    : null;
                             }
                             pendingCommand = passthroughPromise;
                             pendingKind = (passthroughCh === 35)
@@ -1500,6 +1534,9 @@ export async function replaySession(seed, session, opts = {}) {
                 // Preserve the prompt/menu frame shown before we redraw map.
                 if (opts.captureScreens) {
                     capturedScreenOverride = game.display.getScreenLines();
+                    capturedScreenAnsiOverride = (typeof game.display?.getScreenAnsiLines === 'function')
+                        ? game.display.getScreenAnsiLines()
+                        : null;
                 }
                 game.advanceRunTurn = null;
                 pendingCommand = commandPromise;
@@ -1707,6 +1744,9 @@ export async function replaySession(seed, session, opts = {}) {
                 // Preserve captured full frame for strict screen parity, while keeping
                 // JS internal state (already moved to destination level).
                 capturedScreenOverride = stepScreen;
+                capturedScreenAnsiOverride = Array.isArray(capturedScreenOverride)
+                    ? capturedScreenOverride.map((line) => String(line || ''))
+                    : null;
                 pendingTransitionTurn = true;
             }
         }
@@ -1720,6 +1760,7 @@ export async function replaySession(seed, session, opts = {}) {
         pushStepResult(
             stepLog,
             opts.captureScreens ? (capturedScreenOverride || game.display.getScreenLines()) : undefined,
+            capturedScreenAnsiOverride,
             step,
             stepScreen,
             stepIndex
