@@ -294,12 +294,14 @@
     "sessions": [
       {
         "seed": 100,
-        "moves": ":10s5.22s",
-        "label": "multidigit"
+        "moves": ":10s  5.22s  ",
+        "label": "multidigit",
+        "rawMoves": true
       },
       {
         "seed": 1,
-        "moves": ":hhhhhhhhhhhhhhjhhkkhhhhjjhhhhhhhhhhhjjjhhjhhhjhhjhhjjllllllllllll>....."
+        "moves": ":hhhhhhhhhhhh  n   h hjhhkkhhhhjjhhhhhhhhhhhjjjhhjhhhjhhjhhjjllllllllllll> .....",
+        "rawMoves": true
       },
       {
         "seed": 200,
@@ -322,20 +324,15 @@
         "label": "multidigit_wait"
       },
       {
-        "seed": 2,
-        "moves": ":zcnjbojjjlllllluulllllllllllllulolllnqyl>",
-        "label": "wizard_fountains",
-        "character": "wizard"
-      },
-      {
         "seed": 3,
         "moves": "kyun.s,i:kyun.s,i:kyun.s,i:kyun.s,i:",
         "character": "priest"
       },
       {
         "seed": 3,
-        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
-        "label": "selfplay_100turns"
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.  shhjjllkk.shhjjllkk.s",
+        "label": "selfplay_100turns",
+        "rawMoves": true
       },
       {
         "seed": 3,
@@ -349,8 +346,9 @@
       },
       {
         "seed": 4,
-        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
-        "label": "selfplay_150turns"
+        "moves": "hhjjllkk.shhjjllk  k.shhjjllk    k.shhjjllk  k.shhjjllk  k.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllk  k.shhjjllkk.shhjjllkk.shhjjllkk.shhjj  llkk.shhjjllkk.s",
+        "label": "selfplay_150turns",
+        "rawMoves": true
       },
       {
         "seed": 42,
@@ -370,26 +368,196 @@
       },
       {
         "seed": 42,
-        "moves": ":hhwb.w-wa.ed",
-        "label": "items"
+        "moves": ":hhwb  .w-wa    .ed    ",
+        "label": "items",
+        "rawMoves": true
       },
       {
         "seed": 5,
-        "moves": " bhy,hhohhhjbhhbnbjjbhhyyhyyhyhhbbyssssssss9s9s9sllluukkkkok\u0004k\u0004k\u0004k\u0004kk.ykkulllllnnnllll9s9s9s9shhhhyyhyhbbbjjjjjnnlnlnnllukkullllllnlllllllllllllllllloj\u0004jjnlllukkkklkkkkkkyhh,hbhhh.> kllljjjjjnlllllnbhbbb,ef hjj,hhhhhkkkkkuulllllluuull luullu,hbhbbh,hbjnllljjnlnnllukkkkkkkkkkkul\u0010njjjjjjjnnnnllullkukkkkkohjjjjbjbbjjjolollllullkkkey kluuulllb blllllllllnullnljjll@@llllbbh ykhhkyyhhb#lo\nullnn.jl..........lll hhhh l,hhkyyhhhr?h  hhhhhhhhhhhhhhhyyyyyhhhhh.nll,  ,b\nkolbbjjjkkkkhhyhjjjbbnnnnllnjjllui #n\nohharviolet spellbook hard to read\nlllkuuuullllllllln,uulllllnnjlllln, hhhhdk..khh.....r?g jhei\n.llllhjd?j yhkhhhkkyhhhhhssssslslslsslslssssssssssssssjsssssskshshshshshshshshsshlllssslslslslllnjjll,hhhr?l hhhhhnnluuuuukkkkkkkkhhhh.    purple spellbook hard to read\n\nyh .khhkkyhhhh.hhhbhhhhhhyhhhbhbbbjhhhjb......> ojojjjlnnjjjjjjjlykkkkkyyhkkhhhhhhhhh.hhhhhbhhhhbh,hhhhyhhhjjhhhhjjjjjbhyhhohhhhey hkkkkkkykkkhhhh,ku#loo\nhhhhhbbbbjjbjhhhhhhhukhuey hhhbhhhhssssssnssssssssssssssssssslsssssssssslssssslssslojjjssssskklsslslsslssssssssslssssssssssslsssssssslssssssssssshhhhhhhhhhyssssssssssssssssjsssluusslslsslslslslslsslsjsljllkkukkuuullnlss> h,lss.................h< jllljjjjnjjjjjllllnllukkkkulllnllllllllllllllllk khhhhhhhhhhhhhhhhyukulllllllln......h,Pmrhs.hhhhyhe?\u001b\u001bhRhbbhhbjjjjbyhhhhhykkkkykkkkhhh hy..> bhhhhhbbjjnlllnnnjjnnnnl  ,a\nklllssssssssl en?n .e?n?n...................yhb.ykh....kykkyyhhykkykulllslslsslslslsssslssskssssssssksssssssssssssksssssssssssssssssssssssssssssssssssssssssssssssssssssssssi qeblk\u0004h\u0004h   hhhhhhhhhyhhhhhjjjjhhhjjhhhbhhhj,yykkknjnjjlullluluuullkkkullllllllllllll9sjj9sjj9shssshse?\u001b\u001bhhhhhhhbjnnllnnjjlljnnnulssol olllukkuuuuukkkllukkullllllllllljjjbbjjjjbnlnnjh,l,nlllulll,llulll,e?dulu ukokkkkllu9sokkkhheyh,ul,yhhhhh>  ,yhhbbbyyi zph b yhhbb ey,c\nlnnn..luu u u l eyukkullln..ylj..yhhlln..< llllljljjjbhbjjbb,hbbhhbhhhbhhhhhkkkyhyyhyykkjnjeyykkk9s9sokkkhhhyhhbjjbhbjjbbbbjhbhhhhyhykykyyhhyyi PmrkyuC\u001b\u001b#chat\nkuyyhhhbbjjbbukkull.........hhbjjbhbbhbhhhbhh..> bjjkhkhbbkkklllnluuyhhhhhhhyyykkkkkkkyhk bojhhhhhojjjnbjnbonljjhhhhyyhhjbhhhh,hhhbbb,kkkohhhhhhhjjjjbhhk,ykkkhkyyyykykkjnjnnjnnjjjjnllukkkulllllllllllokkkuuyhyykkykk,nnn,kkkolbj,kknoukllllllnllllllllulnnllnjjjjjjjnlllllllnnunuullllkkkklllll9sukk9sol.ll.llluuey e:\u001b\u001b: 9s 9su,ykkkjbjjjjhhhjbbhhbjjbhhhbhhhhyhhhhhhyhykkkkkkkyhhykllokkkjjhhhhhllll> ll,yyhhhykkkkhykkyykkohhhhhhhhb ,9sojhhhey lobob li d d$\u0004j\u0004j\u0004jj9s9sluub9s 9sjy jhk9sj9sl9s Croweeoesus\n,k,h,js,li r rh  9s Croesus\nh9ssk9s Wizard\n  d$.hhjjhjhjhjhjhjbnnjhbbn,hhhhkkkkkhyhhhhhhkkkkeyuuuluuuuuk,hhbbbjjnhbbuuey bjjjjnnnjjjjbjjbnbjjjbjjjjjnjjjnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnjjjbhbhbbjbojojjjhhykkkkhhhhhhhyykkyhyyh ,$\ny,hjjj Za Zajj   j   Zajj ey   i  j   yy  y  y  y y n  ",
+        "moves": " bhy,hhohhhjbhhbnbjjbhhyyhyyhyhhbbyssssssss9s9s9sllluukkkkok\u0004k\u0004k\u0004k\u0004kk.ykkulllllnnnllll9s9s9s9shhhhyyhyhbbbjjjjjnnlnlnnllukkullllllnlllllllllllllllllloj\u0004jjnlllukkkklkkkkkkyhh,hbhhh.> kllljjjjjnlllllnbhbbb,ef hjj,hhhhhkkkkkuulllllluuull luullu,hbhbbh,hbjnllljjnlnnllukkkkkkkkkkkul\u0010njjjjjjjnnnnllullkukkkkkohjjjjbjbbjjjolollllullkkkey kluuulllb blllllllllnullnljjll@@llllbbh ykhhkyyhhb#lo\nullnn.jl..........lll hhhh l,hhkyyhhhr?h  hhhhhhhhhhhhhhhyyyyyhhhhh.nll,  ,b\nkolbbjjjkkkkhhyhjjjbbnnnnllnjjllui #n\nohhar\u007f\u007f\u007fviolet spellbook hard to read\nlllkuuuullllllllln,uulllllnnjlllln, hhhhdk..khh.....r?g jhei\n.llllhjd?j yhkhhhkkyhhhhhssssslslslsslslssssssssssssssjsssssskshshshshshshshshsshlllssslslslslllnjjll,hhhr?l hhhhhnnluuuuukkkkkkkkhhhh.    purple spellbook hard to read\n\nyh .khhkkyhhhh.hhhbhhhhhhyhhhbhbbbjhhhjb......> ojojjjlnnjjjjjjjlykkkkkyyhkkhhhhhhhhh.hhhhhbhhhhbh,hhhhyhhhjjhhhhjjjjjbhyhhohhhhey hkkkkkkykkkhhhh,ku#loo\nhhhhhbbbbjjbjhhhhhhhukhuey hhhbhhhhssssssnssssssssssssssssssslsssssssssslssssslssslojjjssssskklsslslsslssssssssslssssssssssslsssssssslssssssssssshhhhhhhhhhyssssssssssssssssjsssluusslslsslslslslslsslsjsljllkkukkuuullnlss> h,lss.................h< jllljjjjnjjjjjllllnllukkkkulllnllllllllllllllllk khhhhhhhhhhhhhhhhyukulllllllln......h,Pmrhs.hhhhyhe?\u001b\u001bhRhbbhhbjjjjbyhhhhhykkkkykkkkhhh hy..> bhhhhhbbjjnlllnnnjjnnnnl  ,a\nklllssssssssl en?n .e?n?n...................yhb.ykh....kykkyyhhykkykulllslslsslslslsssslssskssssssssksssssssssssssksssssssssssssssssssssssssssssssssssssssssssssssssssssssssi qeblk\u0004h\u0004h   hhhhhhhhhyhhhhhjjjjhhhjjhhhbhhhj,yykkknjnjjlullluluuullkkkullllllllllllll9sjj9sjj9shssshse?\u001b\u001bhhhhhhhbjnnllnnjjlljnnnulssol olllukkuuuuukkkllukkullllllllllljjjbbjjjjbnlnnjh,l,nlllulll,llulll,e?dulu ukokkkkllu9sokkkhheyh,ul,yhhhhh>  ,yhhbbbyyi zph b yhhbb ey,c\nlnnn..luu u u l eyukkullln..ylj..yhhlln..< llllljljjjbhbjjbb,hbbhhbhhhbhhhhhkkkyhyyhyykkjnjeyykkk9s9sokkkhhhyhhbjjbhbjjbbbbjhbhhhhyhykykyyhhyyi PmrkyuC\u001b\u001b#chat\nkuyyhhhbbjjbbukkull.........hhbjjbhbbhbhhhbhh..> bjjkhkhbbkkklllnluuyhhhhhhhyyykkkkkkkyhk bojhhhhhojjjnbjnbonljjhhhhyyhhjbhhhh,hhhbbb,kkkohhhhhhhjjjjbhhk,ykkkhkyyyykykkjnjnnjnnjjjjnllukkkulllllllllllokkkuuyhyykkykk,nnn,kkkolbj,kknoukllllllnllllllllulnnllnjjjjjjjnlllllllnnunuullllkkkklllll9sukk9sol.ll.llluuey e:\u001b\u001b: 9s 9su,ykkkjbjjjjhhhjbbhhbjjbhhhbhhhhyhhhhhhyhykkkkkkkyhhykllokkkjjhhhhhllll> ll,yyhhhykkkkhykkyykkohhhhhhhhb ,9sojhhhey lobob li d d$\u0004j\u0004j\u0004jj9s9sluub9s 9sjy jhk9sj9sl9s Crowe\u007f\u007fe\u007f\u007foesus\n,k,h,js,li r rh  9s Croesus\nh9ssk9s Wizard\n  d$.hhjjhjhjhjhjhjbnnjhbbn,hhhhkkkkkhyhhhhhhkkkkeyuuuluuuuuk,hhbbbjjnhbbuuey bjjjjnnnjjjjbjjbnbjjjbjjjjjnjjjnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnjjjbhbhbbjbojojjjhhykkkkhhhhhhhyykkyhyyh ,$\ny,hjjj Za Zajj   j   Zajj ey   i  j   yy  y  y  y y n  ",
         "label": "gnomish_mines",
         "rawMoves": true
       },
       {
-        "seed": 6,
-        "moves": "yy  y#Oyce hfOaant$a\n\nfjxhb\u001bjhh\nhh\u001bhh@e@hy@bOkb jj< nnOnafbjl#h\ncirhba\n\n\u001ba\u001bl<#@$cy\nhjxaj tj \njkuj@uj@ kj jknjo#,hqkh\nkhyuhnlbqljojhjoblboblhlylyj l lylyl uyu b byh hyb byb hyy h h h,hhhbhyhhhhhhjbbhhjlnllullnkkkkkllllukkkulolollllnnllnllluu9s9s9sjbhhhbnllllnjbnbjj,uuyyuuunuuuouououbnlu u lllllullluyyhhhhhhhhhhhhh t?mlh.eyhh#loot\n\ny#lo\u001b#loot\noa\nab\nunllllllll,llnllulllnukkbnnlluulllllnl ,c\nuhnsssssybssy heyhhhhbbhbbbbbjjjlljnjnhhhhok yhohohhhkkkykkkkukuhhh j llullllnbblkkyhhhbbhulllllnlhbjhbb uu,i  r?o   yyhhhhbulllnn> nnnbbjjbbbhjj,l,yoh yhhhhhhhhhhhhhjyhjnjukullllllllhhhhhhhhbyhhhhjnljbllllu jk kkullllllllll..llh..llllnlllullllllllloukllulnnyllnjjlllllllullu.lllbja?l.y#loot\noab\nukljjb.hy yeyl uulukkkkkkkkujkuklnnllnal.y#loot\noa\nab$\n   yhhN: 9skhNyCf\u001b. .#na\nf.lllllllllllljnnbjjjjjjllllujhhhhoyykkkkukkhhhhyyhhhhhhhhjjjjjjjjjbhykksssjbbhhbhhhhbhhhkkkkkkkkeykksssshssshssshsssshssshssjjhhksyyuuulllsssssssshhbbhhkkhyykkyykh.hhhhhhhheyhhbh9sk9sk9slllnlnnnjnjnnnluull9s9s9s9shhbjjjlllnlllllllllllllnnn> hbhhhhhykullkkkkkkkhhhyhbhhbh, nllojjjhbbjjhhhhhhhhhhhybhhjjjjjlluuullny.//l\nl. y \u001blh...ll  hnnnluubhhhhhhhq?ubhhykkkyhjjjhhohhhhbhhhhbhhhhhhhhhhhhbhhhbhyhyykkhykkykokkku,ulllllllhhhhhnbnllllll9sssssssshhhhhhhjjnnjjnnjnnllnlullulllllluuuullukkkkluyhh  sk  yy  y  y y y   ",
-        "label": "tourist",
-        "character": {
-          "name": "mabel",
-          "role": "Tourist",
-          "race": "human",
-          "gender": "female",
-          "align": "neutral"
-        },
+        "seed": 201,
+        "moves": "#wish\n8 blessed potions of gain level\nqaqaqaqaqaqaqaqa#wish\nblessed +2 elven mithril-coat\n#wish\nblessed +3 speed boots\n#wish\nblessed bag of holding\n#wish\nwand of teleportation\n#wish\nring of teleport control\n#wish\nscroll of magic mapping\nWbWcPf\u001612\nhh,jj,ll,kk,.shlhljkjk,ssshhhhhh,llllll,shh,jj,ll,kk,.shlhljkjk,ssshhhhhh,llllll,shh,jj,ll,kk,.shlhljkjk,ssshhhhhh,llllll,s",
+        "label": "archeologist_wizard",
+        "character": "archeologist",
+        "rawMoves": true
+      },
+      {
+        "seed": 202,
+        "moves": "#wish\n15 blessed potions of gain level\nqaqaqaqaqaqaqaqaqaqaqaqaqaqaqa#wish\nblessed +3 gray dragon scale mail\n#wish\nblessed +3 gauntlets of power\n#wish\nblessed +2 battle-axe\n#wish\nblessed amulet of life saving\n#wish\nwand of death\n#wish\nblessed potion of full healing\nWbWcwdPe\u001618\nyy,bb,nn,uu,.sh,l,j,k,ssss.Fh.Fl.Fj.Fk,.yy,bb,nn,uu,.sh,l,j,k,ssss.Fh.Fl.Fj.Fk,.yy,bb,nn,uu,.sh,l,j,k,ssss.Fh.Fl.Fj.Fk,.yy,bb,nn,uu,.sh,l,j,k,ssss.i",
+        "label": "barbarian_wizard",
+        "character": "barbarian",
+        "rawMoves": true
+      },
+      {
+        "seed": 203,
+        "moves": "#wish\n12 blessed potions of gain level\nqaqaqaqaqaqaqaqaqaqaqaqa#wish\nblessed +2 crystal plate mail\n#wish\nblessed +2 helm of telepathy\n#wish\nblessed unicorn horn\n#wish\nwand of cold\n#wish\nblessed ring of conflict\n#wish\nblessed lembas wafer\nWbWcPf\u001615\nhhhjjjlllkkk,.hhhhhh,llllll,shjlk,hjlk,sshhhjjjlllkkk,.hhhhhh,llllll,shjlk,hjlk,sshhhjjjlllkkk,.hhhhhh,llllll,shjlk,hjlk,ss",
+        "label": "caveman_wizard",
+        "character": "caveman",
+        "rawMoves": true
+      },
+      {
+        "seed": 204,
+        "moves": "#wish\n6 blessed potions of gain level\nqaqaqaqaqaqa#wish\nblessed +2 cloak of magic resistance\n#wish\nblessed ring of free action\n#wish\nblessed crystal ball\n#wish\nblessed scroll of charging\n#wish\nwand of digging\n#wish\nblessed amulet of ESP\nWbPcPg\u001610\nhlhljkjk,sssFh.Fl.Fj.Fk,.hh,jj,ll,kk,.shlhljkjk,sssizf.Fh.Fl.Fj.Fk,.hh,jj,ll,kk,.shlhljkjk,sssFh.Fl.Fj.Fk,.hh,jj,ll,kk,.shlhljkjk,sssFh.Fl.Fj.Fk,.",
+        "label": "healer_wizard",
+        "character": "healer",
+        "rawMoves": true
+      },
+      {
+        "seed": 205,
+        "moves": "#wish\n10 blessed potions of gain level\nqaqaqaqaqaqaqaqaqaqa#wish\nblessed +3 gray dragon scale mail\n#wish\nblessed +3 speed boots\n#wish\nblessed +2 gauntlets of dexterity\n#wish\nblessed +2 long sword\n#wish\nblessed amulet of reflection\n#wish\nwand of wishing\nWbWcWdwePf\u001614\nh,l,j,k,ssss.hjlk,hjlk,ssyy,bb,nn,uu,.sh,l,j,k,ssss.hjlk,hjlk,ssyy,bb,nn,uu,.sh,l,j,k,ssss.hjlk,hjlk,ssyy,bb,nn,uu,.sh,l,j,k,ssss.hjlk,hjlk,ss",
+        "label": "knight_wizard",
+        "character": "knight",
+        "rawMoves": true
+      },
+      {
+        "seed": 206,
+        "moves": "#wish\n7 blessed potions of gain level\nqaqaqaqaqaqaqa#wish\nblessed +2 cloak of invisibility\n#wish\nblessed +2 jumping boots\n#wish\nring of invisibility\n#wish\namulet of magical breathing\n#wish\nblessed magic marker\n#wish\npotion of speed\nWbWcPdPe\u001611\nhhhhhh,llllll,shh,jj,ll,kk,.shhhjjjlllkkk,.hhhhhh,llllll,shh,jj,ll,kk,.shhhjjjlllkkk,.hhhhhh,llllll,shh,jj,ll,kk,.shhhjjjlllkkk,.",
+        "label": "monk_wizard",
+        "character": "monk",
+        "rawMoves": true
+      },
+      {
+        "seed": 207,
+        "moves": "#wish\n9 blessed potions of gain level\nqaqaqaqaqaqaqaqaqa#wish\nblessed +3 silver dragon scale mail\n#wish\nblessed +3 helm of brilliance\n#wish\nblessed +2 oilskin cloak\n#wish\nwand of lightning\n#wish\nblessed scroll of genocide\n#wish\nring of see invisible\nWbWcWdPg\u001613\nFh.Fl.Fj.Fk,.yy,bb,nn,uu,.shlhljkjk,sssFh.Fl.Fj.Fk,.yy,bb,nn,uu,.shlhljkjk,sssFh.Fl.Fj.Fk,.yy,bb,nn,uu,.shlhljkjk,sssFh.Fl.Fj.Fk,.yy,bb,nn,uu,.s",
+        "label": "priest_wizard",
+        "character": "priest",
+        "rawMoves": true
+      },
+      {
+        "seed": 208,
+        "moves": "#wish\n11 blessed potions of gain level\nqaqaqaqaqaqaqaqaqaqaqa#wish\nblessed +2 elven cloak\n#wish\nblessed +2 elven boots\n#wish\nblessed +2 elven dagger\n#wish\nblessed magic lamp\n#wish\nwand of fire\n#wish\nring of levitation\nWbWcwdPg\u001614\nhjlk,hjlk,sshhhjjjlllkkk,.h,l,j,k,ssss.hjlk,hjlk,sshhhjjjlllkkk,.h,l,j,k,ssss.hjlk,hjlk,sshhhjjjlllkkk,.h,l,j,k,ssss.hjlk,hjlk,ss",
+        "label": "ranger_wizard",
+        "character": "ranger",
+        "rawMoves": true
+      },
+      {
+        "seed": 209,
+        "moves": "#wish\n13 blessed potions of gain level\nqaqaqaqaqaqaqaqaqaqaqaqaqa#wish\nblessed +3 gray dragon scale mail\n#wish\nblessed +2 cloak of displacement\n#wish\nblessed +0 pick-axe\n#wish\nwand of polymorph\n#wish\nring of regeneration\n#wish\namulet versus poison\nWbWcPfPg\u001616\nhh,jj,ll,kk,.shlhljkjk,ssshhhhhh,llllll,shh,jj,ll,kk,.shlhljkjk,ssshhhhhh,llllll,shh,jj,ll,kk,.shlhljkjk,ssshhhhhh,llllll,s",
+        "label": "rogue_wizard",
+        "character": "rogue",
+        "rawMoves": true
+      },
+      {
+        "seed": 210,
+        "moves": "#wish\n14 blessed potions of gain level\nqaqaqaqaqaqaqaqaqaqaqaqaqaqa#wish\nblessed +2 red dragon scale mail\n#wish\nblessed +2 katana\n#wish\nblessed +3 speed boots\n#wish\nblessed +2 helm of telepathy\n#wish\nwand of death\n#wish\nblessed scroll of enchant weapon\nWbwcWdWe\u001617\nyy,bb,nn,uu,.sh,l,j,k,ssss.Fh.Fl.Fj.Fk,.yy,bb,nn,uu,.sh,l,j,k,ssss.Fh.Fl.Fj.Fk,.yy,bb,nn,uu,.sh,l,j,k,ssss.Fh.Fl.Fj.Fk,.yy,bb,nn,uu,.sh,l,j,k,ssss.irg",
+        "label": "samurai_wizard",
+        "character": "samurai",
+        "rawMoves": true
+      },
+      {
+        "seed": 211,
+        "moves": "#wish\n20 blessed potions of gain level\nqaqaqaqaqaqaqaqaqaqaqaqaqaqaqaqaqaqaqaqa#wish\nblessed +3 gray dragon scale mail\n#wish\nblessed +3 speed boots\n#wish\nblessed +3 helm of brilliance\n#wish\nblessed +3 gauntlets of power\n#wish\nblessed amulet of life saving\n#wish\nwand of wishing\n#wish\nblessed bag of holding\nWbWcWdWePf\u001622\nhhhjjjlllkkk,.hhhhhh,llllll,shjlk,hjlk,sshhhjjjlllkkk,.hhhhhh,llllll,shjlk,hjlk,sshhhjjjlllkkk,.hhhhhh,llllll,shjlk,hjlk,ss",
+        "label": "tourist_wizard",
+        "character": "tourist",
+        "rawMoves": true
+      },
+      {
+        "seed": 212,
+        "moves": "#wish\n10 blessed potions of gain level\nqaqaqaqaqaqaqaqaqaqa#wish\nblessed +3 silver dragon scale mail\n#wish\nblessed +2 water walking boots\n#wish\nblessed +3 gauntlets of power\n#wish\nring of fire resistance\n#wish\nwand of cold\n#wish\nblessed stethoscope\nWbWcWdPe\u001614\nhlhljkjk,sssFh.Fl.Fj.Fk,.hh,jj,ll,kk,.shlhljkjk,sssizf.Fh.Fl.Fj.Fk,.hh,jj,ll,kk,.shlhljkjk,sssFh.Fl.Fj.Fk,.hh,jj,ll,kk,.shlhljkjk,sssFh.Fl.Fj.Fk,.",
+        "label": "valkyrie_wizard",
+        "character": "valkyrie",
+        "rawMoves": true
+      },
+      {
+        "seed": 213,
+        "moves": "#wish\n5 blessed potions of gain level\nqaqaqaqaqa#wish\nblessed +2 cloak of magic resistance\n#wish\nring of teleport control\n#wish\nwand of wishing\n#wish\nblessed scroll of charging\n#wish\nblessed magic marker\n#wish\nblessed potion of gain ability\nWbPc\u00169\nh,l,j,k,ssss.hjlk,hjlk,ssyy,bb,nn,uu,.sh,l,j,k,ssss.hjlk,hjlk,ssyy,bb,nn,uu,.sh,l,j,k,ssss.hjlk,hjlk,ssyy,bb,nn,uu,.sh,l,j,k,ssss.hjlk,hjlk,ss",
+        "label": "wizard_wizard",
+        "character": "wizard",
+        "rawMoves": true
+      },
+      {
+        "seed": 101,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "archeologist_selfplay200",
+        "character": "archeologist",
+        "rawMoves": true
+      },
+      {
+        "seed": 102,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "barbarian_selfplay200",
+        "character": "barbarian",
+        "rawMoves": true
+      },
+      {
+        "seed": 103,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "caveman_selfplay200",
+        "character": "caveman",
+        "rawMoves": true
+      },
+      {
+        "seed": 104,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "healer_selfplay200",
+        "character": "healer",
+        "rawMoves": true
+      },
+      {
+        "seed": 105,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "knight_selfplay200",
+        "character": "knight",
+        "rawMoves": true
+      },
+      {
+        "seed": 106,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "monk_selfplay200",
+        "character": "monk",
+        "rawMoves": true
+      },
+      {
+        "seed": 107,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "priest_selfplay200",
+        "character": "priest",
+        "rawMoves": true
+      },
+      {
+        "seed": 108,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "ranger_selfplay200",
+        "character": "ranger",
+        "rawMoves": true
+      },
+      {
+        "seed": 109,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "rogue_selfplay200",
+        "character": "rogue",
+        "rawMoves": true
+      },
+      {
+        "seed": 110,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "samurai_selfplay200",
+        "character": "samurai",
+        "rawMoves": true
+      },
+      {
+        "seed": 111,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "tourist_selfplay200",
+        "character": "tourist",
+        "rawMoves": true
+      },
+      {
+        "seed": 112,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "valkyrie_selfplay200",
+        "character": "valkyrie",
+        "rawMoves": true
+      },
+      {
+        "seed": 113,
+        "moves": "hhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.shhjjllkk.s",
+        "label": "wizard_selfplay200",
+        "character": "wizard",
         "rawMoves": true
       }
     ]
