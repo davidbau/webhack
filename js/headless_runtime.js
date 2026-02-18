@@ -1306,12 +1306,14 @@ export class HeadlessDisplay {
         // C ref: role.c - headers like " Pick a role or profession" use inverse
         for (let i = 0; i < lines.length && i < this.rows; i++) {
             const line = lines[i];
-            // First line (menu header) gets inverse video if it starts with space and contains text
-            const isHeader = (i === 0 && line.trim().length > 0 && line.startsWith(' '));
-            if (isHeader) {
-                // C tty keeps leading padding space non-inverse, then inverts header text.
+            // First line is a highlighted header in tty role/race/option menus.
+            const isHeader = (i === 0 && line.trim().length > 0);
+            if (isHeader && line.startsWith(' ')) {
+                // When header has explicit leading pad, C keeps that pad non-inverse.
                 this.setCell(offx, i, ' ', CLR_GRAY, 0);
                 this.putstr(offx + 1, i, line.slice(1), CLR_GRAY, 1);
+            } else if (isHeader) {
+                this.putstr(offx, i, line, CLR_GRAY, 1);
             } else {
                 this.putstr(offx, i, line, CLR_GRAY, 0);
             }

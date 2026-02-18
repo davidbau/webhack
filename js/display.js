@@ -762,13 +762,14 @@ export class Display {
         // C ref: win/tty/wintty.c - menu headers use inverse video
         for (let i = 0; i < lines.length && i < this.rows; i++) {
             const line = lines[i];
-            // First line (menu header) gets inverse video if it starts with space and contains text
-            // C ref: role.c - headers like " Pick a role or profession" use inverse
-            const isHeader = (i === 0 && line.trim().length > 0 && line.startsWith(' '));
-            if (isHeader) {
-                // C tty keeps leading padding space non-inverse, then inverts header text.
+            // C ref: role.c — first line is menu header with inverse video.
+            const isHeader = (i === 0 && line.trim().length > 0);
+            if (isHeader && line.startsWith(' ')) {
+                // Keep explicit leading pad non-inverse, invert remaining header text.
                 this.setCell(offx, i, ' ', CLR_WHITE, 0);
                 this.putstr(offx + 1, i, line.slice(1), CLR_WHITE, 1);
+            } else if (isHeader) {
+                this.putstr(offx, i, line, CLR_WHITE, 1);
             } else {
                 this.putstr(offx, i, line, CLR_WHITE, 0);
             }

@@ -547,7 +547,36 @@ async function runInterfaceResult(session) {
             }
             const expectedAnsi = getExpectedScreenAnsiLines(expected);
             if (expectedAnsi.length > 0 && Array.isArray(actual.screenAnsi)) {
-                const colorCmp = compareScreenAnsi(actual.screenAnsi, expectedAnsi);
+                let actualAnsiForCmp = actual.screenAnsi;
+                let expectedAnsiForCmp = expectedAnsi;
+                const expectedPlain = normalizeInterfaceScreenLines(getExpectedScreenLines(expected));
+
+                // Keep ANSI color comparison scoped to the same prompt-only slices used
+                // by interface text comparison where C/JS map fragments are non-round-trippable.
+                if (session.meta.regen?.subtype === 'options'
+                    && expectedPlain[0]?.startsWith('Set fruit to what?')) {
+                    actualAnsiForCmp = actualAnsiForCmp.slice(0, 1);
+                    expectedAnsiForCmp = expectedAnsiForCmp.slice(0, 1);
+                }
+                if (session.meta.regen?.subtype === 'options'
+                    && expectedPlain[0]?.includes('Select number_pad mode:')) {
+                    actualAnsiForCmp = actualAnsiForCmp.slice(0, 9);
+                    expectedAnsiForCmp = expectedAnsiForCmp.slice(0, 9);
+                }
+
+                // Header/version lines are intentionally normalized in interface
+                // screen comparison; mirror that here to avoid volatile build-string
+                // text producing false color/glyph diffs.
+                const expectedAnsiMasked = expectedAnsiForCmp.slice();
+                const actualAnsiMasked = actualAnsiForCmp.slice();
+                for (let row = 0; row < expectedPlain.length && row < expectedAnsiMasked.length; row++) {
+                    if (expectedPlain[row] === '__HEADER_VERSION__') {
+                        expectedAnsiMasked[row] = '';
+                        if (row < actualAnsiMasked.length) actualAnsiMasked[row] = '';
+                    }
+                }
+
+                const colorCmp = compareScreenAnsi(actualAnsiMasked, expectedAnsiMasked);
                 if (!result._colorStats) result._colorStats = { matched: 0, total: 0 };
                 result._colorStats.matched += colorCmp.matched;
                 result._colorStats.total += colorCmp.total;
