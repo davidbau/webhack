@@ -13,7 +13,12 @@ import re
 import sys
 import os
 
-OBJECTS_H = os.path.join(os.path.dirname(__file__), 'nethack-c', 'include', 'objects.h')
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_OBJECTS_H_CANDIDATES = [
+    os.path.join(SCRIPT_DIR, 'nethack-c', 'include', 'objects.h'),
+    os.path.join(SCRIPT_DIR, '..', '..', 'nethack-c', 'include', 'objects.h'),
+]
+OBJECTS_H = next((p for p in _OBJECTS_H_CANDIDATES if os.path.exists(p)), _OBJECTS_H_CANDIDATES[0])
 
 # ── Color constants (matching display.js) ────────────────────────────
 COLORS = {
@@ -22,7 +27,7 @@ COLORS = {
     'CLR_BLACK': 0, 'CLR_ORANGE': 9, 'CLR_BRIGHT_GREEN': 10,
     'CLR_YELLOW': 11, 'CLR_BRIGHT_BLUE': 12,
     'CLR_BRIGHT_MAGENTA': 13, 'CLR_BRIGHT_CYAN': 14, 'CLR_WHITE': 15,
-    'HI_METAL': 7, 'HI_COPPER': 11, 'HI_SILVER': 7, 'HI_GOLD': 11,
+    'HI_METAL': 6, 'HI_COPPER': 11, 'HI_SILVER': 7, 'HI_GOLD': 11,
     'HI_LEATHER': 3, 'HI_CLOTH': 3, 'HI_ORGANIC': 3,
     'HI_WOOD': 3, 'HI_PAPER': 15, 'HI_GLASS': 14, 'HI_MINERAL': 7,
     'HI_ZAP': 9, 'DRAGON_SILVER': 7,
@@ -877,7 +882,9 @@ def emit_js():
         if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', sn):
             continue
         lines.append(f"export const {sn} = {obj['index']};")
-    lines.append(f'export const NUM_OBJECTS = {len(objects)};')
+    # objectData includes a trailing fencepost sentinel; NUM_OBJECTS is real
+    # object count (highest valid object index + 1 in C enum space).
+    lines.append(f'export const NUM_OBJECTS = {max(0, len(objects) - 1)};')
     lines.append('')
 
     # Markers — resolve expressions to numeric values
@@ -937,6 +944,62 @@ def emit_js():
     lines.append('')
 
     lines.append(f'// Total objects: {len(objects)}')
+    lines.append('')
+    lines.append('const MAXOCLASSES_OBJ = 17; // 0..16 inclusive (local to avoid import issues)')
+    lines.append('')
+    lines.append('// Computed at init: first object index for each class, probability totals')
+    lines.append('export const bases = new Array(MAXOCLASSES_OBJ + 2).fill(0);')
+    lines.append('export const oclass_prob_totals = new Array(MAXOCLASSES_OBJ).fill(0);')
+    lines.append('')
+    lines.append('// C ref: o_init.c init_objects() — compute bases[] and oclass_prob_totals[]')
+    lines.append('export function initObjectData() {')
+    lines.append('    // C ref: skip generic objects (indices 0..MAXOCLASSES), scan from MAXOCLASSES+1')
+    lines.append('    for (let i = 0; i <= MAXOCLASSES_OBJ + 1; i++) bases[i] = 0;')
+    lines.append('    let first = MAXOCLASSES_OBJ + 1; // skip all generic objects (indices 0..17)')
+    lines.append('    let prevOclass = -1;')
+    lines.append('    while (first < objectData.length) {')
+    lines.append('        const oclass = objectData[first].oc_class;')
+    lines.append('        let last = first + 1;')
+    lines.append('        while (last < objectData.length && objectData[last].oc_class === oclass)')
+    lines.append('            last++;')
+    lines.append('        // C only sets bases on ascending class transitions')
+    lines.append('        if (oclass > prevOclass) {')
+    lines.append('            bases[oclass] = first;')
+    lines.append('            prevOclass = oclass;')
+    lines.append('        }')
+    lines.append('        first = last;')
+    lines.append('    }')
+    lines.append('    // C: bases[MAXOCLASSES] = NUM_OBJECTS (excludes fencepost entry)')
+    lines.append('    bases[MAXOCLASSES_OBJ] = objectData.length - 1;')
+    lines.append('    bases[MAXOCLASSES_OBJ + 1] = objectData.length - 1;')
+    lines.append('    // Fill gaps: if a class has no objects, point to next class')
+    lines.append('    for (let i = MAXOCLASSES_OBJ - 1; i >= 0; i--) {')
+    lines.append('        if (!bases[i]) bases[i] = bases[i + 1];')
+    lines.append('    }')
+    lines.append('    // Compute probability totals per class')
+    lines.append('    for (let oc = 0; oc < MAXOCLASSES_OBJ; oc++) {')
+    lines.append('        let sum = 0;')
+    lines.append('        for (let i = bases[oc]; i < bases[oc + 1]; i++) {')
+    lines.append('            sum += objectData[i].prob || 0;')
+    lines.append('        }')
+    lines.append('        oclass_prob_totals[oc] = sum;')
+    lines.append('    }')
+    lines.append('}')
+    lines.append('')
+    lines.append('// Class random selection probabilities (C ref: mkobj.c mkobjprobs)')
+    lines.append('export const mkobjprobs = [')
+    lines.append('    { iprob: 10, iclass: WEAPON_CLASS },')
+    lines.append('    { iprob: 10, iclass: ARMOR_CLASS },')
+    lines.append('    { iprob: 20, iclass: FOOD_CLASS },')
+    lines.append('    { iprob: 8, iclass: TOOL_CLASS },')
+    lines.append('    { iprob: 8, iclass: GEM_CLASS },')
+    lines.append('    { iprob: 16, iclass: POTION_CLASS },')
+    lines.append('    { iprob: 16, iclass: SCROLL_CLASS },')
+    lines.append('    { iprob: 4, iclass: SPBOOK_CLASS },')
+    lines.append('    { iprob: 4, iclass: WAND_CLASS },')
+    lines.append('    { iprob: 3, iclass: RING_CLASS },')
+    lines.append('    { iprob: 1, iclass: AMULET_CLASS },')
+    lines.append('];')
     lines.append('')
 
     return '\n'.join(lines)

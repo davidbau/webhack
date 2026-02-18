@@ -527,12 +527,18 @@ export class Display {
         const TERRAIN_SYMBOLS = useDEC ? TERRAIN_SYMBOLS_DEC : TERRAIN_SYMBOLS_ASCII;
 
         // C display uses wall_info mode bits to adjust some T-wall glyphs.
-        // Keep the proven parity case here: TRWALL + WM_T_LONG renders as TLCORNER.
+        // Keep the proven parity cases here for WM_T_LONG (1).
         if (typ === TRWALL && wallMode === 1) {
             return TERRAIN_SYMBOLS[TLCORNER] || TERRAIN_SYMBOLS[TRWALL];
         }
         if (typ === TLWALL && wallMode === 1) {
             return TERRAIN_SYMBOLS[TRCORNER] || TERRAIN_SYMBOLS[TLWALL];
+        }
+        if (typ === TDWALL && wallMode === 1) {
+            return TERRAIN_SYMBOLS[TLCORNER] || TERRAIN_SYMBOLS[TDWALL];
+        }
+        if (typ === TUWALL && wallMode === 1) {
+            return TERRAIN_SYMBOLS[BLCORNER] || TERRAIN_SYMBOLS[TUWALL];
         }
 
         // Handle door states

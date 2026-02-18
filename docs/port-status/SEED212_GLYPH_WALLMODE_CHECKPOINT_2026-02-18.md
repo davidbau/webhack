@@ -48,4 +48,6 @@ After this change:
 - RNG first divergence remains at step 37 index 8:
   - JS: `rn2(20)=13`
   - C:  `rn2(32)=25`
-- Additional color mismatch remains at startup (step 0 row 17 col 71).
+- The startup color mismatch noted during this checkpoint was resolved later
+  the same day; see
+  `docs/port-status/SEED212_HIMETAL_COLOR_CHECKPOINT_2026-02-18.md`.

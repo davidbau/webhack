@@ -905,7 +905,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 55,
         delay: 0,
         weight: 1,
@@ -977,7 +977,7 @@ export const objectData = [
         desc: "bamboo arrow",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 15,
         delay: 0,
         weight: 1,
@@ -995,7 +995,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 55,
         delay: 0,
         weight: 1,
@@ -1013,7 +1013,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 60,
         delay: 0,
         weight: 1,
@@ -1031,7 +1031,7 @@ export const objectData = [
         desc: "throwing star",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 35,
         delay: 0,
         weight: 1,
@@ -1067,7 +1067,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 50,
         delay: 0,
         weight: 30,
@@ -1121,7 +1121,7 @@ export const objectData = [
         desc: "stout spear",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 12,
         delay: 0,
         weight: 35,
@@ -1157,7 +1157,7 @@ export const objectData = [
         desc: "throwing spear",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 10,
         delay: 0,
         weight: 20,
@@ -1175,7 +1175,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 8,
         delay: 0,
         weight: 25,
@@ -1193,7 +1193,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 30,
         delay: 0,
         weight: 10,
@@ -1265,7 +1265,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 0,
         delay: 0,
         weight: 10,
@@ -1283,7 +1283,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 0,
         delay: 0,
         weight: 5,
@@ -1301,7 +1301,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 20,
         delay: 0,
         weight: 5,
@@ -1319,7 +1319,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 5,
         delay: 0,
         weight: 5,
@@ -1373,7 +1373,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 40,
         delay: 0,
         weight: 60,
@@ -1409,7 +1409,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 8,
         delay: 0,
         weight: 30,
@@ -1463,7 +1463,7 @@ export const objectData = [
         desc: "broad short sword",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 2,
         delay: 0,
         weight: 30,
@@ -1481,7 +1481,7 @@ export const objectData = [
         desc: "curved sword",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 15,
         delay: 0,
         weight: 40,
@@ -1517,7 +1517,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 8,
         delay: 0,
         weight: 70,
@@ -1553,7 +1553,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 50,
         delay: 0,
         weight: 40,
@@ -1571,7 +1571,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 22,
         delay: 0,
         weight: 150,
@@ -1589,7 +1589,7 @@ export const objectData = [
         desc: "samurai sword",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 4,
         delay: 0,
         weight: 40,
@@ -1607,7 +1607,7 @@ export const objectData = [
         desc: "long samurai sword",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 0,
         delay: 0,
         weight: 60,
@@ -1643,7 +1643,7 @@ export const objectData = [
         desc: "vulgar polearm",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 5,
         delay: 0,
         weight: 80,
@@ -1661,7 +1661,7 @@ export const objectData = [
         desc: "hilted polearm",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 5,
         delay: 0,
         weight: 50,
@@ -1679,7 +1679,7 @@ export const objectData = [
         desc: "forked polearm",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 5,
         delay: 0,
         weight: 50,
@@ -1697,7 +1697,7 @@ export const objectData = [
         desc: "single-edged polearm",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 8,
         delay: 0,
         weight: 75,
@@ -1715,7 +1715,7 @@ export const objectData = [
         desc: "angled poleaxe",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 8,
         delay: 0,
         weight: 150,
@@ -1733,7 +1733,7 @@ export const objectData = [
         desc: "long poleaxe",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 4,
         delay: 0,
         weight: 120,
@@ -1751,7 +1751,7 @@ export const objectData = [
         desc: "pole cleaver",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 4,
         delay: 0,
         weight: 125,
@@ -1769,7 +1769,7 @@ export const objectData = [
         desc: "pole sickle",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 6,
         delay: 0,
         weight: 60,
@@ -1787,7 +1787,7 @@ export const objectData = [
         desc: "pruning hook",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 6,
         delay: 0,
         weight: 80,
@@ -1805,7 +1805,7 @@ export const objectData = [
         desc: "hooked polearm",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 4,
         delay: 0,
         weight: 120,
@@ -1823,7 +1823,7 @@ export const objectData = [
         desc: "pronged polearm",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 5,
         delay: 0,
         weight: 150,
@@ -1841,7 +1841,7 @@ export const objectData = [
         desc: "beaked polearm",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 4,
         delay: 0,
         weight: 100,
@@ -1859,7 +1859,7 @@ export const objectData = [
         desc: "broad pick",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 13,
         delay: 0,
         weight: 120,
@@ -1877,7 +1877,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 4,
         delay: 0,
         weight: 180,
@@ -1895,7 +1895,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 40,
         delay: 0,
         weight: 30,
@@ -1931,7 +1931,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 12,
         delay: 0,
         weight: 120,
@@ -1949,7 +1949,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 15,
         delay: 0,
         weight: 50,
@@ -2021,7 +2021,7 @@ export const objectData = [
         desc: "thonged club",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 8,
         delay: 0,
         weight: 15,
@@ -2039,7 +2039,7 @@ export const objectData = [
         desc: null,
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 40,
         delay: 0,
         weight: 15,
@@ -2219,7 +2219,7 @@ export const objectData = [
         desc: "hard hat",
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 6,
         delay: 1,
         weight: 40,
@@ -2327,7 +2327,7 @@ export const objectData = [
         desc: "plumed helmet",
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 10,
         delay: 1,
         weight: 30,
@@ -2363,7 +2363,7 @@ export const objectData = [
         desc: "crested helmet",
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 6,
         delay: 1,
         weight: 50,
@@ -2381,7 +2381,7 @@ export const objectData = [
         desc: "visored helmet",
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 2,
         delay: 1,
         weight: 50,
@@ -2759,7 +2759,7 @@ export const objectData = [
         desc: null,
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 44,
         delay: 5,
         weight: 450,
@@ -2813,7 +2813,7 @@ export const objectData = [
         desc: null,
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 62,
         delay: 5,
         weight: 400,
@@ -2885,7 +2885,7 @@ export const objectData = [
         desc: null,
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 72,
         delay: 5,
         weight: 300,
@@ -2921,7 +2921,7 @@ export const objectData = [
         desc: null,
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 72,
         delay: 5,
         weight: 250,
@@ -2957,7 +2957,7 @@ export const objectData = [
         desc: null,
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 72,
         delay: 5,
         weight: 250,
@@ -3317,7 +3317,7 @@ export const objectData = [
         desc: "white-handed shield",
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 2,
         delay: 0,
         weight: 50,
@@ -3353,7 +3353,7 @@ export const objectData = [
         desc: null,
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 7,
         delay: 0,
         weight: 100,
@@ -3371,7 +3371,7 @@ export const objectData = [
         desc: "large round shield",
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 4,
         delay: 0,
         weight: 100,
@@ -3497,7 +3497,7 @@ export const objectData = [
         desc: "hard shoes",
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 7,
         delay: 2,
         weight: 50,
@@ -3947,7 +3947,7 @@ export const objectData = [
         desc: "iron",
         oc_class: 3, // RING_CLASS
         symbol: '=',
-        color: 7,
+        color: 6,
         prob: 1,
         delay: 0,
         weight: 3,
@@ -4001,7 +4001,7 @@ export const objectData = [
         desc: "twisted",
         oc_class: 3, // RING_CLASS
         symbol: '=',
-        color: 7,
+        color: 6,
         prob: 1,
         delay: 0,
         weight: 3,
@@ -4019,7 +4019,7 @@ export const objectData = [
         desc: "steel",
         oc_class: 3, // RING_CLASS
         symbol: '=',
-        color: 7,
+        color: 6,
         prob: 1,
         delay: 0,
         weight: 3,
@@ -4109,7 +4109,7 @@ export const objectData = [
         desc: "wire",
         oc_class: 3, // RING_CLASS
         symbol: '=',
-        color: 7,
+        color: 6,
         prob: 1,
         delay: 0,
         weight: 3,
@@ -4127,7 +4127,7 @@ export const objectData = [
         desc: "engagement",
         oc_class: 3, // RING_CLASS
         symbol: '=',
-        color: 7,
+        color: 6,
         prob: 1,
         delay: 0,
         weight: 3,
@@ -4163,7 +4163,7 @@ export const objectData = [
         desc: "circular",
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 120,
         delay: 0,
         weight: 20,
@@ -4181,7 +4181,7 @@ export const objectData = [
         desc: "spherical",
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 75,
         delay: 0,
         weight: 20,
@@ -4199,7 +4199,7 @@ export const objectData = [
         desc: "oval",
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 115,
         delay: 0,
         weight: 20,
@@ -4217,7 +4217,7 @@ export const objectData = [
         desc: "triangular",
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 115,
         delay: 0,
         weight: 20,
@@ -4235,7 +4235,7 @@ export const objectData = [
         desc: "pyramidal",
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 115,
         delay: 0,
         weight: 20,
@@ -4253,7 +4253,7 @@ export const objectData = [
         desc: "square",
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 115,
         delay: 0,
         weight: 20,
@@ -4271,7 +4271,7 @@ export const objectData = [
         desc: "concave",
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 60,
         delay: 0,
         weight: 20,
@@ -4289,7 +4289,7 @@ export const objectData = [
         desc: "hexagonal",
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 75,
         delay: 0,
         weight: 20,
@@ -4307,7 +4307,7 @@ export const objectData = [
         desc: "octagonal",
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 75,
         delay: 0,
         weight: 20,
@@ -4325,7 +4325,7 @@ export const objectData = [
         desc: "perforated",
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 75,
         delay: 0,
         weight: 20,
@@ -4343,7 +4343,7 @@ export const objectData = [
         desc: "cubical",
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 60,
         delay: 0,
         weight: 20,
@@ -4361,7 +4361,7 @@ export const objectData = [
         desc: null,
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 0,
         delay: 0,
         weight: 20,
@@ -4379,7 +4379,7 @@ export const objectData = [
         desc: null,
         oc_class: 4, // AMULET_CLASS
         symbol: '"',
-        color: 7,
+        color: 6,
         prob: 0,
         delay: 0,
         weight: 20,
@@ -4523,7 +4523,7 @@ export const objectData = [
         desc: "key",
         oc_class: 5, // TOOL_CLASS
         symbol: '(',
-        color: 7,
+        color: 6,
         prob: 80,
         delay: 0,
         weight: 3,
@@ -4540,7 +4540,7 @@ export const objectData = [
         desc: null,
         oc_class: 5, // TOOL_CLASS
         symbol: '(',
-        color: 7,
+        color: 6,
         prob: 60,
         delay: 0,
         weight: 4,
@@ -4808,7 +4808,7 @@ export const objectData = [
         desc: null,
         oc_class: 5, // TOOL_CLASS
         symbol: '(',
-        color: 7,
+        color: 6,
         prob: 25,
         delay: 0,
         weight: 4,
@@ -4826,7 +4826,7 @@ export const objectData = [
         desc: null,
         oc_class: 5, // TOOL_CLASS
         symbol: '(',
-        color: 7,
+        color: 6,
         prob: 15,
         delay: 0,
         weight: 100,
@@ -4844,7 +4844,7 @@ export const objectData = [
         desc: null,
         oc_class: 5, // TOOL_CLASS
         symbol: '(',
-        color: 7,
+        color: 6,
         prob: 35,
         delay: 0,
         weight: 4,
@@ -4862,7 +4862,7 @@ export const objectData = [
         desc: null,
         oc_class: 5, // TOOL_CLASS
         symbol: '(',
-        color: 7,
+        color: 6,
         prob: 15,
         delay: 0,
         weight: 15,
@@ -4934,7 +4934,7 @@ export const objectData = [
         desc: null,
         oc_class: 5, // TOOL_CLASS
         symbol: '(',
-        color: 7,
+        color: 6,
         prob: 0,
         delay: 0,
         weight: 200,
@@ -4952,7 +4952,7 @@ export const objectData = [
         desc: "whistle",
         oc_class: 5, // TOOL_CLASS
         symbol: '(',
-        color: 7,
+        color: 6,
         prob: 100,
         delay: 0,
         weight: 3,
@@ -4969,7 +4969,7 @@ export const objectData = [
         desc: "whistle",
         oc_class: 5, // TOOL_CLASS
         symbol: '(',
-        color: 7,
+        color: 6,
         prob: 30,
         delay: 0,
         weight: 3,
@@ -5199,7 +5199,7 @@ export const objectData = [
         desc: null,
         oc_class: 5, // TOOL_CLASS
         symbol: '(',
-        color: 7,
+        color: 6,
         prob: 20,
         delay: 0,
         weight: 100,
@@ -5217,7 +5217,7 @@ export const objectData = [
         desc: null,
         oc_class: 5, // TOOL_CLASS
         symbol: '(',
-        color: 7,
+        color: 6,
         prob: 5,
         delay: 0,
         weight: 30,
@@ -5865,7 +5865,7 @@ export const objectData = [
         desc: null,
         oc_class: 6, // FOOD_CLASS
         symbol: '%',
-        color: 7,
+        color: 6,
         prob: 75,
         delay: 0,
         weight: 10,
@@ -8042,7 +8042,7 @@ export const objectData = [
         desc: "tin",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 50,
         delay: 0,
         weight: 7,
@@ -8150,7 +8150,7 @@ export const objectData = [
         desc: "zinc",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 25,
         delay: 0,
         weight: 7,
@@ -8168,7 +8168,7 @@ export const objectData = [
         desc: "aluminum",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 25,
         delay: 0,
         weight: 7,
@@ -8186,7 +8186,7 @@ export const objectData = [
         desc: "uranium",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 30,
         delay: 0,
         weight: 7,
@@ -8204,7 +8204,7 @@ export const objectData = [
         desc: "iron",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 55,
         delay: 0,
         weight: 7,
@@ -8222,7 +8222,7 @@ export const objectData = [
         desc: "steel",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 50,
         delay: 0,
         weight: 7,
@@ -8240,7 +8240,7 @@ export const objectData = [
         desc: "hexagonal",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 40,
         delay: 0,
         weight: 7,
@@ -8258,7 +8258,7 @@ export const objectData = [
         desc: "short",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 40,
         delay: 0,
         weight: 7,
@@ -8276,7 +8276,7 @@ export const objectData = [
         desc: "runed",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 50,
         delay: 0,
         weight: 7,
@@ -8294,7 +8294,7 @@ export const objectData = [
         desc: "long",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 5,
         delay: 0,
         weight: 7,
@@ -8312,7 +8312,7 @@ export const objectData = [
         desc: "curved",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 40,
         delay: 0,
         weight: 7,
@@ -8348,7 +8348,7 @@ export const objectData = [
         desc: "spiked",
         oc_class: 10, // WAND_CLASS
         symbol: '/',
-        color: 7,
+        color: 6,
         prob: 0,
         delay: 0,
         weight: 7,
@@ -9086,7 +9086,7 @@ export const objectData = [
         desc: null,
         oc_class: 14, // BALL_CLASS
         symbol: '0',
-        color: 7,
+        color: 6,
         prob: 1000,
         delay: 0,
         weight: 480,
@@ -9104,7 +9104,7 @@ export const objectData = [
         desc: null,
         oc_class: 15, // CHAIN_CLASS
         symbol: '_',
-        color: 7,
+        color: 6,
         prob: 1000,
         delay: 0,
         weight: 120,
