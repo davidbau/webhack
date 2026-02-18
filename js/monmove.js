@@ -10,7 +10,7 @@ import { rn2, rnd, c_d, getRngLog } from './rng.js';
 import { monsterAttackPlayer } from './combat.js';
 import { CORPSE, FOOD_CLASS, COIN_CLASS, BOULDER, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS,
          PICK_AXE, DWARVISH_MATTOCK, SKELETON_KEY, LOCK_PICK, CREDIT_CARD,
-         UNICORN_HORN, SCR_SCARE_MONSTER } from './objects.js';
+         UNICORN_HORN, SCR_SCARE_MONSTER, CLOAK_OF_DISPLACEMENT } from './objects.js';
 import { doname, mkcorpstat, next_ident } from './mkobj.js';
 import { observeObject } from './discovery.js';
 import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT,
@@ -25,7 +25,8 @@ import { PM_GRID_BUG, PM_IRON_GOLEM, PM_SHOPKEEPER, mons,
          AD_ACID, AD_ENCH,
          M1_FLY, M1_SWIM, M1_AMPHIBIOUS, M1_AMORPHOUS, M1_CLING, M1_SEE_INVIS, S_MIMIC,
          M1_WALLWALK, M1_TUNNEL, M1_NEEDPICK, M1_SLITHY, M1_UNSOLID,
-         MZ_TINY, MZ_SMALL, MZ_MEDIUM, MR_FIRE, MR_SLEEP, G_FREQ, G_NOCORPSE } from './monsters.js';
+         MZ_TINY, MZ_SMALL, MZ_MEDIUM, MR_FIRE, MR_SLEEP, G_FREQ, G_NOCORPSE,
+         PM_DISPLACER_BEAST } from './monsters.js';
 import { STATUE_TRAP, MAGIC_TRAP, VIBRATING_SQUARE, RUST_TRAP, FIRE_TRAP,
          SLP_GAS_TRAP, BEAR_TRAP, PIT, SPIKED_PIT, HOLE, TRAPDOOR,
          WEB, ANTI_MAGIC, MAGIC_PORTAL } from './symbols.js';
@@ -231,9 +232,17 @@ function set_apparxy(mon, map, player) {
     const mdat = mons[mon.mndx] || mon.type || {};
     const monCanSee = mon.mcansee !== false;
     const notseen = (!monCanSee || (player.invisible && !perceives(mdat)));
-    // We currently do not model displacement at runtime.
-    const notthere = false;
-    let displ = notseen ? 1 : 0;
+    // C ref: Displaced && mtmp->data != &mons[PM_DISPLACER_BEAST]
+    const playerDisplaced = !!(player.cloak && player.cloak.otyp === CLOAK_OF_DISPLACEMENT);
+    const notthere = playerDisplaced && mon.mndx !== PM_DISPLACER_BEAST;
+    let displ;
+    if (notseen) {
+        displ = 1;
+    } else if (notthere) {
+        displ = couldsee(map, player, mx, my) ? 2 : 1;
+    } else {
+        displ = 0;
+    }
 
     if (!displ) {
         mon.mux = player.x;
@@ -260,7 +269,7 @@ function set_apparxy(mon, map, player) {
             if (!isok(mx, my)) continue;
             if (displ !== 2 && mx === mon.mx && my === mon.my) continue;
             if ((mx !== player.x || my !== player.y) && blocked) continue;
-            if (!couldsee(mx, my)) continue;
+            if (!couldsee(map, player, mx, my)) continue;
             break;
         } while (true);
     } else {
@@ -273,9 +282,9 @@ function set_apparxy(mon, map, player) {
 }
 
 // C ref: mon.c:3243 corpse_chance() RNG.
+// Always consumes rn2() to match C; caller checks G_NOCORPSE separately.
 function petCorpseChanceRoll(mon) {
     const mdat = mon?.type || {};
-    if (((mdat.geno || 0) & G_NOCORPSE) !== 0) return 1;
     const gfreq = (mdat.geno || 0) & G_FREQ;
     const verysmall = (mdat.size || 0) === MZ_TINY;
     const corpsetmp = 2 + (gfreq < 2 ? 1 : 0) + (verysmall ? 1 : 0);
@@ -1539,7 +1548,8 @@ function dog_move(mon, map, player, display, fov, after = false) {
                             if (display && target.name) {
                                 display.putstr_message(`The ${target.name} is killed!`);
                             }
-                            if (petCorpseChanceRoll(target) === 0) {
+                            if (petCorpseChanceRoll(target) === 0
+                                && !(((target?.type?.geno || 0) & G_NOCORPSE) !== 0)) {
                                 const corpse = mkcorpstat(CORPSE, target.mndx || 0, true);
                                 corpse.ox = target.mx;
                                 corpse.oy = target.my;
@@ -1878,7 +1888,11 @@ function m_move(mon, map, player) {
     }
 
     const omx = mon.mx, omy = mon.my;
-    let ggx = player.x, ggy = player.y;
+
+    // C ref: monmove.c:1763 — set_apparxy(mtmp) before main movement logic.
+    set_apparxy(mon, map, player);
+
+    let ggx = mon.mux ?? player.x, ggy = mon.muy ?? player.y;
 
     // C ref: monmove.c — appr setup
     let appr = mon.flee ? -1 : 1;
