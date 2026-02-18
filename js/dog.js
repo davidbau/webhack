@@ -34,6 +34,9 @@ import {
     carnivorous, herbivorous, is_undead, is_elf,
     is_humanoid, acidic, poisonous, is_metallivore,
 } from './mondata.js';
+import { monNam } from './mondata.js';
+import { doname } from './mkobj.js';
+import { couldsee } from './vision.js';
 
 // ========================================================================
 // dogfood return categories (C ref: mextra.h dogfood_types)
@@ -446,9 +449,14 @@ function dog_nutrition(mon, obj) {
 
 // Returns 2 if pet dies (not implemented), otherwise 1
 // map is needed to remove the eaten object
-export function dog_eat(mon, obj, map, turnCount) {
+export function dog_eat(mon, obj, map, turnCount, ctx = null) {
     const edog = mon.edog;
     if (!edog) return 1;
+    const display = ctx?.display || null;
+    const player = ctx?.player || null;
+    const fov = ctx?.fov || null;
+    const startX = Number.isInteger(ctx?.startX) ? ctx.startX : mon.mx;
+    const startY = Number.isInteger(ctx?.startY) ? ctx.startY : mon.my;
 
     // C ref: dogmove.c:231-232 — clamp hungrytime
     if (edog.hungrytime < turnCount)
@@ -483,6 +491,18 @@ export function dog_eat(mon, obj, map, turnCount) {
         // Create a virtual copy for the eaten portion (reward check uses otyp, invlet)
         obj = { ...obj, quan: 1 };
         removeFromMap = false; // original stays on map with reduced quantity
+    }
+
+    // C ref: dogmove.c:271-299 — report observed pet eating.
+    if (display && player) {
+        const seeObj = fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my);
+        const sawPet = (fov?.canSee ? fov.canSee(startX, startY) : couldsee(map, player, startX, startY))
+            && !mon.minvis;
+        if (sawPet || (seeObj && !mon.minvis)) {
+            display.putstr_message(`${monNam(mon, { capitalize: true })} eats ${doname(obj, null)}.`);
+        } else if (seeObj) {
+            display.putstr_message(`It eats ${doname(obj, null)}.`);
+        }
     }
 
     // C ref: dogmove.c:313-337 — reward check + consume

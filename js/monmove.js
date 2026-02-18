@@ -1054,13 +1054,27 @@ function droppables(mon) {
 }
 
 function canStackFloorObject(a, b) {
-    if (!a || !b) return false;
+    if (!a || !b || a === b) return false;
     if (a.otyp !== b.otyp) return false;
-    if (a.otyp !== CORPSE) return false;
-    return (a.corpsenm === b.corpsenm)
-        && (a.age === b.age)
-        && (!!a.cursed === !!b.cursed)
-        && (!!a.blessed === !!b.blessed);
+    const od = objectData[a.otyp];
+    if (!od?.merge || a.nomerge || b.nomerge) return false;
+    if (a.oclass === COIN_CLASS) return true;
+    if (!!a.cursed !== !!b.cursed || !!a.blessed !== !!b.blessed) return false;
+    if ((a.spe ?? 0) !== (b.spe ?? 0)) return false;
+    if (!!a.no_charge !== !!b.no_charge) return false;
+    if (!!a.obroken !== !!b.obroken || !!a.otrapped !== !!b.otrapped) return false;
+    if (!!a.lamplit !== !!b.lamplit) return false;
+    if (a.oclass === FOOD_CLASS
+        && ((a.oeaten ?? 0) !== (b.oeaten ?? 0) || !!a.orotten !== !!b.orotten)) return false;
+    if (!!a.dknown !== !!b.dknown || !!a.bknown !== !!b.bknown) return false;
+    if ((a.oeroded ?? 0) !== (b.oeroded ?? 0) || (a.oeroded2 ?? 0) !== (b.oeroded2 ?? 0)) return false;
+    if (!!a.greased !== !!b.greased) return false;
+    if (!!a.oerodeproof !== !!b.oerodeproof || !!a.rknown !== !!b.rknown) return false;
+    if ((a.corpsenm ?? -1) !== (b.corpsenm ?? -1)) return false;
+    if ((a.age ?? -1) !== (b.age ?? -1)) return false;
+    if (!!a.opoisoned !== !!b.opoisoned) return false;
+    if (!!a.known !== !!b.known) return false;
+    return true;
 }
 
 function placeFloorObject(map, obj) {
@@ -1128,7 +1142,9 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player) {
             if ((edible <= CADAVER
                 || (edog.mhpmax_penalty && edible === ACCFOOD))
                 && could_reach_item(map, mon, obj.ox, obj.oy)) {
-                dog_eat(mon, obj, map, turnCount);
+                dog_eat(mon, obj, map, turnCount, {
+                    display, player, startX: omx, startY: omy,
+                });
                 return 1;
             }
 
@@ -1717,11 +1733,14 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
             } else if (gtyp === UNDEF && inMastersSight
                     && !dogHasMinvent
                     && (!dogLit || playerLit)
-                    && (otyp === MANFOOD || m_cansee(mon, map, ox, oy))
-                    && edog.apport > rn2(8)
-                    && can_carry(mon, obj) > 0) {
+                    && (otyp === MANFOOD || m_cansee(mon, map, ox, oy))) {
+                const apportRoll = rn2(8);
+                const carry = can_carry(mon, obj);
+                if (edog.apport > apportRoll
+                    && carry > 0) {
                 // C ref: dogmove.c:543-552 — APPORT/MANFOOD with apport+carry check
-                gx = ox; gy = oy; gtyp = APPORT;
+                    gx = ox; gy = oy; gtyp = APPORT;
+                }
             }
         }
     }
@@ -2099,14 +2118,9 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
 
         // C ref: dogmove.c:1324-1327 — eat after moving
         if (do_eat && eatObj) {
-            const sawPet = fov?.canSee ? fov.canSee(omx, omy) : couldsee(map, player, omx, omy);
-            const seeObj = fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my);
-            if (display && (sawPet || seeObj)) {
-                // C ref: dogmove.c:290 uses noit_Monnam() which gives "Your" for tame,
-                // unlike the Monnam() used elsewhere which always gives "The".
-                display.putstr_message(`${monNam(mon, { capitalize: true })} eats ${doname(eatObj, null)}.`);
-            }
-            dog_eat(mon, eatObj, map, turnCount);
+            dog_eat(mon, eatObj, map, turnCount, {
+                display, player, fov, startX: omx, startY: omy,
+            });
         }
     }
 
