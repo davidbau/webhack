@@ -253,6 +253,17 @@ channel with call-stack context. The `--verbose` flag shows every session
 result. The `--type=chargen` flag isolates one category. The `--fail-fast`
 flag stops at the first failure for focused debugging.
 
+### Replay startup topline state matters for count-prefix parity
+
+In replay mode, first-digit count prefix handling intentionally preserves the
+current topline (matching C). If replay init does not carry startup topline
+state forward, sessions can diverge immediately on key `1` / `2` / ... frames
+even when RNG and command flow are otherwise aligned.
+
+Practical rule: preserve startup **message/topline state** for replay, but do
+not blindly force startup map rows into later steps, or you'll create unrelated
+map-render diffs in wizard sessions.
+
 ### Role index mapping
 
 The 13 roles are indexed 0–12 in C order. Wizard is index 12, not 13.
