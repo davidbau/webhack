@@ -1,0 +1,44 @@
+{
+  "commit": "45cb9bf",
+  "parent": "0e80b85",
+  "date": "2026-02-16T02:27:02-05:00",
+  "author": "David Bau",
+  "message": "docs: record final test infra unification decisions",
+  "stats": {
+    "total": 9932,
+    "pass": 564,
+    "fail": 9368,
+    "skip": 0,
+    "duration": 5
+  },
+  "categories": {
+    "chargen": {
+      "total": 181,
+      "pass": 178,
+      "fail": 3
+    },
+    "gameplay": {
+      "total": 59,
+      "pass": 00,
+      "fail": 59
+    },
+    "map": {
+      "total": 24,
+      "pass": 00,
+      "fail": 24
+    },
+    "special": {
+      "total": 101,
+      "pass": 98,
+      "fail": 3
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
