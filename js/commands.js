@@ -5,14 +5,15 @@
 import { COLNO, ROWNO, DOOR, CORR, SDOOR, SCORR, STAIRS, LADDER, FOUNTAIN, SINK, THRONE, ALTAR, GRAVE,
          POOL, LAVAPOOL, IRONBARS, TREE, ROOM, IS_DOOR, D_CLOSED, D_LOCKED,
          D_ISOPEN, D_NODOOR, D_BROKEN, ACCESSIBLE, IS_WALL, MAXLEVEL, VERSION_STRING, ICE,
-         isok, A_STR, A_DEX, A_CON, A_WIS, STATUS_ROW_1 } from './config.js';
+         isok, A_STR, A_INT, A_DEX, A_CON, A_WIS, STATUS_ROW_1 } from './config.js';
 import { SQKY_BOARD, SLP_GAS_TRAP, FIRE_TRAP, PIT, SPIKED_PIT, ANTI_MAGIC } from './symbols.js';
 import { rn2, rnd, rnl, d, c_d } from './rng.js';
 import { exercise } from './attrib_exercise.js';
 import { objectData, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
          TOOL_CLASS, FOOD_CLASS, POTION_CLASS, SCROLL_CLASS, SPBOOK_CLASS,
          WAND_CLASS, COIN_CLASS, GEM_CLASS, ROCK_CLASS, CORPSE, LANCE,
-         BULLWHIP, BOW, ELVEN_BOW, ORCISH_BOW, YUMI, SLING, CROSSBOW } from './objects.js';
+         BULLWHIP, BOW, ELVEN_BOW, ORCISH_BOW, YUMI, SLING, CROSSBOW,
+         QUARTERSTAFF, ROBE, SMALL_SHIELD } from './objects.js';
 import { nhgetch, ynFunction, getlin } from './input.js';
 import { playerAttackMonster } from './combat.js';
 import { makemon, setMakemonPlayerContext } from './makemon.js';
@@ -23,7 +24,7 @@ import { observeObject, getDiscoveriesMenuLines } from './discovery.js';
 import { showPager } from './pager.js';
 import { handleZap } from './zap.js';
 import { saveGame, saveFlags } from './storage.js';
-import { obj_resists } from './objdata.js';
+import { obj_resists, is_metallic } from './objdata.js';
 import {
     renderOptionsMenu,
     getTotalPages,
@@ -52,6 +53,104 @@ const STATUS_CONDITION_DEFAULT_ON = new Set([
     'cond_blind', 'cond_conf', 'cond_deaf', 'cond_fly', 'cond_foodPois',
     'cond_grab', 'cond_hallucinat', 'cond_iron', 'cond_lava', 'cond_levitate',
     'cond_ride', 'cond_slime', 'cond_stone', 'cond_strngl', 'cond_stun', 'cond_termIll'
+]);
+
+const SPELL_KEEN_TURNS = 20000;
+const SPELL_SKILL_UNSKILLED = 1;
+const SPELL_SKILL_BASIC = 2;
+const SPELL_CATEGORY_ATTACK = 'attack';
+const SPELL_CATEGORY_HEALING = 'healing';
+const SPELL_CATEGORY_DIVINATION = 'divination';
+const SPELL_CATEGORY_ENCHANTMENT = 'enchantment';
+const SPELL_CATEGORY_CLERICAL = 'clerical';
+const SPELL_CATEGORY_ESCAPE = 'escape';
+const SPELL_CATEGORY_MATTER = 'matter';
+
+// C refs: src/spell.c spell_skilltype()/spelltypemnemonic(), include/objects.h SPELL().
+const SPELL_CATEGORY_BY_NAME = new Map([
+    ['dig', SPELL_CATEGORY_MATTER],
+    ['magic missile', SPELL_CATEGORY_ATTACK],
+    ['fireball', SPELL_CATEGORY_ATTACK],
+    ['cone of cold', SPELL_CATEGORY_ATTACK],
+    ['sleep', SPELL_CATEGORY_ENCHANTMENT],
+    ['finger of death', SPELL_CATEGORY_ATTACK],
+    ['light', SPELL_CATEGORY_DIVINATION],
+    ['detect monsters', SPELL_CATEGORY_DIVINATION],
+    ['healing', SPELL_CATEGORY_HEALING],
+    ['knock', SPELL_CATEGORY_MATTER],
+    ['force bolt', SPELL_CATEGORY_ATTACK],
+    ['confuse monster', SPELL_CATEGORY_ENCHANTMENT],
+    ['cure blindness', SPELL_CATEGORY_HEALING],
+    ['drain life', SPELL_CATEGORY_ATTACK],
+    ['slow monster', SPELL_CATEGORY_ENCHANTMENT],
+    ['wizard lock', SPELL_CATEGORY_MATTER],
+    ['create monster', SPELL_CATEGORY_CLERICAL],
+    ['detect food', SPELL_CATEGORY_DIVINATION],
+    ['cause fear', SPELL_CATEGORY_ENCHANTMENT],
+    ['clairvoyance', SPELL_CATEGORY_DIVINATION],
+    ['cure sickness', SPELL_CATEGORY_HEALING],
+    ['charm monster', SPELL_CATEGORY_ENCHANTMENT],
+    ['haste self', SPELL_CATEGORY_ESCAPE],
+    ['detect unseen', SPELL_CATEGORY_DIVINATION],
+    ['levitation', SPELL_CATEGORY_ESCAPE],
+    ['extra healing', SPELL_CATEGORY_HEALING],
+    ['restore ability', SPELL_CATEGORY_HEALING],
+    ['invisibility', SPELL_CATEGORY_ESCAPE],
+    ['detect treasure', SPELL_CATEGORY_DIVINATION],
+    ['remove curse', SPELL_CATEGORY_CLERICAL],
+    ['magic mapping', SPELL_CATEGORY_DIVINATION],
+    ['identify', SPELL_CATEGORY_DIVINATION],
+    ['turn undead', SPELL_CATEGORY_CLERICAL],
+    ['polymorph', SPELL_CATEGORY_MATTER],
+    ['teleport away', SPELL_CATEGORY_ESCAPE],
+    ['create familiar', SPELL_CATEGORY_CLERICAL],
+    ['cancellation', SPELL_CATEGORY_MATTER],
+    ['protection', SPELL_CATEGORY_CLERICAL],
+    ['jumping', SPELL_CATEGORY_ESCAPE],
+    ['stone to flesh', SPELL_CATEGORY_HEALING],
+    ['chain lightning', SPELL_CATEGORY_ATTACK],
+]);
+
+// C refs: src/role.c roles[] spell stats (spelbase/spelheal/spelshld/spelarmr/spelstat/spelspec/spelsbon).
+const ROLE_SPELLCAST = new Map([
+    [0, { spelbase: 5, spelheal: 0, spelshld: 2, spelarmr: 10, spelstat: A_INT, spelspec: 'magic mapping', spelsbon: -4 }],
+    [1, { spelbase: 14, spelheal: 0, spelshld: 0, spelarmr: 8, spelstat: A_INT, spelspec: 'haste self', spelsbon: -4 }],
+    [2, { spelbase: 12, spelheal: 0, spelshld: 1, spelarmr: 8, spelstat: A_INT, spelspec: 'dig', spelsbon: -4 }],
+    [3, { spelbase: 3, spelheal: -3, spelshld: 2, spelarmr: 10, spelstat: A_WIS, spelspec: 'cure sickness', spelsbon: -4 }],
+    [4, { spelbase: 8, spelheal: -2, spelshld: 0, spelarmr: 9, spelstat: A_WIS, spelspec: 'turn undead', spelsbon: -4 }],
+    [5, { spelbase: 8, spelheal: -2, spelshld: 2, spelarmr: 20, spelstat: A_WIS, spelspec: 'restore ability', spelsbon: -4 }],
+    [6, { spelbase: 3, spelheal: -2, spelshld: 2, spelarmr: 10, spelstat: A_WIS, spelspec: 'remove curse', spelsbon: -4 }],
+    [7, { spelbase: 8, spelheal: 0, spelshld: 1, spelarmr: 9, spelstat: A_INT, spelspec: 'detect treasure', spelsbon: -4 }],
+    [8, { spelbase: 9, spelheal: 2, spelshld: 1, spelarmr: 10, spelstat: A_INT, spelspec: 'invisibility', spelsbon: -4 }],
+    [9, { spelbase: 10, spelheal: 0, spelshld: 0, spelarmr: 8, spelstat: A_INT, spelspec: 'clairvoyance', spelsbon: -4 }],
+    [10, { spelbase: 5, spelheal: 1, spelshld: 2, spelarmr: 10, spelstat: A_INT, spelspec: 'charm monster', spelsbon: -4 }],
+    [11, { spelbase: 10, spelheal: -2, spelshld: 0, spelarmr: 9, spelstat: A_WIS, spelspec: 'cone of cold', spelsbon: -4 }],
+    [12, { spelbase: 1, spelheal: 0, spelshld: 3, spelarmr: 10, spelstat: A_INT, spelspec: 'magic missile', spelsbon: -4 }],
+]);
+
+const ROLE_BASIC_SPELL_CATEGORIES = new Map([
+    [0, new Set([SPELL_CATEGORY_ATTACK, SPELL_CATEGORY_HEALING, SPELL_CATEGORY_DIVINATION, SPELL_CATEGORY_MATTER])],
+    [1, new Set([SPELL_CATEGORY_ATTACK, SPELL_CATEGORY_ESCAPE])],
+    [2, new Set([SPELL_CATEGORY_ATTACK, SPELL_CATEGORY_MATTER])],
+    [3, new Set([SPELL_CATEGORY_HEALING])],
+    [4, new Set([SPELL_CATEGORY_ATTACK, SPELL_CATEGORY_HEALING, SPELL_CATEGORY_CLERICAL])],
+    [5, new Set([SPELL_CATEGORY_ATTACK, SPELL_CATEGORY_HEALING, SPELL_CATEGORY_DIVINATION, SPELL_CATEGORY_ENCHANTMENT, SPELL_CATEGORY_CLERICAL, SPELL_CATEGORY_ESCAPE, SPELL_CATEGORY_MATTER])],
+    [6, new Set([SPELL_CATEGORY_HEALING, SPELL_CATEGORY_DIVINATION, SPELL_CATEGORY_CLERICAL])],
+    [7, new Set([SPELL_CATEGORY_DIVINATION, SPELL_CATEGORY_ESCAPE, SPELL_CATEGORY_MATTER])],
+    [8, new Set([SPELL_CATEGORY_HEALING, SPELL_CATEGORY_DIVINATION, SPELL_CATEGORY_ESCAPE])],
+    [9, new Set([SPELL_CATEGORY_ATTACK, SPELL_CATEGORY_DIVINATION, SPELL_CATEGORY_CLERICAL])],
+    [10, new Set([SPELL_CATEGORY_DIVINATION, SPELL_CATEGORY_ENCHANTMENT, SPELL_CATEGORY_ESCAPE])],
+    [11, new Set([SPELL_CATEGORY_ATTACK, SPELL_CATEGORY_ESCAPE])],
+    [12, new Set([SPELL_CATEGORY_ATTACK, SPELL_CATEGORY_HEALING, SPELL_CATEGORY_DIVINATION, SPELL_CATEGORY_ENCHANTMENT, SPELL_CATEGORY_CLERICAL, SPELL_CATEGORY_ESCAPE, SPELL_CATEGORY_MATTER])],
+]);
+
+const HEALING_BONUS_SPELLS = new Set([
+    'healing',
+    'extra healing',
+    'cure blindness',
+    'cure sickness',
+    'restore ability',
+    'remove curse',
 ]);
 
 function formatGoldPickupMessage(gold, player) {
@@ -288,7 +387,7 @@ export async function rhack(ch, game) {
 
     // Inventory
     if (c === 'i') {
-        return await handleInventory(player, display);
+        return await handleInventory(player, display, game);
     }
 
     // Wield weapon
@@ -1324,12 +1423,12 @@ async function handleOpen(player, map, display, game) {
 async function handleClose(player, map, display, game) {
     display.putstr_message('In what direction?');
     const dirCh = await nhgetch();
+    display.topMessage = null;
+    display.messageNeedsMore = false;
     const c = String.fromCharCode(dirCh);
     const dir = DIRECTION_KEYS[c];
     if (!dir) {
         if (typeof display.clearRow === 'function') display.clearRow(0);
-        display.topMessage = null;
-        display.messageNeedsMore = false;
         return { moved: false, tookTime: false };
     }
 
@@ -1359,7 +1458,7 @@ async function handleClose(player, map, display, game) {
 
 // Handle inventory display
 // C ref: invent.c ddoinv()
-async function handleInventory(player, display) {
+async function handleInventory(player, display, game) {
     if (player.inventory.length === 0 && (player.gold || 0) <= 0) {
         display.putstr_message('Not carrying anything.');
         return { moved: false, tookTime: false };
@@ -1430,6 +1529,7 @@ async function handleInventory(player, display) {
             const noun = ((selected.quan || 1) > 1 && !baseName.endsWith('s'))
                 ? `${baseName}s`
                 : baseName;
+            let menuOffx = 34;
             if (typeof display.setCell === 'function'
                 && Number.isInteger(display.cols)
                 && Number.isInteger(display.rows)) {
@@ -1437,41 +1537,103 @@ async function handleInventory(player, display) {
                 for (const line of lines) {
                     if (line.length > maxcol) maxcol = line.length;
                 }
-                const offx = Math.max(10, Math.min(41, display.cols - maxcol - 2));
+                menuOffx = Math.max(10, Math.min(41, display.cols - maxcol - 2));
                 const menuRows = Math.min(lines.length, STATUS_ROW_1);
                 for (let r = 0; r < menuRows; r++) {
-                    for (let col = offx; col < display.cols; col++) {
+                    for (let col = menuOffx; col < display.cols; col++) {
                         display.setCell(col, r, ' ', 7, 0);
                     }
                 }
             }
-            display.putstr_message(`                                  Do what with the ${noun}?`);
-            const stackActions = ((selected.quan || 1) > 1)
+            const rawActions = ((selected.quan || 1) > 1)
                 ? [
-                    `                                  c - Name this stack of ${noun}`,
-                    '                                  d - Drop this stack',
-                    '                                  e - Eat one of these',
-                    '                                  i - Adjust inventory by assigning new letter',
-                    '                                  I - Adjust inventory by splitting this stack',
-                    '                                  t - Throw one of these',
-                    '                                  w - Wield this stack in your hands',
-                    '                                  / - Look up information about these',
-                    '                                  (end)',
+                    `c - Name this stack of ${noun}`,
+                    'd - Drop this stack',
+                    'e - Eat one of these',
+                    'i - Adjust inventory by assigning new letter',
+                    'I - Adjust inventory by splitting this stack',
+                    't - Throw one of these',
+                    'w - Wield this stack in your hands',
+                    '/ - Look up information about these',
+                    '(end)',
                 ]
-                : [];
+                : ((selected === player.weapon && selected.oclass === WEAPON_CLASS)
+                    ? [
+                        "- - Wield '-' to un-wield this weapon",
+                        `c - Name this specific ${noun}`,
+                        'd - Drop this item',
+                        'E - Engrave on the floor with this item',
+                        'i - Adjust inventory by assigning new letter',
+                        "Q - Quiver this item for easy throwing with 'f'ire",
+                        't - Throw this item',
+                        'x - Ready this as an alternate weapon',
+                        '/ - Look up information about this',
+                        '(end)',
+                    ]
+                    : [
+                        ...(baseName.toLowerCase() === 'stethoscope'
+                            ? ['a - Listen through the stethoscope']
+                            : []),
+                        `c - Name this specific ${noun}`,
+                        'd - Drop this item',
+                        'i - Adjust inventory by assigning new letter',
+                        't - Throw this item',
+                        'w - Wield this item in your hands',
+                        '/ - Look up information about this',
+                        '(end)',
+                    ]);
+
+            const promptText = `Do what with the ${noun}?`;
+            if (Number.isInteger(display.cols)) {
+                const maxAction = rawActions.reduce((m, line) => Math.max(m, line.length), promptText.length);
+                menuOffx = Math.max(10, Math.min(41, display.cols - maxAction - 2));
+            }
+            const pad = ' '.repeat(menuOffx);
+            const actionPrompt = `${pad}${promptText}`;
+            if (typeof display.putstr === 'function' && typeof display.clearRow === 'function') {
+                display.clearRow(0);
+                display.putstr(0, 0, pad, 7, 0);
+                display.putstr(menuOffx, 0, promptText, 7, 1);
+                if (display && Object.hasOwn(display, 'topMessage')) display.topMessage = actionPrompt;
+                if (display && Object.hasOwn(display, 'messageNeedsMore')) display.messageNeedsMore = false;
+            } else {
+                display.putstr_message(actionPrompt);
+            }
+            const stackActions = rawActions.map((line) => `${pad}${line}`);
             if (typeof display.putstr === 'function') {
                 for (let i = 0; i < stackActions.length; i++) {
                     display.putstr(0, i + 2, stackActions[i]);
                 }
             }
-            await nhgetch();
-            if (typeof display.clearRow === 'function') {
-                for (let i = 0; i < stackActions.length; i++) {
-                    display.clearRow(i + 2);
+            const actionKeys = new Set(rawActions.map((line) => String(line || '').charAt(0)));
+            while (true) {
+                const actionCh = await nhgetch();
+                if (actionCh === 32 || actionCh === 27 || actionCh === 10 || actionCh === 13) {
+                    if (typeof display.clearRow === 'function') {
+                        for (let i = 0; i < stackActions.length; i++) {
+                            display.clearRow(i + 2);
+                        }
+                    }
+                    clearTopline();
+                    return { moved: false, tookTime: false };
                 }
+                const actionKey = String.fromCharCode(actionCh);
+                if (!actionKeys.has(actionKey)) continue;
+                if (typeof display.clearRow === 'function') {
+                    for (let i = 0; i < stackActions.length; i++) {
+                        display.clearRow(i + 2);
+                    }
+                }
+                clearTopline();
+                if (actionKey === 'c') {
+                    if (game && typeof game.renderCurrentScreen === 'function') {
+                        game.renderCurrentScreen();
+                    }
+                    await getlin(`What do you want to name this ${baseName}? `, display);
+                    clearTopline();
+                }
+                return { moved: false, tookTime: false };
             }
-            clearTopline();
-            return { moved: false, tookTime: false };
         }
     }
     clearTopline();
@@ -2146,6 +2308,13 @@ async function handleFire(player, display) {
 // Handle reading
 // C ref: read.c doread()
 async function handleRead(player, display) {
+    const readableClasses = new Set([SCROLL_CLASS, SPBOOK_CLASS]);
+    const readable = (player.inventory || []).filter((o) => o && readableClasses.has(o.oclass));
+    const letters = readable.map((o) => o.invlet).join('');
+    const prompt = letters
+        ? `What do you want to read? [${letters} or ?*]`
+        : 'What do you want to read? [*]';
+
     // Keep prompt active until explicit cancel, matching tty flow.
     const replacePromptMessage = () => {
         if (typeof display.clearRow === 'function') display.clearRow(0);
@@ -2153,7 +2322,7 @@ async function handleRead(player, display) {
         display.messageNeedsMore = false;
     };
     while (true) {
-        display.putstr_message('What do you want to read? [*]');
+        display.putstr_message(prompt);
         const ch = await nhgetch();
         const c = String.fromCharCode(ch);
         if (ch === 27 || ch === 10 || ch === 13 || c === ' ') {
@@ -2167,6 +2336,11 @@ async function handleRead(player, display) {
         }
         const anyItem = (player.inventory || []).find((o) => o && o.invlet === c);
         if (anyItem) {
+            if (readableClasses.has(anyItem.oclass)) {
+                replacePromptMessage();
+                display.putstr_message("Sorry, I don't know how to read that yet.");
+                return { moved: false, tookTime: false };
+            }
             replacePromptMessage();
             display.putstr_message('That is a silly thing to read.');
             return { moved: false, tookTime: false };
@@ -2329,6 +2503,15 @@ async function handleApply(player, display) {
             return { moved: false, tookTime: false };
         }
 
+        if (selected.oclass === SPBOOK_CLASS) {
+            replacePromptMessage();
+            const fades = ['fresh', 'slightly faded', 'very faded', 'extremely faded', 'barely visible'];
+            const studied = Math.max(0, Math.min(4, Number(selected.spestudied || 0)));
+            const magical = !!objectData[selected.otyp]?.magic;
+            display.putstr_message(`The${magical ? ' magical' : ''} ink in this spellbook is ${fades[studied]}.`);
+            return { moved: false, tookTime: true };
+        }
+
         replacePromptMessage();
         display.putstr_message("Sorry, I don't know how to use that.");
         return { moved: false, tookTime: false };
@@ -2337,28 +2520,116 @@ async function handleApply(player, display) {
 
 // Handle known-spells list
 // C ref: spell.c dovspell()
+function spellCategoryForName(name) {
+    return SPELL_CATEGORY_BY_NAME.get(String(name || '').toLowerCase()) || SPELL_CATEGORY_MATTER;
+}
+
+function spellSkillRank(player, category) {
+    const basic = ROLE_BASIC_SPELL_CATEGORIES.get(player.roleIndex);
+    return basic?.has(category) ? SPELL_SKILL_BASIC : SPELL_SKILL_UNSKILLED;
+}
+
+function spellRetentionText(turnsLeft, skillRank) {
+    if (turnsLeft < 1) return '(gone)';
+    if (turnsLeft >= SPELL_KEEN_TURNS) return '100%';
+    const percent = Math.floor((turnsLeft - 1) / (SPELL_KEEN_TURNS / 100)) + 1;
+    const accuracy = skillRank >= SPELL_SKILL_BASIC ? 10 : 25;
+    const hi = Math.min(100, accuracy * Math.floor((percent + accuracy - 1) / accuracy));
+    const lo = Math.max(1, hi - accuracy + 1);
+    return `${lo}%-${hi}%`;
+}
+
+function estimateSpellFailPercent(player, spellName, spellLevel, category) {
+    const role = ROLE_SPELLCAST.get(player.roleIndex)
+        || { spelbase: 10, spelheal: 0, spelshld: 2, spelarmr: 10, spelstat: A_INT, spelspec: '', spelsbon: 0 };
+    const statValue = Math.max(3, Math.min(25, Number(player.attributes?.[role.spelstat] || 10)));
+    const spellSkill = spellSkillRank(player, category);
+    const heroLevel = Math.max(1, Number(player.level || 1));
+    const spellLvl = Math.max(1, Number(spellLevel || 1));
+
+    const paladinBonus = player.roleIndex === 4 && category === SPELL_CATEGORY_CLERICAL;
+    const armor = player.armor || null;
+    const cloak = player.cloak || null;
+    const shield = player.shield || null;
+    const helmet = player.helmet || null;
+    const gloves = player.gloves || null;
+    const boots = player.boots || null;
+    const weapon = player.weapon || null;
+
+    let splcaster = role.spelbase;
+    if (armor && is_metallic(armor) && !paladinBonus) {
+        splcaster += (cloak?.otyp === ROBE) ? Math.floor(role.spelarmr / 2) : role.spelarmr;
+    } else if (cloak?.otyp === ROBE) {
+        splcaster -= role.spelarmr;
+    }
+    if (shield) splcaster += role.spelshld;
+    if (weapon?.otyp === QUARTERSTAFF) splcaster -= 3;
+    if (!paladinBonus) {
+        if (helmet && is_metallic(helmet)) splcaster += 4;
+        if (gloves && is_metallic(gloves)) splcaster += 6;
+        if (boots && is_metallic(boots)) splcaster += 2;
+    }
+    if (String(spellName || '').toLowerCase() === role.spelspec) splcaster += role.spelsbon;
+    if (HEALING_BONUS_SPELLS.has(String(spellName || '').toLowerCase())) splcaster += role.spelheal;
+    splcaster = Math.min(20, splcaster);
+
+    let chance = Math.floor((11 * statValue) / 2);
+    const skill = Math.max(spellSkill, SPELL_SKILL_UNSKILLED) - 1;
+    const difficulty = ((spellLvl - 1) * 4) - ((skill * 6) + Math.floor(heroLevel / 3) + 1);
+    if (difficulty > 0) {
+        chance -= Math.floor(Math.sqrt((900 * difficulty) + 2000));
+    } else {
+        chance += Math.min(20, Math.floor((15 * -difficulty) / spellLvl));
+    }
+    chance = Math.max(0, Math.min(120, chance));
+
+    const shieldWeight = Number(objectData[shield?.otyp]?.weight || 0);
+    const smallShieldWeight = Number(objectData[SMALL_SHIELD]?.weight || 40);
+    if (shield && shieldWeight > smallShieldWeight) {
+        chance = (String(spellName || '').toLowerCase() === role.spelspec)
+            ? Math.floor(chance / 2)
+            : Math.floor(chance / 4);
+    }
+
+    chance = Math.floor((chance * (20 - splcaster)) / 15) - splcaster;
+    chance = Math.max(0, Math.min(100, chance));
+    return Math.max(0, Math.min(99, 100 - chance));
+}
+
 async function handleKnownSpells(player, display) {
-    const spellbooks = (player.inventory || []).filter((obj) => obj.oclass === SPBOOK_CLASS);
+    const spellbooks = (player.inventory || []).filter((obj) => (obj.oclass ?? obj.oc_class) === SPBOOK_CLASS);
     if (spellbooks.length === 0) {
         display.putstr_message("You don't know any spells right now.");
         return { moved: false, tookTime: false };
     }
 
-    const lines = ['Currently known spells'];
-    for (const book of spellbooks) {
-        const od = objectData[book.otyp];
-        const spellName = od?.name || book.name || 'unknown spell';
-        lines.push(`${book.invlet} - ${spellName}`);
+    const rows = ['Currently known spells', ''];
+    const showTurns = !!player.wizard;
+    rows.push(showTurns
+        ? '    Name                 Level Category     Fail Retention  turns'
+        : '    Name                 Level Category     Fail Retention');
+
+    for (let i = 0; i < spellbooks.length && i < 52; i++) {
+        const book = spellbooks[i];
+        const od = objectData[book.otyp] || null;
+        const spellName = String(od?.name || book.name || 'unknown spell').toLowerCase();
+        const spellLevel = Math.max(1, Number(od?.oc2 || 1));
+        const category = spellCategoryForName(spellName);
+        const skillRank = spellSkillRank(player, category);
+        const turnsLeft = Math.max(0, SPELL_KEEN_TURNS - Number(player.turns || 0));
+        const fail = estimateSpellFailPercent(player, spellName, spellLevel, category);
+        const retention = spellRetentionText(turnsLeft, skillRank);
+        const menuLet = i < 26 ? String.fromCharCode('a'.charCodeAt(0) + i) : String.fromCharCode('A'.charCodeAt(0) + i - 26);
+        const base = `${menuLet} - ${spellName.padEnd(20)}  ${String(spellLevel).padStart(2)}   ${category.padEnd(12)} ${String(fail).padStart(3)}% ${retention.padStart(9)}`;
+        rows.push(showTurns ? `${base}  ${String(turnsLeft).padStart(5)}` : base);
     }
-    lines.push(' (end)');
-    // C spell menu uses a wide column layout; keep width comparable so
-    // tty overlay offset matches captured sessions.
-    const paddedLines = lines.map((line) => String(line).padEnd(65, ' '));
+    rows.push('+ - [sort spells]');
+    rows.push('(end)');
 
     if (typeof display.renderOverlayMenu === 'function') {
-        display.renderOverlayMenu(paddedLines);
+        display.renderOverlayMenu(rows);
     } else {
-        display.renderChargenMenu(paddedLines, false);
+        display.renderChargenMenu(rows, false);
     }
 
     while (true) {

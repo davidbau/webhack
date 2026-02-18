@@ -1343,7 +1343,15 @@ export class HeadlessDisplay {
 
     // Matches Display.renderOverlayMenu()
     renderOverlayMenu(lines) {
-        const isCategoryHeader = (line) => /^(Weapons|Armor|Rings|Amulets|Tools|Comestibles|Potions|Scrolls|Spellbooks|Wands|Coins|Gems\/Stones|Other)\b/.test(String(line || '').trimStart());
+        const isCategoryHeader = (line) => {
+            const text = String(line || '').trimStart();
+            if (/^(Weapons|Armor|Rings|Amulets|Tools|Comestibles|Potions|Scrolls|Spellbooks|Wands|Coins|Gems\/Stones|Other)\b/.test(text)) {
+                return true;
+            }
+            if (text === 'Currently known spells') return true;
+            if (/^Name\s+Level\s+Category\s+Fail\s+Retention/.test(text)) return true;
+            return false;
+        };
         let maxcol = 0;
         for (const line of lines) {
             if (line.length > maxcol) maxcol = line.length;
@@ -1363,7 +1371,10 @@ export class HeadlessDisplay {
         for (let i = 0; i < menuRows; i++) {
             const line = lines[i];
             const isHeader = isCategoryHeader(line);
-            if (isHeader && line.startsWith(' ')) {
+            const keepLeadingPad = isHeader
+                && line.startsWith(' ')
+                && !/^Name\s+Level\s+Category\s+Fail\s+Retention/.test(String(line || '').trimStart());
+            if (keepLeadingPad) {
                 this.setCell(offx, i, ' ', CLR_GRAY, 0);
                 this.putstr(offx + 1, i, line.slice(1), CLR_GRAY, 1);
             } else if (isHeader) {

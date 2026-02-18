@@ -5,7 +5,7 @@ import { rhack } from '../../js/commands.js';
 import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
-import { COIN_CLASS, GOLD_PIECE } from '../../js/objects.js';
+import { COIN_CLASS, GOLD_PIECE, TOOL_CLASS, STETHOSCOPE, WEAPON_CLASS, SCALPEL } from '../../js/objects.js';
 
 function makeGame() {
     const map = new GameMap();
@@ -81,5 +81,64 @@ describe('inventory modal dismissal', () => {
         const result = await rhack('i'.charCodeAt(0), game);
         assert.equal(result.tookTime, false);
         assert.ok(Array.isArray(game.display.lastOverlay));
+    });
+
+    it('renders single-item action menu for stethoscope selections', async () => {
+        const { game } = makeGame();
+        game.player.inventory.push({
+            oclass: TOOL_CLASS,
+            otyp: STETHOSCOPE,
+            invlet: 'c',
+            quan: 1,
+            name: 'stethoscope',
+        });
+        const writes = [];
+        game.display.putstr = function putstr(col, row, str, color, attr) {
+            writes.push({ col, row, str, color, attr });
+        };
+        game.display.clearRow = function clearRow() {};
+
+        pushInput('c'.charCodeAt(0));
+        pushInput(' '.charCodeAt(0));
+        const result = await rhack('i'.charCodeAt(0), game);
+        assert.equal(result.tookTime, false);
+        assert.ok(writes.some((w) => w.row === 2 && w.str.includes('Listen through the stethoscope')));
+        assert.ok(writes.some((w) => w.row === 0 && w.attr === 1 && w.str.includes('Do what with the stethoscope?')));
+    });
+
+    it('keeps item action menu open on invalid keys, then allows c-name flow', async () => {
+        const { game } = makeGame();
+        const scalpel = {
+            oclass: WEAPON_CLASS,
+            otyp: SCALPEL,
+            invlet: 'a',
+            quan: 1,
+            name: 'scalpel',
+        };
+        game.player.inventory = [scalpel];
+        game.player.weapon = scalpel;
+
+        const writes = [];
+        game.display.putstr = function putstr(col, row, str, color, attr) {
+            writes.push({ col, row, str, color, attr });
+        };
+        game.display.clearRow = function clearRow() {};
+
+        pushInput('a'.charCodeAt(0)); // select item from inventory menu
+        pushInput('n'.charCodeAt(0)); // invalid action key, should keep submenu open
+        const pending = rhack('i'.charCodeAt(0), game);
+        const early = await Promise.race([
+            pending.then(() => 'resolved'),
+            new Promise((resolve) => setTimeout(() => resolve('pending'), 30)),
+        ]);
+        assert.equal(early, 'pending');
+
+        pushInput('c'.charCodeAt(0)); // choose "name this specific ..."
+        pushInput('e'.charCodeAt(0));
+        pushInput('\n'.charCodeAt(0));
+        const result = await pending;
+        assert.equal(result.tookTime, false);
+        assert.ok(writes.some((w) => w.row === 0 && w.str.includes('Do what with the scalpel?')));
+        assert.ok(writes.some((w) => w.row === 0 && w.str.includes('What do you want to name this scalpel?')));
     });
 });

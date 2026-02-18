@@ -5,7 +5,7 @@ import { rhack } from '../../js/commands.js';
 import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
-import { BATTLE_AXE, LANCE } from '../../js/objects.js';
+import { BATTLE_AXE, LANCE, SPE_HEALING } from '../../js/objects.js';
 
 function makeBaseGame() {
     const map = new GameMap();
@@ -78,5 +78,14 @@ describe('apply prompt behavior', () => {
         const result = await rhack('a'.charCodeAt(0), game);
         assert.equal(result.tookTime, false);
         assert.equal(game.display.topMessage, null);
+    });
+
+    it('flip-through on spellbooks reports ink freshness and consumes time', async () => {
+        const game = makeBaseGame();
+        game.player.inventory = [{ invlet: 'g', oclass: 9, otyp: SPE_HEALING, name: 'healing', spestudied: 0 }];
+        pushInput('g'.charCodeAt(0));
+        const result = await rhack('a'.charCodeAt(0), game);
+        assert.equal(result.tookTime, true);
+        assert.equal(game.display.topMessage, 'The magical ink in this spellbook is fresh.');
     });
 });

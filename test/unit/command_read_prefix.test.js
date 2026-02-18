@@ -16,9 +16,11 @@ function makeGame() {
     const display = {
         topMessage: null,
         messageNeedsMore: false,
+        messages: [],
         putstr_message(msg) {
             this.topMessage = msg;
             this.messageNeedsMore = true;
+            this.messages.push(msg);
         },
     };
     return { player, map, display, fov: null, flags: { verbose: false }, menuRequested: false };
@@ -46,4 +48,20 @@ test('read command rejects non-readable inventory items with C wording', async (
     const result = await rhack('r'.charCodeAt(0), game);
     assert.equal(result.tookTime, false);
     assert.equal(game.display.topMessage, 'That is a silly thing to read.');
+});
+
+test('read prompt includes readable inventory letters in C format', async () => {
+    const game = makeGame();
+    game.player.inventory = [
+        { invlet: 'g', oclass: 9, name: 'healing' },
+        { invlet: 'h', oclass: 9, name: 'extra healing' },
+        { invlet: 'i', oclass: 9, name: 'stone to flesh' },
+    ];
+    clearInputQueue();
+    pushInput(' '.charCodeAt(0));
+
+    const result = await rhack('r'.charCodeAt(0), game);
+    assert.equal(result.tookTime, false);
+    assert.equal(game.display.messages[0], 'What do you want to read? [ghi or ?*]');
+    assert.equal(game.display.topMessage, 'Never mind.');
 });
