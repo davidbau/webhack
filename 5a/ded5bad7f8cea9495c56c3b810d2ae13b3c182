@@ -5,37 +5,37 @@
   "author": "David Bau",
   "message": "oracle: restore results mirror to main after hook rewrite",
   "stats": {
-    "total": 333,
-    "pass": 296,
-    "fail": 37,
+    "total": 500,
+    "pass": 446,
+    "fail": 54,
     "skip": 0,
-    "duration": 30
+    "duration": 29
   },
   "categories": {
     "chargen": {
-      "total": 0,
-      "pass": 00,
-      "fail": 00
+      "total": 91,
+      "pass": 91,
+      "fail": 0
     },
     "gameplay": {
-      "total": 2,
-      "pass": 00,
-      "fail": 2
+      "total": 44,
+      "pass": 6,
+      "fail": 38
     },
     "map": {
-      "total": 0,
-      "pass": 00,
-      "fail": 00
+      "total": 10,
+      "pass": 10,
+      "fail": 0
     },
     "special": {
-      "total": 0,
-      "pass": 00,
-      "fail": 00
+      "total": 50,
+      "pass": 50,
+      "fail": 0
     },
     "unit": {
-      "total": 0,
-      "pass": 00,
-      "fail": 00
+      "total": 296,
+      "pass": 285,
+      "fail": 11
     }
   },
   "regression": false,
