@@ -116,6 +116,10 @@ for (let i = 0; i < assignments.length; i++) {
     const maxXP = extractInt(text, /XP progression:\s+maxXL=\d+\s+maxXP=(\d+)/);
     const xl2 = extractString(text, /XP progression:.*XL2_turn=([^\s]+)/);
     const xl3 = extractString(text, /XP progression:.*XL3_turn=([^\s]+)/);
+    const xp100 = extractInt(text, /XP checkpoints:\s+t100=(\d+)/);
+    const xp200 = extractInt(text, /XP checkpoints:\s+t100=\d+\s+t200=(\d+)/);
+    const xp400 = extractInt(text, /XP checkpoints:\s+t100=\d+\s+t200=\d+\s+t400=(\d+)/);
+    const xp600 = extractInt(text, /XP checkpoints:\s+t100=\d+\s+t200=\d+\s+t400=\d+\s+t600=(\d+)/);
     const targetAssign = extractInt(text, /Explore telemetry:.*\bassign=(\d+)/);
     const targetComplete = extractInt(text, /Explore telemetry:.*\bcomplete=(\d+)/);
     const abandonNoProgress = extractInt(text, /Explore telemetry:.*\babandonNoProgress=(\d+)/);
@@ -130,6 +134,10 @@ for (let i = 0; i < assignments.length; i++) {
         cause: cause || (out.error ? `spawn_error:${out.error.code || out.error.message}` : 'unknown'),
         maxXL: Number.isFinite(maxXL) ? maxXL : null,
         maxXP: Number.isFinite(maxXP) ? maxXP : null,
+        xp100: Number.isFinite(xp100) ? xp100 : null,
+        xp200: Number.isFinite(xp200) ? xp200 : null,
+        xp400: Number.isFinite(xp400) ? xp400 : null,
+        xp600: Number.isFinite(xp600) ? xp600 : null,
         xl2: xl2 || 'never',
         xl3: xl3 || 'never',
         targetAssign: Number.isFinite(targetAssign) ? targetAssign : null,
@@ -142,7 +150,7 @@ for (let i = 0; i < assignments.length; i++) {
     };
     results.push(row);
 
-    console.log(`  -> depth=${row.depth ?? 'NA'} cause=${row.cause} maxXL=${row.maxXL ?? 'NA'} maxXP=${row.maxXP ?? 'NA'} xl2=${row.xl2} xl3=${row.xl3} assign=${row.targetAssign ?? 'NA'} complete=${row.targetComplete ?? 'NA'} noProg=${row.abandonNoProgress ?? 'NA'} failedAdd=${row.failedAdds ?? 'NA'} doorOpen=${row.doorOpen ?? 'NA'} doorKick=${row.doorKick ?? 'NA'}`);
+    console.log(`  -> depth=${row.depth ?? 'NA'} cause=${row.cause} maxXL=${row.maxXL ?? 'NA'} maxXP=${row.maxXP ?? 'NA'} xp100=${row.xp100 ?? 'NA'} xp200=${row.xp200 ?? 'NA'} xp400=${row.xp400 ?? 'NA'} xp600=${row.xp600 ?? 'NA'} xl2=${row.xl2} xl3=${row.xl3} assign=${row.targetAssign ?? 'NA'} complete=${row.targetComplete ?? 'NA'} noProg=${row.abandonNoProgress ?? 'NA'} failedAdd=${row.failedAdds ?? 'NA'} doorOpen=${row.doorOpen ?? 'NA'} doorKick=${row.doorKick ?? 'NA'}`);
     if (!row.ok && opts.verboseFailures) {
         console.log(`  status=${out.status} signal=${out.signal || 'none'} error=${out.error ? (out.error.code || out.error.message) : 'none'}`);
         console.log('  stderr/stdout (failure):');
@@ -157,6 +165,13 @@ const avgDepth = validDepths.length > 0 ? (validDepths.reduce((a, b) => a + b, 0
 const reached3 = results.filter(r => (r.depth || 0) >= 3).length;
 const reachedXL2 = results.filter(r => (r.maxXL || 0) >= 2).length;
 const reachedXL3 = results.filter(r => (r.maxXL || 0) >= 3).length;
+const avgMaxXP = avgOf(results.map(r => r.maxXP));
+const avgXP100 = avgOf(results.map(r => r.xp100));
+const avgXP200 = avgOf(results.map(r => r.xp200));
+const avgXP400 = avgOf(results.map(r => r.xp400));
+const avgXP600 = avgOf(results.map(r => r.xp600));
+const reachedXP10By600 = results.filter(r => (r.xp600 || 0) >= 10).length;
+const reachedXP20By600 = results.filter(r => (r.xp600 || 0) >= 20).length;
 const avgAssign = avgOf(results.map(r => r.targetAssign));
 const avgComplete = avgOf(results.map(r => r.targetComplete));
 const avgNoProg = avgOf(results.map(r => r.abandonNoProgress));
@@ -168,10 +183,12 @@ console.log(`  Avg depth: ${Number.isFinite(avgDepth) ? avgDepth.toFixed(3) : 'N
 console.log(`  Reached depth>=3: ${reached3}/${results.length}`);
 console.log(`  Reached XL2+: ${reachedXL2}/${results.length}`);
 console.log(`  Reached XL3+: ${reachedXL3}/${results.length}`);
+console.log(`  XP avg: maxXP=${fmtAvg(avgMaxXP)} t100=${fmtAvg(avgXP100)} t200=${fmtAvg(avgXP200)} t400=${fmtAvg(avgXP400)} t600=${fmtAvg(avgXP600)}`);
+console.log(`  XP by turn 600: >=10 ${reachedXP10By600}/${results.length}, >=20 ${reachedXP20By600}/${results.length}`);
 console.log(`  Explore avg: assign=${fmtAvg(avgAssign)} complete=${fmtAvg(avgComplete)} noProg=${fmtAvg(avgNoProg)} failedAdd=${fmtAvg(avgFailedAdds)} doorOpen=${fmtAvg(avgDoorOpen)} doorKick=${fmtAvg(avgDoorKick)}`);
 console.log('\nPer-role results');
 for (const r of results) {
-    console.log(`  role=${r.role} seed=${r.seed} depth=${r.depth ?? 'NA'} cause=${r.cause} maxXL=${r.maxXL ?? 'NA'} maxXP=${r.maxXP ?? 'NA'} xl2=${r.xl2} xl3=${r.xl3} assign=${r.targetAssign ?? 'NA'} complete=${r.targetComplete ?? 'NA'} noProg=${r.abandonNoProgress ?? 'NA'} failedAdd=${r.failedAdds ?? 'NA'} doorOpen=${r.doorOpen ?? 'NA'} doorKick=${r.doorKick ?? 'NA'}`);
+    console.log(`  role=${r.role} seed=${r.seed} depth=${r.depth ?? 'NA'} cause=${r.cause} maxXL=${r.maxXL ?? 'NA'} maxXP=${r.maxXP ?? 'NA'} xp100=${r.xp100 ?? 'NA'} xp200=${r.xp200 ?? 'NA'} xp400=${r.xp400 ?? 'NA'} xp600=${r.xp600 ?? 'NA'} xl2=${r.xl2} xl3=${r.xl3} assign=${r.targetAssign ?? 'NA'} complete=${r.targetComplete ?? 'NA'} noProg=${r.abandonNoProgress ?? 'NA'} failedAdd=${r.failedAdds ?? 'NA'} doorOpen=${r.doorOpen ?? 'NA'} doorKick=${r.doorKick ?? 'NA'}`);
 }
 
 function avgOf(values) {
