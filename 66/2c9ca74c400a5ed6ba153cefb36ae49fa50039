@@ -1,0 +1,44 @@
+{
+  "commit": "662c9ca",
+  "parent": "f7e4e32",
+  "date": "2026-02-18T14:24:34-05:00",
+  "author": "David Bau",
+  "message": "monmove: remove spurious player kill text from monster throws",
+  "stats": {
+    "total": 378,
+    "pass": 343,
+    "fail": 35,
+    "skip": 0,
+    "duration": 30
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 2,
+      "pass": 00,
+      "fail": 2
+    },
+    "map": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "special": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
