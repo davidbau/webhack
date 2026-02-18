@@ -49,6 +49,10 @@ import { lays_eggs } from './mondata.js';
 // Module-level depth for level_difficulty() during mklev
 let _levelDepth = 1;
 export function setLevelDepth(d) { _levelDepth = d; }
+let _startupInventoryMode = false;
+export function setStartupInventoryMode(enabled) {
+    _startupInventoryMode = !!enabled;
+}
 
 function mkobjTrace(msg) {
     if (typeof process !== 'undefined' && process.env.WEBHACK_MKOBJ_TRACE === '1') {
@@ -619,6 +623,10 @@ function mkbox_cnts(box) {
         n = box.olocked ? 7 : 5;
     } else if (od.name === 'large box') {
         n = box.olocked ? 5 : 3;
+    } else if (_startupInventoryMode
+               && (od.name === 'sack' || od.name === 'oilskin sack')) {
+        // C ref: mkobj.c mkbox_cnts() -- during startup inventory, sacks start empty.
+        n = 0;
     } else {
         // sack, oilskin sack, bag of holding
         n = 1;

@@ -14,7 +14,7 @@
 //   4. welcome(TRUE)           — rndencode + seer_turn
 
 import { rn2, rnd, rn1, rne, d, c_d, getRngLog } from './rng.js';
-import { mksobj, mkobj, weight } from './mkobj.js';
+import { mksobj, mkobj, weight, setStartupInventoryMode } from './mkobj.js';
 import { isok, NUM_ATTRS,
          A_STR, A_CON,
          PM_ARCHEOLOGIST, PM_BARBARIAN, PM_CAVEMAN, PM_HEALER,
@@ -773,7 +773,9 @@ function iniInv(player, table) {
     let quan = trquan(table[tropIdx]);
     let gotSp1 = false;
 
-    while (tropIdx < table.length) {
+    setStartupInventoryMode(true);
+    try {
+        while (tropIdx < table.length) {
         const trop = table[tropIdx];
         let obj, otyp;
 
@@ -871,11 +873,14 @@ function iniInv(player, table) {
             gotSp1 = true;
         }
 
-        if (--quan > 0) continue; // make another of same entry
-        tropIdx++;
-        if (tropIdx < table.length) {
-            quan = trquan(table[tropIdx]);
+            if (--quan > 0) continue; // make another of same entry
+            tropIdx++;
+            if (tropIdx < table.length) {
+                quan = trquan(table[tropIdx]);
+            }
         }
+    } finally {
+        setStartupInventoryMode(false);
     }
 }
 

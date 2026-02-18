@@ -63,7 +63,9 @@ export function stripAnsiSequences(text) {
         // Single-character ESC sequences (e.g. ESC(0, ESC)0)
         .replace(/\x1b[@-Z\\-_]/g, '')
         // Remaining raw C1 CSI
-        .replace(/\x9b[0-?]*[ -/]*[@-~]/g, '');
+        .replace(/\x9b[0-?]*[ -/]*[@-~]/g, '')
+        // Remaining C0 controls (keep tab/newline semantics out of single line text)
+        .replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '');
 }
 
 // Session screens may provide plain `screen`, richer `screenAnsi`, or both.
@@ -111,8 +113,24 @@ export function getSessionStartup(session) {
 // Get character config from v3 session (from options field)
 export function getSessionCharacter(session) {
     if (!session?.options) return {};
+    let startupName = null;
+    const startup = getSessionStartup(session);
+    const startupLines = getSessionScreenLines(startup || {});
+    for (const line of startupLines) {
+        if (!line || !line.includes('St:')) continue;
+        const m = line.match(/^\s*(.*?)\s+St:/);
+        if (!m) continue;
+        const statusPrefix = m[1].trim();
+        const theIdx = statusPrefix.indexOf(' the ');
+        if (theIdx > 0) {
+            startupName = statusPrefix.slice(0, theIdx).trim();
+        } else if (statusPrefix.length > 0) {
+            startupName = statusPrefix;
+        }
+        if (startupName) break;
+    }
     return {
-        name: session.options.name,
+        name: startupName || session.options.name,
         role: session.options.role,
         race: session.options.race,
         gender: session.options.gender,
@@ -644,7 +662,20 @@ export async function replaySession(seed, session, opts = {}) {
     // Parse actual attributes from session screen (u_init randomizes them)
     // Screen format: "St:18 Dx:11 Co:18 In:11 Wi:9 Ch:8"
     const sessionStartup = getSessionStartup(session);
-    const screen = getSessionScreenLines(sessionStartup || {});
+    let screen = getSessionScreenLines(sessionStartup || {});
+    // Some gameplay fixtures omit startup status rows; use the earliest step
+    // that includes status lines so replayed baseline attrs/Pw match C capture.
+    const hasStatusLine = (lines) => Array.isArray(lines)
+        && lines.some((line) => typeof line === 'string' && (line.includes('St:') || line.includes('HP:')));
+    if (!hasStatusLine(screen)) {
+        for (const s of (session.steps || [])) {
+            const lines = getSessionScreenLines(s);
+            if (hasStatusLine(lines)) {
+                screen = lines;
+                break;
+            }
+        }
+    }
     let inferredShowExp = null;
     let inferredShowTime = null;
     let inferredShowScore = null;
@@ -684,6 +715,26 @@ export async function replaySession(seed, session, opts = {}) {
     }
 
     const initResult = simulatePostLevelInit(player, map, 1);
+
+    // simulatePostLevelInit() applies role/race defaults (including Pw).
+    // Re-apply captured startup status so replay baseline matches fixture.
+    for (const line of screen) {
+        if (!line) continue;
+        const hpm = line.match(/HP:(\d+)\((\d+)\)\s+Pw:(\d+)\((\d+)\)\s+AC:([-]?\d+)/);
+        if (hpm) {
+            player.hp = parseInt(hpm[1]);
+            player.hpmax = parseInt(hpm[2]);
+            player.pw = parseInt(hpm[3]);
+            player.pwmax = parseInt(hpm[4]);
+            player.ac = parseInt(hpm[5]);
+            continue;
+        }
+        const hpOnly = line.match(/HP:(\d+)\((\d+)\)/);
+        if (hpOnly) {
+            player.hp = parseInt(hpOnly[1]);
+            player.hpmax = parseInt(hpOnly[2]);
+        }
+    }
 
     const startupLog = getRngLog();
     const startupRng = startupLog.map(toCompactRng);
@@ -795,10 +846,13 @@ export async function replaySession(seed, session, opts = {}) {
             }
         }
 
+        const normalizedScreen = Array.isArray(screen)
+            ? screen.map((line) => stripAnsiSequences(line))
+            : [];
         stepResults.push({
             rngCalls: raw.length,
             rng: compact,
-            screen,
+            screen: normalizedScreen,
         });
     };
     for (let stepIndex = 0; stepIndex < maxSteps; stepIndex++) {
@@ -1186,13 +1240,21 @@ export async function replaySession(seed, session, opts = {}) {
             for (let i = 0; i < step.key.length; i++) {
                 pushInput(step.key.charCodeAt(i));
             }
-            // C ref: doextcmd() accepts single-key shorthand after '#'.
-            // Trace captures '#', then one key (e.g. 'O') without explicit Enter.
+            // Legacy traces sometimes omit Enter after a one-key "#<cmd>"
+            // shorthand. Only synthesize Enter when the next captured key
+            // does not look like continued typing for a multi-char command.
             if (pendingKind === 'extended-command' && step.key.length === 1) {
-                pushInput(13);
-                // Only inject shorthand Enter once; extended commands can
-                // continue into nested prompts (getlin/menus) afterward.
-                pendingKind = null;
+                const nextKey = allSteps[stepIndex + 1]?.key;
+                const continuesWord = typeof nextKey === 'string'
+                    && nextKey.length === 1
+                    && /[A-Za-z]/.test(nextKey);
+                const explicitEnterNext = nextKey === '\n' || nextKey === '\r';
+                if (!continuesWord && !explicitEnterNext) {
+                    pushInput(13);
+                    // Only inject shorthand Enter once; extended commands can
+                    // continue into nested prompts (getlin/menus) afterward.
+                    pendingKind = null;
+                }
             }
             let settled = { done: false };
             // Prompt-driven commands (read/drop/throw/etc.) usually resolve

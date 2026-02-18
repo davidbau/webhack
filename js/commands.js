@@ -506,6 +506,7 @@ export async function rhack(ch, game) {
 // Handle directional movement
 // C ref: hack.c domove() -- the core movement function
 async function handleMovement(dir, player, map, display, game) {
+    const flags = game.flags || {};
     const oldX = player.x;
     const oldY = player.y;
     const nx = player.x + dir[0];
@@ -2716,9 +2717,8 @@ async function handleExtendedCommand(game) {
             return { moved: false, tookTime: false };
         }
         default:
-            display.putstr_message(
-                `Unknown extended command: ${cmd}. Try: options, levelchange, map, teleport, genesis, quit.`
-            );
+            // C-style unknown extended command feedback
+            display.putstr_message(`#${cmd}: unknown extended command.`);
             return { moved: false, tookTime: false };
     }
 }

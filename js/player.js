@@ -100,7 +100,7 @@ export const roles = [
       forceGender: null,
       gods: ['Shan Lai Ching', 'Chih Sung-tzu', 'Huan Ti'],
       ranks: [
-        {m:'Bonze',f:'Bonze'}, {m:'Mendicant',f:'Mendicant'},
+        {m:'Candidate',f:'Candidate'}, {m:'Mendicant',f:'Mendicant'},
         {m:'Acolyte',f:'Acolyte'}, {m:'Monk',f:'Nun'},
         {m:'Lama',f:'Lama'}, {m:'Abbot',f:'Abbess'},
         {m:'Guru',f:'Guru'}, {m:'Swami',f:'Swami'},
