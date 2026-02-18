@@ -1,0 +1,44 @@
+{
+  "commit": "55c270b",
+  "parent": "d25d5eb",
+  "date": "2026-02-16T08:33:13-05:00",
+  "author": "David Bau",
+  "message": "Phase 3: route startup and chargen generation through core init",
+  "stats": {
+    "total": 354,
+    "pass": 289,
+    "fail": 65,
+    "skip": 0,
+    "duration": 6
+  },
+  "categories": {
+    "chargen": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "gameplay": {
+      "total": 19,
+      "pass": 00,
+      "fail": 19
+    },
+    "map": {
+      "total": 9,
+      "pass": 00,
+      "fail": 9
+    },
+    "special": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
