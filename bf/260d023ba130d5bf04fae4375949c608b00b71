@@ -1,0 +1,44 @@
+{
+  "commit": "bf260d0",
+  "parent": "ccbcee3",
+  "date": "2026-02-16T20:22:35-05:00",
+  "author": "David Bau",
+  "message": "comparison: improve DECgraphics replay and per-stream divergences",
+  "stats": {
+    "total": 353,
+    "pass": 293,
+    "fail": 60,
+    "skip": 0,
+    "duration": 8
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 19,
+      "pass": 00,
+      "fail": 19
+    },
+    "map": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "special": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
