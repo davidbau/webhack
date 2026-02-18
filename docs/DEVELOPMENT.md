@@ -169,6 +169,24 @@ npm run test:session
 
 ## Common Development Tasks
 
+### Unified Backlog Intake
+
+Use one project backlog for all work, with labels for classification.
+
+1. Capture candidate issues from:
+   - failing tests/sessions and CI regressions,
+   - C-to-JS audit/coverage gaps,
+   - manual playtesting findings,
+   - selfplay findings,
+   - release blockers and user/developer bug reports.
+2. Classify every new issue with labels.
+   - Use `parity` for C-vs-JS divergence/parity work.
+   - Add other domain labels as appropriate (`selfplay`, `infra`, `docs`, etc.).
+3. Keep new issues unowned by default.
+   - Add `agent:<name>` only when an agent actively claims the issue.
+4. Use evidence-first issue bodies for `parity` issues.
+   - Include seed/session/command, first mismatch point, and expected vs actual behavior.
+
 ## C Parity Policy
 
 When working on C-vs-JS parity, follow this rule:

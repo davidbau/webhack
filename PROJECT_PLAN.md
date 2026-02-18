@@ -53,6 +53,15 @@ The intended outcome is a superior but historically accurate NetHack gameplay an
    - accurate project history and lessons-learned records.
 6. Release timing supports publication within days of official NetHack 3.7.0 release.
 
+## Parity Definition of Done (Operational Gate)
+
+Parity is considered achieved when all are true:
+1. Deterministic replay/session suites pass against C reference traces for maintained session categories.
+2. No known systematic RNG drift remains in validated scenarios.
+3. Core gameplay regression suites are green (`npm test` plus comparison harness suites).
+4. Codebase passes agreed lint/style/test gates.
+5. Non-gameplay UI extension interfaces are documented and validated as behavior-neutral.
+
 ## Secondary Goals
 
 1. Build a state-of-the-art JavaScript self-play agent that behaves in a humanlike way:
@@ -68,6 +77,8 @@ The intended outcome is a superior but historically accurate NetHack gameplay an
    - quick reference aids (reference cards and running inventory views, for players who can never remember whether `q` quaffs or `Q` quivers),
    - in-browser reading/scrolling access to Guidebook, Spoilers, and game history during play.
 4. Produce and validate a new WCST-style Spoilers manual that preserves gameplay accuracy for NetHack 3.7.0 while consolidating high-quality strategy guidance in a voice worthy of the game.
+
+Selfplay train/holdout seed policy and acceptance criteria are defined in `selfplay/SELFPLAY_PLAN.md` and apply to selfplay-only tuning work.
 
 ## Non-Goals
 
@@ -126,6 +137,14 @@ Milestones use a hybrid model: phase completion + parity gates + release-timing 
 3. Keep Phase 5 (self-play) in parallel so it accelerates trace generation and demonstration requirements without blocking parity burndown.
 4. Keep scope narrow near official-release trigger: prioritize must-hit criteria and release blockers over secondary expansion.
 5. Preserve fast, diagnostic-rich test loops throughout all phases.
+
+## Quality Gates Per Change
+
+1. Validate changed behavior with deterministic tests/sessions in the affected area.
+2. Include or update deterministic tests/session traces as needed for future regressions.
+3. Update `docs/LORE.md` for porting work; update `selfplay/LEARNINGS.md` for selfplay work.
+4. Pass harness-neutrality review: no harness logic that hides, rewrites, or bypasses true divergences.
+5. Prefer simplifying harness behavior over time by removing gameplay-aware special handling.
 
 ## Risks and Mitigations
 
@@ -211,3 +230,16 @@ Milestones use a hybrid model: phase completion + parity gates + release-timing 
    - If starting new work not covered by an issue, create one before or at start.
    - Agent identity is directory-based (directory name defines agent name).
    - Track active agent ownership with agent labels in issues.
+7. Maintain one unified project backlog.
+   - Keep all work in the same issue queue and classify by labels.
+   - Use `parity` label for C-vs-JS divergence/parity work.
+   - Issues are unowned by default; add `agent:<name>` label only when an agent actively claims work.
+8. Populate backlog through evidence-first intake.
+   - Add issues from failing tests/sessions, C-to-JS audit gaps, release blockers, selfplay findings, and developer/user bug reports.
+   - For `parity` issues, include reproducible evidence (seed/session/command, first mismatch, expected vs actual) before prioritization.
+
+## Immediate Next Steps
+
+1. Confirm and publish the canonical parity test matrix: one authoritative table of parity suites that defines required session categories, exact run commands/artifacts, deterministic controls, and pass/fail gates for PR checks and release checks.
+2. Maintain a prioritized unified project backlog: begin by analyzing current failing tests/sessions to identify highest-impact systematic divergences, file and prioritize an initial set of `parity` GitHub issues, then continue intake from tests/audits/bugs with label classification, unowned-until-claimed ownership, and evidence-first issue bodies for `parity` entries.
+3. Start and maintain the C-to-JS correspondence ledger in `docs/C_PARITY_WORKLIST.md`, beginning with core gameplay files/functions so coverage-phase closure work has a validated mapping baseline.
