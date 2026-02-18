@@ -6825,8 +6825,8 @@ export const selection = {
         const rmno = currentRoom.roomnoidx !== undefined
             ? currentRoom.roomnoidx + ROOMOFFSET
             : 0;
-        for (let y = currentRoom.ly; y <= currentRoom.hy; y++) {
-            for (let x = currentRoom.lx; x <= currentRoom.hx; x++) {
+        for (let x = currentRoom.lx; x <= currentRoom.hx; x++) {
+            for (let y = currentRoom.ly; y <= currentRoom.hy; y++) {
                 const loc = levelState.map && levelState.map.at(x, y);
                 if (loc && !loc.edge && (!rmno || loc.roomno === rmno)) {
                     sel.set(x, y, true);
