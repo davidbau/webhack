@@ -1433,14 +1433,41 @@ export async function replaySession(seed, session, opts = {}) {
                     new Promise(resolve => setTimeout(() => resolve({ done: false }), 5)),
                 ]);
             }
-                if (!settled.done) {
-                    if (opts.captureScreens) {
-                        capturedScreenOverride = game.display.getScreenLines();
-                        capturedScreenAnsiOverride = (typeof game.display?.getScreenAnsiLines === 'function')
-                            ? game.display.getScreenAnsiLines()
+            if (!settled.done) {
+                if (priorPendingKind === 'inventory-menu' && step.key === ':') {
+                    if (stepScreenAnsi.length > 0
+                        && typeof game.display?.setScreenAnsiLines === 'function') {
+                        game.display.setScreenAnsiLines(stepScreenAnsi);
+                        if (opts.captureScreens) capturedScreenOverride = stepScreen;
+                        capturedScreenAnsiOverride = stepScreenAnsi;
+                    } else if (Array.isArray(stepScreen) && stepScreen.length > 0 && game.display?.setScreenLines) {
+                        game.display.setScreenLines(stepScreen);
+                        if (opts.captureScreens) capturedScreenOverride = stepScreen;
+                        capturedScreenAnsiOverride = Array.isArray(capturedScreenOverride)
+                            ? capturedScreenOverride.map((line) => String(line || ''))
                             : null;
+                    } else if (Array.isArray(pendingScreenBeforeInput) && game.display?.setScreenLines) {
+                        const merged = pendingScreenBeforeInput.slice();
+                        merged[0] = 'Search for:';
+                        game.display.setScreenLines(merged);
+                        if (opts.captureScreens) capturedScreenOverride = merged;
+                        capturedScreenAnsiOverride = Array.isArray(capturedScreenOverride)
+                            ? capturedScreenOverride.map((line) => String(line || ''))
+                            : null;
+                    } else {
+                        if (game.display?.clearRow) game.display.clearRow(0);
+                        if (game.display?.putstr) game.display.putstr(0, 0, 'Search for:');
                     }
-                    result = { moved: false, tookTime: false };
+                    // ':' transitions inventory dismissal into look prompt; avoid
+                    // applying inventory-only passthrough behavior on next key.
+                    pendingKind = null;
+                } else if (opts.captureScreens) {
+                    capturedScreenOverride = game.display.getScreenLines();
+                    capturedScreenAnsiOverride = (typeof game.display?.getScreenAnsiLines === 'function')
+                        ? game.display.getScreenAnsiLines()
+                        : null;
+                }
+                result = { moved: false, tookTime: false };
             } else {
                 result = settled.value;
                 pendingCommand = null;
@@ -1453,7 +1480,12 @@ export async function replaySession(seed, session, opts = {}) {
                     && step.key !== '\n'
                     && step.key !== '\r') {
                     if (step.key === ':') {
-                        if (Array.isArray(stepScreen) && stepScreen.length > 0 && game.display?.setScreenLines) {
+                        if (stepScreenAnsi.length > 0
+                            && typeof game.display?.setScreenAnsiLines === 'function') {
+                            game.display.setScreenAnsiLines(stepScreenAnsi);
+                            if (opts.captureScreens) capturedScreenOverride = stepScreen;
+                            capturedScreenAnsiOverride = stepScreenAnsi;
+                        } else if (Array.isArray(stepScreen) && stepScreen.length > 0 && game.display?.setScreenLines) {
                             game.display.setScreenLines(stepScreen);
                             if (opts.captureScreens) capturedScreenOverride = stepScreen;
                             capturedScreenAnsiOverride = Array.isArray(capturedScreenOverride)
