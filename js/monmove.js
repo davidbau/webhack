@@ -3,7 +3,7 @@
 // Focus: exact RNG consumption alignment with C NetHack
 
 import { COLNO, ROWNO, STONE, IS_WALL, IS_DOOR, IS_ROOM,
-         ACCESSIBLE, IS_OBSTRUCTED, CORR, DOOR, D_CLOSED, D_LOCKED, D_BROKEN,
+         ACCESSIBLE, IS_OBSTRUCTED, CORR, DOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN,
          POOL, LAVAPOOL, SHOPBASE, ROOMOFFSET, IS_POOL, IS_LAVA,
          NORMAL_SPEED, isok } from './config.js';
 import { rn2, rnd, c_d, getRngLog } from './rng.js';
@@ -403,7 +403,9 @@ function mintrap_postmove(mon, map) {
 // C ref: mon.c mfndpos() — returns positions a monster can move to
 // Iterates (x-1..x+1) × (y-1..y+1) in column-major order, skipping current pos.
 // Handles NODIAG (grid bugs), terrain, doors, monsters, player, boulders.
-function mfndpos(mon, map, player) {
+function mfndpos(mon, map, player, opts = {}) {
+    const allowDoorOpen = !!opts.allowDoorOpen;
+    const allowDoorUnlock = !!opts.allowDoorUnlock;
     const omx = mon.mx, omy = mon.my;
     const nodiag = (mon.mndx === PM_GRID_BUG);
     const mflags1 = mon.type?.flags1 || 0;
@@ -424,12 +426,24 @@ function mfndpos(mon, map, player) {
             if (nx !== omx && ny !== omy && nodiag) continue;
 
             const loc = map.at(nx, ny);
-            if (!loc || !ACCESSIBLE(loc.typ)) continue;
+            if (!loc) continue;
+            const doorBlocked = IS_DOOR(loc.typ) && (loc.flags & (D_CLOSED | D_LOCKED));
+            if (!ACCESSIBLE(loc.typ)) {
+                // C ref: mon.c mfndpos() OPENDOOR/UNLOCKDOOR handling.
+                // Closed or locked doors can still be selected when caller
+                // indicates this monster can open/unlock doors.
+                const canPassDoor = doorBlocked
+                    && ((loc.flags & D_CLOSED && allowDoorOpen)
+                        || (loc.flags & D_LOCKED && allowDoorUnlock));
+                if (!canPassDoor) continue;
+            }
             if (IS_POOL(loc.typ) && !poolok) continue;
             if (IS_LAVA(loc.typ) && !lavaok) continue;
 
             // C ref: door checks
-            if (IS_DOOR(loc.typ) && (loc.flags & (D_CLOSED | D_LOCKED))) continue;
+            if (doorBlocked
+                && !((loc.flags & D_CLOSED && allowDoorOpen)
+                    || (loc.flags & D_LOCKED && allowDoorUnlock))) continue;
 
             // C ref: mon.c:2228-2238 — no diagonal moves through doorways
             // If either current pos or target is a non-broken door, diagonal blocked
@@ -1033,7 +1047,7 @@ function dochug(mon, map, player, display, fov, game = null) {
             }
         } else {
             const omx = mon.mx, omy = mon.my;
-            m_move(mon, map, player);
+            m_move(mon, map, player, display, fov);
             if (!mon.dead && (mon.mx !== omx || mon.my !== omy)) {
                 mintrap_postmove(mon, map);
             }
@@ -1871,7 +1885,7 @@ function shk_move(mon, map, player) {
 //   - Position eval: first valid pos accepted (mmoved), then only strictly nearer
 //   - No rn2(3)/rn2(12) fallback for worse positions (that's dog_move only)
 //   - mfndpos provides positions in column-major order with NODIAG filtering
-function m_move(mon, map, player) {
+function m_move(mon, map, player, display = null, fov = null) {
     // C ref: monmove.c dispatch for shopkeeper/guard/priest before generic m_move().
     if (mon.isshk) {
         const omx = mon.mx, omy = mon.my;
@@ -1891,6 +1905,10 @@ function m_move(mon, map, player) {
     }
 
     const omx = mon.mx, omy = mon.my;
+    const ptr = mon.type || {};
+    const verysmall = (ptr.size || 0) === MZ_TINY;
+    const can_open = !(nohands(ptr) || verysmall);
+    const can_unlock = !!mon.iswiz; // inventory-based unlock path is not modeled yet
 
     // C ref: monmove.c:1763 — set_apparxy(mtmp) before main movement logic.
     set_apparxy(mon, map, player);
@@ -1937,7 +1955,7 @@ function m_move(mon, map, player) {
     }
 
     // Collect valid positions via mfndpos (column-major, NODIAG, boulder filter)
-    const positions = mfndpos(mon, map, player);
+    const positions = mfndpos(mon, map, player, { allowDoorOpen: can_open, allowDoorUnlock: can_unlock });
     const cnt = positions.length;
     if (cnt === 0) return false; // no valid positions
 
@@ -2018,6 +2036,25 @@ function m_move(mon, map, player) {
         }
         mon.mx = nix;
         mon.my = niy;
+
+        // C ref: monmove.c postmov door-opening feedback.
+        const here = map.at(mon.mx, mon.my);
+        if (here && IS_DOOR(here.typ)) {
+            const wasLocked = !!(here.flags & D_LOCKED);
+            const wasClosed = !!(here.flags & D_CLOSED);
+            if ((wasLocked && can_unlock) || (wasClosed && can_open)) {
+                here.flags &= ~(D_LOCKED | D_CLOSED);
+                here.flags |= D_ISOPEN;
+                if (display) {
+                    const canSeeDoor = fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my);
+                    if (canSeeDoor && mon.name) {
+                        display.putstr_message(`The ${mon.name} opens a door.`);
+                    } else {
+                        display.putstr_message('You hear a door open.');
+                    }
+                }
+            }
+        }
         return true;
     }
     return false;
