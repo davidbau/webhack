@@ -170,7 +170,7 @@ export class NetHackGame {
         // Role-dependent RNG in C startup depends on selected role.
         // C ref: allmain.c startup ordering around role selection and init_dungeons.
         setMakemonPlayerContext(this.player);
-        initLevelGeneration(this.player.roleIndex);
+        initLevelGeneration(this.player.roleIndex, this.wizard);
 
         // Generate first level
         // C ref: mklev() — bones rn2(3) + makelevel
@@ -289,7 +289,7 @@ export class NetHackGame {
         this.seed = gs.seed;
         initRng(gs.seed);
         setGameSeed(gs.seed);
-        initLevelGeneration(gs.you?.roleIndex);
+        initLevelGeneration(gs.you?.roleIndex, gs.you?.wizard ?? true);
 
         // Now overwrite RNG state with the saved state
         const restoredCtx = deserializeRng(gs.rng);

@@ -1044,7 +1044,7 @@ HeadlessGame.fromSeed = function fromSeed(seed, roleIndex = 11, opts = {}) {
         initRng(seed);
     }
     setGameSeed(seed);
-    initLevelGeneration(roleIndex);
+    initLevelGeneration(roleIndex, opts.wizard ?? true);
 
     const startDlevel = Number.isInteger(opts.startDlevel) ? opts.startDlevel : 1;
     const map = Number.isInteger(opts.startDnum)

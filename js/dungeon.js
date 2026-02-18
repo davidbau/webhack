@@ -121,7 +121,7 @@ const GEHENNOM = 5;
 const VLADS_TOWER = 6;
 const TUTORIAL = 8;
 
-// Snapshot of branch topology chosen during simulateDungeonInit().
+// Snapshot of branch topology chosen during initDungeon().
 // Each entry: { type, end1:{dnum,dlevel}, end2:{dnum,dlevel}, end1_up }.
 let _branchTopology = [];
 // C ref: dungeon.c global oracle_level; populated during init_dungeons().
@@ -4382,7 +4382,7 @@ function buildBranchTopology(dungeonLayouts, parentRolls) {
     return branches;
 }
 
-export function simulateDungeonInit(roleIndex) {
+export function initDungeon(roleIndex, wizard = true) {
     // 0. role_init: quest nemesis gender — rn2(100) for roles whose
     // nemesis lacks M2_MALE/M2_FEMALE/M2_NEUTER flags.
     // C ref: role.c:2060 — only Archeologist (Minion of Huhetotl) and
@@ -4405,93 +4405,93 @@ export function simulateDungeonInit(roleIndex) {
     // In wizard mode, all levels are created (no chance checks).
     const DUNGEON_DEFS = [
         { // 0: Dungeons of Doom
-            base: 25, range: 5, hasParent: false,
+            base: 25, range: 5, chance: 100, hasParent: false,
             // parentBranch computed from DofD branches, not needed for root
             levels: [
-                [15, 4, -1],  // rogue
-                [5, 5, -1],   // oracle
-                [10, 3, -1],  // bigrm
-                [-5, 4, -1],  // medusa
-                [-1, 0, -1],  // castle
+                [15, 4, -1, 100],  // rogue
+                [5, 5, -1, 100],   // oracle
+                [10, 3, -1, 40],   // bigrm
+                [-5, 4, -1, 100],  // medusa
+                [-1, 0, -1, 100],  // castle
             ],
         },
         { // 1: Gehennom
-            base: 20, range: 5, hasParent: true,
+            base: 20, range: 5, chance: 100, hasParent: true,
             parentBranchNum: 1, // rn2(1) — chain=castle in DofD, base=0, range=0
             levels: [
-                [1, 0, -1],   // valley
-                [-1, 0, -1],  // sanctum
-                [4, 4, -1],   // juiblex
-                [6, 4, -1],   // baalz
-                [2, 6, -1],   // asmodeus
-                [11, 6, -1],  // wizard1
-                [1, 0, 5],    // wizard2 (chain=wizard1)
-                [2, 0, 5],    // wizard3 (chain=wizard1)
-                [10, 6, -1],  // orcus
-                [-6, 4, -1],  // fakewiz1
-                [-6, 4, -1],  // fakewiz2
+                [1, 0, -1, 100],   // valley
+                [-1, 0, -1, 100],  // sanctum
+                [4, 4, -1, 100],   // juiblex
+                [6, 4, -1, 100],   // baalz
+                [2, 6, -1, 100],   // asmodeus
+                [11, 6, -1, 100],  // wizard1
+                [1, 0, 5, 100],    // wizard2 (chain=wizard1)
+                [2, 0, 5, 100],    // wizard3 (chain=wizard1)
+                [10, 6, -1, 100],  // orcus
+                [-6, 4, -1, 100],  // fakewiz1
+                [-6, 4, -1, 100],  // fakewiz2
             ],
         },
         { // 2: Gnomish Mines
-            base: 8, range: 2, hasParent: true,
+            base: 8, range: 2, chance: 100, hasParent: true,
             parentBranchNum: 3, // rn2(3) — base=2, range=3 in DofD
             levels: [
-                [3, 2, -1],   // minetn
-                [-1, 0, -1],  // minend
+                [3, 2, -1, 100],   // minetn
+                [-1, 0, -1, 100],  // minend
             ],
         },
         { // 3: The Quest
-            base: 5, range: 2, hasParent: true,
+            base: 5, range: 2, chance: 100, hasParent: true,
             parentBranchNum: 2, // rn2(2) — chain=oracle in DofD, base=6, range=2
             levels: [
-                [1, 1, -1],   // x-strt
-                [3, 1, -1],   // x-loca
-                [-1, 0, -1],  // x-goal
+                [1, 1, -1, 100],   // x-strt
+                [3, 1, -1, 100],   // x-loca
+                [-1, 0, -1, 100],  // x-goal
             ],
         },
         { // 4: Sokoban
-            base: 4, range: 0, hasParent: true,
+            base: 4, range: 0, chance: 100, hasParent: true,
             parentBranchNum: 1, // rn2(1) — chain=oracle in DofD, base=1, range=0
             levels: [
-                [1, 0, -1],   // soko1
-                [2, 0, -1],   // soko2
-                [3, 0, -1],   // soko3
-                [4, 0, -1],   // soko4
+                [1, 0, -1, 100],   // soko1
+                [2, 0, -1, 100],   // soko2
+                [3, 0, -1, 100],   // soko3
+                [4, 0, -1, 100],   // soko4
             ],
         },
         { // 5: Fort Ludios
-            base: 1, range: 0, hasParent: true,
+            base: 1, range: 0, chance: 100, hasParent: true,
             parentBranchNum: 4, // rn2(4) — base=18, range=4 in DofD
             levels: [
-                [-1, 0, -1],  // knox
+                [-1, 0, -1, 100],  // knox
             ],
         },
         { // 6: Vlad's Tower
-            base: 3, range: 0, hasParent: true,
+            base: 3, range: 0, chance: 100, hasParent: true,
             parentBranchNum: 5, // rn2(5) — base=9, range=5 in Gehennom
             levels: [
-                [1, 0, -1],   // tower1
-                [2, 0, -1],   // tower2
-                [3, 0, -1],   // tower3
+                [1, 0, -1, 100],   // tower1
+                [2, 0, -1, 100],   // tower2
+                [3, 0, -1, 100],   // tower3
             ],
         },
         { // 7: Elemental Planes
-            base: 6, range: 0, hasParent: true,
+            base: 6, range: 0, chance: 100, hasParent: true,
             parentBranchNum: 1, // rn2(1) — base=1, range=0 in DofD
             levels: [
-                [1, 0, -1],   // astral
-                [2, 0, -1],   // water
-                [3, 0, -1],   // fire
-                [4, 0, -1],   // air
-                [5, 0, -1],   // earth
-                [6, 0, -1],   // dummy
+                [1, 0, -1, 100],   // astral
+                [2, 0, -1, 100],   // water
+                [3, 0, -1, 100],   // fire
+                [4, 0, -1, 100],   // air
+                [5, 0, -1, 100],   // earth
+                [6, 0, -1, 100],   // dummy
             ],
         },
         { // 8: Tutorial (unconnected — no parent branch)
-            base: 2, range: 0, hasParent: false,
+            base: 2, range: 0, chance: 100, hasParent: false,
             levels: [
-                [1, 0, -1],   // tut-1
-                [2, 0, -1],   // tut-2
+                [1, 0, -1, 100],   // tut-1
+                [2, 0, -1, 100],   // tut-2
             ],
         },
     ];
@@ -4513,6 +4513,13 @@ export function simulateDungeonInit(roleIndex) {
     // Process each dungeon
     for (let dgnIndex = 0; dgnIndex < DUNGEON_DEFS.length; dgnIndex++) {
         const dgn = DUNGEON_DEFS[dgnIndex];
+
+        // C ref: dungeon.c:1022 — non-wizard dungeon chance check
+        // if (!wizard && dgn_chance && (dgn_chance <= rn2(100)))
+        if (!wizard && dgn.chance && dgn.chance <= rn2(100)) {
+            continue; // skip entire dungeon
+        }
+
         // 2a. rn1(range, base) for level count
         const numLevels = dgn.range > 0
             ? rn2(dgn.range) + dgn.base
@@ -4524,8 +4531,15 @@ export function simulateDungeonInit(roleIndex) {
             parentRoll = rn2(dgn.parentBranchNum);
         }
 
-        // 2c. place_level — recursive backtracking
-        const placed = placeLevelSim(dgn.levels, numLevels);
+        // C ref: dungeon.c:572 — non-wizard per-level chance check
+        const levelActive = dgn.levels.map(lvl => {
+            const chance = lvl[3] ?? 100;
+            if (!wizard && chance <= rn2(100)) return false;
+            return true;
+        });
+
+        // 2c. place_level — recursive backtracking (skip inactive levels)
+        const placed = placeLevelSim(dgn.levels, numLevels, levelActive);
         const jsDnum = C_DGN_TO_JS_DNUM[dgnIndex];
         if (jsDnum >= 0) {
             parentRolls.set(jsDnum, parentRoll);
@@ -4555,10 +4569,12 @@ export function simulateDungeonInit(roleIndex) {
 }
 
 // Simulate C's place_level() recursive backtracking for one dungeon.
-// rawLevels: array of [base, range, chainIndex] per level template.
+// rawLevels: array of [base, range, chainIndex, chance] per level template.
 // numLevels: total dungeon levels available.
+// levelActive: optional boolean array — if levelActive[i] is false, skip that
+// level without consuming RNG (C skips NULL final_lev entries).
 // C ref: dungeon.c:665-705 place_level, 597-626 possible_places
-function placeLevelSim(rawLevels, numLevels) {
+function placeLevelSim(rawLevels, numLevels, levelActive) {
     const placed = new Array(rawLevels.length).fill(0);
 
     // Compute a level's valid range given current placed state.
@@ -4586,6 +4602,11 @@ function placeLevelSim(rawLevels, numLevels) {
 
     function doPlace(idx) {
         if (idx >= rawLevels.length) return true;
+
+        // C skips inactive levels (NULL final_lev) without consuming RNG
+        if (levelActive && !levelActive[idx]) {
+            return doPlace(idx + 1);
+        }
 
         const { adjBase, count } = getLevelRange(idx);
 
@@ -4954,11 +4975,11 @@ function mkshop(map) {
 // castle tune + u_init + themerooms shuffle.
 // C ref: early_init() → o_init.c init_objects(), dungeon.c init_dungeons(),
 //        u_init.c u_init(), nhlua pre_themerooms
-export function initLevelGeneration(roleIndex) {
+export function initLevelGeneration(roleIndex, wizard = true) {
     init_objects();
     setMakemonRoleContext(roleIndex);
     _branchTopology = [];  // reset before recalculating from init_dungeons RNG
-    simulateDungeonInit(roleIndex);
+    initDungeon(roleIndex, wizard);
     _themeroomsLoaded = false;
     _specialThemesLoaded = false;
     setMtInitialized(false); // Reset MT RNG state for new game

@@ -16,7 +16,7 @@ import {
 } from './config.js';
 import { initRng, enableRngLog, getRngLog, disableRngLog, rn2, rnd, rn1, rnl, rne, rnz, d } from './rng.js';
 import { exercise, exerchk, initExerciseState } from './attrib_exercise.js';
-import { initLevelGeneration, makelevel, setGameSeed, wallification, simulateDungeonInit } from './dungeon.js';
+import { initLevelGeneration, makelevel, setGameSeed, wallification } from './dungeon.js';
 import { DUNGEONS_OF_DOOM, TUTORIAL } from './special_levels.js';
 import { simulatePostLevelInit, mon_arrive } from './u_init.js';
 import { init_objects } from './o_init.js';
@@ -244,7 +244,7 @@ export function generateMapsSequential(seed, maxDepth) {
     initRng(seed);
     setGameSeed(seed);
 
-    // initLevelGeneration handles init_objects() and simulateDungeonInit() internally
+    // initLevelGeneration handles init_objects() and initDungeon() internally
     // Pass roleIndex=11 for Valkyrie (matches C map test harness)
     initLevelGeneration(11);
     const grids = {};
@@ -420,7 +420,7 @@ export function generateMapsWithRng(seed, maxDepth) {
     setGameSeed(seed);
     enableRngLog(); // Start logging RNG calls
 
-    // initLevelGeneration handles init_objects() and simulateDungeonInit() internally
+    // initLevelGeneration handles init_objects() and initDungeon() internally
     // Pass roleIndex=11 for Valkyrie (matches C map test harness)
     initLevelGeneration(11);
     const grids = {};
@@ -550,7 +550,7 @@ export function generateStartupWithRng(seed, session) {
     const preStartupEntries = getPreStartupRngEntries(session);
     consumeRngEntries(preStartupEntries);
 
-    initLevelGeneration(roleIndex);
+    initLevelGeneration(roleIndex, session.options?.wizard ?? true);
 
     const map = makelevel(1);
     // Note: wallification is now called inside makelevel
@@ -650,7 +650,7 @@ export async function replaySession(seed, session, opts = {}) {
 
     // Now initialize level generation (this may consume RNG for dungeon structure).
     // C tutorial prompt still initializes globals/object state before map generation.
-    initLevelGeneration(replayRoleIndex);
+    initLevelGeneration(replayRoleIndex, session.options?.wizard ?? true);
 
     const startDnum = Number.isInteger(opts.startDnum) ? opts.startDnum : undefined;
     const startDlevel = Number.isInteger(opts.startDlevel) ? opts.startDlevel : 1;
@@ -701,7 +701,7 @@ export async function replaySession(seed, session, opts = {}) {
     let parsedVitals = null;
     const player = new Player();
     player.initRole(replayRoleIndex);
-    player.wizard = true;
+    player.wizard = !!(session.options?.wizard ?? true);
     for (const line of screen) {
         if (!line) continue;
         const cleaned = String(line).replace(/[\x00-\x1f\x7f]/g, '').trim();
