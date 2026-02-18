@@ -2301,16 +2301,8 @@ export function dosearch0(player, map, display, game = null) {
                     }
                 }
             }
-            // C ref: detect.c mfind0() in dosearch0() can interrupt explicit
-            // counted searches when an adjacent monster is discovered.
-            // Keep this minimal (no extra messaging/RNG) to preserve replay
-            // parity where visible adjacent monsters should halt count search.
-            const mon = map.monsterAt(nx, ny);
-            if (mon && !mon.dead && !mon.tame && !mon.peaceful) {
-                if (game && Number.isInteger(game.multi) && game.multi > 0) {
-                    game.multi = 0;
-                }
-            }
+            // C ref: detect.c mfind0() concerns hidden monsters; do not stop
+            // counted searches merely for adjacent visible hostiles.
         }
     }
     if (!found) {
