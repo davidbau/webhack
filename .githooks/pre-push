@@ -9,6 +9,20 @@
 # Install: git config core.hooksPath .githooks
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+PENDING_FILE="$REPO_ROOT/oracle/pending.jsonl"
+
+promote_pending_note_if_head() {
+  if [ ! -f "$PENDING_FILE" ]; then
+    return 1
+  fi
+  PENDING_COMMIT=$(jq -r '.commit' "$PENDING_FILE" 2>/dev/null || echo "")
+  if [ "$PENDING_COMMIT" != "HEAD" ]; then
+    return 1
+  fi
+  "$SCRIPT_DIR/post-commit" >/dev/null
+  return 0
+}
 
 # Check if setup has been run
 source "$SCRIPT_DIR/check-setup.sh"
@@ -28,6 +42,20 @@ if git notes --ref=test-results show "$CURRENT_COMMIT" >/dev/null 2>&1; then
   echo "✅ Test note exists for commit $CURRENT_SHORT"
 else
   echo "ℹ️  No test note for commit $CURRENT_SHORT"
+  if promote_pending_note_if_head && git notes --ref=test-results show "$CURRENT_COMMIT" >/dev/null 2>&1; then
+    echo "✅ Promoted existing oracle/pending.jsonl to git note"
+  else
+    echo "Running session tests to create note..."
+    "$REPO_ROOT/scripts/run-session-tests.sh" --session-timeout-ms=10000
+    promote_pending_note_if_head || true
+  fi
+
+  if git notes --ref=test-results show "$CURRENT_COMMIT" >/dev/null 2>&1; then
+    echo "✅ Test note created for commit $CURRENT_SHORT"
+  else
+    echo "❌ Unable to create test note for commit $CURRENT_SHORT"
+    exit 1
+  fi
 fi
 
 # Push notes alongside branches (force-push: local note is always for a fresh commit)

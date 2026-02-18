@@ -130,9 +130,9 @@ This will:
 
 Runs automatically before `git push`:
 1. Checks if current commit has a test note
-2. If not, runs tests and creates note
-3. Blocks push if tests fail/regress
-4. Reminds you to push notes
+2. If not, auto-runs session tests and creates note
+3. Blocks push only if note creation fails (for example, runner crash/no JSON)
+4. Pushes notes alongside the branch
 
 #### pre-commit
 

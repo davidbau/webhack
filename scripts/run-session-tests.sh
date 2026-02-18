@@ -18,8 +18,12 @@ ARGS="$@"
 
 echo "Running session tests..."
 
-# Run the session runner and capture output
+# Run the session runner and capture output.
+# Session failures are expected in parity work; we still want JSON output.
+set +e
 OUTPUT=$(node "$RUNNER" $ARGS 2>&1)
+RUNNER_STATUS=$?
+set -e
 
 # Extract the JSON from the output (after __RESULTS_JSON__ marker)
 JSON=$(echo "$OUTPUT" | sed -n '/__RESULTS_JSON__/{n;p;}')
@@ -45,3 +49,7 @@ echo ""
 echo "Session tests complete: $PASSED/$TOTAL passed ($FAILED failed)"
 echo "Results written to oracle/pending.jsonl"
 echo "Commit to attach results as git note."
+
+if [ "$RUNNER_STATUS" -ne 0 ]; then
+    echo "Session runner exited with status $RUNNER_STATUS (results captured)."
+fi
