@@ -2,6 +2,7 @@
 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { statSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { Worker } from 'node:worker_threads';
 
@@ -597,7 +598,16 @@ export async function runSessionResult(session) {
 async function runSessionsParallel(sessions, { numWorkers, verbose }) {
     const workerPath = join(__dirname, 'session_worker.js');
     const results = new Array(sessions.length);
-    let nextIndex = 0;
+
+    // Sort by file size (largest first) for better load balancing
+    const indexed = sessions.map((s, i) => {
+        const filePath = join(s.dir, s.file);
+        const size = statSync(filePath).size;
+        return { index: i, session: s, filePath, size };
+    });
+    indexed.sort((a, b) => b.size - a.size);
+
+    let nextTask = 0;
     let completed = 0;
 
     return new Promise((resolve, reject) => {
@@ -615,12 +625,12 @@ async function runSessionsParallel(sessions, { numWorkers, verbose }) {
                         console.log(formatResult(msg.result));
                     }
                     // Send next task or finish
-                    if (nextIndex < sessions.length) {
-                        const idx = nextIndex++;
+                    if (nextTask < indexed.length) {
+                        const task = indexed[nextTask++];
                         worker.postMessage({
                             type: 'run',
-                            id: idx,
-                            filePath: join(sessions[idx].dir, sessions[idx].file),
+                            id: task.index,
+                            filePath: task.filePath,
                         });
                     } else if (completed === sessions.length) {
                         // All done - terminate workers
@@ -633,12 +643,12 @@ async function runSessionsParallel(sessions, { numWorkers, verbose }) {
             worker.on('error', reject);
 
             // Start first task for this worker
-            if (nextIndex < sessions.length) {
-                const idx = nextIndex++;
+            if (nextTask < indexed.length) {
+                const task = indexed[nextTask++];
                 worker.postMessage({
                     type: 'run',
-                    id: idx,
-                    filePath: join(sessions[idx].dir, sessions[idx].file),
+                    id: task.index,
+                    filePath: task.filePath,
                 });
             }
         }
