@@ -1,0 +1,44 @@
+{
+  "commit": "c88247a",
+  "parent": "8069c02",
+  "date": "2026-02-18T14:45:17-05:00",
+  "author": "David Bau",
+  "message": "Only show metrics in failure details as fallback",
+  "stats": {
+    "total": 547,
+    "pass": 501,
+    "fail": 46,
+    "skip": 0,
+    "duration": 17
+  },
+  "categories": {
+    "chargen": {
+      "total": 91,
+      "pass": 91,
+      "fail": 0
+    },
+    "gameplay": {
+      "total": 43,
+      "pass": 13,
+      "fail": 30
+    },
+    "map": {
+      "total": 10,
+      "pass": 10,
+      "fail": 0
+    },
+    "special": {
+      "total": 50,
+      "pass": 50,
+      "fail": 0
+    },
+    "unit": {
+      "total": 344,
+      "pass": 331,
+      "fail": 13
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
