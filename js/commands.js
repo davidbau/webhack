@@ -1817,6 +1817,18 @@ async function handleThrow(player, map, display) {
         }
         const item = player.inventory.find(o => o.invlet === c);
         if (!item) continue;
+        if (
+            player.armor === item
+            || player.shield === item
+            || player.helmet === item
+            || player.gloves === item
+            || player.boots === item
+            || player.cloak === item
+        ) {
+            replacePromptMessage();
+            display.putstr_message('You cannot throw something you are wearing.');
+            return { moved: false, tookTime: false };
+        }
 
         replacePromptMessage();
         display.putstr_message('In what direction?');
@@ -1830,17 +1842,24 @@ async function handleThrow(player, map, display) {
         }
 
         // Minimal throw behavior for replay flow fidelity.
-        player.removeFromInventory(item);
-        item.ox = player.x + dir[0];
-        item.oy = player.y + dir[1];
-        if (isok(item.ox, item.oy)) {
-            map.objects.push(item);
+        let thrownItem = item;
+        if ((item.quan || 1) > 1) {
+            item.quan = (item.quan || 1) - 1;
+            thrownItem = { ...item, quan: 1, o_id: next_ident() };
         } else {
-            item.ox = player.x;
-            item.oy = player.y;
-            map.objects.push(item);
+            player.removeFromInventory(item);
+            if (player.weapon === item) player.weapon = null;
+            if (player.swapWeapon === item) player.swapWeapon = null;
+            if (player.quiver === item) player.quiver = null;
         }
-        display.putstr_message(`You throw ${doname(item, null)}.`);
+        thrownItem.ox = player.x + dir[0];
+        thrownItem.oy = player.y + dir[1];
+        if (!isok(thrownItem.ox, thrownItem.oy)) {
+            thrownItem.ox = player.x;
+            thrownItem.oy = player.y;
+        }
+        map.objects.push(thrownItem);
+        display.putstr_message(`You throw ${doname(thrownItem, null)}.`);
         return { moved: false, tookTime: true };
     }
 }
