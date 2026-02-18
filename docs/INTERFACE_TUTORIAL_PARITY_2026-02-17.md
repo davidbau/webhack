@@ -36,3 +36,9 @@
 ## Next Targeted Step
 
 - Instrument C+JS around tutorial map materialization and first post-entry movement turn, then align the exact RNG side-effect order before promoting tutorial fixture into the default interface suite.
+
+## Update (2026-02-18)
+
+- Changed tutorial first-percent raw shim default to `WEBHACK_TUT_EXTRA_RAW_BEFORE_PERCENT=2` (still overrideable by env).
+- Strict replay for `manual/interface_tutorial.session.json` improved from RNG matched `17/286` to `27/284`.
+- Remaining first RNG divergence is still at step 1 index 5 (`rn2(100)` JS `83` vs C `97`), and color parity remains `427/576`.
