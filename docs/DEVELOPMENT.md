@@ -221,6 +221,27 @@ python3 test/comparison/c-harness/gen_map_sessions.py --from-config
 
 Two specialized tools help isolate RNG divergence at specific game turns:
 
+**First-response workflow (recommended):**
+
+```bash
+# 1) Reproduce one failing session with caller context on JS RNG entries.
+RNG_LOG_TAGS=1 \
+node test/comparison/session_test_runner.js --verbose \
+  test/comparison/sessions/seed202_barbarian_wizard.session.json
+
+# 2) Drill into the exact divergent step with a local windowed diff.
+node test/comparison/rng_step_diff.js \
+  test/comparison/sessions/seed202_barbarian_wizard.session.json \
+  --step 16 --window 8
+```
+
+Notes:
+- `RNG_LOG_TAGS=1` adds `@ caller(file:line)` to JS RNG entries.
+- Parent/grandparent context (`<= ... <= ...`) is on by default with `RNG_LOG_TAGS=1`.
+- Set `RNG_LOG_PARENT=0` to disable parent/grandparent context for shorter lines.
+- `rng_step_diff.js` already forces `RNG_LOG_TAGS=1`; export it explicitly only when using other runners.
+- Keep caller tags as an opt-in debug mode: stack capture adds overhead and should not be forced for regular gameplay runs.
+
 **`test/comparison/rng_step_diff.js`** — Step-level C-vs-JS RNG caller diff
 
 Replays a session in JS and compares RNG stream against captured C data. By

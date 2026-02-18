@@ -108,6 +108,19 @@ gh issue close <number> --comment "Done"
 gh issue comment <number> --body "Status..."
 ```
 
+- RNG divergence triage quick reference:
+
+```bash
+# Reproduce one session with JS caller-tagged RNG entries
+RNG_LOG_TAGS=1 \
+node test/comparison/session_test_runner.js --verbose <session-path>
+
+# Inspect first mismatch window for one step
+node test/comparison/rng_step_diff.js <session-path> --step <N> --window 8
+```
+
+`RNG_LOG_PARENT=0` can be used to shorten tags if needed.
+
 ## Priority Docs (Read Order)
 1. Always start with:
    - `PROJECT_PLAN.md`

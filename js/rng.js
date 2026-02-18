@@ -21,6 +21,7 @@ let dispCtx = null; // DISP ISAAC64 context (C rn2_on_display_rng)
 let rngLog = null;       // null = disabled, Array = enabled
 let rngCallCount = 0;
 let rngLogWithTags = false;  // when true, log includes caller info
+let rngLogWithParent = false; // when true, include parent/grandparent in tag
 let rngCallerTag = null;     // current caller annotation (propagated through wrappers)
 let rngDepth = 0;            // nesting depth for context propagation
 
@@ -28,9 +29,14 @@ export function enableRngLog(withTags = false) {
     if (!withTags && typeof process !== 'undefined' && process.env.RNG_LOG_TAGS === '1') {
         withTags = true;
     }
+    const parentPref = (typeof process !== 'undefined' && process?.env)
+        ? process.env.RNG_LOG_PARENT
+        : undefined;
     rngLog = [];
     rngCallCount = 0;
     rngLogWithTags = withTags;
+    // Default-on parent context whenever caller tags are enabled; opt out with RNG_LOG_PARENT=0.
+    rngLogWithParent = !!withTags && parentPref !== '0';
     rngCallerTag = null;
     rngDepth = 0;
 }
@@ -47,6 +53,7 @@ export function pushRngLogEntry(entry) {
 
 export function disableRngLog() {
     rngLog = null;
+    rngLogWithParent = false;
     rngCallerTag = null;
     rngDepth = 0;
 }
@@ -72,7 +79,7 @@ function enterRng() {
         const gm = grandLine.match(/at (?:(\S+) \()?.*?([^/\s]+\.js):(\d+)/);
         if (m) {
             rngCallerTag = m[1] ? `${m[1]}(${m[2]}:${m[3]})` : `${m[2]}:${m[3]}`;
-            if (typeof process !== 'undefined' && process.env.RNG_LOG_PARENT === '1' && pm) {
+            if (rngLogWithParent && pm) {
                 const parentTag = pm[1] ? `${pm[1]}(${pm[2]}:${pm[3]})` : `${pm[2]}:${pm[3]}`;
                 rngCallerTag = `${rngCallerTag} <= ${parentTag}`;
                 if (gm) {
