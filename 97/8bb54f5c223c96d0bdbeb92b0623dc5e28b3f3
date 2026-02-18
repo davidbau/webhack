@@ -1,0 +1,44 @@
+{
+  "commit": "978bb54",
+  "parent": "7715c85",
+  "date": "2026-02-17T23:53:42-05:00",
+  "author": "David Bau",
+  "message": "Fix saddle owornmask, droppables cursed check, Fast intrinsic, and u_calc_moveamt RNG",
+  "stats": {
+    "total": 331,
+    "pass": 296,
+    "fail": 35,
+    "skip": 0,
+    "duration": 30
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 2,
+      "pass": 00,
+      "fail": 2
+    },
+    "map": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "special": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
