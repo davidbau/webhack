@@ -63,6 +63,37 @@ function formatGoldPickupMessage(gold, player) {
     return `$ - ${count} gold piece${plural}.`;
 }
 
+function invletSortValue(ch) {
+    if (ch === '$') return 0;
+    if (ch >= 'a' && ch <= 'z') return ch.charCodeAt(0);
+    if (ch >= 'A' && ch <= 'Z') return ch.charCodeAt(0) + 100;
+    if (ch === '#') return 1000;
+    return 2000 + ch.charCodeAt(0);
+}
+
+function compactInvletPromptChars(chars) {
+    if (!chars) return '';
+    const sorted = [...new Set(chars.split(''))].sort((a, b) => invletSortValue(a) - invletSortValue(b));
+    if (sorted.length <= 5) return sorted.join('');
+    const out = [];
+    let i = 0;
+    while (i < sorted.length) {
+        const start = sorted[i];
+        let j = i;
+        while (j + 1 < sorted.length && sorted[j + 1].charCodeAt(0) === sorted[j].charCodeAt(0) + 1) {
+            j++;
+        }
+        const runLen = j - i + 1;
+        if (runLen >= 3) {
+            out.push(start, '-', sorted[j]);
+        } else {
+            for (let k = i; k <= j; k++) out.push(sorted[k]);
+        }
+        i = j + 1;
+    }
+    return out.join('');
+}
+
 // Direction key mappings
 // C ref: cmd.c -- movement key definitions
 const DIRECTION_KEYS = {
@@ -236,6 +267,12 @@ export async function rhack(ch, game) {
     // Quaff (drink)
     if (c === 'q') {
         return await handleQuaff(player, map, display);
+    }
+
+    // Pay shopkeeper
+    // C ref: shk.c dopay() -- full billing flow is not yet ported; preserve no-shopkeeper message.
+    if (c === 'p') {
+        return await handlePay(player, map, display);
     }
 
     // Read scroll/spellbook
@@ -1357,11 +1394,18 @@ async function handleDrop(player, map, display) {
         return { moved: false, tookTime: false };
     }
 
+    const dropChoices = compactInvletPromptChars(player.inventory.map((o) => o.invlet).join(''));
     while (true) {
-        display.putstr_message('What do you want to drop? [*]');
+        if (typeof display.clearRow === 'function') display.clearRow(0);
+        display.topMessage = null;
+        display.messageNeedsMore = false;
+        display.putstr_message(`What do you want to drop? [${dropChoices} or ?*]`);
         const ch = await nhgetch();
         const c = String.fromCharCode(ch);
         if (ch === 27 || ch === 10 || ch === 13 || c === ' ') {
+            if (typeof display.clearRow === 'function') display.clearRow(0);
+            display.topMessage = null;
+            display.messageNeedsMore = false;
             display.putstr_message('Never mind.');
             return { moved: false, tookTime: false };
         }
@@ -1478,13 +1522,38 @@ async function handleEat(player, display, game) {
         return { moved: false, tookTime: false };
     }
 
-    const eatChoices = food.map(f => f.invlet).join('');
-    display.putstr_message(`What do you want to eat? [${eatChoices} or ?*]`);
-    const ch = await nhgetch();
-    const c = String.fromCharCode(ch);
+    const eatChoices = compactInvletPromptChars(food.map(f => f.invlet).join(''));
+    while (true) {
+        if (typeof display.clearRow === 'function') display.clearRow(0);
+        display.topMessage = null;
+        display.messageNeedsMore = false;
+        display.putstr_message(`What do you want to eat? [${eatChoices} or ?*]`);
+        const ch = await nhgetch();
+        const c = String.fromCharCode(ch);
 
-    const item = food.find(f => f.invlet === c);
-    if (item) {
+        if (ch === 27 || ch === 10 || ch === 13 || c === ' ') {
+            if (typeof display.clearRow === 'function') display.clearRow(0);
+            display.topMessage = null;
+            display.messageNeedsMore = false;
+            display.putstr_message('Never mind.');
+            return { moved: false, tookTime: false };
+        }
+        if (c === '?' || c === '*') {
+            continue;
+        }
+
+        const item = food.find(f => f.invlet === c);
+        if (!item) {
+            const anyItem = player.inventory.find((o) => o.invlet === c);
+            if (anyItem) {
+                if (typeof display.clearRow === 'function') display.clearRow(0);
+                display.topMessage = null;
+                display.messageNeedsMore = false;
+                display.putstr_message('You cannot eat that!');
+                return { moved: false, tookTime: false };
+            }
+            continue;
+        }
         // C ref: eat.c doesplit() path for stacked comestibles:
         // splitobj() creates a single-item object and consumes next_ident() (rnd(2)).
         const eatingFromStack = ((item.quan || 1) > 1 && item.oclass === FOOD_CLASS);
@@ -1601,8 +1670,15 @@ async function handleEat(player, display, game) {
         }
         return { moved: false, tookTime: true };
     }
+}
 
-    display.putstr_message("Never mind.");
+async function handlePay(player, map, display) {
+    const shopkeepers = (map.monsters || []).filter((m) => m && !m.dead && m.isshk);
+    if (!shopkeepers.length) {
+        display.putstr_message('There appears to be no shopkeeper here to receive your payment.');
+        return { moved: false, tookTime: false };
+    }
+    display.putstr_message('You do not owe any shopkeeper anything.');
     return { moved: false, tookTime: false };
 }
 
@@ -2448,10 +2524,12 @@ async function handleSet(game) {
         }
     }
 
-    function renderCenteredList(lines, left = 41) {
+    function renderCenteredList(lines, left = 41, headerInverse = false) {
         display.clearScreen();
         for (let i = 0; i < lines.length && i < display.rows; i++) {
-            display.putstr(left, i, lines[i].substring(0, Math.max(0, display.cols - left)));
+            const text = lines[i].substring(0, Math.max(0, display.cols - left));
+            const attr = (headerInverse && i === 0) ? 1 : 0;
+            display.putstr(left, i, text, undefined, attr);
         }
     }
 
@@ -2623,7 +2701,7 @@ async function handleSet(game) {
             "f - -1 (off, 'z' to move upper-left, 'y' to zap wands)",
             '(end)',
         ];
-        renderCenteredList(lines, 24);
+        renderCenteredList(lines, 24, true);
         const ch = await nhgetch();
         const c = String.fromCharCode(ch);
         const modeByKey = { a: 0, b: 1, c: 2, d: 3, e: 4, f: -1 };

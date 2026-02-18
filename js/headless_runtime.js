@@ -1426,9 +1426,11 @@ export class HeadlessDisplay {
             const colors = this.colors[r].slice();
             const attrs = this.attrs[r].slice();
 
-            // Match getScreenLines right-trim semantics.
+            // Match getScreenLines trimming for plain trailing blanks, but keep
+            // styled trailing spaces (inverse/bold/underline) because C captures
+            // preserve those via cursor movement + active SGR.
             let end = chars.length - 1;
-            while (end >= 0 && chars[end] === ' ') end--;
+            while (end >= 0 && chars[end] === ' ' && !attrs[end]) end--;
             if (end < 0) {
                 out.push('');
                 continue;

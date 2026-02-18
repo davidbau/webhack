@@ -1,7 +1,7 @@
 // input.js -- Runtime-agnostic input primitives.
 // Provides an async input queue plus module-level wrappers used by game code.
 
-import { CLR_WHITE } from './display.js';
+import { CLR_GRAY } from './display.js';
 import { recordKey, isReplayMode, getNextReplayKey } from './keylog.js';
 
 /**
@@ -121,7 +121,7 @@ export async function getlin(prompt, display) {
             // Clear the message row and display prompt + current input.
             // Don't use putstr_message as it concatenates short messages.
             disp.clearRow(0);
-            disp.putstr(0, 0, prompt + line, CLR_WHITE);
+            disp.putstr(0, 0, prompt + line, CLR_GRAY);
         }
     };
 

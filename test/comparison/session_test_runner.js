@@ -241,6 +241,7 @@ async function replayInterfaceSession(session) {
     if (replaySessionInterface) {
         const replayFlags = { ...DEFAULT_FLAGS };
         replayFlags.color = sessionColorEnabled(session);
+        if (subtype === 'options') replayFlags.color = true;
         if (session.meta.options?.autopickup === false) replayFlags.pickup = false;
         const wantsDec = session.meta.options?.symset === 'DECgraphics';
         if (wantsDec) replayFlags.DECgraphics = true;
