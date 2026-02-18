@@ -38,3 +38,9 @@ bd sync               # Sync with git
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 - When multiple developers are active, commit and push meaningful incremental improvements as they are validated (do not batch too long locally).
+
+## Documentation Hygiene
+
+- If you encounter **inaccurate or outdated docs** while working, fix them immediately.
+- Don't leave stale information in `docs/` — correct it or remove it.
+- Docs should reflect the actual state of the code, not aspirational or historical states.

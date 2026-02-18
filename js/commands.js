@@ -593,10 +593,14 @@ async function handleMovement(dir, player, map, display, game) {
             const namedPet = !!(mon.tame
                 && mon.name
                 && !/(dog|cat|kitten|pony|horse)/i.test(mon.name));
+            // C ref: x_monnam includes "saddled" when the monster
+            // has a saddle worn (owornmask W_SADDLE = 0x100000).
+            const hasSaddle = (mon.minvent || []).some(o => o && (o.owornmask & 0x100000));
+            const adjName = hasSaddle ? `saddled ${mon.name}` : mon.name;
             display.putstr_message(
                 namedPet
-                    ? `You swap places with ${mon.name}.`
-                    : `You swap places with your ${mon.name}.`
+                    ? `You swap places with ${adjName}.`
+                    : `You swap places with your ${adjName}.`
             );
             const landedObjs = map.objectsAt(nx, ny);
             if (landedObjs.length > 0) {

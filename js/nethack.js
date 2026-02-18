@@ -1599,6 +1599,15 @@ export class NetHackGame {
             makemon(null, 0, 0, 0, this.player.dungeonLevel, this.map);
         }
 
+        // C ref: allmain.c:238 u_calc_moveamt(wtcap) — player movement allocation.
+        // Fast intrinsic (monks, samurai): gain extra turn 1/3 of the time via rn2(3).
+        // Very Fast (speed boots + intrinsic): gain extra turn 2/3 of the time.
+        if (this.player.veryFast) {
+            if (rn2(3) !== 0) { /* 2/3 chance */ }
+        } else if (this.player.fast) {
+            if (rn2(3) === 0) { /* 1/3 chance */ }
+        }
+
         // C ref: allmain.c:241 — svm.moves++ (already done via this.turnCount++)
 
         // --- Once-per-turn effects ---

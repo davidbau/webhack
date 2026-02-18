@@ -286,10 +286,12 @@ function makedog(map, player, depth) {
     peace_minded(petData, player);
 
     // C ref: dog.c:264-267 — put_saddle_on_mon(NULL, mtmp) for pony
-    // Creates a saddle and adds to pony's minvent
+    // Creates a saddle and adds to pony's minvent with owornmask set.
+    // C ref: steed.c put_saddle_on_mon() sets owornmask = W_SADDLE (0x100000).
     let saddleObj = null;
     if (pmIdx === PM_PONY) {
         saddleObj = mksobj(SADDLE, true, false);
+        if (saddleObj) saddleObj.owornmask = 0x100000; // W_SADDLE
     }
 
     // Create the pet monster object (matches makemon structure)
@@ -1332,6 +1334,12 @@ export function simulatePostLevelInit(player, map, depth) {
     initAttributes(player);
     //    e. u_init_carry_attr_boost() — no RNG
     u_init_carry_attr_boost(player);
+
+    // C ref: attrib.c role ability tables — level 1 intrinsics.
+    // Monks and samurai gain intrinsic Speed (Fast) at level 1.
+    if (player.roleIndex === PM_MONK || player.roleIndex === PM_SAMURAI) {
+        player.fast = true;
+    }
 
     // Set HP/PW from role + race
     // C ref: u_init.c u_init_misc() — newhp() = role_hp + race_hp

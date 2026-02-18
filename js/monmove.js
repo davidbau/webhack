@@ -700,7 +700,8 @@ function droppables(mon) {
         default:
             break;
         }
-        if (!obj.owornmask && obj !== wep) return obj;
+        // C ref: dogmove.c droppables() — skip worn, wielded, and cursed items
+        if (!obj.owornmask && obj !== wep && !obj.cursed) return obj;
     }
     return null;
 }
