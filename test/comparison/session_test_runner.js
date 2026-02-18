@@ -216,14 +216,15 @@ async function replayInterfaceSession(session) {
             captureScreens: true,
             startupBurstInFirstStep: false,
             flags: replayFlags,
+            inferStatusFlagsFromStartup: false,
         });
     }
     if (subtype === 'startup' || subtype === 'tutorial') {
         // C startup interface captures are recorded after login-derived name selection.
         // Mirror that state so replay starts at autopick prompt rather than name prompt.
-        globalThis.localStorage.setItem('webhack-options', JSON.stringify({ name: 'wizard' }));
+        globalThis.localStorage.setItem('menace-options', JSON.stringify({ name: 'wizard' }));
     } else {
-        globalThis.localStorage.removeItem('webhack-options');
+        globalThis.localStorage.removeItem('menace-options');
     }
 
     enableRngLog();
