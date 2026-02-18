@@ -831,6 +831,7 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player) {
 // C ref: mon.c movemon() — multi-pass loop until no monster can move
 // Called from gameLoop after hero action, BEFORE mcalcmove.
 export function movemon(map, player, display, fov, game = null) {
+    if (game) game._suppressMonsterHitMessagesThisTurn = false;
     let anyMoved;
     do {
         anyMoved = false;

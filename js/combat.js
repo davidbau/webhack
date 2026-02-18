@@ -188,6 +188,7 @@ export function monsterAttackPlayer(monster, player, display, game = null) {
 
     for (let i = 0; i < monster.attacks.length; i++) {
         const attack = monster.attacks[i];
+        const suppressHitMsg = !!(game && game._suppressMonsterHitMessagesThisTurn);
         // To-hit calculation for monster
         // C ref: mhitu.c:707-708 — tmp = AC_VALUE(u.uac) + 10 + mtmp->m_lev
         // C ref: mhitu.c:804 — rnd(20+i) where i is attack index
@@ -200,7 +201,9 @@ export function monsterAttackPlayer(monster, player, display, game = null) {
 
         if (toHit <= dieRoll) {
             // Miss — C ref: mhitu.c:811 missmu()
-            display.putstr_message(`The ${monster.name} misses!`);
+            if (!suppressHitMsg) {
+                display.putstr_message(`The ${monster.name} misses!`);
+            }
             continue;
         }
 
@@ -230,7 +233,7 @@ export function monsterAttackPlayer(monster, player, display, game = null) {
             // Apply damage
             const died = player.takeDamage(damage, monster.name);
             const wizardSaved = died && player.wizard;
-            if (!wizardSaved) {
+            if (!wizardSaved && !suppressHitMsg) {
                 const verb = monsterHitVerb(attack.type);
                 display.putstr_message(`The ${monster.name} ${verb}!`);
                 if (attack.damage === 6) {
@@ -262,11 +265,16 @@ export function monsterAttackPlayer(monster, player, display, game = null) {
                         : 10;
                     const givehp = 50 + 10 * Math.floor(con / 2);
                     player.hp = Math.min(player.hpmax || givehp, givehp);
+                    if (typeof display.clearRow === 'function') display.clearRow(0);
+                    display.topMessage = null;
+                    display.messageNeedsMore = false;
                     display.putstr_message('You survived that attempt on your life.');
+                    if (game) game._suppressMonsterHitMessagesThisTurn = true;
                 } else {
                     player.deathCause = `killed by a ${monster.name}`;
                     display.putstr_message('You die...');
                 }
+                break;
             }
         }
     }
