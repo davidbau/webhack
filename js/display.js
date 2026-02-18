@@ -309,7 +309,8 @@ export class Display {
         // Only concatenate if messageNeedsMore is true (no keypress since last message)
         if (this.topMessage && this.messageNeedsMore && notDied) {
             const combined = this.topMessage + '  ' + msg;
-            if (combined.length + 9 <= this.cols) {
+            // C ref: win/tty/topl.c update_topl() uses strict '<' for fit check.
+            if (combined.length + 9 < this.cols) {
                 this.clearRow(MESSAGE_ROW);
                 this.putstr(0, MESSAGE_ROW, combined, CLR_WHITE);
                 this.topMessage = combined;

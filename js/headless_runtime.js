@@ -1280,7 +1280,8 @@ export class HeadlessDisplay {
         const notDied = !msg.startsWith('You die');
         if (this.topMessage && this.messageNeedsMore && notDied) {
             const combined = this.topMessage + '  ' + msg;
-            if (combined.length + 9 <= this.cols) {
+            // C ref: win/tty/topl.c update_topl() uses strict '<' for fit check.
+            if (combined.length + 9 < this.cols) {
                 this.clearRow(0);
                 this.putstr(0, 0, combined.substring(0, this.cols));
                 this.topMessage = combined;

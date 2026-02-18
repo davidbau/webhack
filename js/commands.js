@@ -126,6 +126,11 @@ const RUN_KEYS = {
 export async function rhack(ch, game) {
     const { player, map, display, fov } = game;
     const c = String.fromCharCode(ch);
+    // C ref: tty command input acknowledges previous topline state before
+    // processing a new command, so cross-turn messages don't auto-concatenate.
+    if (display && 'messageNeedsMore' in display) {
+        display.messageNeedsMore = false;
+    }
     if (ch !== 16) {
         display.prevMessageCycleIndex = null;
     }

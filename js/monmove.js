@@ -307,8 +307,8 @@ function m_throw(mon, startX, startY, dx, dy, range, weapon, map, player, displa
                 }
             } else {
                 // Hit
-                const weapName = od ? od.name : 'weapon';
                 if (display) {
+                    const weapName = od ? od.name : 'weapon';
                     display.putstr_message(`You are hit by an ${weapName}!`);
                 }
                 if (player.takeDamage) {
@@ -1917,16 +1917,19 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
                     const hit = toHit > roll;
                     const monVisible = fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my);
                     const targetVisible = fov?.canSee ? fov.canSee(target.mx, target.my) : couldsee(map, player, target.mx, target.my);
-                    const mmVisible = monVisible && targetVisible;
+                    // C ref: mhitm.c mattackm() sets visibility when either
+                    // participant is visible to the hero, not only when both are.
+                    const mmVisible = monVisible || targetVisible;
+                    const suppressTurnDetail = !!player.displacedPetThisTurn
+                        || (game?.occupation?.occtxt === 'searching');
                     if (hit) {
                         anyHit = true;
                         const dice = (attk && attk.dice) ? attk.dice : 1;
                         const sides = (attk && attk.sides) ? attk.sides : 1;
                         const dmg = c_d(Math.max(1, dice), Math.max(1, sides));
                         const willKill = (target.mhp - Math.max(1, dmg)) <= 0;
-                        const suppressDetail = (!!player.displacedPetThisTurn && !willKill)
-                            || (game?.occupation?.occtxt === 'searching' && !willKill);
-                        if (display && mon.name && target.name && mmVisible && !suppressDetail) {
+                        const suppressDetail = suppressTurnDetail && !willKill;
+                        if (display && mmVisible && !suppressDetail) {
                             // C ref: mhitm.c — mon_nam(mdef) uses ARTICLE_THE
                             display.putstr_message(`${monAttackName(mon)} ${attackVerb(attk?.type)} ${monNam(target, { article: 'the' })}.`);
                         }
@@ -1944,7 +1947,7 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
                                 target.minvent = [];
                             }
                             target.dead = true;
-                            if (display && target.name && mmVisible) {
+                            if (display && mmVisible) {
                                 // C ref: mon.c:3382 — Monnam(mdef) uses ARTICLE_THE
                                 // C ref: nonliving monsters (undead, golems) are "destroyed" not "killed"
                                 const tdat = target.type || {};
@@ -1972,7 +1975,7 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
                         }
                     } else {
                         consumePassivemmRng(mon, target, false, false);
-                        if (display && mon.name && target.name && mmVisible) {
+                        if (display && mmVisible && !suppressTurnDetail) {
                             // C ref: mhitm.c missmm — mon_nam(mdef) uses ARTICLE_THE
                             display.putstr_message(`${monAttackName(mon)} misses ${monNam(target, { article: 'the' })}.`);
                         }

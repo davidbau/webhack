@@ -247,7 +247,9 @@ export function monsterAttackPlayer(monster, player, display, game = null) {
         const dieRoll = rnd(20 + i);
         // C ref: AC_VALUE(ac) macro:
         //   ac >= 0 ? ac : -rnd(-ac)
-        const playerAc = Number.isInteger(player.ac) ? player.ac : player.effectiveAC;
+        const playerAc = Number.isInteger(player.ac)
+            ? player.ac
+            : (Number.isInteger(player.effectiveAC) ? player.effectiveAC : 10);
         const acValue = (playerAc >= 0) ? playerAc : -rnd(-playerAc);
         const toHit = acValue + 10 + monster.mlevel;
 
