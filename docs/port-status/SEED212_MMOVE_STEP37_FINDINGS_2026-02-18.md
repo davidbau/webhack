@@ -39,6 +39,24 @@ The blocker is still an upstream hidden-state mismatch before this call
 (monster position/type and/or local terrain evolution), not just the
 `rn2(4*cnt)` formula itself.
 
+## New Root-Cause Narrowing
+
+Using C wizard `#dumpsnap` checkpoints captured at replayed gameplay steps:
+
+- Step 9: C and JS monster positions match.
+- Step 10: first hidden-state drift appears:
+  - C goblin: `(32,13)`
+  - JS goblin: `(32,14)`
+  - jackal and pet positions still match.
+
+This means the step-37 RNG mismatch is downstream of an earlier deterministic
+movement-choice difference introduced at step 10 (no RNG divergence yet).
+
+Added helper script to capture these C checkpoints directly from session
+replays:
+
+- `test/comparison/c-harness/capture_step_snapshot.py`
+
 ## Additional Fix Landed During This Pass
 
 - Corrected a typo in `dog_move` candidate filtering:
