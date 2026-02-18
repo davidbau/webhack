@@ -4,7 +4,7 @@
 import { NORMAL_SPEED, A_DEX, A_CON,
          A_LAWFUL, A_NEUTRAL, A_CHAOTIC, A_NONE,
          RACE_HUMAN, RACE_ELF, RACE_DWARF, RACE_GNOME, RACE_ORC,
-         FEMALE, MALE, TERMINAL_COLS } from './config.js';
+         FEMALE, MALE, TERMINAL_COLS, ROOMOFFSET, SHOPBASE } from './config.js';
 import { initRng, rn2, rnd, rn1, getRngState, setRngState, getRngCallCount, setRngCallCount } from './rng.js';
 import { CLR_GRAY } from './display.js';
 import { nhgetch, getCount, getlin, setInputRuntime } from './input.js';
@@ -1687,22 +1687,66 @@ export class NetHackGame {
     // when the feature exists. Fountains/sinks don't return early;
     // all others return on a triggered sound.
     dosounds() {
-        const f = this.map.flags;
-        if (f.nfountains && !rn2(400)) { rn2(3); }  // fountain msg
-        if (f.nsinks && !rn2(300)) { rn2(2); }       // sink msg
+        if (this.flags && this.flags.acoustics === false) return;
+        const hallu = this.player?.hallucinating ? 1 : 0;
+        const f = this.map.flags || {};
+        if (f.nfountains && !rn2(400)) {
+            const fountainMsg = [
+                'You hear bubbling water.',
+                'You hear water falling on coins.',
+                'You hear the splashing of a naiad.',
+                'You hear a soda fountain!',
+            ];
+            this.display.putstr_message(fountainMsg[rn2(3) + hallu]);
+        }
+        if (f.nsinks && !rn2(300)) {
+            const sinkMsg = [
+                'You hear a slow drip.',
+                'You hear a gurgling noise.',
+                'You hear dishes being washed!',
+            ];
+            this.display.putstr_message(sinkMsg[rn2(2) + hallu]);
+        }
         if (f.has_court && !rn2(200)) { return; }     // throne sound
-        if (f.has_swamp && !rn2(200)) { rn2(2); return; }
+        if (f.has_swamp && !rn2(200)) {
+            const swampMsg = [
+                'You hear mosquitoes!',
+                'You smell marsh gas!',
+                'You hear Donald Duck!',
+            ];
+            this.display.putstr_message(swampMsg[rn2(2) + hallu]);
+            return;
+        }
         if (f.has_vault && !rn2(200)) { rn2(2); return; }
         if (f.has_beehive && !rn2(200)) { return; }
         if (f.has_morgue && !rn2(200)) { return; }
-        if (f.has_barracks && !rn2(200)) { rn2(3); return; }
+        if (f.has_barracks && !rn2(200)) {
+            const barracksMsg = [
+                'You hear blades being honed.',
+                'You hear loud snoring.',
+                'You hear dice being thrown.',
+                'You hear General MacArthur!',
+            ];
+            this.display.putstr_message(barracksMsg[rn2(3) + hallu]);
+            return;
+        }
         if (f.has_zoo && !rn2(200)) { return; }
         if (f.has_shop && !rn2(200)) {
-            const which = rn2(2);
-            if (which === 0) {
-                this.display.putstr_message('You hear someone cursing shoplifters.');
-            } else {
-                this.display.putstr_message('You hear the chime of a cash register.');
+            const playerInShop = (() => {
+                const loc = this.map?.at?.(this.player.x, this.player.y);
+                if (!loc || !Number.isFinite(loc.roomno)) return false;
+                const ridx = loc.roomno - ROOMOFFSET;
+                const room = this.map?.rooms?.[ridx];
+                return !!(room && Number.isFinite(room.rtype) && room.rtype >= SHOPBASE);
+            })();
+            const tendedShop = (this.map?.monsters || []).some((m) => m && !m.dead && m.isshk);
+            if (tendedShop && !playerInShop) {
+                const shopMsg = [
+                    'You hear someone cursing shoplifters.',
+                    'You hear the chime of a cash register.',
+                    'You hear Neiman and Marcus arguing!',
+                ];
+                this.display.putstr_message(shopMsg[rn2(2) + hallu]);
             }
             return;
         }
