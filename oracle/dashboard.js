@@ -46,7 +46,11 @@ async function loadData() {
     // Start from when the current test format stabilized (d532b72, 2026-02-16).
     // Earlier entries used different counting schemes that distort the charts.
     const START_DATE = '2026-02-16';
-    allData = parsed.filter(d => d.date >= START_DATE && d.categories);
+    allData = parsed.filter(d => {
+      if (!d.date || d.date < START_DATE || !d.categories) return false;
+      const sum = Object.values(d.categories).reduce((s, c) => s + (c.total || 0), 0);
+      return sum >= 10;
+    });
 
     if (allData.length === 0) {
       showError('No data found in results.jsonl');
