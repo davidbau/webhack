@@ -1395,7 +1395,23 @@ export async function replaySession(seed, session, opts = {}) {
                             applyTimedTurn(true);
                             syncHpFromStepScreen();
                         };
-                        result = await rhack(passthroughCh, game);
+                        const passthroughPromise = rhack(passthroughCh, game);
+                        const settledPassthrough = await Promise.race([
+                            passthroughPromise.then(v => ({ done: true, value: v })),
+                            new Promise(resolve => setTimeout(() => resolve({ done: false }), 5)),
+                        ]);
+                        if (!settledPassthrough.done) {
+                            if (opts.captureScreens) {
+                                capturedScreenOverride = game.display.getScreenLines();
+                            }
+                            pendingCommand = passthroughPromise;
+                            pendingKind = (passthroughCh === 35)
+                                ? 'extended-command'
+                                : (['i', 'I'].includes(String.fromCharCode(passthroughCh)) ? 'inventory-menu' : null);
+                            result = { moved: false, tookTime: false };
+                        } else {
+                            result = settledPassthrough.value;
+                        }
                         game.advanceRunTurn = null;
                     }
                 }
@@ -1704,7 +1720,19 @@ export async function replaySession(seed, session, opts = {}) {
     // If session ends while a command is waiting for input, cancel it with ESC.
     if (pendingCommand) {
         pushInput(27);
-        await pendingCommand;
+        const settled = await Promise.race([
+            pendingCommand.then(() => true, () => true),
+            new Promise((resolve) => setTimeout(() => resolve(false), 20)),
+        ]);
+        // Some prompt flows can remain blocked even after a synthetic ESC;
+        // don't let replay hang on EOF cleanup.
+        if (!settled) {
+            pushInput(13);
+            await Promise.race([
+                pendingCommand.then(() => true, () => true),
+                new Promise((resolve) => setTimeout(() => resolve(false), 20)),
+            ]);
+        }
     }
 
     // Legacy keylog fixtures sometimes stored startup RNG in step 0. New v3
