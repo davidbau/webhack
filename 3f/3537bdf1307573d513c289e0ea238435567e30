@@ -1,0 +1,44 @@
+{
+  "commit": "3f3537b",
+  "parent": "34e96bc",
+  "date": "2026-02-17T21:23:54-05:00",
+  "author": "David Bau",
+  "message": "test: add parallel session runner with worker threads",
+  "stats": {
+    "total": 333,
+    "pass": 296,
+    "fail": 37,
+    "skip": 0,
+    "duration": 30
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 2,
+      "pass": 00,
+      "fail": 2
+    },
+    "map": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "special": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
