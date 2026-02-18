@@ -1,0 +1,44 @@
+{
+  "commit": "c8b7f3a",
+  "parent": "5da2656",
+  "date": "2026-02-18T11:06:57-05:00",
+  "author": "David Bau",
+  "message": "Improve wizard command/menu parity and inventory naming",
+  "stats": {
+    "total": 347,
+    "pass": 312,
+    "fail": 35,
+    "skip": 0,
+    "duration": 30
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 2,
+      "pass": 00,
+      "fail": 2
+    },
+    "map": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "special": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
