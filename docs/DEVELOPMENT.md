@@ -186,8 +186,11 @@ Recent parity work on tutorial sessions established a few stable rules:
 - Tutorial status rows should use `Tutorial:<level>` instead of `Dlvl:<level>`.
 - Tutorial startup/replay should expose `Xp`-style status output for parity with
   captured interface sessions.
-- Blocked wall movement in tutorial should emit `It's a wall.` where the C
-  captures show that message.
+- `nh.parse_config("OPTIONS=...")` options used by tutorial scripts now feed map
+  flags (`mention_walls`, `mention_decor`, `lit_corridor`) so movement/rendering
+  behavior follows script intent rather than ad-hoc tutorial checks.
+- Blocked wall movement now keys off `mention_walls` behavior and matches C
+  tutorial captures (`It's a wall.`).
 
 With those in place, tutorial interface screen matching is now complete in the
 manual tutorial session. The remaining first mismatch is RNG-only: an early

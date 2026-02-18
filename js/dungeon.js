@@ -32,7 +32,16 @@ import {
 import { GameMap, makeRoom, FILL_NONE, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, d, getRngCallCount, advanceRngRaw } from './rng.js';
 import { getbones } from './bones.js';
-import { mkobj, mksobj, mkcorpstat, weight, setLevelDepth, TAINT_AGE, RANDOM_CLASS } from './mkobj.js';
+import {
+    mkobj,
+    mksobj,
+    mkcorpstat,
+    weight,
+    setLevelDepth,
+    setMklevObjectContext,
+    TAINT_AGE,
+    RANDOM_CLASS,
+} from './mkobj.js';
 import { makemon, mkclass, rndmonnum_adj, NO_MM_FLAGS, MM_NOGRP, setMakemonRoleContext, setMakemonLevelContext, getMakemonRoleIndex, setMakemonInMklevContext } from './makemon.js';
 import { mons, S_HUMAN, S_UNICORN, PM_ELF, PM_HUMAN, PM_GNOME, PM_DWARF, PM_ORC, PM_ARCHEOLOGIST, PM_WIZARD, PM_MINOTAUR } from './monsters.js';
 import { init_objects } from './o_init.js';
@@ -124,15 +133,13 @@ let inMklev = false;
 export function enterMklevContext() {
     inMklev = true;
     setMakemonInMklevContext(true);
+    setMklevObjectContext(true);
 }
 
 export function leaveMklevContext() {
     inMklev = false;
     setMakemonInMklevContext(false);
-}
-
-export function isInMklevContext() {
-    return !!inMklev;
+    setMklevObjectContext(false);
 }
 
 // C ref: dungeon.c init_dungeons() -> svd.dungeons[dnum].flags.align
@@ -4955,6 +4962,7 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
     const bonesMap = getbones(null, depth);
     if (bonesMap) return bonesMap;
     inMklev = true;
+    setMklevObjectContext(true);
     try {
 
     // Check for special level.

@@ -729,8 +729,9 @@ function droppables(mon) {
         default:
             break;
         }
-        // C ref: dogmove.c droppables() — skip worn, wielded, and cursed items
-        if (!obj.owornmask && obj !== wep && !obj.cursed) return obj;
+        // C ref: dogmove.c droppables() — generic drop candidates skip worn/wielded.
+        // Cursed filtering is handled only for specific tool classes above.
+        if (!obj.owornmask && obj !== wep) return obj;
     }
     return null;
 }
@@ -1316,13 +1317,7 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
         : couldsee(map, player, omx, omy);
 
     // C ref: dogmove.c:498 — dog_has_minvent = (droppables(mtmp) != 0)
-    // Worn/wielded items (like a worn saddle on pony) do not count.
-    const dogHasMinvent = !!(mon.minvent && mon.minvent.some((o) => {
-        if (!o) return false;
-        if (o.owornmask) return false;
-        if (mon.weapon && o === mon.weapon) return false;
-        return true;
-    }));
+    const dogHasMinvent = !!droppables(mon);
 
     // C ref: dogmove.c:545 — lighting check for apport branch
     const dogLoc = map.at(omx, omy);
@@ -1346,7 +1341,6 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
             if (ox < minX || ox > maxX || oy < minY || oy > maxY) continue;
 
             const otyp = dogfood(mon, obj, turnCount);
-
             // C ref: dogmove.c:526 — skip inferior goals
             if (otyp > gtyp || otyp === UNDEF) continue;
 
