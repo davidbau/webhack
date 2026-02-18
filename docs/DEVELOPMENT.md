@@ -342,6 +342,26 @@ and outcomes.
 4. Add targeted RNG logging around the suspicious code path
 5. Compare RNG logs to find the extra/missing call
 
+### ANSI/Color Parity Gotchas
+
+Recent gameplay color parity work surfaced a few high-impact pitfalls:
+
+- For session comparisons, preserve true ANSI source lines.
+  - `test/comparison/session_loader.js:getSessionScreenAnsiLines()` must prefer
+    `screenAnsi` when both `screen` and `screenAnsi` are present.
+  - If this regresses, color checks silently compare against plain text and
+    report misleading `fg=7` mismatches.
+- Headless ANSI export must map color index `8` (NO_COLOR) to SGR `90`
+  (and bg `100`), not fall back to `37`.
+  - Missing this mapping produces persistent `7 -> 8` color deltas even when
+    the in-memory screen color grid is correct.
+- Overlay inventory category headers are inverse-video in C captures.
+  - Render `Weapons/Armor/...` heading rows with `attr=1` in overlay menus.
+- Up-stairs (`<`) use yellow/gold color in captures, while down-stairs (`>`)
+  remain gray in these flows.
+- Remembered room floor cells are compared as NO_COLOR tone, while remembered
+  walls/doors retain terrain colors.
+
 ### CORE vs DISP RNG Audits
 
 For display-only RNG investigations (C `rn2_on_display_rng` / `newsym_rn2` paths),
