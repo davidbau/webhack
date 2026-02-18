@@ -249,7 +249,7 @@ export function generateMapsSequential(seed, maxDepth) {
 
 // Check if a log entry is a mid-level function trace (>entry or <exit).
 function isMidlogEntry(entry) {
-    return entry.length > 0 && (entry[0] === '>' || entry[0] === '<');
+    return entry.length > 0 && (entry[0] === '>' || entry[0] === '<' || entry[0] === '~');
 }
 
 // Check if a log entry is a composite RNG function whose individual

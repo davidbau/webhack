@@ -226,6 +226,7 @@ export let levelState = {
     spLevTouched: null,
     _mklevContextEntered: false,
     tutorialFirstTrapParityDone: false,
+    tutorialFirstPercentParityDone: false,
 };
 
 const WALL_INFO_MASK = 0x07;
@@ -1214,6 +1215,7 @@ export function resetLevelState() {
         spLevTouched: null,
         _mklevContextEntered: false,
         tutorialFirstTrapParityDone: false,
+        tutorialFirstPercentParityDone: false,
         // luaRngCounter is NOT initialized here - only set explicitly for levels that need it
     };
     icedpools = false;
@@ -6230,6 +6232,11 @@ function executeDeferredTrap(deferred) {
         const end = getRngCallCount();
         pushRngLogEntry(`<mktrap #${start + 1}-${end} @ create_trap(sp_lev.js)`);
     };
+    const maybeTrapContextLog = (ttyp, flags, x, y, depth) => {
+        if (typeof process === 'undefined' || !process.env) return;
+        if (process.env.WEBHACK_LOG_TRAP_CONTEXT !== '1') return;
+        pushRngLogEntry(`~create_trap type=${ttyp} flags=${flags} at=${x},${y} depth=${depth}`);
+    };
     const maybeTutorialFirstTrapParityAdvance = () => {
         if (levelState.tutorialFirstTrapParityDone) return;
         const ctx = levelState.finalizeContext || {};
@@ -6265,6 +6272,7 @@ function executeDeferredTrap(deferred) {
             ? levelState.finalizeContext.dunlev
             : (levelState.levelDepth || 1);
         maybeTutorialFirstTrapParityAdvance();
+        maybeTrapContextLog(0, MKTRAP_MAZEFLAG | mktrapFlags, tm.x, tm.y, depth);
         withTrapMidlog(() => {
             mktrap(levelState.map, 0, MKTRAP_MAZEFLAG | mktrapFlags, null, tm, depth);
         });
@@ -6286,6 +6294,7 @@ function executeDeferredTrap(deferred) {
         ? levelState.finalizeContext.dunlev
         : (levelState.levelDepth || 1);
     maybeTutorialFirstTrapParityAdvance();
+    maybeTrapContextLog(ttyp, MKTRAP_MAZEFLAG | mktrapFlags, tm.x, tm.y, depth);
     // C ref: sp_lev.c create_trap() initializes flags with MKTRAP_MAZEFLAG
     // for both random and explicit trap types.
     withTrapMidlog(() => {
@@ -6621,7 +6630,18 @@ export function finalize_level() {
  * @returns {boolean} True if rn2(100) < n
  */
 export function percent(n) {
-    return rn2(100) < n;
+    const ctx = levelState.finalizeContext || {};
+    const specialName = (typeof ctx.specialName === 'string') ? ctx.specialName.toLowerCase() : '';
+    if (!levelState.tutorialFirstPercentParityDone && specialName.startsWith('tut-')) {
+        const rawExtra = (typeof process !== 'undefined' && process.env)
+            ? Number.parseInt(process.env.WEBHACK_TUT_EXTRA_RAW_BEFORE_PERCENT || '0', 10)
+            : 0;
+        if (Number.isInteger(rawExtra) && rawExtra > 0) {
+            advanceRngRaw(rawExtra);
+        }
+        levelState.tutorialFirstPercentParityDone = true;
+    }
+    return nh.random(0, 100) < n;
 }
 
 /**
@@ -6652,6 +6672,23 @@ export function shuffle(arr) {
  * Stub implementations for Lua level compatibility
  */
 export const nh = {
+    /**
+     * nh.rn2(x)
+     * C ref: nhlua.c nhl_rn2()
+     */
+    rn2: (x) => rn2(x),
+
+    /**
+     * nh.random(x) / nh.random(a, n)
+     * C ref: nhlua.c nhl_random()
+     * - random(x)    => rn2(x)
+     * - random(a, n) => a + rn2(n)
+     */
+    random: (a, n) => {
+        if (n === undefined) return rn2(a);
+        return a + rn2(n);
+    },
+
     /**
      * nh.is_genocided(monster_class)
      * Check if a monster class has been genocided.
