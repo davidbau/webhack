@@ -1278,11 +1278,14 @@ def run_chargen_session(seed, output_json, selections, tutorial_response='n', ve
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
-def run_interface_session(seed, output_json, keys, verbose=False):
+def run_interface_session(seed, output_json, keys, verbose=False, auto_clear_more=False):
     """Capture an interface/menu session by sending a sequence of keys.
 
     This captures each keystroke with the resulting screen state,
     useful for testing menu rendering, options, help screens, etc.
+
+    auto_clear_more: if True, automatically dismiss --More-- prompts after
+    each keystroke (loses pager content). Default False to preserve screens.
     """
     output_json = os.path.abspath(output_json)
 
@@ -1387,7 +1390,8 @@ def run_interface_session(seed, output_json, keys, verbose=False):
                 action = describe_key(key) if key in 'hjklyubn.<>:@,' else f'key-{key}'
 
             time.sleep(0.02)
-            clear_more_prompts(session_name)
+            if auto_clear_more:
+                clear_more_prompts(session_name)
 
             screen = capture_screen_compressed(session_name)
             rng_count, rng_lines = read_rng_log(rng_log_file)

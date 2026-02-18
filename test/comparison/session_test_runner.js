@@ -272,7 +272,7 @@ async function replayInterfaceSession(session) {
     const input = createHeadlessInput();
     const game = new NetHackGame({ display, input });
     const subtype = session.meta.regen?.subtype;
-    const replaySessionInterface = subtype === 'options' || subtype === 'tutorial';
+    const replaySessionInterface = subtype !== 'startup' && subtype !== 'nameprompt';
     const inGameInterface = subtype === 'options' || session.meta.options?.wizard === true;
     if (replaySessionInterface) {
         const replayFlags = { ...DEFAULT_FLAGS };

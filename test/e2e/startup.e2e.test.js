@@ -227,8 +227,33 @@ describe('E2E: Critical startup checks', () => {
                 // Skip comments
                 if (line.trim().startsWith('//')) continue;
 
-                // Check for unguarded process usage
-                if (/\bprocess\b/.test(line) && !/typeof process/.test(line)) {
+                // Check for process usage on this line
+                if (!/\bprocess\b/.test(line)) continue;
+                // OK if this line itself has a typeof guard
+                if (/typeof process/.test(line)) continue;
+
+                // Look backward (up to 10 lines) for a typeof process guard
+                // in the same block scope. This handles if-blocks and ternaries.
+                let guarded = false;
+                let closeBraces = 0;
+                for (let j = i - 1; j >= Math.max(0, i - 10); j--) {
+                    const prev = lines[j];
+                    // Check for guard before adjusting braces — the guard
+                    // and the opening brace are often on the same line.
+                    if (/typeof process/.test(prev)) {
+                        guarded = true;
+                        break;
+                    }
+                    // Track brace nesting going backward: } increases depth, { decreases
+                    for (const ch of prev) {
+                        if (ch === '}') closeBraces++;
+                        else if (ch === '{') closeBraces--;
+                    }
+                    // If we've left the enclosing block, stop
+                    if (closeBraces < 0) break;
+                }
+
+                if (!guarded) {
                     violations.push(`${file}:${i+1}: ${line.trim()}`);
                 }
             }
