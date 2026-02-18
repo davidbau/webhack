@@ -1,5 +1,8 @@
 # NetHack Trace-Based Improvement Workflow
 
+> Plan hierarchy: This is a subordinate subplan to root [`PROJECT_PLAN.md`](../../PROJECT_PLAN.md).  
+> If scope, priority, or milestone details conflict, `PROJECT_PLAN.md` is authoritative.
+
 ## Overview
 
 Use selfplay agent to generate gameplay traces from C NetHack, then systematically improve the JS implementation to match C behavior.

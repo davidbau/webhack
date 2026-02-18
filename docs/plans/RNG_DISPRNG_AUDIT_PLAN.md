@@ -1,5 +1,8 @@
 # RNG Audit Plan: CORE vs DISP Streams
 
+> Plan hierarchy: This is a subordinate subplan to root [`PROJECT_PLAN.md`](../../PROJECT_PLAN.md).  
+> If scope, priority, or milestone details conflict, `PROJECT_PLAN.md` is authoritative.
+
 ## Goal
 
 Find and eliminate RNG divergence caused by missing or misplaced display-only RNG behavior, while avoiding unnecessary infrastructure churn.

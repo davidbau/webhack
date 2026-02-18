@@ -129,7 +129,7 @@ Comprehensive improvements to testing infrastructure, display accuracy, and inte
 ## Documentation
 
 ### Updated Files
-- `INTERFACE_TESTING_PLAN.md` - Current status, completion markers
+- `PROJECT_PLAN.md` - Authoritative project-level scope/phasing status
 - `MEMORY.md` - Interface testing system, git notes, test status
 
 ### New Documentation

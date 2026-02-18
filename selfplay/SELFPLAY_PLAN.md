@@ -1,5 +1,9 @@
 # NetHack AI Selfplay Agent -- Project Plan
 
+> Plan hierarchy: This is a subordinate subplan to root [`PROJECT_PLAN.md`](../PROJECT_PLAN.md).  
+> If scope, priority, or milestone details conflict, `PROJECT_PLAN.md` is authoritative.
+> Numbering note: stage numbering in this document is local to the selfplay track and does not override the main project phase numbering in `PROJECT_PLAN.md`.
+
 ## Vision
 
 A JavaScript NetHack-playing agent that can competently play the full game
@@ -13,11 +17,19 @@ enabling three use cases:
 3. **Demo animation** -- Background "teaser" play when no human is active,
    showcasing autonomous NetHack gameplay until a key is pressed.
 
+## Primary Selfplay Objective
+
+Selfplay is optimized for broad, interesting, humanlike gameplay behavior and
+depth of play, not just for score maximization. Success includes diversity of
+actions and situations (exploration, combat, item use, survival decisions),
+because that improves both trace quality for parity testing and demo quality
+for player-facing autoplay.
+
 ## Architecture
 
 ```
 selfplay/
-├── PLAN.md                 This file
+├── SELFPLAY_PLAN.md        This file
 ├── agent.js                Top-level agent: perceive → decide → act loop
 ├── brain/
 │   ├── strategy.js         High-level strategy (what phase of the game?)
@@ -71,44 +83,44 @@ Tactics Layer   → "There's a monster blocking the corridor, fight it"
 Action Layer    → "Move east (press 'l')"
 ```
 
-## Development Phases
+## Development Stages (Selfplay-Local Numbering)
 
-### Phase 1: Foundation (Issues 1-4)
+### Stage 1: Foundation (Issues 1-4)
 - Screen parser that reads the 80x24 terminal grid
 - Map memory that persists explored areas
 - Status line parser (HP, AC, hunger, XL, etc.)
 - Basic pathfinding (A* on known map)
 - Platform adapters (JS direct + tmux)
 
-### Phase 2: Survival Agent (Issues 5-8)
+### Stage 2: Survival Agent (Issues 5-8)
 - Movement and exploration (explore unknown areas)
 - Combat evaluation (fight vs. flee decisions)
 - Basic inventory management (wield best weapon, wear armor)
 - Eating and hunger management
 - Door handling, stair navigation
 
-### Phase 3: Competent Play (Issues 9-12)
+### Stage 3: Competent Play (Issues 9-12)
 - Item identification (price-ID, use-testing)
 - Shopping (buy/sell in shops)
 - Prayer and divine relations
 - Pet management
 - Multi-level dungeon navigation with branch awareness
 
-### Phase 4: Mid-game (Issues 13-16)
+### Stage 4: Mid-game (Issues 13-16)
 - Mine Town and Sokoban navigation
 - Altar use and sacrifice
 - Resistance management
 - Spellcasting basics
 - Wish strategy
 
-### Phase 5: Late-game (Issues 17-20)
+### Stage 5: Late-game (Issues 17-20)
 - Castle approach and wand of wishing
 - Gehennom navigation
 - Quest completion
 - Ascension kit preparation
 - Elemental Planes and ascension run
 
-### Phase 6: Polish and Integration (Issues 21-23)
+### Stage 6: Polish and Integration (Issues 21-23)
 - Trace collection runner (C binary)
 - Stress test runner (JS port)
 - Demo mode (browser animation)

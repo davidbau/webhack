@@ -1,5 +1,8 @@
 # Special Levels Implementation Roadmap
 
+> Plan hierarchy: This is a subordinate subplan to root [`PROJECT_PLAN.md`](../../PROJECT_PLAN.md).  
+> If scope, priority, or milestone details conflict, `PROJECT_PLAN.md` is authoritative.
+
 Epic: `interface-3br` - Complete special level system for all dungeon branches
 
 ## Current Status

@@ -1,5 +1,8 @@
 # C Keylog Workflow
 
+> Plan hierarchy: This is a subordinate workflow document to root [`PROJECT_PLAN.md`](../../PROJECT_PLAN.md).  
+> If scope, priority, or milestone details conflict, `PROJECT_PLAN.md` is authoritative.
+
 This workflow records manual C NetHack inputs from a known seed, then converts
 them into replay JSON suitable for JS-port reproducibility testing.
 

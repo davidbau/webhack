@@ -1,5 +1,8 @@
 # Themerms Integration Plan
 
+> Plan hierarchy: This is a subordinate subplan to root [`PROJECT_PLAN.md`](../PROJECT_PLAN.md).  
+> If scope, priority, or milestone details conflict, `PROJECT_PLAN.md` is authoritative.
+
 ## Problem Summary
 
 **Current Status:**

@@ -1,5 +1,8 @@
 # Shop Implementation Plan — Remaining Work
 
+> Plan hierarchy: This is a subordinate subplan to root [`PROJECT_PLAN.md`](../../PROJECT_PLAN.md).  
+> If scope, priority, or milestone details conflict, `PROJECT_PLAN.md` is authoritative.
+
 ## What's Done
 
 ### mkobj.js — m_id counter tracking
