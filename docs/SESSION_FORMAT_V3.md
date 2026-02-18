@@ -139,7 +139,7 @@ The startup step contains:
 | `key` | null | Always null for startup |
 | `action` | string | Always `"startup"` |
 | `rng` | string[] | Full RNG log with midlog markers |
-| `screen` | string | ANSI-compressed terminal screen |
+| `screen` | string | ANSI-compressed terminal screen (v3 canonical) |
 | `typGrid` | string | RLE-encoded terrain grid (gameplay mode) |
 | `checkpoints` | array | State snapshots (wizload mode) |
 
@@ -191,9 +191,21 @@ and is the startup step. Subsequent steps have string keys:
 | `key` | string\|null | yes | Key sent to NetHack (null for startup) |
 | `action` | string | yes | Human-readable description |
 | `rng` | string[] | yes | RNG calls during this step (may be empty) |
-| `screen` | string | no | ANSI-compressed screen after this step |
+| `screen` | string | no | ANSI-compressed screen after this step (v3 canonical) |
 | `typGrid` | string | no | RLE terrain grid (on level changes) |
 | `checkpoints` | array | no | State snapshots (during level generation) |
+
+### Screen Semantics (Important)
+
+- In v3, `screen` is the primary terminal capture and includes ANSI/control data.
+- Plain text screen comparison is derived by stripping ANSI/control sequences.
+- `screenAnsi` is deprecated for v3 and should be removed from new captures.
+  The canonical v3 field is `screen`.
+- DECgraphics normalization is applied via SO/SI (`\x0e`/`\x0f`) state with
+  a standard DEC-special-graphics to Unicode correspondence before glyph/color
+  comparisons.
+  Example correspondences: `a -> U+2592` (checkerboard/open door),
+  `~ -> U+00B7` (middle dot), `lqkxmjntuvw -> box-drawing`.
 
 **Note:** Turn count is not tracked per-step since a single keystroke can
 consume multiple game turns (e.g., running, resting). The RNG delta accurately

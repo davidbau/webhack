@@ -142,3 +142,5 @@ Action Layer    → "Move east (press 'l')"
     and temporary glyph paths such as display/detect/throw/zap/pickup/inventory naming).
   - Ensure save/restore and replay diagnostics can preserve and inspect both RNG streams.
   - Keep this non-regressive: no gameplay RNG drift from display-only changes.
+  - Extend faithfulness checks beyond glyph text to include color/attribute parity
+    against C ANSI captures (`screenAnsi`) in session comparisons.

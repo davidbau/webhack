@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { normalizeSymsetLine } from '../comparison/symset_normalization.js';
 import { initRng, rn2, rnd, rn1 } from '../../js/rng.js';
 import { initLevelGeneration, makelevel, wallification } from '../../js/dungeon.js';
 import { Player } from '../../js/player.js';
@@ -35,21 +36,6 @@ const session = existsSync(sessionPath) ? JSON.parse(readFileSync(sessionPath, '
 // DEC Graphics -> Unicode mapping (for parsing C reference screens)
 // Only applied to map rows (1-21), NOT message/status rows
 // ========================================================================
-const DEC_TO_UNICODE = {
-    'l': '\u250c', // TL corner
-    'q': '\u2500', // horizontal wall
-    'k': '\u2510', // TR corner
-    'x': '\u2502', // vertical wall
-    'm': '\u2514', // BL corner
-    'j': '\u2518', // BR corner
-    'n': '\u253c', // cross wall
-    't': '\u251c', // right T (from inside)
-    'u': '\u2524', // left T (from inside)
-    'v': '\u2534', // bottom T
-    'w': '\u252c', // top T
-    '~': '\u00b7', // room floor (middle dot)
-};
-
 function stripAnsiSequences(text) {
     if (!text) return '';
     return String(text)
@@ -66,7 +52,7 @@ function terrainChar(loc) {
     const typ = loc.typ;
 
     if (typ === DOOR) {
-        if (loc.flags & D_ISOPEN) return '\u00b7';
+        if (loc.flags & D_ISOPEN) return '\u2592';
         if (loc.flags & (D_CLOSED | D_LOCKED)) return '+';
         return '\u00b7'; // doorway
     }
@@ -184,11 +170,7 @@ function parseCScreenFromSession(screenLines) {
         }
         line = line.padEnd(80);
         if (row >= 1 && row <= 21) {
-            let mapped = '';
-            for (const ch of line) {
-                mapped += DEC_TO_UNICODE[ch] || ch;
-            }
-            line = mapped;
+            line = normalizeSymsetLine(line, { decGraphics: true });
         }
         result.push(line);
     }

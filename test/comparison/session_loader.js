@@ -17,14 +17,36 @@ export function stripAnsiSequences(text) {
 }
 
 export function getSessionScreenLines(screenHolder) {
-    if (Array.isArray(screenHolder?.screenAnsi)) {
-        return screenHolder.screenAnsi.map((line) => stripAnsiSequences(line));
-    }
     if (Array.isArray(screenHolder?.screen)) {
         return screenHolder.screen.map((line) => stripAnsiSequences(line));
     }
     if (typeof screenHolder?.screen === 'string') {
         return screenHolder.screen.split('\n').map((line) => stripAnsiSequences(line));
+    }
+    // Deprecated compatibility path. v3 canonical field is `screen`.
+    if (Array.isArray(screenHolder?.screenAnsi)) {
+        return screenHolder.screenAnsi.map((line) => stripAnsiSequences(line));
+    }
+    if (typeof screenHolder?.screenAnsi === 'string') {
+        return screenHolder.screenAnsi.split('\n').map((line) => stripAnsiSequences(line));
+    }
+    return [];
+}
+
+export function getSessionScreenAnsiLines(screenHolder) {
+    if (Array.isArray(screenHolder?.screen)) {
+        return screenHolder.screen.map((line) => String(line || ''));
+    }
+    if (typeof screenHolder?.screen === 'string') {
+        // v3 canonical: ANSI-compressed screen is stored directly in `screen`.
+        return screenHolder.screen.split('\n').map((line) => String(line || ''));
+    }
+    // Deprecated compatibility path. Prefer `screen`.
+    if (Array.isArray(screenHolder?.screenAnsi)) {
+        return screenHolder.screenAnsi.map((line) => String(line || ''));
+    }
+    if (typeof screenHolder?.screenAnsi === 'string') {
+        return screenHolder.screenAnsi.split('\n').map((line) => String(line || ''));
     }
     return [];
 }
@@ -53,7 +75,7 @@ function normalizeStep(step, index) {
         rng,
         rngCalls: hasExplicitRngCalls ? row.rngCalls : (hasExplicitRngTrace ? rng.length : null),
         screen: getSessionScreenLines(row),
-        screenAnsi: Array.isArray(row.screenAnsi) ? row.screenAnsi : null,
+        screenAnsi: getSessionScreenAnsiLines(row),
         typGrid: normalizeGrid(row.typGrid),
         checkpoints: normalizeCheckpoints(row.checkpoints),
     };
@@ -121,7 +143,7 @@ function normalizeLevels(levels) {
         rng: Array.isArray(level?.rng) ? level.rng : [],
         rngCalls: Number.isInteger(level?.rngCalls) ? level.rngCalls : null,
         screen: getSessionScreenLines(level),
-        screenAnsi: Array.isArray(level?.screenAnsi) ? level.screenAnsi : null,
+        screenAnsi: getSessionScreenAnsiLines(level),
         checkpoints: normalizeCheckpoints(level?.checkpoints),
         levelName: level?.levelName || null,
     }));
@@ -150,7 +172,7 @@ export function normalizeSession(raw, meta = {}) {
                 ? startupRaw.rngCalls
                 : (Array.isArray(startupRaw.rng) ? startupRaw.rng.length : null),
             screen: getSessionScreenLines(startupRaw),
-            screenAnsi: Array.isArray(startupRaw.screenAnsi) ? startupRaw.screenAnsi : null,
+            screenAnsi: getSessionScreenAnsiLines(startupRaw),
             typGrid: normalizeGrid(startupRaw.typGrid),
             checkpoints: normalizeCheckpoints(startupRaw.checkpoints),
         }

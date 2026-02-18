@@ -531,7 +531,7 @@ export class Display {
                 // S_hodoor (horizontal open door): '|' (walls E/W)
                 const isHorizontalDoor = this._isDoorHorizontal(gameMap, x, y);
                 return useDEC
-                    ? { ch: '\u00b7', color: CLR_BROWN }  // Middle dot for both in DECgraphics
+                    ? { ch: '\u2592', color: CLR_BROWN }  // DEC checkerboard (S_vodoor/S_hodoor)
                     : { ch: isHorizontalDoor ? '|' : '-', color: CLR_BROWN };
             } else if (loc.flags & D_CLOSED || loc.flags & D_LOCKED) {
                 return { ch: '+', color: CLR_BROWN };
@@ -762,11 +762,17 @@ export class Display {
         // C ref: win/tty/wintty.c - menu headers use inverse video
         for (let i = 0; i < lines.length && i < this.rows; i++) {
             const line = lines[i];
-            // First line (menu header) gets inverse video if it starts with space and contains text
-            // C ref: role.c - headers like " Pick a role or profession" use inverse
-            const isHeader = (i === 0 && line.trim().length > 0 && line.startsWith(' '));
-            const attr = isHeader ? 1 : 0;  // 1 = inverse video
-            this.putstr(offx, i, line, CLR_WHITE, attr);
+            // C ref: role.c — first line is menu header with inverse video.
+            const isHeader = (i === 0 && line.trim().length > 0);
+            if (isHeader && line.startsWith(' ')) {
+                // Keep explicit leading pad non-inverse, invert remaining header text.
+                this.setCell(offx, i, ' ', CLR_WHITE, 0);
+                this.putstr(offx + 1, i, line.slice(1), CLR_WHITE, 1);
+            } else if (isHeader) {
+                this.putstr(offx, i, line, CLR_WHITE, 1);
+            } else {
+                this.putstr(offx, i, line, CLR_WHITE, 0);
+            }
         }
 
         return offx;

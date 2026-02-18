@@ -273,13 +273,10 @@ function m_throw(mon, startX, startY, dx, dy, range, weapon, map, player, displa
                         display.putstr_message(`You ${killVerb} the ${monDisplayName(mtmp)}!`);
                     }
                     map.removeMonster(mtmp);
-                    // C ref: mon.c xkilled() — award XP and create corpse
-                    const exp = (mtmp.mlevel + 1) * (mtmp.mlevel + 1);
-                    player.exp += exp;
-                    player.score += exp;
-                    checkLevelUp(player, display);
-                    // C ref: mon.c:3581 — treasure drop rn2(6)
-                    rn2(6);
+                    // C ref: ohitmon → mondied (context.mon_moving is true
+                    // during monster throws, so mondied not xkilled).
+                    // mondied: mondead() then corpse_chance(); no treasure
+                    // drop rn2(6) and no XP award to player.
                     // C ref: mon.c corpse_chance()
                     const mdat2 = mons[mtmp.mndx] || {};
                     const gfreq = (mdat2.geno || 0) & G_FREQ;

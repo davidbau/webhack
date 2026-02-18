@@ -59,6 +59,9 @@ function stringifyFirstDivergence(first) {
     if (first.channel === 'screen') {
         return `screen divergence at step=${first.step ?? 'n/a'} row=${first.row ?? 'n/a'}\n  js:      ${JSON.stringify(first.js ?? '')}\n  session: ${JSON.stringify(first.session ?? '')}`;
     }
+    if (first.channel === 'color') {
+        return `color divergence at step=${first.step ?? 'n/a'} row=${first.row ?? 'n/a'} col=${first.col ?? 'n/a'}\n  js:      ${JSON.stringify(first.js ?? {})}\n  session: ${JSON.stringify(first.session ?? {})}`;
+    }
     if (first.channel === 'grid') {
         return `grid divergence at depth=${first.depth ?? 'n/a'} (${first.x ?? 'n/a'},${first.y ?? 'n/a'}): js=${first.js ?? ''} session=${first.session ?? ''}`;
     }

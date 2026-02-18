@@ -7,11 +7,13 @@ export {
     compareRng,
     compareGrids,
     compareScreenLines,
+    compareScreenAnsi,
 } from './comparators.js';
 
 export {
     stripAnsiSequences,
     getSessionScreenLines,
+    getSessionScreenAnsiLines,
     normalizeSession,
     loadAllSessions,
 } from './session_loader.js';

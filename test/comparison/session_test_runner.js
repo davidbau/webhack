@@ -26,14 +26,17 @@ import {
     compareRng,
     compareGrids,
     compareScreenLines,
+    compareScreenAnsi,
     findFirstGridDiff,
 } from './comparators.js';
-import { loadAllSessions, stripAnsiSequences } from './session_loader.js';
+import { loadAllSessions, stripAnsiSequences, getSessionScreenAnsiLines } from './session_loader.js';
+import { normalizeSymsetLine } from './symset_normalization.js';
 import {
     createSessionResult,
     recordRng,
     recordGrids,
     recordScreens,
+    recordColors,
     markFailed,
     setDuration,
     createResultsBundle,
@@ -54,6 +57,10 @@ function createReplayResult(session) {
     });
     result.type = session.meta.type;
     return result;
+}
+
+function sessionColorEnabled(session) {
+    return session?.meta?.options?.color === true;
 }
 
 function setFirstDivergence(result, channel, divergence) {
@@ -84,10 +91,15 @@ function getExpectedScreenLines(stepLike) {
     return [];
 }
 
+function getExpectedScreenAnsiLines(stepLike) {
+    return getSessionScreenAnsiLines(stepLike);
+}
+
 function normalizeInterfaceLineForComparison(line) {
     const text = String(line || '')
         .replace(/[┌┐└┘┬┴┼├┤─]/g, '-')
         .replace(/[│]/g, '|')
+        .replace(/[·]/g, '.')
         .replace(/\s+$/, '');
     if (/^\s*NetHack,\s+Copyright\b/.test(text)) return '__HEADER_COPYRIGHT__';
     if (/^\s*By Stichting Mathematisch Centrum and M\. Stephenson\./.test(text)) return '__HEADER_AUTHOR__';
@@ -120,29 +132,13 @@ function compareInterfaceScreens(actualLines, expectedLines) {
     return best;
 }
 
-const DEC_TO_UNICODE = {
-    l: '\u250c',
-    q: '\u2500',
-    k: '\u2510',
-    x: '\u2502',
-    m: '\u2514',
-    j: '\u2518',
-    n: '\u253c',
-    t: '\u251c',
-    u: '\u2524',
-    v: '\u2534',
-    w: '\u252c',
-    '~': '\u00b7',
-    a: '\u00b7',
-};
-
 function normalizeGameplayScreenLines(lines, session, { captured = false, prependCol0 = true } = {}) {
     const decgraphics = session?.meta?.options?.symset === 'DECgraphics';
     return (Array.isArray(lines) ? lines : []).map((line, row) => {
         let out = String(line || '').replace(/\r$/, '').replace(/[\x0e\x0f]/g, '');
         if (captured && prependCol0 && row >= 1 && row <= 21) out = ` ${out}`;
         if (decgraphics && row >= 1 && row <= 21) {
-            out = [...out].map((ch) => DEC_TO_UNICODE[ch] || ch).join('');
+            out = normalizeSymsetLine(out, { decGraphics: true });
         }
         return out;
     });
@@ -164,6 +160,21 @@ function compareGameplayScreens(actualLines, expectedLines, session) {
     const withPad = compareScreenLines(normalizedActual, normalizedExpectedWithPad);
     if (withPad.match) return withPad;
     const noPad = compareScreenLines(normalizedActual, normalizedExpectedNoPad);
+    if (noPad.match) return noPad;
+    return (withPad.matched >= noPad.matched) ? withPad : noPad;
+}
+
+function prependGameplayMapCol0(lines) {
+    return (Array.isArray(lines) ? lines : []).map((line, row) => {
+        if (row >= 1 && row <= 21) return ` ${String(line || '')}`;
+        return String(line || '');
+    });
+}
+
+function compareGameplayColors(actualAnsi, expectedAnsi) {
+    const withPad = compareScreenAnsi(actualAnsi, prependGameplayMapCol0(expectedAnsi));
+    if (withPad.match) return withPad;
+    const noPad = compareScreenAnsi(actualAnsi, expectedAnsi);
     if (noPad.match) return noPad;
     return (withPad.matched >= noPad.matched) ? withPad : noPad;
 }
@@ -229,6 +240,8 @@ async function replayInterfaceSession(session) {
     const inGameInterface = subtype === 'options' || session.meta.options?.wizard === true;
     if (replaySessionInterface) {
         const replayFlags = { ...DEFAULT_FLAGS };
+        replayFlags.color = sessionColorEnabled(session);
+        if (subtype === 'options') replayFlags.color = true;
         if (session.meta.options?.autopickup === false) replayFlags.pickup = false;
         const wantsDec = session.meta.options?.symset === 'DECgraphics';
         if (wantsDec) replayFlags.DECgraphics = true;
@@ -256,10 +269,16 @@ async function replayInterfaceSession(session) {
     enableRngLog();
     const initPromise = game.init({ seed, wizard: inGameInterface });
     let startupScreen = await waitForStableScreen(display, { requireNonEmpty: true });
+    let startupScreenAnsi = (typeof display.getScreenAnsiLines === 'function')
+        ? display.getScreenAnsiLines()
+        : null;
     if (inGameInterface) {
         await initPromise;
         // Options captures start from in-game map/status, not pregame prompts.
         startupScreen = await waitForStableScreen(display, { requireNonEmpty: true });
+        startupScreenAnsi = (typeof display.getScreenAnsiLines === 'function')
+            ? display.getScreenAnsiLines()
+            : null;
     }
     let prevRngCount = (getRngLog() || []).length;
     const startupRng = (getRngLog() || []).slice(0, prevRngCount);
@@ -283,6 +302,9 @@ async function replayInterfaceSession(session) {
             rngCalls: stepRng.length,
             rng: stepRng,
             screen,
+            screenAnsi: (typeof display.getScreenAnsiLines === 'function')
+                ? display.getScreenAnsiLines()
+                : null,
         });
     }
 
@@ -291,7 +313,12 @@ async function replayInterfaceSession(session) {
     disableRngLog();
 
     return {
-        startup: { rngCalls: startupRng.length, rng: startupRng, screen: startupScreen },
+        startup: {
+            rngCalls: startupRng.length,
+            rng: startupRng,
+            screen: startupScreen,
+            screenAnsi: startupScreenAnsi,
+        },
         steps: recordedSteps,
     };
 }
@@ -334,6 +361,7 @@ async function runGameplayResult(session) {
 
     try {
         const replayFlags = { ...DEFAULT_FLAGS };
+        replayFlags.color = sessionColorEnabled(session);
         // C harness gameplay captures default to concise messaging unless
         // verbose is explicitly set in session options.
         replayFlags.verbose = (session.meta.options?.verbose === true);
@@ -418,10 +446,24 @@ async function runGameplayResult(session) {
                     setFirstDivergence(result, 'screen', { step: i, ...screenCmp.firstDiff });
                 }
             }
+            const expectedAnsi = getExpectedScreenAnsiLines(expected);
+            if (expectedAnsi.length > 0 && Array.isArray(actual.screenAnsi)) {
+                const colorCmp = compareGameplayColors(actual.screenAnsi, expectedAnsi);
+                if (!result._colorStats) result._colorStats = { matched: 0, total: 0 };
+                result._colorStats.matched += colorCmp.matched;
+                result._colorStats.total += colorCmp.total;
+                if (!colorCmp.match && colorCmp.firstDiff) {
+                    setFirstDivergence(result, 'color', { step: i, ...colorCmp.firstDiff });
+                }
+            }
         }
 
         if (rngTotal > 0) recordRng(result, rngMatched, rngTotal, result.firstDivergence);
         if (screensTotal > 0) recordScreens(result, screensMatched, screensTotal);
+        if (result._colorStats?.total > 0) {
+            recordColors(result, result._colorStats.matched, result._colorStats.total);
+            delete result._colorStats;
+        }
     } catch (error) {
         markFailed(result, error);
     }
@@ -504,6 +546,45 @@ async function runInterfaceResult(session) {
                     setFirstDivergence(result, 'screen', { step: i + 1, ...screenCmp.firstDiff });
                 }
             }
+            const expectedAnsi = getExpectedScreenAnsiLines(expected);
+            if (expectedAnsi.length > 0 && Array.isArray(actual.screenAnsi)) {
+                let actualAnsiForCmp = actual.screenAnsi;
+                let expectedAnsiForCmp = expectedAnsi;
+                const expectedPlain = normalizeInterfaceScreenLines(getExpectedScreenLines(expected));
+
+                // Keep ANSI color comparison scoped to the same prompt-only slices used
+                // by interface text comparison where C/JS map fragments are non-round-trippable.
+                if (session.meta.regen?.subtype === 'options'
+                    && expectedPlain[0]?.startsWith('Set fruit to what?')) {
+                    actualAnsiForCmp = actualAnsiForCmp.slice(0, 1);
+                    expectedAnsiForCmp = expectedAnsiForCmp.slice(0, 1);
+                }
+                if (session.meta.regen?.subtype === 'options'
+                    && expectedPlain[0]?.includes('Select number_pad mode:')) {
+                    actualAnsiForCmp = actualAnsiForCmp.slice(0, 9);
+                    expectedAnsiForCmp = expectedAnsiForCmp.slice(0, 9);
+                }
+
+                // Header/version lines are intentionally normalized in interface
+                // screen comparison; mirror that here to avoid volatile build-string
+                // text producing false color/glyph diffs.
+                const expectedAnsiMasked = expectedAnsiForCmp.slice();
+                const actualAnsiMasked = actualAnsiForCmp.slice();
+                for (let row = 0; row < expectedPlain.length && row < expectedAnsiMasked.length; row++) {
+                    if (expectedPlain[row] === '__HEADER_VERSION__') {
+                        expectedAnsiMasked[row] = '';
+                        if (row < actualAnsiMasked.length) actualAnsiMasked[row] = '';
+                    }
+                }
+
+                const colorCmp = compareScreenAnsi(actualAnsiMasked, expectedAnsiMasked);
+                if (!result._colorStats) result._colorStats = { matched: 0, total: 0 };
+                result._colorStats.matched += colorCmp.matched;
+                result._colorStats.total += colorCmp.total;
+                if (!colorCmp.match && colorCmp.firstDiff) {
+                    setFirstDivergence(result, 'color', { step: i + 1, ...colorCmp.firstDiff });
+                }
+            }
 
             const expectedRng = Array.isArray(expected.rng) ? expected.rng : [];
             if (expectedRng.length > 0) {
@@ -528,6 +609,10 @@ async function runInterfaceResult(session) {
 
         if (rngTotal > 0) recordRng(result, rngMatched, rngTotal, result.firstDivergence);
         if (screensTotal > 0) recordScreens(result, screensMatched, screensTotal);
+        if (result._colorStats?.total > 0) {
+            recordColors(result, result._colorStats.matched, result._colorStats.total);
+            delete result._colorStats;
+        }
     } catch (error) {
         markFailed(result, error);
     }

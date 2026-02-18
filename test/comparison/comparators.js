@@ -1,4 +1,5 @@
 // test/comparison/comparators.js -- Pure comparison helpers for session replay.
+import { decodeDecSpecialChar } from './symset_normalization.js';
 
 function stripRngSourceTag(entry) {
     if (!entry || typeof entry !== 'string') return '';
@@ -124,6 +125,123 @@ export function compareScreenLines(actualLines = [], expectedLines = []) {
             matched++;
         } else {
             diffs.push({ row: i, js: jsLine, session: sessionLine });
+        }
+    }
+
+    return {
+        matched,
+        total,
+        match: matched === total,
+        diffs,
+        firstDiff: diffs.length > 0 ? diffs[0] : null,
+    };
+}
+
+function ansiSpacesFromCursorForward(text) {
+    return String(text || '').replace(/\x1b\[(\d*)C/g, (_m, n) => ' '.repeat(Math.max(1, Number(n || '1'))));
+}
+
+function parseAnsiLineToCells(line) {
+    const src = ansiSpacesFromCursorForward(line);
+    const cells = [];
+    let i = 0;
+    let fg = 7;
+    let bg = 0;
+    let attr = 0; // bit1=inverse, bit2=bold, bit4=underline
+    let decGraphics = false; // SO/SI state for DEC special graphics
+
+    const applySgr = (codes) => {
+        if (codes.length === 0) codes = [0];
+        for (const code of codes) {
+            if (code === 0) {
+                fg = 7; bg = 0; attr = 0;
+            } else if (code === 1) attr |= 2;
+            else if (code === 4) attr |= 4;
+            else if (code === 7) attr |= 1;
+            else if (code === 22) attr &= ~2;
+            else if (code === 24) attr &= ~4;
+            else if (code === 27) attr &= ~1;
+            else if (code >= 30 && code <= 37) fg = code - 30;
+            else if (code >= 90 && code <= 97) fg = 8 + (code - 90);
+            else if (code === 39) fg = 7;
+            else if (code >= 40 && code <= 47) bg = code - 40;
+            else if (code >= 100 && code <= 107) bg = 8 + (code - 100);
+            else if (code === 49) bg = 0;
+        }
+    };
+
+    while (i < src.length) {
+        const ch = src[i];
+        if (ch === '\x0e') {
+            decGraphics = true;
+            i++;
+            continue;
+        }
+        if (ch === '\x0f') {
+            decGraphics = false;
+            i++;
+            continue;
+        }
+        if (ch === '\x1b' && src[i + 1] === '[') {
+            let j = i + 2;
+            while (j < src.length && src[j] !== 'm') j++;
+            if (j < src.length && src[j] === 'm') {
+                const body = src.slice(i + 2, j);
+                const codes = body.length === 0
+                    ? [0]
+                    : body.split(';').map((s) => Number.parseInt(s || '0', 10)).filter((n) => Number.isFinite(n));
+                applySgr(codes);
+                i = j + 1;
+                continue;
+            }
+        }
+        if (ch !== '\r' && ch !== '\n') {
+            const outCh = decGraphics ? decodeDecSpecialChar(ch) : ch;
+            cells.push({ ch: outCh, fg, bg, attr });
+        }
+        i++;
+    }
+    return cells;
+}
+
+function normalizeAnsiCells(cells, width = 80) {
+    const out = Array.isArray(cells) ? cells.slice(0, width) : [];
+    while (out.length < width) out.push({ ch: ' ', fg: 7, bg: 0, attr: 0 });
+    return out;
+}
+
+export function compareScreenAnsi(actualAnsi = [], expectedAnsi = []) {
+    const actual = Array.isArray(actualAnsi) ? actualAnsi : [];
+    const expected = Array.isArray(expectedAnsi) ? expectedAnsi : [];
+    const total = Math.max(actual.length, expected.length);
+    let matched = 0;
+    const diffs = [];
+
+    for (let row = 0; row < total; row++) {
+        const aCells = normalizeAnsiCells(parseAnsiLineToCells(actual[row] || ''));
+        const eCells = normalizeAnsiCells(parseAnsiLineToCells(expected[row] || ''));
+        let rowMatch = true;
+        let firstCol = -1;
+        for (let col = 0; col < 80; col++) {
+            const a = aCells[col];
+            const e = eCells[col];
+            if (a.ch !== e.ch || a.fg !== e.fg || a.bg !== e.bg || a.attr !== e.attr) {
+                rowMatch = false;
+                firstCol = col;
+                break;
+            }
+        }
+        if (rowMatch) {
+            matched++;
+        } else {
+            const a = aCells[firstCol];
+            const e = eCells[firstCol];
+            diffs.push({
+                row,
+                col: firstCol,
+                js: { ch: a.ch, fg: a.fg, bg: a.bg, attr: a.attr },
+                session: { ch: e.ch, fg: e.fg, bg: e.bg, attr: e.attr },
+            });
         }
     }
 

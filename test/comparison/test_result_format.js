@@ -50,6 +50,7 @@ export function createSessionResult(session) {
             keys: { matched: 0, total: 0 },
             grids: { matched: 0, total: 0 },
             screens: { matched: 0, total: 0 },
+            colors: { matched: 0, total: 0 },
         },
     };
 
@@ -131,6 +132,17 @@ export function recordScreens(result, matched, total) {
 }
 
 /**
+ * Record color/ANSI screen comparison
+ */
+export function recordColors(result, matched, total) {
+    result.metrics.colors.matched += matched;
+    result.metrics.colors.total += total;
+    if (matched < total) {
+        result.passed = false;
+    }
+}
+
+/**
  * Mark session as failed with optional error
  */
 export function markFailed(result, error = null) {
@@ -151,6 +163,7 @@ export function finalizeResult(result) {
         if (m.keys?.total === 0) delete m.keys;
         if (m.grids?.total === 0) delete m.grids;
         if (m.screens?.total === 0) delete m.screens;
+        if (m.colors?.total === 0) delete m.colors;
 
         // Remove empty metrics object
         if (Object.keys(m).length === 0) delete result.metrics;
@@ -208,6 +221,7 @@ export function formatResult(result) {
     if (m.rngCalls) parts.push(`rng=${m.rngCalls.matched}/${m.rngCalls.total}`);
     if (m.grids) parts.push(`grids=${m.grids.matched}/${m.grids.total}`);
     if (m.screens) parts.push(`screens=${m.screens.matched}/${m.screens.total}`);
+    if (m.colors) parts.push(`colors=${m.colors.matched}/${m.colors.total}`);
     if (result.error) parts.push(`error: ${result.error}`);
 
     return parts.join(' ');

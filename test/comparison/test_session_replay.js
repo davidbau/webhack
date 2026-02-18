@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { compareRng, replaySession, generateStartupWithRng, hasStartupBurstInFirstStep, getSessionStartup, getSessionCharacter, getSessionGameplaySteps } from './session_helpers.js';
+import { normalizeSymsetLine } from './symset_normalization.js';
 
 function loadSession(filepath) {
     return JSON.parse(fs.readFileSync(filepath, 'utf8'));
@@ -46,22 +47,6 @@ function inferReplayStart(sessionPath, session) {
     return {};
 }
 
-const DEC_TO_UNICODE = {
-    l: '\u250c',
-    q: '\u2500',
-    k: '\u2510',
-    x: '\u2502',
-    m: '\u2514',
-    j: '\u2518',
-    n: '\u253c',
-    t: '\u251c',
-    u: '\u2524',
-    v: '\u2534',
-    w: '\u252c',
-    '~': '\u00b7',
-    a: '\u00b7',
-};
-
 const DEC_FROM_UNICODE = {
     '\u250c': 'l',
     '\u2500': 'q',
@@ -95,7 +80,7 @@ function normalizeCapturedLine(line, row, screenMode, isMapScreen, mapConvertEnd
     if (isMapScreen && screenMode === 'decgraphics' && row >= 1 && row <= 21) {
         const chars = [...out];
         const end = Number.isInteger(mapConvertEnd) ? mapConvertEnd : chars.length;
-        out = chars.map((ch, idx) => (idx < end ? (DEC_TO_UNICODE[ch] || ch) : ch)).join('');
+        out = chars.map((ch, idx) => (idx < end ? normalizeSymsetLine(ch, { decGraphics: true }) : ch)).join('');
     }
     return out.padEnd(80);
 }
@@ -105,7 +90,7 @@ function normalizeJsLine(line, row, screenMode, isMapScreen, mapConvertEnd = nul
     if (screenMode === 'decgraphics' && isMapScreen && row >= 1 && row <= 21) {
         const chars = [...out];
         const end = Number.isInteger(mapConvertEnd) ? mapConvertEnd : chars.length;
-        out = chars.map((ch, idx) => (idx < end ? (DEC_TO_UNICODE[ch] || ch) : ch)).join('');
+        out = chars.map((ch, idx) => (idx < end ? normalizeSymsetLine(ch, { decGraphics: true }) : ch)).join('');
     }
     return out.padEnd(80);
 }

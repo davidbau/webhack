@@ -221,8 +221,11 @@ export function playerAttackMonster(player, monster, display, map) {
             // C ref: uhitm.c:1554 hmon_hitmon_stagger — rnd(100) stun chance check
             rnd(100);
         }
-        // C ref: uhitm.c:624 known_hitum() — 1/25 morale/flee check on surviving hit
-        rn2(25);
+        // C ref: uhitm.c:624-628 known_hitum() — 1/25 morale/flee check on surviving hit
+        if (!rn2(25) && monster.mhp < Math.floor((monster.mhpmax || 1) / 2)) {
+            // C ref: monflee(mon, !rn2(3) ? rnd(100) : 0, ...) — flee timer
+            if (!rn2(3)) rnd(100);
+        }
         // C ref: uhitm.c:5997 passive() — rn2(3) when monster alive after hit
         rn2(3);
         return false;

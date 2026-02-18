@@ -1239,7 +1239,11 @@ function equipInitialGear(player) {
     for (const item of player.inventory) {
         if (item.oclass !== WEAPON_CLASS) continue;
         const info = objectData[item.otyp];
-        if (info && info.dir !== 0) {
+        // C ref: u_init.c:1282-1293 ini_inv_use_obj() — ammo (is_ammo)
+        // and missiles (is_missile) go to quiver, not uwep.  Both have
+        // negative oc_skill (sub < 0); melee weapons and launchers have
+        // non-negative oc_skill.
+        if (info && info.sub >= 0) {
             if (!player.weapon) {
                 player.weapon = item;
             } else if (!player.swapWeapon) {
