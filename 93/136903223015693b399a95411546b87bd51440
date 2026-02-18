@@ -1,0 +1,16 @@
+{
+  "commit": "9313690",
+  "parent": "1f85f24",
+  "date": "2026-02-18T15:27:49-05:00",
+  "author": "David Bau",
+  "message": "session runner: keep full-run default and enforce per-session timeouts",
+  "stats": {"total": 546, "pass": 500, "fail": 46, "skip": 0, "duration": 0},
+  "categories": {
+    "chargen": {"total": 91, "pass": 91, "fail": 0},
+    "gameplay": {"total": 43, "pass": 11, "fail": 32},
+    "map": {"total": 10, "pass": 10, "fail": 0},
+    "special": {"total": 50, "pass": 50, "fail": 0},
+    "unit": {"total": 343, "pass": 332, "fail": 11}
+  },
+  "backfilled": true
+}
