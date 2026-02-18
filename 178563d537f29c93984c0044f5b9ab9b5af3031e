@@ -1,0 +1,44 @@
+{
+  "commit": "178563d",
+  "parent": "3174c8a",
+  "date": "2026-02-15T15:33:22-05:00",
+  "author": "David Bau",
+  "message": "runner: add class-balanced C role matrix benchmark",
+  "stats": {
+    "total": 9905,
+    "pass": 564,
+    "fail": 9341,
+    "skip": 0,
+    "duration": 6
+  },
+  "categories": {
+    "chargen": {
+      "total": 180,
+      "pass": 178,
+      "fail": 2
+    },
+    "gameplay": {
+      "total": 42,
+      "pass": 00,
+      "fail": 42
+    },
+    "map": {
+      "total": 15,
+      "pass": 00,
+      "fail": 15
+    },
+    "special": {
+      "total": 100,
+      "pass": 98,
+      "fail": 2
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
