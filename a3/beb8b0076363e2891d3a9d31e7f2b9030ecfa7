@@ -1,0 +1,44 @@
+{
+  "commit": "a3beb8b",
+  "parent": "747c048",
+  "date": "2026-02-16T16:28:26-05:00",
+  "author": "David Bau",
+  "message": "Add optional finddpos/join trace hooks for makecorridors parity",
+  "stats": {
+    "total": 358,
+    "pass": 292,
+    "fail": 66,
+    "skip": 0,
+    "duration": 6
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 20,
+      "pass": 00,
+      "fail": 20
+    },
+    "map": {
+      "total": 8,
+      "pass": 00,
+      "fail": 8
+    },
+    "special": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
