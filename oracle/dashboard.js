@@ -45,7 +45,8 @@ async function loadData() {
 
     // Start from when the current test format stabilized (d532b72, 2026-02-16).
     // Earlier entries used different counting schemes that distort the charts.
-    const START_DATE = '2026-02-16';
+    // Start after 68992c5a (Phase 2: injectable input runtime, 2026-02-16 03:05)
+    const START_DATE = '2026-02-16T03:06';
     allData = parsed.filter(d => {
       if (!d.date || d.date < START_DATE || !d.categories) return false;
       const sum = Object.values(d.categories).reduce((s, c) => s + (c.total || 0), 0);
