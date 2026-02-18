@@ -1,0 +1,44 @@
+{
+  "commit": "d7e05d0",
+  "parent": "772e367",
+  "date": "2026-02-16T18:32:58-05:00",
+  "author": "David Bau",
+  "message": "Merge remote-tracking branch 'origin/main' into latest_main",
+  "stats": {
+    "total": 359,
+    "pass": 295,
+    "fail": 64,
+    "skip": 0,
+    "duration": 6
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 20,
+      "pass": 00,
+      "fail": 20
+    },
+    "map": {
+      "total": 8,
+      "pass": 00,
+      "fail": 8
+    },
+    "special": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
