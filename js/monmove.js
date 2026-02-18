@@ -153,7 +153,8 @@ function linedUpToPlayer(mon, map, player) {
     // C ref: if target is hero square, use couldsee(mon_pos), otherwise clear_path().
     const inSight = (ax === player.x && ay === player.y)
         ? couldsee(map, player, bx, by)
-        : m_cansee({ mx: bx, my: by }, map, ax, ay);
+        // C ref: linedup() uses clear_path(ax, ay, bx, by) for non-hero target.
+        : m_cansee({ mx: ax, my: ay }, map, bx, by);
     if (inSight) return true;
 
     // C ref: hero target uses boulderhandling=2.

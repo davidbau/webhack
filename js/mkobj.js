@@ -1016,6 +1016,14 @@ function xname_for_doname(obj, dknown = true, known = true, bknown = false) {
             base = dknown ? od.name : (od.desc || od.name);
         }
         break;
+    case WEAPON_CLASS:
+        // C ref: objnam.c xname() uses oc_descr for dknown-but-undiscovered weapons.
+        if (dknown && !nameKnown && od.desc) {
+            base = od.desc;
+        } else {
+            base = od.name;
+        }
+        break;
     case FOOD_CLASS:
         if (obj.otyp === CORPSE) {
             const corpseIdx = Number.isInteger(obj.corpsenm) ? obj.corpsenm : obj.corpsem;
