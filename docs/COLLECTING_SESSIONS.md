@@ -167,6 +167,10 @@ alignment combination defined in `seeds.json`.
   sessions: `tmux ls` and `tmux kill-session -t <name>`.
 - RNG log lines look like: `2808 rn2(12) = 2 @ mon.c:1145`.
   The session tools strip the index and compact the format.
+- Lua RNG wrappers now include optional depth-2 context tags, for example:
+  `rn2(100)=97 @ random src=nhlib.lua:10 parent=percent(nhlib.lua:44)`.
+  Avoid introducing `<` or `>` in these tags; those characters are reserved for
+  mid-level stack markers.
 - Mid-level trace entries (`>funcname` / `<funcname`) come from the
   `005-midlog-infrastructure.patch` and are preserved in session RNG arrays.
 - Set `NETHACK_SEED` yourself to run the C binary interactively for manual

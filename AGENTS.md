@@ -38,6 +38,15 @@ This project uses GitHub Issues for work tracking. `PROJECT_PLAN.md` is the auth
 5. Record learnings in `docs/LORE.md` for porting work and `selfplay/LEARNINGS.md` for agent work.
 6. Commit only validated improvements.
 
+## Long-Run Regeneration Discipline
+When running rebuilds/regenerations that can take several minutes:
+1. Do a short preflight first (single seed/single fixture) to confirm setup and output shape.
+2. Start the full run only after preflight output looks correct.
+3. Monitor partial output during the run (periodic status polls, milestone checks, first-output sanity).
+4. Treat stalls or suspicious output as actionable: stop early, fix setup, restart, do not wait for full completion.
+5. Keep logs/checkpoints so partial progress can be inspected and reported while work is still running.
+6. Report partial status to the user when asked, including what is done, in progress, and next.
+
 ## Session and Coverage Expectations
 1. Use the canonical key-centered deterministic session format.
 2. During translation coverage work, maintain a C-to-JS mapping ledger.
