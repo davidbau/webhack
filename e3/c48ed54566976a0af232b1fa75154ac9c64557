@@ -1,0 +1,44 @@
+{
+  "commit": "e3c48ed",
+  "parent": "89df9de",
+  "date": "2026-02-16T23:43:42-05:00",
+  "author": "David Bau",
+  "message": "fix: align forced-fight empty attack and gameplay verbose mode",
+  "stats": {
+    "total": 351,
+    "pass": 293,
+    "fail": 58,
+    "skip": 0,
+    "duration": 7
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 15,
+      "pass": 00,
+      "fail": 15
+    },
+    "map": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "special": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
