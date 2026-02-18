@@ -235,6 +235,14 @@ function peace_minded(ptr, player) {
 function makedog(map, player, depth) {
     const pmIdx = pet_type(player.roleIndex);
     const petData = mons[pmIdx];
+    let petName = '';
+    // C ref: dog.c makedog() default starting pet names.
+    if (pmIdx === PM_LITTLE_DOG) {
+        if (player.roleIndex === PM_CAVEMAN) petName = 'Slasher';
+        else if (player.roleIndex === PM_SAMURAI) petName = 'Hachi';
+        else if (player.roleIndex === PM_BARBARIAN) petName = 'Idefix';
+        else if (player.roleIndex === PM_RANGER) petName = 'Sirius';
+    }
 
     // C ref: makemon.c:1180-1186 — enexto_core for byyou placement
     // NEW_ENEXTO calls collect_coords(candy, ux, uy, 3, CC_NO_FLAGS, NULL)
@@ -287,7 +295,7 @@ function makedog(map, player, depth) {
     // Create the pet monster object (matches makemon structure)
     const pet = {
         type: petData,
-        name: petData.name,
+        name: petName || petData.name,
         displayChar: MONSYM_CHARS[petData.symbol] || '?',
         displayColor: petData.color,
         mx: petX,

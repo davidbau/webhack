@@ -564,7 +564,12 @@ async function handleMovement(dir, player, map, display, game) {
                         mon.flee = true;
                     }
                 if (mon.tame) {
-                    display.putstr_message(`You stop.  Your ${mon.name} is in the way!`);
+                    const namedPet = !!(mon.name && !/(dog|cat|kitten|pony|horse)/i.test(mon.name));
+                    display.putstr_message(
+                        namedPet
+                            ? `You stop.  ${mon.name} is in the way!`
+                            : `You stop.  Your ${mon.name} is in the way!`
+                    );
                 } else {
                     const label = mon.name ? mon.name.charAt(0).toUpperCase() + mon.name.slice(1) : 'It';
                     display.putstr_message(`You stop. ${label} is in the way!`);
@@ -585,22 +590,27 @@ async function handleMovement(dir, player, map, display, game) {
             game.lastMoveDir = dir;
             maybeSmudgeEngraving(map, oldPlayerX, oldPlayerY, player.x, player.y);
             player.displacedPetThisTurn = true;
+            const namedPet = !!(mon.tame
+                && mon.name
+                && !/(dog|cat|kitten|pony|horse)/i.test(mon.name));
+            display.putstr_message(
+                namedPet
+                    ? `You swap places with ${mon.name}.`
+                    : `You swap places with your ${mon.name}.`
+            );
             const landedObjs = map.objectsAt(nx, ny);
             if (landedObjs.length > 0) {
                 const seen = landedObjs[0];
                 if (seen.oclass === COIN_CLASS) {
                     const count = seen.quan || 1;
-                    const plural = count === 1 ? '' : 's';
-                    display.putstr_message(`You see here ${count} gold piece${plural}.`);
+                    if (count === 1) {
+                        display.putstr_message('You see here a gold piece.');
+                    } else {
+                        display.putstr_message(`You see here ${count} gold pieces.`);
+                    }
                 } else {
                     observeObject(seen);
                     display.putstr_message(`You see here ${doname(seen, null)}.`);
-                }
-            } else {
-                display.putstr_message(`You swap places with your ${mon.name}.`);
-                // Keep later same-turn combat messages from concatenating with displacement text.
-                if (display && Object.prototype.hasOwnProperty.call(display, 'topMessage')) {
-                    display.topMessage = null;
                 }
             }
             game.forceFight = false; // Clear prefix (shouldn't reach here but be safe)
@@ -820,8 +830,11 @@ async function handleMovement(dir, player, map, display, game) {
             const seen = objs[0];
             if (seen.oclass === COIN_CLASS) {
                 const count = seen.quan || 1;
-                const plural = count === 1 ? '' : 's';
-                display.putstr_message(`You see here ${count} gold piece${plural}.`);
+                if (count === 1) {
+                    display.putstr_message('You see here a gold piece.');
+                } else {
+                    display.putstr_message(`You see here ${count} gold pieces.`);
+                }
             } else {
                 observeObject(seen);
                 display.putstr_message(`You see here ${doname(seen, null)}.`);
@@ -2266,7 +2279,7 @@ export function dosearch0(player, map, display, game = null) {
                 if (rnl(7) === 0) {
                     loc.typ = DOOR;
                     loc.flags = D_CLOSED;
-                    display.putstr_message('You find a hidden door!');
+                    display.putstr_message('You find a hidden door.');
                     found = true;
                     // C ref: detect.c dosearch0() calls nomul(0) when a hidden
                     // feature is found, interrupting counted search.

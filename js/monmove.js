@@ -750,7 +750,11 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player) {
                     placeFloorObject(map, dropObj);
                     if (display && player && couldsee(map, player, mon.mx, mon.my)) {
                         observeObject(dropObj);
-                        display.putstr_message(`The ${mon.name} drops ${doname(dropObj, null)}.`);
+                        const namedPet = !!(mon.tame
+                            && mon.name
+                            && !/(dog|cat|kitten|pony|horse)/i.test(mon.name));
+                        const monLabel = namedPet ? mon.name : `The ${mon.name}`;
+                        display.putstr_message(`${monLabel} drops ${doname(dropObj, null)}.`);
                     }
                 }
                 if (edog.apport > 1) edog.apport--;
@@ -805,7 +809,11 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player) {
                         // C ref: dogmove.c "The <pet> picks up <obj>." when observed.
                         if (display && player && couldsee(map, player, mon.mx, mon.my)) {
                             observeObject(picked);
-                            display.putstr_message(`The ${mon.name} picks up ${doname(picked, null)}.`);
+                            const namedPet = !!(mon.tame
+                                && mon.name
+                                && !/(dog|cat|kitten|pony|horse)/i.test(mon.name));
+                            const monLabel = namedPet ? mon.name : `The ${mon.name}`;
+                            display.putstr_message(`${monLabel} picks up ${doname(picked, null)}.`);
                         }
                     }
                 }

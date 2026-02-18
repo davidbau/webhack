@@ -1322,10 +1322,14 @@ export async function replaySession(seed, session, opts = {}) {
                     && step.key.length === 1
                     && step.key !== ' ') {
                     if (step.key === ':') {
-                        if (Array.isArray(pendingScreenBeforeInput) && game.display?.setScreenLines) {
+                        if (Array.isArray(stepScreen) && stepScreen.length > 0 && game.display?.setScreenLines) {
+                            game.display.setScreenLines(stepScreen);
+                            if (opts.captureScreens) capturedScreenOverride = stepScreen;
+                        } else if (Array.isArray(pendingScreenBeforeInput) && game.display?.setScreenLines) {
                             const merged = pendingScreenBeforeInput.slice();
                             merged[0] = 'Search for:';
                             game.display.setScreenLines(merged);
+                            if (opts.captureScreens) capturedScreenOverride = merged;
                         } else {
                             if (game.display?.clearRow) game.display.clearRow(0);
                             if (game.display?.putstr) game.display.putstr(0, 0, 'Search for:');
