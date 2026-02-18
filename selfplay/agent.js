@@ -92,6 +92,8 @@ export class Agent {
         this.restTurns = 0; // consecutive turns spent resting
         this.lastHP = null; // track HP to detect healing progress
         this.pendingLockedDoor = null; // {x, y, attempts, nonAdjacentTurns} for locked door we're trying to kick
+        this.lastTrapPromptText = ''; // last trap-confirm prompt text
+        this.trapPromptRepeatCount = 0; // repeated trap prompt counter
         this.secretDoorSearch = null; // {position: {x,y}, searchesNeeded: 20, searchesDone: 0, wallCandidates: []}
 
         // Search loop prevention
@@ -426,7 +428,36 @@ export class Agent {
 
         // Handle yn prompts
         if (this.screen.inPrompt) {
-            const response = this._handlePrompt(this.screen.promptText);
+            const promptText = this.screen.promptText || '';
+            if (/really step onto.*trap/i.test(promptText)) {
+                if (promptText === this.lastTrapPromptText) this.trapPromptRepeatCount++;
+                else {
+                    this.lastTrapPromptText = promptText;
+                    this.trapPromptRepeatCount = 0;
+                }
+            } else {
+                this.lastTrapPromptText = '';
+                this.trapPromptRepeatCount = 0;
+            }
+            const response = this._handlePrompt(promptText);
+            await this.adapter.sendKey(response);
+            return true;
+        }
+
+        // Fallback: some C prompts appear on the message line without setting inPrompt.
+        const msg = this.screen.message || '';
+        if (/\[(yn|ynq|ynaq|nyaq)\]/i.test(msg)) {
+            if (/really step onto.*trap/i.test(msg)) {
+                if (msg === this.lastTrapPromptText) this.trapPromptRepeatCount++;
+                else {
+                    this.lastTrapPromptText = msg;
+                    this.trapPromptRepeatCount = 0;
+                }
+            } else {
+                this.lastTrapPromptText = '';
+                this.trapPromptRepeatCount = 0;
+            }
+            const response = this._handlePrompt(msg);
             await this.adapter.sendKey(response);
             return true;
         }
@@ -609,6 +640,12 @@ export class Agent {
 
         // "Shall I pick up ..." -- yes
         if (lower.includes('shall i pick')) return 'y';
+
+        // Trap confirmation can loop if we always answer "n".
+        // Prefer refusal first; accept if prompt repeats unchanged.
+        if (lower.includes('really step onto') && lower.includes('trap')) {
+            return this.trapPromptRepeatCount >= 1 ? 'y' : 'n';
+        }
 
         // Generic -- dismiss with space or escape
         if (lower.includes('[yn]')) return 'n'; // default no for safety
@@ -941,7 +978,8 @@ export class Agent {
 
         if (this.status && hpPercent <= retreatThreshold && hasHostileMonsters) {
                 // Try to flee to upstairs if available and not too far
-                if (level.stairsUp.length > 0) {
+                const currentDepth = this.status?.dungeonLevel || this.dungeon.currentDepth || 1;
+                if (currentDepth > 1 && level.stairsUp.length > 0) {
                     const stairs = level.stairsUp[0];
                     // If we're already at the stairs, ascend immediately
                     if (px === stairs.x && py === stairs.y) {
@@ -1050,6 +1088,32 @@ export class Agent {
             }
             // If not adjacent, keep trying to approach for a while before giving up.
             else if (!isAdjacent) {
+                const shouldForceApproachLockedDoor =
+                    level.stairsDown.length === 0 &&
+                    this.levelStuckCounter >= 80;
+
+                if (shouldForceApproachLockedDoor) {
+                    const adjCandidates = [
+                        { x: door.x - 1, y: door.y },
+                        { x: door.x + 1, y: door.y },
+                        { x: door.x, y: door.y - 1 },
+                        { x: door.x, y: door.y + 1 },
+                    ];
+                    let bestPath = null;
+                    for (const c of adjCandidates) {
+                        const cell = level.at(c.x, c.y);
+                        if (!cell || !cell.walkable || !cell.explored) continue;
+                        const path = findPath(level, px, py, c.x, c.y, { allowUnexplored: false });
+                        if (path.found && (!bestPath || path.path.length < bestPath.path.length)) {
+                            bestPath = path;
+                        }
+                    }
+                    if (bestPath && bestPath.path.length > 0) {
+                        this.pendingLockedDoor.nonAdjacentTurns = 0;
+                        return this._followPath(bestPath, 'navigate', `approaching locked door at (${door.x},${door.y})`);
+                    }
+                }
+
                 this.pendingLockedDoor.nonAdjacentTurns = (this.pendingLockedDoor.nonAdjacentTurns || 0) + 1;
                 if (this.pendingLockedDoor.nonAdjacentTurns >= 25) {
                     console.log(`[DOOR KICK] Giving up on distant door at (${door.x},${door.y}) after ${this.pendingLockedDoor.nonAdjacentTurns} non-adjacent turns`);
@@ -2637,6 +2701,10 @@ export class Agent {
                 const currentCell = level.at(px, py);
                 const atDoor = currentCell && (currentCell.type === 'door_open' || currentCell.type === 'door_closed');
                 const inCorridor = currentCell && currentCell.type === 'corridor';
+                const suppressCorridorTunnelVision =
+                    (this.dungeon.currentDepth || this.status?.dungeonLevel || 1) <= 1 &&
+                    this.turnNumber > 120 &&
+                    level.stairsDown.length === 0;
 
                 // Check all cardinal directions for unexplored space
                 const dirs = [
@@ -2647,7 +2715,7 @@ export class Agent {
                 ];
 
                 // For doors and corridors, continue into adjacent unexplored cells
-                if (atDoor || inCorridor) {
+                if ((atDoor || inCorridor) && !suppressCorridorTunnelVision) {
                     for (const dir of dirs) {
                         const nx = px + dir.dx;
                         const ny = py + dir.dy;
@@ -2860,7 +2928,14 @@ export class Agent {
         // If we have many unreachable frontier cells, closed doors are likely blocking access
         // OR when we have good coverage but no downstairs (likely behind unexplored door)
         const highCoverageNoDoors = exploredPercent > 0.05 && this.levelStuckCounter > 30 && level.stairsDown.length === 0;
-        if ((frontier.length > 25 && this.levelStuckCounter > 20) || highCoverageNoDoors || desperatelyTrapped) {
+        // Additional Dlvl1 trigger: if we've spent a long time exploring with no downstairs,
+        // proactively probe doors even without classic stuck signals.
+        const prolongedDlvl1NoStairs =
+            (this.dungeon.currentDepth || this.status?.dungeonLevel || 1) <= 1 &&
+            this.turnNumber > 160 &&
+            exploredPercent > 0.08 &&
+            level.stairsDown.length === 0;
+        if ((frontier.length > 25 && this.levelStuckCounter > 20) || highCoverageNoDoors || desperatelyTrapped || prolongedDlvl1NoStairs) {
 
             // Find all closed/locked doors in explored areas
             const closedDoors = [];

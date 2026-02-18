@@ -69,3 +69,16 @@
     - Baseline: `survived 9/13`, avg depth `~1.231`.
     - Candidate: `survived 9/13`, avg depth `~1.385`.
 - Net: significant train survival gain and holdout depth gain with no holdout survival regression; keep.
+
+## 2026-02-18 - Keep: Stuck-State Locked-Door Approach (C Role Matrix)
+
+- Change: in `selfplay/agent.js`, when `pendingLockedDoor` is set and we are clearly stuck with no downstairs found (`levelStuckCounter >= 80`, `stairsDown.length === 0`), actively path to an explored walkable tile adjacent to that locked door instead of passively waiting for other exploration logic.
+- Why: in long Dlvl1 no-stairs runs, the agent was identifying locked doors but repeatedly abandoning them and dying during broad frontier sweeps.
+- Validation gate: C role matrix, `turns=600`, `key-delay=0`, `train=21..33`, `holdout=31..43`.
+- Train:
+  - Baseline: survived `11/13`, avg depth `2.000`.
+  - Candidate: survived `11/13`, avg depth `2.000`.
+- Holdout:
+  - Baseline: survived `11/13`, avg depth `1.385`, XL2+ `0/13`.
+  - Candidate: survived `12/13`, avg depth `1.385`, XL2+ `1/13`.
+- Net: +1 holdout survival with no train regression and no depth loss; keep.
