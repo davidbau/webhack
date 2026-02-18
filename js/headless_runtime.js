@@ -1430,7 +1430,7 @@ export class HeadlessDisplay {
                 case 6: return 36;  // cyan
                 case 7: return 37;  // gray
                 case 8: return 90;  // no-color/dark gray
-                case 9: return 33;  // orange -> yellow-ish
+                case 9: return 91;  // orange / bright red in tty SGR
                 case 10: return 92; // bright green
                 case 11: return 93; // yellow
                 case 12: return 94; // bright blue
@@ -1451,7 +1451,7 @@ export class HeadlessDisplay {
                 case 6: return 46;
                 case 7: return 47;
                 case 8: return 100;
-                case 9: return 43;
+                case 9: return 101;
                 case 10: return 102;
                 case 11: return 103;
                 case 12: return 104;
