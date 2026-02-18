@@ -1,0 +1,44 @@
+{
+  "commit": "d85fa01",
+  "parent": "2093f1b",
+  "date": "2026-02-16T22:49:30-05:00",
+  "author": "David Bau",
+  "message": "rebrand: NetHack 3.7 Royal Jelly — vibe-coded by The Hive",
+  "stats": {
+    "total": 355,
+    "pass": 293,
+    "fail": 62,
+    "skip": 0,
+    "duration": 8
+  },
+  "categories": {
+    "chargen": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    },
+    "gameplay": {
+      "total": 19,
+      "pass": 00,
+      "fail": 19
+    },
+    "map": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "special": {
+      "total": 1,
+      "pass": 00,
+      "fail": 1
+    },
+    "unit": {
+      "total": 0,
+      "pass": 00,
+      "fail": 00
+    }
+  },
+  "regression": false,
+  "newTests": 0,
+  "backfilled": true
+}
