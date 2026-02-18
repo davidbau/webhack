@@ -263,6 +263,23 @@ node test/comparison/rng_step_diff.js \
 **Use when**: `session_test_runner` reports a mismatch and you need exact
 call-site context at the first divergent RNG call within a specific step.
 
+For tutorial-specific RNG drift, two debug env flags are available:
+
+```bash
+# Log non-counted raw PRNG advances in JS RNG log output.
+WEBHACK_LOG_RAW_ADVANCES=1 \
+node test/comparison/rng_step_diff.js \
+  test/comparison/sessions/manual/interface_tutorial.session.json \
+  --step 1 --window 8
+
+# Probe whether adding N raw draws before first tutorial percent() changes
+# alignment (diagnostic only; default behavior unchanged at N=0).
+WEBHACK_TUT_EXTRA_RAW_BEFORE_PERCENT=0 \
+node test/comparison/rng_step_diff.js \
+  test/comparison/sessions/manual/interface_tutorial.session.json \
+  --step 1 --window 3
+```
+
 **`selfplay/runner/pet_rng_probe.js`** — Per-turn RNG delta comparison
 
 Compares RNG call counts between C and JS implementations on a per-turn basis,

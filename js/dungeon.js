@@ -3106,6 +3106,15 @@ export function mktrap(map, num, mktrapflags, croom, tm, depth) {
 
     // WEB: create giant spider (needs makemon — skip for now)
     // At depth < 7, WEB can't generate anyway
+    // C ref: mklev.c mktrap() assigns MAGIC_PORTAL destination from
+    // u.ucamefrom when present. In JS, honor map-level portal destination
+    // context when provided by level-generation callers.
+    if (kind === MAGIC_PORTAL && map?._portalDestOverride) {
+        t.dst = {
+            dnum: map._portalDestOverride.dnum,
+            dlevel: map._portalDestOverride.dlevel,
+        };
+    }
 
     // C ref: mklev.c:2124-2140 mktrap predecessor victim block.
     const victimRoll = (!(mktrapflags & MKTRAP_NOVICTIM) && inMklev && kind !== NO_TRAP)

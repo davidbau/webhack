@@ -14,7 +14,8 @@ function stripSource(entry) {
 }
 
 function isMidlog(entry) {
-    return typeof entry === 'string' && (entry.startsWith('>') || entry.startsWith('<'));
+    return typeof entry === 'string'
+        && (entry.startsWith('>') || entry.startsWith('<') || entry.startsWith('~'));
 }
 
 function isComposite(entry) {
