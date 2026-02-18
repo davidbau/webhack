@@ -14,7 +14,17 @@
 set -euo pipefail
 
 # --- Arguments ---
-START_COMMIT="${1:?Usage: $0 <start-commit> [end-commit]}"
+FORCE=false
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --force) FORCE=true; shift ;;
+    *) POSITIONAL+=("$1"); shift ;;
+  esac
+done
+set -- "${POSITIONAL[@]}"
+
+START_COMMIT="${1:?Usage: $0 [--force] <start-commit> [end-commit]}"
 END_COMMIT="${2:-HEAD}"
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -81,12 +91,15 @@ for commit in $COMMITS; do
   CURRENT=$((CURRENT + 1))
   SHORT=$(git rev-parse --short "$commit")
 
-  # --- Skip if already has a note (idempotent) ---
+  # --- Skip if already has a note (unless --force) ---
   if git notes --ref=test-results show "$commit" >/dev/null 2>&1; then
-    SKIP_COUNT=$((SKIP_COUNT + 1))
-    echo "[$CURRENT/$TOTAL_COUNT] $SHORT — already has note, skipping"
-    echo "$SHORT,SKIP,already_has_note" >> "$LOG_FILE"
-    continue
+    if [ "$FORCE" = false ]; then
+      SKIP_COUNT=$((SKIP_COUNT + 1))
+      echo "[$CURRENT/$TOTAL_COUNT] $SHORT — already has note, skipping"
+      echo "$SHORT,SKIP,already_has_note" >> "$LOG_FILE"
+      continue
+    fi
+    echo "[$CURRENT/$TOTAL_COUNT] $SHORT — overwriting (--force)"
   fi
 
   # --- Get commit metadata ---
@@ -147,54 +160,95 @@ for commit in $COMMITS; do
 
   # --- Run tests ---
   echo "  Running tests..."
-  TEST_OUTPUT=$(mktemp)
+  SESSION_OUTPUT=$(mktemp)
+  UNIT_OUTPUT=$(mktemp)
   START_TIME=$(date +%s)
 
+  # Primary: run session_test_runner.js for structured JSON results
+  BUNDLE_JSON=""
+  if [ -f "test/comparison/session_test_runner.js" ]; then
+    timeout 120 node test/comparison/session_test_runner.js > "$SESSION_OUTPUT" 2>&1 || true
+    BUNDLE_JSON=$(sed -n '/^__RESULTS_JSON__$/{ n; p; }' "$SESSION_OUTPUT" 2>/dev/null)
+  fi
+
+  # Run unit tests separately
   if [ -d "test/unit" ]; then
-    timeout 30 node --test test/comparison/*.test.js test/unit/*.js > "$TEST_OUTPUT" 2>&1 || true
-  else
-    timeout 30 node --test test/comparison/*.test.js > "$TEST_OUTPUT" 2>&1 || true
+    timeout 30 node --test test/unit/*.js > "$UNIT_OUTPUT" 2>&1 || true
   fi
 
   END_TIME=$(date +%s)
   DURATION=$((END_TIME - START_TIME))
 
   # --- Parse results ---
-  PASS_COUNT=$(grep -c "^✔" "$TEST_OUTPUT" 2>/dev/null || echo 0)
-  FAIL_COUNT_T=$(grep -c "^✖" "$TEST_OUTPUT" 2>/dev/null || echo 0)
-  PASS_COUNT=$(echo "$PASS_COUNT" | tr -d '[:space:]')
-  PASS_COUNT=${PASS_COUNT:-0}
-  FAIL_COUNT_T=$(echo "$FAIL_COUNT_T" | tr -d '[:space:]')
-  FAIL_COUNT_T=${FAIL_COUNT_T:-0}
+  CHARGEN_PASS=0; CHARGEN_FAIL=0
+  GAMEPLAY_PASS=0; GAMEPLAY_FAIL=0
+  MAP_PASS=0; MAP_FAIL=0
+  SPECIAL_PASS=0; SPECIAL_FAIL=0
+  UNIT_PASS=0; UNIT_FAIL=0
+  SESSION_PASS=0; SESSION_FAIL=0
+
+  if [ -n "$BUNDLE_JSON" ]; then
+    # Parse session categories from JSON bundle
+    SESSION_PASS=$(echo "$BUNDLE_JSON" | jq '.summary.passed // 0')
+    SESSION_FAIL=$(echo "$BUNDLE_JSON" | jq '.summary.failed // 0')
+    CHARGEN_PASS=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="chargen" and .passed==true)] | length')
+    CHARGEN_FAIL=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="chargen" and .passed==false)] | length')
+    GAMEPLAY_PASS=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="gameplay" and .passed==true)] | length')
+    GAMEPLAY_FAIL=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="gameplay" and .passed==false)] | length')
+    MAP_PASS=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="map" and .passed==true)] | length')
+    MAP_FAIL=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="map" and .passed==false)] | length')
+    SPECIAL_PASS=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="special" and .passed==true)] | length')
+    SPECIAL_FAIL=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="special" and .passed==false)] | length')
+    echo "  Session runner: $SESSION_PASS pass, $SESSION_FAIL fail"
+  else
+    # Fallback: run node --test for combined output
+    echo "  (no session runner, falling back to node --test)"
+    FALLBACK_OUTPUT=$(mktemp)
+    if [ -d "test/unit" ]; then
+      timeout 30 node --test test/comparison/*.test.js test/unit/*.js > "$FALLBACK_OUTPUT" 2>&1 || true
+    else
+      timeout 30 node --test test/comparison/*.test.js > "$FALLBACK_OUTPUT" 2>&1 || true
+    fi
+    SESSION_PASS=$(grep -c "^✔" "$FALLBACK_OUTPUT" 2>/dev/null || echo 0)
+    SESSION_FAIL=$(grep -c "^✖" "$FALLBACK_OUTPUT" 2>/dev/null || echo 0)
+    # Old format: individual ✔/✖ lines per session
+    CHARGEN_PASS=$(grep "^✔" "$FALLBACK_OUTPUT" 2>/dev/null | grep -c "_chargen_" 2>/dev/null || echo 0)
+    CHARGEN_FAIL=$(grep "^✖" "$FALLBACK_OUTPUT" 2>/dev/null | grep -c "_chargen_" 2>/dev/null || echo 0)
+    GAMEPLAY_PASS=$(grep "^✔" "$FALLBACK_OUTPUT" 2>/dev/null | grep -c "gameplay" 2>/dev/null || echo 0)
+    GAMEPLAY_FAIL=$(grep "^✖" "$FALLBACK_OUTPUT" 2>/dev/null | grep -c "gameplay" 2>/dev/null || echo 0)
+    MAP_PASS=$(grep "^✔" "$FALLBACK_OUTPUT" 2>/dev/null | grep -c "seed[0-9]*_map" 2>/dev/null || echo 0)
+    MAP_FAIL=$(grep "^✖" "$FALLBACK_OUTPUT" 2>/dev/null | grep -c "seed[0-9]*_map" 2>/dev/null || echo 0)
+    SPECIAL_PASS=$(grep "^✔" "$FALLBACK_OUTPUT" 2>/dev/null | grep -c "_special_" 2>/dev/null || echo 0)
+    SPECIAL_FAIL=$(grep "^✖" "$FALLBACK_OUTPUT" 2>/dev/null | grep -c "_special_" 2>/dev/null || echo 0)
+    rm -f "$FALLBACK_OUTPUT"
+  fi
+
+  # Parse unit test counts
+  UNIT_PASS=$(grep -c "^✔" "$UNIT_OUTPUT" 2>/dev/null || echo 0)
+  UNIT_FAIL=$(grep -c "^✖" "$UNIT_OUTPUT" 2>/dev/null || echo 0)
+
+  # Compute totals
+  PASS_COUNT=$((SESSION_PASS + UNIT_PASS))
+  FAIL_COUNT_T=$((SESSION_FAIL + UNIT_FAIL))
   TOTAL_TESTS=$((PASS_COUNT + FAIL_COUNT_T))
+
+  # Sanitize all to numbers
+  for var in CHARGEN_PASS CHARGEN_FAIL GAMEPLAY_PASS GAMEPLAY_FAIL MAP_PASS MAP_FAIL \
+             SPECIAL_PASS SPECIAL_FAIL UNIT_PASS UNIT_FAIL PASS_COUNT FAIL_COUNT_T TOTAL_TESTS; do
+    eval "$var=\$(echo \"\$$var\" | tr -d '[:space:]')"
+    eval "$var=\${$var:-0}"
+  done
 
   if [ "$TOTAL_TESTS" -eq 0 ]; then
     echo "  ⚠️  no results parsed (crash?), skipping"
     echo "$SHORT,ERROR,no_results" >> "$LOG_FILE"
     ERROR_COUNT=$((ERROR_COUNT + 1))
-    rm -f "$TEST_OUTPUT"
+    rm -f "$SESSION_OUTPUT" "$UNIT_OUTPUT"
     continue
   fi
 
   echo "  Results: $PASS_COUNT pass, $FAIL_COUNT_T fail (${DURATION}s)"
-
-  # --- Parse categories ---
-  CHARGEN_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "_chargen_" 2>/dev/null || echo 0)
-  CHARGEN_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "_chargen_" 2>/dev/null || echo 0)
-  GAMEPLAY_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "gameplay" 2>/dev/null || echo 0)
-  GAMEPLAY_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "gameplay" 2>/dev/null || echo 0)
-  MAP_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "seed[0-9]*_map" 2>/dev/null || echo 0)
-  MAP_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "seed[0-9]*_map" 2>/dev/null || echo 0)
-  SPECIAL_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "_special_" 2>/dev/null || echo 0)
-  SPECIAL_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "_special_" 2>/dev/null || echo 0)
-  UNIT_PASS=$(grep "^✔" "$TEST_OUTPUT" 2>/dev/null | grep -c "test/unit/" 2>/dev/null || echo 0)
-  UNIT_FAIL=$(grep "^✖" "$TEST_OUTPUT" 2>/dev/null | grep -c "test/unit/" 2>/dev/null || echo 0)
-
-  # Sanitize all to numbers
-  for var in CHARGEN_PASS CHARGEN_FAIL GAMEPLAY_PASS GAMEPLAY_FAIL MAP_PASS MAP_FAIL SPECIAL_PASS SPECIAL_FAIL UNIT_PASS UNIT_FAIL; do
-    eval "$var=\$(echo \"\$$var\" | tr -d '[:space:]')"
-    eval "$var=\${$var:-0}"
-  done
+  rm -f "$SESSION_OUTPUT" "$UNIT_OUTPUT"
 
   # --- Create and store git note ---
   TEST_NOTE=$(cat <<EOF
@@ -254,8 +308,6 @@ EOF
     echo "$SHORT,ERROR,note_save_failed" >> "$LOG_FILE"
     ERROR_COUNT=$((ERROR_COUNT + 1))
   fi
-
-  rm -f "$TEST_OUTPUT"
 done
 
 exit 0

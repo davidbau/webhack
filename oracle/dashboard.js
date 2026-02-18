@@ -248,7 +248,7 @@ function updateChart() {
     }
 
   } else if (currentView === 'categories') {
-    const categories = ['unit', 'chargen', 'special', 'gameplay', 'options'];
+    const categories = ['unit', 'chargen', 'special', 'gameplay', 'map'];
     scales.y = {
       ticks: { color: '#6b5b4b', font: { size: 10 } },
       grid: { color: 'rgba(196, 168, 130, 0.2)' },

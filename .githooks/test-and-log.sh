@@ -44,30 +44,65 @@ echo "========================================="
 
 # Run tests and capture output
 TEST_START=$(date +%s)
-TEST_OUTPUT=$(mktemp)
+SESSION_OUTPUT=$(mktemp)
+UNIT_OUTPUT=$(mktemp)
 
 cd "$PROJECT_ROOT"
 
-# Run all test suites (comparison + unit) and capture results
-# IMPORTANT: Must run ALL tests to get full coverage stats
+# Run session runner for structured JSON category data
+echo "Running session tests..."
+node test/comparison/session_test_runner.js 2>&1 | tee "$SESSION_OUTPUT" || true
+BUNDLE_JSON=$(sed -n '/^__RESULTS_JSON__$/{ n; p; }' "$SESSION_OUTPUT" 2>/dev/null)
+
+# Run unit tests separately
 if [ -d "test/unit" ]; then
-  node --test test/comparison/*.test.js test/unit/*.js 2>&1 | tee "$TEST_OUTPUT" || true
-else
-  # Fallback for older commits without test/unit
-  node --test test/comparison/*.test.js 2>&1 | tee "$TEST_OUTPUT" || true
+  echo ""
+  echo "Running unit tests..."
+  node --test test/unit/*.js 2>&1 | tee "$UNIT_OUTPUT" || true
 fi
 
 TEST_END=$(date +%s)
 DURATION=$((TEST_END - TEST_START))
 
-# Parse test results from output
-PASS_COUNT=$(grep -c "^✔" "$TEST_OUTPUT" || echo 0)
-PASS_COUNT=$(echo "$PASS_COUNT" | tr -d '[:space:]')
-PASS_COUNT=${PASS_COUNT:-0}
-FAIL_COUNT=$(grep -c "^✖" "$TEST_OUTPUT" || echo 0)
-FAIL_COUNT=$(echo "$FAIL_COUNT" | tr -d '[:space:]')
-FAIL_COUNT=${FAIL_COUNT:-0}
+# Parse session results from JSON bundle
+SESSION_PASS=0; SESSION_FAIL=0
+CATEGORY_CHARGEN_PASS=0; CATEGORY_CHARGEN_FAIL=0
+CATEGORY_GAMEPLAY_PASS=0; CATEGORY_GAMEPLAY_FAIL=0
+CATEGORY_MAP_PASS=0; CATEGORY_MAP_FAIL=0
+CATEGORY_SPECIAL_PASS=0; CATEGORY_SPECIAL_FAIL=0
+
+if [ -n "$BUNDLE_JSON" ]; then
+  SESSION_PASS=$(echo "$BUNDLE_JSON" | jq '.summary.passed // 0')
+  SESSION_FAIL=$(echo "$BUNDLE_JSON" | jq '.summary.failed // 0')
+  CATEGORY_CHARGEN_PASS=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="chargen" and .passed==true)] | length')
+  CATEGORY_CHARGEN_FAIL=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="chargen" and .passed==false)] | length')
+  CATEGORY_GAMEPLAY_PASS=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="gameplay" and .passed==true)] | length')
+  CATEGORY_GAMEPLAY_FAIL=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="gameplay" and .passed==false)] | length')
+  CATEGORY_MAP_PASS=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="map" and .passed==true)] | length')
+  CATEGORY_MAP_FAIL=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="map" and .passed==false)] | length')
+  CATEGORY_SPECIAL_PASS=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="special" and .passed==true)] | length')
+  CATEGORY_SPECIAL_FAIL=$(echo "$BUNDLE_JSON" | jq '[.results[] | select(.type=="special" and .passed==false)] | length')
+fi
+
+# Parse unit test counts
+CATEGORY_UNIT_PASS=$(grep -c "^✔" "$UNIT_OUTPUT" 2>/dev/null || echo 0)
+CATEGORY_UNIT_FAIL=$(grep -c "^✖" "$UNIT_OUTPUT" 2>/dev/null || echo 0)
+
+# Compute totals (session results + unit tests)
+PASS_COUNT=$((SESSION_PASS + CATEGORY_UNIT_PASS))
+FAIL_COUNT=$((SESSION_FAIL + CATEGORY_UNIT_FAIL))
 TOTAL_COUNT=$((PASS_COUNT + FAIL_COUNT))
+
+# Ensure all category variables are valid numbers
+for _var in CATEGORY_CHARGEN_PASS CATEGORY_CHARGEN_FAIL \
+            CATEGORY_GAMEPLAY_PASS CATEGORY_GAMEPLAY_FAIL \
+            CATEGORY_MAP_PASS CATEGORY_MAP_FAIL \
+            CATEGORY_SPECIAL_PASS CATEGORY_SPECIAL_FAIL \
+            CATEGORY_UNIT_PASS CATEGORY_UNIT_FAIL \
+            PASS_COUNT FAIL_COUNT TOTAL_COUNT; do
+  eval "$_var=\$(echo \"\$$_var\" | tr -d '[:space:]')"
+  eval "$_var=\${$_var:-0}"
+done
 
 echo ""
 echo "========================================="
@@ -77,45 +112,6 @@ echo "  Pass:  $PASS_COUNT"
 echo "  Fail:  $FAIL_COUNT"
 echo "  Duration: ${DURATION}s"
 echo "========================================="
-
-# Parse category-specific results
-# Categories: chargen, gameplay, map, special (comparison tests) + unit tests
-
-# Comparison test categories
-CATEGORY_MAP_PASS=$(grep "seed[0-9]*_map" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✔" 2>/dev/null || echo 0)
-CATEGORY_MAP_FAIL=$(grep "seed[0-9]*_map" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✖" 2>/dev/null || echo 0)
-CATEGORY_GAMEPLAY_PASS=$(grep "gameplay" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✔" 2>/dev/null || echo 0)
-CATEGORY_GAMEPLAY_FAIL=$(grep "gameplay" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✖" 2>/dev/null || echo 0)
-CATEGORY_CHARGEN_PASS=$(grep "chargen" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✔" 2>/dev/null || echo 0)
-CATEGORY_CHARGEN_FAIL=$(grep "chargen" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✖" 2>/dev/null || echo 0)
-CATEGORY_SPECIAL_PASS=$(grep "_special_" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✔" 2>/dev/null || echo 0)
-CATEGORY_SPECIAL_FAIL=$(grep "_special_" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✖" 2>/dev/null || echo 0)
-
-# Unit test categories - parse from test file names in output
-CATEGORY_UNIT_PASS=$(grep "test/unit/" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✔" 2>/dev/null || echo 0)
-CATEGORY_UNIT_FAIL=$(grep "test/unit/" "$TEST_OUTPUT" 2>/dev/null | grep -c "^✖" 2>/dev/null || echo 0)
-
-# Ensure all category variables are valid numbers (strip whitespace and set defaults)
-CATEGORY_MAP_PASS=$(echo "$CATEGORY_MAP_PASS" | tr -d '[:space:]')
-CATEGORY_MAP_PASS=${CATEGORY_MAP_PASS:-0}
-CATEGORY_MAP_FAIL=$(echo "$CATEGORY_MAP_FAIL" | tr -d '[:space:]')
-CATEGORY_MAP_FAIL=${CATEGORY_MAP_FAIL:-0}
-CATEGORY_GAMEPLAY_PASS=$(echo "$CATEGORY_GAMEPLAY_PASS" | tr -d '[:space:]')
-CATEGORY_GAMEPLAY_PASS=${CATEGORY_GAMEPLAY_PASS:-0}
-CATEGORY_GAMEPLAY_FAIL=$(echo "$CATEGORY_GAMEPLAY_FAIL" | tr -d '[:space:]')
-CATEGORY_GAMEPLAY_FAIL=${CATEGORY_GAMEPLAY_FAIL:-0}
-CATEGORY_CHARGEN_PASS=$(echo "$CATEGORY_CHARGEN_PASS" | tr -d '[:space:]')
-CATEGORY_CHARGEN_PASS=${CATEGORY_CHARGEN_PASS:-0}
-CATEGORY_CHARGEN_FAIL=$(echo "$CATEGORY_CHARGEN_FAIL" | tr -d '[:space:]')
-CATEGORY_CHARGEN_FAIL=${CATEGORY_CHARGEN_FAIL:-0}
-CATEGORY_SPECIAL_PASS=$(echo "$CATEGORY_SPECIAL_PASS" | tr -d '[:space:]')
-CATEGORY_SPECIAL_PASS=${CATEGORY_SPECIAL_PASS:-0}
-CATEGORY_SPECIAL_FAIL=$(echo "$CATEGORY_SPECIAL_FAIL" | tr -d '[:space:]')
-CATEGORY_SPECIAL_FAIL=${CATEGORY_SPECIAL_FAIL:-0}
-CATEGORY_UNIT_PASS=$(echo "$CATEGORY_UNIT_PASS" | tr -d '[:space:]')
-CATEGORY_UNIT_PASS=${CATEGORY_UNIT_PASS:-0}
-CATEGORY_UNIT_FAIL=$(echo "$CATEGORY_UNIT_FAIL" | tr -d '[:space:]')
-CATEGORY_UNIT_FAIL=${CATEGORY_UNIT_FAIL:-0}
 
 # Check for regression
 REGRESSION=false
@@ -156,7 +152,7 @@ fi
 
 # Generate JSON log entry with "HEAD" placeholder for commit
 # The pre-push hook will replace "HEAD" with the real commit hash
-cat > "$TEST_OUTPUT.json" <<EOF
+cat > "$SESSION_OUTPUT.json" <<EOF
 {
   "commit": "HEAD",
   "parent": "",
@@ -203,11 +199,11 @@ cat > "$TEST_OUTPUT.json" <<EOF
 EOF
 
 # Write to pending.jsonl (single entry, overwritten each run)
-cp "$TEST_OUTPUT.json" "$PENDING_FILE"
+cp "$SESSION_OUTPUT.json" "$PENDING_FILE"
 echo "✅ Test results written to oracle/pending.jsonl"
 
 # Cleanup
-rm "$TEST_OUTPUT" "$TEST_OUTPUT.json"
+rm -f "$SESSION_OUTPUT" "$SESSION_OUTPUT.json" "$UNIT_OUTPUT"
 
 if [ "$REGRESSION" = true ]; then
   exit 1
