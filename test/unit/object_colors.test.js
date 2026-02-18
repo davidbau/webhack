@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'assert';
 import { mksobj } from '../../js/mkobj.js';
-import { objectData } from '../../js/objects.js';
+import { BANDED_MAIL, BATTLE_AXE, objectData } from '../../js/objects.js';
 import {
     CLR_BLACK, CLR_RED, CLR_GREEN, CLR_BROWN, CLR_BLUE,
     CLR_MAGENTA, CLR_CYAN, CLR_GRAY, CLR_ORANGE, CLR_BRIGHT_GREEN,
@@ -66,4 +66,12 @@ test('object colors: white objects use CLR_WHITE (15)', () => {
         const obj = mksobj(whiteObjIdx, false);
         assert.strictEqual(obj.displayColor, CLR_WHITE, `${objectData[whiteObjIdx].name} should be CLR_WHITE (15)`);
     }
+});
+
+test('object colors: banded mail matches C cyan class color', () => {
+    assert.equal(objectData[BANDED_MAIL].color, CLR_CYAN);
+});
+
+test('object colors: battle-axe matches C cyan class color', () => {
+    assert.equal(objectData[BATTLE_AXE].color, CLR_CYAN);
 });

@@ -1391,7 +1391,7 @@ export const objectData = [
         desc: "double-headed axe",
         oc_class: 1, // WEAPON_CLASS
         symbol: ')',
-        color: 7,
+        color: 6,
         prob: 10,
         delay: 0,
         weight: 120,
@@ -2831,7 +2831,7 @@ export const objectData = [
         desc: null,
         oc_class: 2, // ARMOR_CLASS
         symbol: '[',
-        color: 7,
+        color: 6,
         prob: 72,
         delay: 5,
         weight: 350,
@@ -9228,4 +9228,3 @@ export const mkobjprobs = [
     { iprob: 3, iclass: RING_CLASS },
     { iprob: 1, iclass: AMULET_CLASS },
 ];
-

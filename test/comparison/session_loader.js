@@ -34,19 +34,20 @@ export function getSessionScreenLines(screenHolder) {
 }
 
 export function getSessionScreenAnsiLines(screenHolder) {
+    // Prefer explicit ANSI captures when both plain and ANSI views exist.
+    // normalizeSession populates both, and color comparisons must use ANSI.
+    if (Array.isArray(screenHolder?.screenAnsi)) {
+        return screenHolder.screenAnsi.map((line) => String(line || ''));
+    }
+    if (typeof screenHolder?.screenAnsi === 'string') {
+        return screenHolder.screenAnsi.split('\n').map((line) => String(line || ''));
+    }
     if (Array.isArray(screenHolder?.screen)) {
         return screenHolder.screen.map((line) => String(line || ''));
     }
     if (typeof screenHolder?.screen === 'string') {
         // v3 canonical: ANSI-compressed screen is stored directly in `screen`.
         return screenHolder.screen.split('\n').map((line) => String(line || ''));
-    }
-    // Deprecated compatibility path. Prefer `screen`.
-    if (Array.isArray(screenHolder?.screenAnsi)) {
-        return screenHolder.screenAnsi.map((line) => String(line || ''));
-    }
-    if (typeof screenHolder?.screenAnsi === 'string') {
-        return screenHolder.screenAnsi.split('\n').map((line) => String(line || ''));
     }
     return [];
 }

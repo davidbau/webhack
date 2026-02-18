@@ -1129,6 +1129,7 @@ const CLR_CYAN = 6;
 const CLR_WHITE = 15;
 const CLR_MAGENTA = 5;
 const CLR_ORANGE = 9;
+const CLR_YELLOW = 11;
 const CLR_RED = 1;
 const CLR_BRIGHT_BLUE = 12;
 
@@ -1341,6 +1342,7 @@ export class HeadlessDisplay {
 
     // Matches Display.renderOverlayMenu()
     renderOverlayMenu(lines) {
+        const isCategoryHeader = (line) => /^(Weapons|Armor|Rings|Amulets|Tools|Comestibles|Potions|Scrolls|Spellbooks|Wands|Coins|Gems\/Stones|Other)\b/.test(String(line || '').trimStart());
         let maxcol = 0;
         for (const line of lines) {
             if (line.length > maxcol) maxcol = line.length;
@@ -1358,7 +1360,16 @@ export class HeadlessDisplay {
         }
 
         for (let i = 0; i < menuRows; i++) {
-            this.putstr(offx, i, lines[i], CLR_GRAY, 0);
+            const line = lines[i];
+            const isHeader = isCategoryHeader(line);
+            if (isHeader && line.startsWith(' ')) {
+                this.setCell(offx, i, ' ', CLR_GRAY, 0);
+                this.putstr(offx + 1, i, line.slice(1), CLR_GRAY, 1);
+            } else if (isHeader) {
+                this.putstr(offx, i, line, CLR_GRAY, 1);
+            } else {
+                this.putstr(offx, i, line, CLR_GRAY, 0);
+            }
         }
         return offx;
     }
@@ -1406,6 +1417,7 @@ export class HeadlessDisplay {
                 case 5: return 35;  // magenta
                 case 6: return 36;  // cyan
                 case 7: return 37;  // gray
+                case 8: return 90;  // no-color/dark gray
                 case 9: return 33;  // orange -> yellow-ish
                 case 10: return 92; // bright green
                 case 11: return 93; // yellow
@@ -1426,6 +1438,7 @@ export class HeadlessDisplay {
                 case 5: return 45;
                 case 6: return 46;
                 case 7: return 47;
+                case 8: return 100;
                 case 9: return 43;
                 case 10: return 102;
                 case 11: return 103;
@@ -1597,7 +1610,8 @@ export class HeadlessDisplay {
                             continue;
                         }
                         const sym = this.terrainSymbol(loc, gameMap, x, y);
-                        this.setCell(col, row, sym.ch, CLR_BLACK);
+                        const rememberedColor = (loc.typ === ROOM) ? 8 : sym.color;
+                        this.setCell(col, row, sym.ch, rememberedColor);
                     } else {
                         this.setCell(col, row, ' ', CLR_GRAY);
                     }
@@ -1821,7 +1835,7 @@ export class HeadlessDisplay {
 
         if (typ === STAIRS) {
             return loc.flags === 1
-                ? { ch: '<', color: CLR_GRAY }
+                ? { ch: '<', color: CLR_YELLOW }
                 : { ch: '>', color: CLR_GRAY };
         }
 

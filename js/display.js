@@ -415,9 +415,10 @@ export class Display {
                         }
                         // Show remembered (dimmed)
                         const sym = this.terrainSymbol(loc, gameMap, x, y);
-                        this.setCell(col, row, sym.ch, CLR_BLACK);
+                        const rememberedColor = (loc.typ === ROOM) ? NO_COLOR : sym.color;
+                        this.setCell(col, row, sym.ch, rememberedColor);
                         const desc = this._terrainDesc(loc);
-                        this.cellInfo[row][col] = { name: desc, desc: '(remembered)', color: CLR_BLACK };
+                        this.cellInfo[row][col] = { name: desc, desc: '(remembered)', color: rememberedColor };
                     } else {
                         this.setCell(col, row, ' ', CLR_GRAY);
                         this.cellInfo[row][col] = null;
@@ -546,7 +547,7 @@ export class Display {
         // Handle stairs
         if (typ === STAIRS) {
             if (loc.flags === 1) { // up
-                return { ch: '<', color: CLR_GRAY };
+                return { ch: '<', color: HI_GOLD };
             } else { // down
                 return { ch: '>', color: CLR_GRAY };
             }
@@ -782,6 +783,7 @@ export class Display {
 
     // Display a right-side menu overlay while preserving existing left-side map.
     renderOverlayMenu(lines) {
+        const isCategoryHeader = (line) => /^(Weapons|Armor|Rings|Amulets|Tools|Comestibles|Potions|Scrolls|Spellbooks|Wands|Coins|Gems\/Stones|Other)\b/.test(String(line || '').trimStart());
         let maxcol = 0;
         for (const line of lines) {
             if (line.length > maxcol) maxcol = line.length;
@@ -797,7 +799,16 @@ export class Display {
         }
 
         for (let i = 0; i < menuRows; i++) {
-            this.putstr(offx, i, lines[i], CLR_WHITE, 0);
+            const line = lines[i];
+            const isHeader = isCategoryHeader(line);
+            if (isHeader && line.startsWith(' ')) {
+                this.setCell(offx, i, ' ', CLR_WHITE, 0);
+                this.putstr(offx + 1, i, line.slice(1), CLR_WHITE, 1);
+            } else if (isHeader) {
+                this.putstr(offx, i, line, CLR_WHITE, 1);
+            } else {
+                this.putstr(offx, i, line, CLR_WHITE, 0);
+            }
         }
         return offx;
     }
