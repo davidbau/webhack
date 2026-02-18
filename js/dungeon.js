@@ -1085,10 +1085,11 @@ export function floodFillAndRegister(map, sx, sy, rtype, lit) {
     // C sets lit on interior/edge during flood fill edge marking.
 }
 
-// C ref: mklev.c:363 — gl.luathemes[] tracks whether Lua theme state is loaded
-// On first level generation, nhl_loadlua() consumes rn2(3) and rn2(2).
-// Subsequent levels reuse the cached state with no RNG.
-let _themesLoaded = false;
+// C ref: mklev.c:363 — gl.luathemes[] tracks whether Lua theme state is loaded.
+// Keep separate caches for ordinary themed-room setup vs special-level Lua loads:
+// they are initialized through different entry points in C and can occur independently.
+let _themeroomsLoaded = false;
+let _specialThemesLoaded = false;
 
 function branchPlacementForEnd(branch, onEnd1) {
     if (branch.type === BR_PORTAL) {
@@ -1554,8 +1555,8 @@ function makerooms(map, depth) {
 
     // C ref: mklev.c:365-380 — load Lua themes on first call only
     // These rn2() calls simulate Lua theme loading
-    if (!_themesLoaded) {
-        _themesLoaded = true;
+    if (!_themeroomsLoaded) {
+        _themeroomsLoaded = true;
         rn2(3); rn2(2);
     }
 
@@ -4943,7 +4944,8 @@ export function initLevelGeneration(roleIndex) {
     setMakemonRoleContext(roleIndex);
     _branchTopology = [];  // reset before recalculating from init_dungeons RNG
     simulateDungeonInit(roleIndex);
-    _themesLoaded = false; // Reset Lua theme state for new game
+    _themeroomsLoaded = false;
+    _specialThemesLoaded = false;
     setMtInitialized(false); // Reset MT RNG state for new game
 
     // NOTE: xoshiro256** seeding happens in test harness before calling this
@@ -5033,8 +5035,8 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
                 && (useDlevel === 1 || useDlevel === 2)
                 && typeof special.name === 'string'
                 && special.name.startsWith('tut-');
-            if (!_themesLoaded || depthOnlyOracleSpecial) {
-                _themesLoaded = true;
+            if (!_specialThemesLoaded || depthOnlyOracleSpecial) {
+                _specialThemesLoaded = true;
                 rn2(3);
                 // Tutorial level entry has one non-logged PRNG draw between
                 // nhlua shuffle calls in C startup path.
