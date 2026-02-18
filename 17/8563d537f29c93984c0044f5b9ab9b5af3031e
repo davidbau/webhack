@@ -5,11 +5,11 @@
   "author": "David Bau",
   "message": "runner: add class-balanced C role matrix benchmark",
   "stats": {
-    "total": 9905,
-    "pass": 564,
-    "fail": 9341,
+    "total": 10189,
+    "pass": 837,
+    "fail": 9352,
     "skip": 0,
-    "duration": 6
+    "duration": 1
   },
   "categories": {
     "chargen": {
@@ -33,9 +33,9 @@
       "fail": 2
     },
     "unit": {
-      "total": 0,
-      "pass": 00,
-      "fail": 00
+      "total": 284,
+      "pass": 273,
+      "fail": 11
     }
   },
   "regression": false,
