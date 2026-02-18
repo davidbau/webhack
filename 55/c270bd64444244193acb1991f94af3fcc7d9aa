@@ -5,37 +5,37 @@
   "author": "David Bau",
   "message": "Phase 3: route startup and chargen generation through core init",
   "stats": {
-    "total": 354,
-    "pass": 289,
-    "fail": 65,
+    "total": 467,
+    "pass": 419,
+    "fail": 48,
     "skip": 0,
-    "duration": 6
+    "duration": 7
   },
   "categories": {
     "chargen": {
-      "total": 1,
-      "pass": 00,
+      "total": 91,
+      "pass": 90,
       "fail": 1
     },
     "gameplay": {
       "total": 19,
-      "pass": 00,
-      "fail": 19
+      "pass": 1,
+      "fail": 18
     },
     "map": {
-      "total": 9,
-      "pass": 00,
+      "total": 10,
+      "pass": 1,
       "fail": 9
     },
     "special": {
-      "total": 1,
-      "pass": 00,
+      "total": 50,
+      "pass": 49,
       "fail": 1
     },
     "unit": {
-      "total": 0,
-      "pass": 00,
-      "fail": 00
+      "total": 289,
+      "pass": 278,
+      "fail": 11
     }
   },
   "regression": false,
