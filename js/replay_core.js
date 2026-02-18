@@ -534,12 +534,9 @@ export function generateStartupWithRng(seed, session) {
     const preStartupEntries = getPreStartupRngEntries(session);
     consumeRngEntries(preStartupEntries);
 
-    console.log(`After preStartup: ${getRngLog().length} RNG calls`);
     initLevelGeneration(roleIndex);
-    console.log(`After initLevelGeneration: ${getRngLog().length} RNG calls`);
 
     const map = makelevel(1);
-    console.log(`After makelevel: ${getRngLog().length} RNG calls`);
     // Note: wallification is now called inside makelevel
 
     // NOTE: Wizard mode (-D flag) enables omniscience for the PLAYER,
@@ -1353,10 +1350,10 @@ export async function replaySession(seed, session, opts = {}) {
                     pendingKind = null;
                 }
             }
-            let settled = { done: false };
             // Prompt-driven commands (read/drop/throw/etc.) usually resolve
             // immediately after input, but can take a few ticks. Poll briefly
             // to avoid shifting subsequent keystrokes across steps.
+            let settled = { done: false };
             for (let attempt = 0; attempt < 6 && !settled.done; attempt++) {
                 settled = await Promise.race([
                     pendingCommand.then(v => ({ done: true, value: v })),
@@ -1542,43 +1539,15 @@ export async function replaySession(seed, session, opts = {}) {
             // C ref: allmain.c moveloop_core() — occupation runs before next input
             while (game.occupation) {
                 const occ = game.occupation;
-                const debugOcc = (typeof process !== 'undefined' && process.env.DEBUG_OCC === '1');
                 game.display.clearRow(0);
                 game.display.topMessage = null;
-                if (debugOcc) {
-                    let hostiles = 0;
-                    let nearest = 999;
-                    let nearestMon = null;
-                    const px = game.player?.x ?? 0;
-                    const py = game.player?.y ?? 0;
-                    for (const mon of game.map?.monsters || []) {
-                        if (!mon || mon.dead || mon.tame || mon.peaceful) continue;
-                        const dx = Math.abs((mon.mx ?? 0) - px);
-                        const dy = Math.abs((mon.my ?? 0) - py);
-                        const d = Math.max(dx, dy);
-                        if (d <= 1) hostiles++;
-                        if (d < nearest) {
-                            nearest = d;
-                            nearestMon = `${mon.type?.name || mon.name || 'mon'}@${mon.mx},${mon.my}`;
-                        }
-                    }
-                    console.error(
-                        `[occ] step=${stepIndex} pre multi=${game.multi} ` +
-                        `hostiles_adj=${hostiles} nearest=${nearest} ${nearestMon || ''} ` +
-                        `hp=${game.player?.hp}/${game.player?.hpmax}`
-                    );
-                }
                 const cont = occ.fn(game);
                 const finishedOcc = !cont ? occ : null;
-                if (debugOcc) {
-                    console.error(`[occ] step=${stepIndex} postfn multi=${game.multi} cont=${!!cont}`);
-                }
                 if (!cont) {
                     if (occ?.occtxt === 'waiting') {
                         game.display.putstr_message(`You stop ${occ.occtxt}.`);
                     }
                     game.occupation = null;
-                    if (debugOcc) console.error(`[occ] step=${stepIndex} completed`);
                 }
                 applyTimedTurn();
                 // Keep replay HP aligned to captured turn-state during multi-turn actions.
@@ -1591,23 +1560,6 @@ export async function replaySession(seed, session, opts = {}) {
             // C ref: allmain.c moveloop() — multi-count repeats execute before
             // accepting the next keyboard input.
             while (game.multi > 0) {
-                const debugMulti = (typeof process !== 'undefined' && process.env.DEBUG_MULTI === '1');
-                if (debugMulti) {
-                    let hostiles = 0;
-                    const px = game.player?.x ?? 0;
-                    const py = game.player?.y ?? 0;
-                    for (let dx = -1; dx <= 1; dx++) {
-                        for (let dy = -1; dy <= 1; dy++) {
-                            if (dx === 0 && dy === 0) continue;
-                            const mon = game.map?.monsterAt?.(px + dx, py + dy);
-                            if (mon && !mon.dead && !mon.tame && !mon.peaceful) hostiles++;
-                        }
-                    }
-                    console.error(
-                        `[multi] step=${stepIndex} pre multi=${game.multi} ` +
-                        `hostiles_adj=${hostiles} hp=${game.player?.hp}/${game.player?.hpmax}`
-                    );
-                }
                 // C ref: allmain.c:519-526 lookaround() can clear multi before
                 // the next repeated command executes; this should not consume
                 // an additional turn when it interrupts.
@@ -1618,12 +1570,6 @@ export async function replaySession(seed, session, opts = {}) {
                 }
                 game.multi--;
                 const repeated = await rhack(game.cmdKey, game);
-                if (debugMulti) {
-                    console.error(
-                        `[multi] step=${stepIndex} postcmd multi=${game.multi} ` +
-                        `tookTime=${!!repeated?.tookTime}`
-                    );
-                }
                 if (!repeated || !repeated.tookTime) break;
                 applyTimedTurn();
                 syncHpFromStepScreen();
