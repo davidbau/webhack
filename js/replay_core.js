@@ -1201,9 +1201,7 @@ export async function replaySession(seed, session, opts = {}) {
             && step.key === ' '
             && (step.action === 'more-prompt'
                 || ((stepScreen[0] || '').includes('--More--')))) {
-            if (stepScreen.length > 0) {
-                game.display.setScreenLines(stepScreen);
-            }
+            applyStepScreen();
             const fullLog = getRngLog();
             const stepLog = fullLog.slice(prevCount);
             pushStepResult(
