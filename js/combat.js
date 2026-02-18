@@ -148,6 +148,9 @@ export function playerAttackMonster(player, monster, display, map) {
             // C ref: mon.c make_corpse() default path:
             // mkcorpstat(CORPSE, mtmp/mdat, CORPSTAT_INIT).
             const corpse = mkcorpstat(CORPSE, monster.mndx || 0, true);
+            // C ref: mkobj.c mksobj_init() — otmp->age = max(svm.moves, 1L).
+            // During gameplay replay, svm.moves aligns to completed turns + 1.
+            corpse.age = Math.max((player?.turns || 0) + 1, 1);
 
             // Place corpse on the map so pets can find it.
             if (map) {
