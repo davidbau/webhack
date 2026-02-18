@@ -166,7 +166,8 @@ function linedUpToPlayer(mon, map, player) {
         const objs = map.objectsAt?.(cx, cy) || [];
         if (objs.some((o) => o && o.otyp === BOULDER)) boulderspots++;
     } while (cx !== ax || cy !== ay);
-    return rn2(2 + boulderspots) < 2;
+    const denom = 2 + boulderspots;
+    return rn2(denom) < 2;
 }
 
 function playerHasGold(player) {

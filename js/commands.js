@@ -2,7 +2,7 @@
 // Mirrors cmd.c from the C source.
 // Maps keyboard input to game actions.
 
-import { COLNO, ROWNO, DOOR, CORR, SCORR, STAIRS, LADDER, FOUNTAIN, SINK, THRONE, ALTAR, GRAVE,
+import { COLNO, ROWNO, DOOR, CORR, SDOOR, SCORR, STAIRS, LADDER, FOUNTAIN, SINK, THRONE, ALTAR, GRAVE,
          POOL, LAVAPOOL, IRONBARS, TREE, ROOM, IS_DOOR, D_CLOSED, D_LOCKED,
          D_ISOPEN, D_NODOOR, D_BROKEN, ACCESSIBLE, IS_WALL, MAXLEVEL, VERSION_STRING, ICE,
          isok, A_STR, A_DEX, A_CON, A_WIS } from './config.js';
@@ -670,6 +670,14 @@ async function handleMovement(dir, player, map, display, game) {
     }
 
     if (loc.typ === 0) { // STONE
+        if (map?.flags?.mention_walls || map?.flags?.is_tutorial) {
+            display.putstr_message("It's a wall.");
+        }
+        return { moved: false, tookTime: false };
+    }
+
+    // C ref: secret doors/corridors behave like walls until discovered.
+    if (loc.typ === SDOOR || loc.typ === SCORR) {
         if (map?.flags?.mention_walls || map?.flags?.is_tutorial) {
             display.putstr_message("It's a wall.");
         }
