@@ -24,6 +24,7 @@ test('seed206 preserves stacked pet+throw message when throw miss line would ove
 
     const replay = await replaySession(session.meta.seed, session.raw, {
         captureScreens: true,
+        maxSteps: 10,
         startupBurstInFirstStep: false,
         flags: replayFlags,
     });

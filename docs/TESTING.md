@@ -33,6 +33,12 @@ Session tests can include many logical subtypes (chargen, map, gameplay,
 special, interface, options), but they all run through one path:
 `npm run test:session` (`test/comparison/sessions.test.js`).
 
+### Runtime Guardrails
+
+Fast feedback is required to catch hanging bugs early:
+- Unit tests run with a strict `1000ms` per-test timeout.
+- Individual session replay runs use a strict `10000ms` per-session timeout by default.
+
 ## 🎯 Two Approaches Available
 
 *You see here two scrolls:*

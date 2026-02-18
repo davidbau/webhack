@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node scripts/run-test-gates.mjs",
     "test:all": "node scripts/run-test-gates.mjs --e2e",
-    "test:unit": "node --test test/unit/*.test.js",
+    "test:unit": "node --test --test-timeout=1000 test/unit/*.test.js",
     "test:e2e": "node --test --test-concurrency=1 test/e2e/*.test.js",
     "test:session": "node test/comparison/sessions.test.js",
     "serve": "python3 -m http.server 8080",

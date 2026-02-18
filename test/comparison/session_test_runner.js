@@ -744,6 +744,51 @@ export async function runSessionResult(session) {
     return runGameplayResult(session);
 }
 
+function createSessionTimeoutResult(session, timeoutMs) {
+    const result = createReplayResult(session);
+    result.passed = false;
+    result.error = `Session timed out after ${timeoutMs}ms`;
+    setDuration(result, timeoutMs);
+    return result;
+}
+
+async function runSingleSessionWithTimeout(session, timeoutMs) {
+    const workerPath = join(__dirname, 'session_worker.js');
+    const filePath = join(session.dir, session.file);
+    return new Promise((resolve, reject) => {
+        const worker = new Worker(workerPath);
+        let done = false;
+        const finish = (result) => {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            try {
+                worker.postMessage({ type: 'exit' });
+            } catch {
+                // Worker may already be terminated/torn down.
+            }
+            resolve(result);
+        };
+        const timer = setTimeout(() => {
+            if (done) return;
+            done = true;
+            worker.terminate().catch(() => {});
+            resolve(createSessionTimeoutResult(session, timeoutMs));
+        }, timeoutMs);
+        worker.on('message', (msg) => {
+            if (msg.type !== 'result' || msg.id !== 0) return;
+            finish(msg.result);
+        });
+        worker.on('error', (error) => {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            reject(error);
+        });
+        worker.postMessage({ type: 'run', id: 0, filePath });
+    });
+}
+
 async function runSessionsParallel(sessions, { numWorkers, verbose, onProgress }) {
     const workerPath = join(__dirname, 'session_worker.js');
     const results = new Array(sessions.length);
@@ -827,6 +872,7 @@ export async function runSessionBundle({
     failFast = false,
     parallel = availableParallelism(),
     onProgress = null,
+    sessionTimeoutMs = null,
 } = {}) {
     const sessions = loadAllSessions({
         sessionsDir: SESSIONS_DIR,
@@ -843,6 +889,9 @@ export async function runSessionBundle({
         if (sessionPath) console.log(`Single session: ${sessionPath}`);
         if (useGolden) console.log(`Using golden branch: ${goldenBranch}`);
         if (parallel > 0) console.log(`Parallel workers: ${parallel}`);
+        if (sessions.length === 1 && Number.isInteger(sessionTimeoutMs) && sessionTimeoutMs > 0) {
+            console.log(`Single-session timeout: ${sessionTimeoutMs}ms`);
+        }
         console.log(`Loaded sessions: ${sessions.length}`);
     }
 
@@ -857,8 +906,13 @@ export async function runSessionBundle({
     } else {
         // Run sequentially
         results = [];
+        const useSingleSessionTimeout = sessions.length === 1
+            && Number.isInteger(sessionTimeoutMs)
+            && sessionTimeoutMs > 0;
         for (const session of sessions) {
-            const result = await runSessionResult(session);
+            const result = useSingleSessionTimeout
+                ? await runSingleSessionWithTimeout(session, sessionTimeoutMs)
+                : await runSessionResult(session);
             results.push(result);
             if (verbose) console.log(formatResult(result));
             if (failFast && result.passed !== true) {
@@ -890,6 +944,7 @@ export async function runSessionCli() {
         sessionPath: null,
         failFast: false,
         parallel: availableParallelism(),
+        sessionTimeoutMs: null,
     };
     const argv = process.argv.slice(2);
     for (let i = 0; i < argv.length; i++) {
@@ -903,6 +958,12 @@ export async function runSessionCli() {
             const val = arg.slice('--parallel='.length);
             args.parallel = val === 'auto' ? availableParallelism() : parseInt(val, 10);
         }
+        else if (arg === '--session-timeout-ms' && argv[i + 1]) {
+            args.sessionTimeoutMs = parseInt(argv[++i], 10);
+        }
+        else if (arg.startsWith('--session-timeout-ms=')) {
+            args.sessionTimeoutMs = parseInt(arg.slice('--session-timeout-ms='.length), 10);
+        }
         else if (arg === '--type' && argv[i + 1]) args.typeFilter = argv[++i];
         else if (arg.startsWith('--type=')) args.typeFilter = arg.slice('--type='.length);
         else if (arg === '--help' || arg === '-h') {
@@ -912,6 +973,7 @@ export async function runSessionCli() {
             console.log('  --parallel[=N]    Run with N workers (default: auto-detect CPU count)');
             console.log('  --fail-fast       Stop on first failure');
             console.log('  --type=TYPE       Filter by session type (chargen,gameplay,etc)');
+            console.log('  --session-timeout-ms=N  Timeout for single-session runs (default: 10000)');
             console.log('  --golden          Compare against golden branch');
             process.exit(0);
         } else if (arg.startsWith('--')) {
@@ -919,6 +981,10 @@ export async function runSessionCli() {
         } else if (!args.sessionPath) {
             args.sessionPath = arg;
         }
+    }
+
+    if (args.sessionPath && !(Number.isInteger(args.sessionTimeoutMs) && args.sessionTimeoutMs > 0)) {
+        args.sessionTimeoutMs = 10000;
     }
 
     const goldenBranch = process.env.GOLDEN_BRANCH || 'golden';
@@ -930,6 +996,7 @@ export async function runSessionCli() {
         sessionPath: args.sessionPath,
         failFast: args.failFast,
         parallel: args.parallel,
+        sessionTimeoutMs: args.sessionTimeoutMs,
     });
     console.log('\n__RESULTS_JSON__');
     console.log(JSON.stringify(bundle));

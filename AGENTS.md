@@ -30,6 +30,9 @@ This project uses GitHub Issues for work tracking. `PROJECT_PLAN.md` is the auth
 3. Never normalize away real mismatches (RNG/state/screen/typgrid) just to pass tests.
 4. Keep changes incremental and test-backed.
 5. Preserve deterministic controls (seed, datetime, terminal geometry, options/symbol mode).
+6. Keep tests fast to expose hangs early:
+   - unit tests: 1000ms timeout per test
+   - single-session parity runs: 10000ms timeout per session
 
 ## Development Cycle
 1. Identify a failing parity behavior from sessions/tests.
