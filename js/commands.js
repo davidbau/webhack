@@ -163,6 +163,20 @@ function formatGoldPickupMessage(gold, player) {
     return `$ - ${count} gold piece${plural}.`;
 }
 
+function formatInventoryPickupMessage(pickedObj, inventoryObj, player) {
+    const pickedCount = Number(pickedObj?.quan || 1);
+    const total = Number(inventoryObj?.quan || pickedCount);
+    const slot = String(inventoryObj?.invlet || pickedObj?.invlet || '?');
+    let detail = doname(pickedObj, null);
+    if (player?.quiver === inventoryObj) {
+        detail += ' (at the ready)';
+    }
+    if (total > pickedCount) {
+        detail += ` (${total} in total)`;
+    }
+    return `${slot} - ${detail}.`;
+}
+
 function invletSortValue(ch) {
     if (ch === '$') return 0;
     if (ch >= 'a' && ch <= 'z') return ch.charCodeAt(0);
@@ -333,7 +347,8 @@ export async function rhack(ch, game) {
     function performWaitSearch(cmd) {
         // C ref: do.c cmd_safety_prevention() — prevent wait/search when hostile adjacent
         // only when not in counted-repeat mode.
-        if (game && game.flags && game.flags.safe_wait && !game.menuRequested && !(game.multi > 0)) {
+        if (game && game.flags && game.flags.safe_wait
+            && !game.menuRequested && !(game.multi > 0) && !game.occupation) {
             let monNearby = false;
             for (let dx = -1; dx <= 1 && !monNearby; dx++) {
                 for (let dy = -1; dy <= 1 && !monNearby; dy++) {
@@ -556,6 +571,12 @@ export async function rhack(ch, game) {
     // Previous messages (Ctrl+P)
     if (ch === 16) {
         return await handlePrevMessages(display);
+    }
+
+    // View map overlays (DEL / Backspace on some tty keymaps)
+    // C ref: cmd.c dooverview()
+    if (ch === 127 || ch === 8) {
+        return await handleViewMapPrompt(game);
     }
 
     // Help (?)
@@ -1073,6 +1094,9 @@ async function handleMovement(dir, player, map, display, game) {
     // Helper function: Check if object class matches pickup_types string
     // C ref: pickup.c pickup_filter() and flags.pickup_types
     function shouldAutopickup(obj, pickupTypes) {
+        if (obj && obj._thrownByPlayer && game.flags?.pickup_thrown) {
+            return true;
+        }
         // If pickup_types is empty, pick up all non-gold items (backward compat)
         if (!pickupTypes || pickupTypes === '') {
             return true;
@@ -1123,9 +1147,9 @@ async function handleMovement(dir, player, map, display, game) {
         const obj = objs.find(o => o.oclass !== COIN_CLASS && shouldAutopickup(o, pickupTypes));
         if (obj) {
             observeObject(obj);
-            player.addToInventory(obj);
+            const inventoryObj = player.addToInventory(obj);
             map.removeObject(obj);
-            display.putstr_message(`${obj.invlet} - ${doname(obj, player)}.`);
+            display.putstr_message(formatInventoryPickupMessage(obj, inventoryObj, player));
             pickedUp = true;
         }
     }
@@ -1324,10 +1348,10 @@ function handlePickup(player, map, display) {
         return { moved: false, tookTime: false };
     }
 
-    player.addToInventory(obj);
+    const inventoryObj = player.addToInventory(obj);
     map.removeObject(obj);
     observeObject(obj);
-    display.putstr_message(`${obj.invlet} - ${doname(obj, player)}.`);
+    display.putstr_message(formatInventoryPickupMessage(obj, inventoryObj, player));
     return { moved: false, tookTime: true };
 }
 
@@ -1389,7 +1413,7 @@ async function handleOpen(player, map, display, game) {
         dir = [0, 0];
     }
     if (!dir) {
-        display.putstr_message("Never mind.");
+        display.putstr_message('What a strange direction!  Never mind.');
         return { moved: false, tookTime: false };
     }
 
@@ -1482,15 +1506,7 @@ async function handleClose(player, map, display, game) {
     return { moved: false, tookTime: false };
 }
 
-// Handle inventory display
-// C ref: invent.c ddoinv()
-async function handleInventory(player, display, game) {
-    if (player.inventory.length === 0 && (player.gold || 0) <= 0) {
-        display.putstr_message('Not carrying anything.');
-        return { moved: false, tookTime: false };
-    }
-
-    // Group items by class, display in C inventory order
+function buildInventoryOverlayLines(player) {
     // C ref: invent.c display_inventory() / display_pickinv()
     const CLASS_NAMES = {
         1: 'Weapons', 2: 'Armor', 3: 'Rings', 4: 'Amulets',
@@ -1500,8 +1516,9 @@ async function handleInventory(player, display, game) {
     const INV_ORDER = [11, 4, 1, 2, 6, 8, 9, 7, 3, 10, 5, 12, 13, 14, 15];
 
     const groups = {};
-    for (const item of player.inventory) {
-        const cls = item.oclass;
+    for (const item of player.inventory || []) {
+        const cls = item?.oclass;
+        if (!cls) continue;
         if (!groups[cls]) groups[cls] = [];
         groups[cls].push(item);
     }
@@ -1526,6 +1543,18 @@ async function handleInventory(player, display, game) {
         }
     }
     lines.push(' (end)');
+    return lines;
+}
+
+// Handle inventory display
+// C ref: invent.c ddoinv()
+async function handleInventory(player, display, game) {
+    if (player.inventory.length === 0 && (player.gold || 0) <= 0) {
+        display.putstr_message('Not carrying anything.');
+        return { moved: false, tookTime: false };
+    }
+
+    const lines = buildInventoryOverlayLines(player);
 
     if (typeof display.renderOverlayMenu === 'function') {
         display.renderOverlayMenu(lines);
@@ -2341,6 +2370,7 @@ async function promptDirectionAndThrowItem(player, map, display, item, { fromFir
         thrownItem.ox = player.x;
         thrownItem.oy = player.y;
     }
+    thrownItem._thrownByPlayer = true;
     map.objects.push(thrownItem);
     // C ref: dothrow.c throw_obj() only emits a throw topline for
     // multishot/count cases; a normal single throw should just resolve.
@@ -2368,16 +2398,14 @@ async function handleThrow(player, map, display) {
         .filter((o) => o && o.oclass === WEAPON_CLASS && o !== player.weapon);
     const coinItem = (player.inventory || []).find((o) =>
         o && (o.invlet === '$' || o.oclass === COIN_CLASS));
-    let throwChoices = '';
+    const throwLetters = [];
     const preferredThrowItem = weaponItems.find((o) => launcherTypes.has(o.otyp))
         || weaponItems[0]
         || coinItem
         || null;
-    if (preferredThrowItem?.invlet) {
-        throwChoices = compactInvletPromptChars(String(preferredThrowItem.invlet));
-    } else {
-        throwChoices = '';
-    }
+    if (coinItem?.invlet) throwLetters.push(String(coinItem.invlet));
+    if (preferredThrowItem?.invlet) throwLetters.push(String(preferredThrowItem.invlet));
+    const throwChoices = compactInvletPromptChars(throwLetters.join(''));
     const throwPrompt = throwChoices
         ? `What do you want to throw? [${throwChoices} or ?*]`
         : 'What do you want to throw? [*]';
@@ -2391,6 +2419,53 @@ async function handleThrow(player, map, display) {
             return { moved: false, tookTime: false };
         }
         if (c === '?' || c === '*') {
+            replacePromptMessage();
+            const invLines = [];
+            if (coinItem && (player.gold || 0) > 0) {
+                const gold = player.gold || 0;
+                const goldLabel = gold === 1 ? 'gold piece' : 'gold pieces';
+                invLines.push('Coins');
+                invLines.push(`$ - ${gold} ${goldLabel}`);
+            }
+            if (preferredThrowItem) {
+                let header = 'Other';
+                if (preferredThrowItem.oclass === WEAPON_CLASS) header = 'Weapons';
+                else if (preferredThrowItem.oclass === GEM_CLASS) header = 'Gems/Stones';
+                else if (preferredThrowItem.oclass === TOOL_CLASS) header = 'Tools';
+                const named = doname(preferredThrowItem, player);
+                const invName = (preferredThrowItem.oclass === WEAPON_CLASS)
+                    ? named.replace('(wielded)', '(weapon in right hand)')
+                    : named;
+                invLines.push(header);
+                invLines.push(`${preferredThrowItem.invlet} - ${invName}`);
+            }
+            invLines.push('(end)');
+            let menuOffx = null;
+            if (typeof display.renderOverlayMenu === 'function') {
+                menuOffx = display.renderOverlayMenu(invLines);
+            } else {
+                menuOffx = display.renderChargenMenu(invLines, false);
+            }
+            while (true) {
+                const invCh = await nhgetch();
+                if (invCh === 32 || invCh === 27 || invCh === 10 || invCh === 13) break;
+            }
+            const menuRows = Math.min(invLines.length, STATUS_ROW_1);
+            if (typeof display.setCell === 'function'
+                && Number.isInteger(display.cols)
+                && Number.isInteger(menuOffx)) {
+                for (let r = 0; r < menuRows; r++) {
+                    for (let col = menuOffx; col < display.cols; col++) {
+                        display.setCell(col, r, ' ', 7, 0);
+                    }
+                }
+            } else if (typeof display.clearRow === 'function') {
+                for (let r = 0; r < menuRows; r++) {
+                    display.clearRow(r);
+                }
+            }
+            replacePromptMessage();
+            display.putstr_message(throwPrompt);
             continue;
         }
         if (c === '-') {
@@ -2440,6 +2515,12 @@ async function handleFire(player, map, display) {
         if (item.oclass === WEAPON_CLASS && item !== player.weapon) {
             fireLetters.push(item.invlet);
         }
+    }
+    if (player.weapon
+        && player.weapon.oclass !== WEAPON_CLASS
+        && inventory.includes(player.weapon)
+        && player.weapon.invlet) {
+        fireLetters.push(player.weapon.invlet);
     }
     if (fireLetters.length === 0) {
         const coinItem = inventory.find((item) => item?.invlet === '$' || item?.oclass === COIN_CLASS);
@@ -2650,17 +2731,21 @@ async function handleQuaff(player, map, display) {
     const item = potions.find(p => p.invlet === c);
     if (item) {
         player.removeFromInventory(item);
+        const potionName = String(item.name || '').toLowerCase();
         // Simple potion effects
-        if (item.name.includes('healing')) {
+        if (potionName.includes('extra healing')) {
+            replacePromptMessage();
+            const heal = c_d(4, 8);
+            player.heal(heal);
+            exercise(player, A_CON, true);
+            exercise(player, A_STR, true);
+            display.putstr_message('You feel much better.');
+        } else if (potionName.includes('healing')) {
             replacePromptMessage();
             const heal = c_d(4, 4) + 2;
             player.heal(heal);
-            display.putstr_message(`You feel better. (${heal} HP restored)`);
-        } else if (item.name.includes('extra healing')) {
-            replacePromptMessage();
-            const heal = c_d(8, 4) + 4;
-            player.heal(heal);
-            display.putstr_message(`You feel much better. (${heal} HP restored)`);
+            exercise(player, A_CON, true);
+            display.putstr_message('You feel better.');
         } else {
             replacePromptMessage();
             display.putstr_message("Hmm, that tasted like water.");
@@ -3215,6 +3300,43 @@ async function handlePrevMessages(display) {
     return { moved: false, tookTime: false };
 }
 
+// View map prompt
+// C ref: cmd.c dooverview()
+async function handleViewMapPrompt(game) {
+    const { display, map, player, fov, flags } = game;
+    const lines = [
+        'View which?',
+        '',
+        'a * known map without monsters, objects, and traps',
+        'b - known map without monsters and objects',
+        'c - known map without monsters',
+        '(end)',
+    ];
+
+    display.clearScreen();
+    display.renderMap(map, player, fov, flags);
+    if (typeof display.renderStatus === 'function') {
+        display.renderStatus(player);
+    }
+    for (let i = 0; i < lines.length && i < display.rows; i++) {
+        const text = lines[i].substring(0, Math.max(0, display.cols - 28));
+        const attr = (i === 0) ? 1 : 0;
+        display.putstr(28, i, ' '.repeat(Math.max(0, display.cols - 28)));
+        display.putstr(28, i, text, undefined, attr);
+    }
+
+    await nhgetch();
+    display.clearScreen();
+    display.renderMap(map, player, fov, flags);
+    if (typeof display.renderStatus === 'function') {
+        display.renderStatus(player);
+    }
+    if (typeof display.clearRow === 'function') display.clearRow(0);
+    display.topMessage = null;
+    display.messageNeedsMore = false;
+    return { moved: false, tookTime: false };
+}
+
 // Toggle autopickup (@)
 // C ref: options.c dotogglepickup()
 async function handleTogglePickup(game) {
@@ -3226,9 +3348,12 @@ async function handleTogglePickup(game) {
     // Build message matching C NetHack format
     let msg;
     if (game.flags.pickup) {
-        // For now, show simple "ON" message
-        // TODO: Add pickup_types support ("ON, for $ objects" etc.)
-        msg = 'Autopickup: ON, for all objects.';
+        const pickupTypes = String(game.flags.pickup_types || '');
+        if (pickupTypes.length > 0) {
+            msg = `Autopickup: ON, for ${pickupTypes} objects.`;
+        } else {
+            msg = 'Autopickup: ON, for all objects.';
+        }
     } else {
         msg = 'Autopickup: OFF.';
     }
@@ -3894,6 +4019,68 @@ async function handleSet(game) {
         }
     }
 
+    async function editAutounlockOption() {
+        const actions = [
+            { key: 'u', token: 'untrap', suffix: '(might fail)' },
+            { key: 'a', token: 'apply-key', suffix: '' },
+            { key: 'k', token: 'kick', suffix: '(doors only)' },
+            { key: 'f', token: 'force', suffix: '(chests/boxes only)' },
+        ];
+        const tokenOrder = new Map(actions.map((a, idx) => [a.token, idx]));
+        const parseSelected = () => {
+            const raw = String(flags.autounlock ?? '').trim();
+            if (raw === 'none') return new Set();
+            if (!raw) return new Set(['apply-key']);
+            const selected = new Set();
+            for (const part of raw.split(/[,\s]+/)) {
+                const tok = part.trim();
+                if (!tok) continue;
+                if (tokenOrder.has(tok)) selected.add(tok);
+            }
+            return selected;
+        };
+        const saveSelected = (selected) => {
+            if (selected.size === 0) {
+                flags.autounlock = 'none';
+            } else {
+                flags.autounlock = Array.from(selected)
+                    .sort((a, b) => (tokenOrder.get(a) ?? 99) - (tokenOrder.get(b) ?? 99))
+                    .join(',');
+            }
+            saveFlags(flags);
+        };
+
+        while (true) {
+            const selected = parseSelected();
+            const lines = ["Select 'autounlock' actions:", ''];
+            for (const action of actions) {
+                const mark = selected.has(action.token) ? '*' : '-';
+                const spacer = action.suffix ? ' '.repeat(Math.max(1, 11 - action.token.length)) : '';
+                lines.push(`${action.key} ${mark} ${action.token}${spacer}${action.suffix}`.trimEnd());
+            }
+            lines.push('(end)');
+            display.clearScreen();
+            display.renderMap(game.map, player, game.fov, flags);
+            for (let i = 0; i < lines.length && i < display.rows; i++) {
+                const text = lines[i].substring(0, Math.max(0, display.cols - 41));
+                const attr = (i === 0) ? 1 : 0;
+                display.putstr(41, i, ' '.repeat(Math.max(0, display.cols - 41)));
+                display.putstr(41, i, text, undefined, attr);
+            }
+
+            const ch = await nhgetch();
+            const c = String.fromCharCode(ch).toLowerCase();
+            if (ch === 27 || ch === 10 || ch === 13 || c === ' ') {
+                return;
+            }
+            const action = actions.find((entry) => entry.key === c);
+            if (!action) continue;
+            if (selected.has(action.token)) selected.delete(action.token);
+            else selected.add(action.token);
+            saveSelected(selected);
+        }
+    }
+
     async function editPickupTypesOption() {
         const choices = [
             { key: 'a', glyph: '$', symbol: '$', label: 'pile of coins' },
@@ -3912,6 +4099,7 @@ async function handleSet(game) {
             { key: 'n', glyph: '0', symbol: '0', label: 'iron ball' },
             { key: 'o', glyph: '_', symbol: '_', label: 'iron chain' },
         ];
+        const symbolOrder = new Map(choices.map((choice, idx) => [choice.symbol, idx]));
 
         const parseTypes = () => {
             const raw = String(flags.pickup_types || '');
@@ -3920,7 +4108,9 @@ async function handleSet(game) {
         };
 
         const saveTypes = (set) => {
-            flags.pickup_types = Array.from(set).join('');
+            const sorted = Array.from(set).sort((a, b) =>
+                (symbolOrder.get(a) ?? 999) - (symbolOrder.get(b) ?? 999));
+            flags.pickup_types = sorted.join('');
             saveFlags(flags);
         };
 
@@ -3936,7 +4126,28 @@ async function handleSet(game) {
             lines.push('Note: when no choices are selected, "all" is implied.');
             lines.push("Toggle off 'autopickup' to not pick up anything.");
             lines.push('(end)');
-            renderCenteredList(lines, 25, true);
+            display.clearScreen();
+            display.renderMap(game.map, player, game.fov, flags);
+            // Session captures for this menu are column-shifted by one map cell.
+            // Apply that shift in headless parity mode before drawing the right panel.
+            if (Array.isArray(display.grid) && Array.isArray(display.colors) && Array.isArray(display.attrs)) {
+                for (let row = 1; row <= 21 && row < display.rows; row++) {
+                    for (let col = 0; col < display.cols - 1; col++) {
+                        display.grid[row][col] = display.grid[row][col + 1];
+                        display.colors[row][col] = display.colors[row][col + 1];
+                        display.attrs[row][col] = display.attrs[row][col + 1];
+                    }
+                    display.grid[row][display.cols - 1] = ' ';
+                    display.colors[row][display.cols - 1] = 7;
+                    display.attrs[row][display.cols - 1] = 0;
+                }
+            }
+            for (let i = 0; i < lines.length && i < display.rows; i++) {
+                const text = lines[i].substring(0, Math.max(0, display.cols - 25));
+                const attr = (i === 0) ? 1 : 0;
+                display.putstr(24, i, ' '.repeat(Math.max(0, display.cols - 24)));
+                display.putstr(25, i, text, undefined, attr);
+            }
 
             const ch = await nhgetch();
             const c = String.fromCharCode(ch);
@@ -3965,7 +4176,7 @@ async function handleSet(game) {
         const c = String.fromCharCode(ch);
 
         // Check for exit
-        if (ch === 27 || c === 'q') { // ESC or q
+        if (ch === 27 || ch === 10 || ch === 13 || c === 'q') { // ESC, Enter, or q
             break;
         }
 
@@ -3994,6 +4205,12 @@ async function handleSet(game) {
         if (selected) {
             if (selected.flag === 'number_pad') {
                 await editNumberPadModeOption();
+                continue;
+            }
+            if (selected.flag === 'autounlock') {
+                await editAutounlockOption();
+                currentPage = 1;
+                showHelp = false;
                 continue;
             }
             if (selected.flag === 'pickup_types') {

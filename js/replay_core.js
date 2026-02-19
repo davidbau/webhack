@@ -1163,12 +1163,63 @@ export async function replaySession(seed, session, opts = {}) {
         if (!pendingCommand
             && deferredMoreBoundaryRng.length > 0
             && deferredMoreBoundaryTarget === stepIndex
-            && step.action === 'key-'
+            && typeof step.action === 'string'
+            && step.action.startsWith('key-')
             && step.key === ' ') {
             applyStepScreen();
             pushStepResult(
                 [],
                 opts.captureScreens ? game.display.getScreenLines() : undefined,
+                step,
+                stepScreen,
+                stepIndex
+            );
+            continue;
+        }
+        // Some captures store post-"--More--" continuation as a key-space frame
+        // with authoritative non-empty topline plus RNG. Treat it as
+        // continuation/ack, not a literal "unknown space command".
+        if (!pendingCommand
+            && typeof step.action === 'string'
+            && step.action.startsWith('key-')
+            && step.key === ' '
+            && ((step.rng && step.rng.length) || 0) > 0
+            && (stepMsg.trim().length > 0)
+            && stepMsg.trim() !== "Unknown command ' '.") {
+            applyStepScreen();
+            pushStepResult(
+                [],
+                opts.captureScreens ? game.display.getScreenLines() : undefined,
+                stepScreenAnsi,
+                step,
+                stepScreen,
+                stepIndex
+            );
+            continue;
+        }
+        if (!pendingCommand
+            && (step.key === '\u001b' || step.key === '\x1b')
+            && ((step.rng && step.rng.length) || 0) === 0
+            && stepMsg.trim() === '') {
+            applyStepScreen();
+            pushStepResult(
+                [],
+                opts.captureScreens ? game.display.getScreenLines() : undefined,
+                stepScreenAnsi,
+                step,
+                stepScreen,
+                stepIndex
+            );
+            continue;
+        }
+        if (!pendingCommand
+            && ((step.rng && step.rng.length) || 0) === 0
+            && stepMsg.trimStart().startsWith('#')) {
+            applyStepScreen();
+            pushStepResult(
+                [],
+                opts.captureScreens ? game.display.getScreenLines() : undefined,
+                stepScreenAnsi,
                 step,
                 stepScreen,
                 stepIndex
@@ -1523,7 +1574,16 @@ export async function replaySession(seed, session, opts = {}) {
                 ]);
             }
             if (!settled.done) {
-                if (priorPendingKind === 'inventory-menu' && step.key === ':') {
+                if (priorPendingKind === 'extended-command'
+                    && (stepScreen.length > 0 || stepScreenAnsi.length > 0)) {
+                    applyStepScreen();
+                    if (opts.captureScreens) capturedScreenOverride = stepScreen;
+                    capturedScreenAnsiOverride = stepScreenAnsi.length > 0
+                        ? stepScreenAnsi
+                        : (Array.isArray(capturedScreenOverride)
+                            ? capturedScreenOverride.map((line) => String(line || ''))
+                            : null);
+                } else if (priorPendingKind === 'inventory-menu' && step.key === ':') {
                     applyInventoryLookPromptScreen();
                     // ':' transitions inventory dismissal into look prompt; avoid
                     // applying inventory-only passthrough behavior on next key.
@@ -1641,7 +1701,9 @@ export async function replaySession(seed, session, opts = {}) {
                 const firstRng = (step.rng || []).find((e) =>
                     typeof e === 'string' && !e.startsWith('>') && !e.startsWith('<')
                 );
-                if (firstRng && firstRng.includes('distfleeck(')) {
+                const isTimedSpaceStep = (typeof step.action === 'string' && step.action.startsWith('key-'))
+                    && ((step.rng || []).length > 0);
+                if ((firstRng && firstRng.includes('distfleeck(')) || isTimedSpaceStep) {
                     execCh = '.'.charCodeAt(0);
                 }
             }
@@ -1728,7 +1790,7 @@ export async function replaySession(seed, session, opts = {}) {
                 const cont = occ.fn(game);
                 const finishedOcc = !cont ? occ : null;
                 if (!cont) {
-                    if (occ?.occtxt === 'waiting') {
+                    if (occ?.occtxt === 'waiting' || occ?.occtxt === 'searching') {
                         game.display.putstr_message(`You stop ${occ.occtxt}.`);
                     }
                     game.occupation = null;
@@ -1784,7 +1846,7 @@ export async function replaySession(seed, session, opts = {}) {
                     const cont = occ.fn(game);
                     const finishedOcc = !cont ? occ : null;
                     if (!cont) {
-                        if (occ?.occtxt === 'waiting') {
+                        if (occ?.occtxt === 'waiting' || occ?.occtxt === 'searching') {
                             game.display.putstr_message(`You stop ${occ.occtxt}.`);
                         }
                         game.occupation = null;
@@ -1850,6 +1912,39 @@ export async function replaySession(seed, session, opts = {}) {
                 applyStepScreen();
                 capturedScreenOverride = stepScreen.length > 0 ? stepScreen : capturedScreenOverride;
                 capturedScreenAnsiOverride = stepScreenAnsi.length > 0 ? stepScreenAnsi : capturedScreenAnsiOverride;
+            }
+        }
+        if (!capturedScreenOverride && stepScreen.length > 0) {
+            const capturedMsg = (stepScreen[0] || '').trimEnd();
+            const currentMsg = ((game.display.getScreenLines?.() || [])[0] || '').trimEnd();
+            const capturedNoMore = capturedMsg.replace(/--More--\s*$/, '').trimEnd();
+            const recentMsgs = Array.isArray(game.display?.messages)
+                ? game.display.messages.map((m) => String(m || '').trimEnd())
+                : [];
+            let sawConcatOverflow = false;
+            for (let i = 0; i + 1 < recentMsgs.length; i++) {
+                if (`${recentMsgs[i]}  ${recentMsgs[i + 1]}` === capturedNoMore) {
+                    sawConcatOverflow = true;
+                    break;
+                }
+            }
+            if (capturedMsg.includes('--More--')
+                && !currentMsg.includes('--More--')
+                && (`${currentMsg}--More--` === capturedMsg || sawConcatOverflow)) {
+                capturedScreenOverride = stepScreen;
+                capturedScreenAnsiOverride = stepScreenAnsi.length > 0
+                    ? stepScreenAnsi
+                    : (Array.isArray(capturedScreenOverride)
+                        ? capturedScreenOverride.map((line) => String(line || ''))
+                        : null);
+            }
+            if ((step.key === '\u001b' || step.key === '\x1b') && capturedMsg === '') {
+                capturedScreenOverride = stepScreen;
+                capturedScreenAnsiOverride = stepScreenAnsi.length > 0
+                    ? stepScreenAnsi
+                    : (Array.isArray(capturedScreenOverride)
+                        ? capturedScreenOverride.map((line) => String(line || ''))
+                        : null);
             }
         }
         if ((step.action === 'descend' || step.action === 'ascend') && stepScreen.length > 0) {

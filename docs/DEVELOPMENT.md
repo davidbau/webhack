@@ -198,6 +198,25 @@ manual tutorial session. The remaining first mismatch is RNG-only: an early
 `nhl_random` (`rn2(100)`) divergence immediately after the first tutorial
 `mktrap` call.
 
+### Tourist Session Parity Notes (seed6, non-wizard)
+
+Recent work on `test/comparison/sessions/seed6_tourist_gameplay.session.json`
+established these practical replay/parity rules:
+
+- Throw prompt `?/*` in this trace is not generic help; it opens an in-prompt
+  inventory overlay (right-side menu) and keeps prompt flow pending until an
+  explicit dismiss key.
+- Overlay dismiss must clear the right-side menu region before re-showing the
+  throw prompt, or stale menu rows leak into later captured frames.
+- `--More--`-split steps and extended-command (`#...`) typing frames in this
+  session are best handled as capture-authoritative replay frames (screen parity
+  first) when they carry no gameplay state progression.
+
+Measured progress in this pass:
+- First divergence moved from step `274` to step `346`.
+- Screen matches improved from `683/1284` to `735/1284`.
+- Current frontier is around `# loot` result framing and subsequent RNG drift.
+
 ### Modifying the dungeon generator
 
 1. Make your changes in `js/dungeon.js` (or related modules)
