@@ -41,7 +41,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | artifact.c | — | Artifact creation and effects |
 | `[ ]` | attrib.c | — | Attribute system. JS: partially in `attrib_exercise.js` |
 | `[ ]` | ball.c | — | Ball & chain handling |
-| `[~]` | bones.c | bones.js | Bones file save/load |
+| `[a]` | bones.c | bones.js | Bones file save/load. All 9 functions aligned; 3 static TODO (no_bones_level, goodfruit, fixuporacle) |
 | `[ ]` | botl.c | — | Bottom status line |
 | `[x]` | calendar.c | calendar.js | Time, moon phase, Friday 13th, night/midnight. Affects gameplay |
 | `[N/A]` | cfgfiles.c | — | Config file parsing. JS: `storage.js` handles config differently |
@@ -171,9 +171,9 @@ don't follow the same 1:1 C→JS mapping pattern.
 - **N/A (system/platform)**: 18
 - **Game logic files**: 111
 - **Complete (`[x]`)**: 4
-- **Aligned (`[a]`)**: 9
+- **Aligned (`[a]`)**: 10
 - **Present (`[p]`)**: 1
-- **Needs alignment (`[~]`)**: 21
+- **Needs alignment (`[~]`)**: 20
 - **No JS file yet (`[ ]`)**: 76
 
 ### JS Files Without C Counterparts
@@ -311,3 +311,20 @@ Discovery/identification functions split into `discovery.js` (camelCase, noted b
 | `write_ok` | 61 | `write_ok` | 46 | Match (private — getobj callback) |
 | `dowrite` | 74 | `dowrite` | 62 | TODO (needs getobj, getlin, mksobj, useup, and full message system) |
 | `new_book_description` | 395 | `new_book_description` | 71 | Match (private — JS returns string directly; no output-buffer argument) |
+
+### bones.c → bones.js
+
+| C Function | C Line | JS Function | JS Line | Status |
+|------------|--------|-------------|---------|--------|
+| `no_bones_level` | 18 | — | — | TODO (static — check for special/quest/vibrating/astral levels) |
+| `goodfruit` | 42 | — | — | TODO (static — check if fruit id usable on bones level) |
+| `resetobjs` | 51 | `resetobjs` | 57 | Match (exported — cancel objects on save, rebuild displayChar on restore) |
+| `sanitize_name` | 198 | `sanitize_name` | 193 | Match (exported — renamed from `sanitizeName`) |
+| `give_to_nearby_mon` | 226 | `give_to_nearby_mon` | 128 | Match (exported — renamed from `giveToNearbyMon`) |
+| `drop_upon_death` | 259 | `drop_upon_death` | 80 | Match (exported — renamed from `dropUponDeath`) |
+| `fixuporacle` | 308 | — | — | TODO (static — restore oracle monster after bones load) |
+| `can_make_bones` | 356 | `can_make_bones` | 40 | Match (exported — renamed from `canMakeBones`) |
+| `remove_mon_from_bones` | 390 | `remove_mon_from_bones` | 172 | Match (exported — renamed from `removeMonFromBones`) |
+| `savebones` | 403 | `savebones` | 207 | Match (exported) |
+| `getbones` | 629 | `getbones` | 278 | Match (exported) |
+| `set_ghostly_objlist` | 751 | `set_ghostly_objlist` | 157 | Match (exported — renamed from `setGhostlyObjlist`) |
