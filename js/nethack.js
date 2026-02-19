@@ -19,7 +19,7 @@ import { makemon, setMakemonPlayerContext, runtimeDecideToShapeshift } from './m
 import { M2_WERE } from './monsters.js';
 import { FOOD_CLASS } from './objects.js';
 import { setObjectMoves } from './mkobj.js';
-import { runWereTurnEnd } from './were.js';
+import { were_change } from './were.js';
 import { rhack } from './commands.js';
 import { movemon, initrack, settrack } from './monmove.js';
 import { simulatePostLevelInit, mon_arrive } from './u_init.js';
@@ -1655,7 +1655,7 @@ export class NetHackGame {
             if (mon.dead) continue;
             runtimeDecideToShapeshift(mon, this.player.dungeonLevel);
             if (mon.type && (mon.type.flags2 & M2_WERE)) {
-                runWereTurnEnd(mon, {
+                were_change(mon, {
                     player: this.player,
                     map: this.map,
                     fov: this.fov,

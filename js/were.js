@@ -1,5 +1,5 @@
-// were.js -- Lycanthrope turn-end behavior
-// C ref: mon.c m_calcdistress(), were.c were_change()/new_were()
+// were.js -- Lycanthropy mechanics
+// cf. were.c — lycanthrope form changes, summoning, and player lycanthropy
 
 import { rn2 } from './rng.js';
 import {
@@ -12,8 +12,9 @@ import {
     PM_HUMAN_WEREWOLF,
 } from './monsters.js';
 
-function counterWere(mndx) {
-    switch (mndx) {
+// cf. were.c:48 — map lycanthrope to its alternate form
+export function counter_were(pm) {
+    switch (pm) {
     case PM_WEREWOLF:
         return PM_HUMAN_WEREWOLF;
     case PM_HUMAN_WEREWOLF:
@@ -31,12 +32,17 @@ function counterWere(mndx) {
     }
 }
 
+// cf. were.c:70 — convert monsters similar to werecritters into appropriate werebeast
+// TODO: were.c:70 — were_beastie(): not yet called in JS (needs PM_SEWER_RAT etc. imports)
+
+// Helper: check if mndx is a human were form (not in C; derived from counter_were logic)
 function isHumanWereForm(mndx) {
     return mndx === PM_HUMAN_WERERAT
         || mndx === PM_HUMAN_WEREJACKAL
         || mndx === PM_HUMAN_WEREWOLF;
 }
 
+// Helper: simplified canseemon check (cf. mon.c canseemon macro)
 function canSeeMonster(mon, player, fov) {
     if (!mon || !player || !fov?.canSee) return false;
     if (!fov.canSee(mon.mx, mon.my)) return false;
@@ -46,20 +52,21 @@ function canSeeMonster(mon, player, fov) {
     return true;
 }
 
+// Helper: wake monsters near a location (cf. mon.c:4369 wake_nearto_core)
 function wakeNear(map, x, y, dist2max) {
     if (!map?.monsters) return;
     for (const mon of map.monsters) {
         if (!mon || mon.dead) continue;
         const dx = mon.mx - x;
         const dy = mon.my - y;
-        // C ref: wake_nearto_core() uses strict "< distance".
         if ((dx * dx + dy * dy) >= dist2max) continue;
         mon.sleeping = false;
         mon.msleeping = false;
     }
 }
 
-function applyWereFormChange(mon, newMndx) {
+// cf. were.c:96 — apply lycanthrope form change (wake, heal, update data)
+export function new_were(mon, newMndx) {
     const data = mons[newMndx];
     if (!data) return;
     mon.mndx = newMndx;
@@ -68,7 +75,7 @@ function applyWereFormChange(mon, newMndx) {
     mon.speed = data.speed;
     mon.attacks = data.attacks;
 
-    // C ref: were.c new_were() -- transformation wakes helpless monsters.
+    // Transformation wakes helpless monsters
     if (mon.sleeping || (mon.mfrozen > 0) || mon.mcanmove === false) {
         mon.sleeping = false;
         mon.msleeping = false;
@@ -76,19 +83,18 @@ function applyWereFormChange(mon, newMndx) {
         mon.mcanmove = true;
     }
 
-    // C ref: were.c new_were() -- heal 1/4 of missing HP.
+    // Heal 1/4 of missing HP
     const hp = mon.mhp ?? 0;
     const hpmax = mon.mhpmax ?? hp;
     const heal = Math.max(0, Math.floor((hpmax - hp) / 4));
     mon.mhp = Math.min(hpmax, hp + heal);
 }
 
-// C-faithful subset used during turn-end distress pass.
-// Applies were_change() behavior; decide_to_shapeshift() is handled separately.
-export function runWereTurnEnd(mon, ctx) {
+// cf. were.c:9 — turn-end lycanthrope form change check
+export function were_change(mon, ctx) {
     if (!mon || mon.dead) return;
 
-    const otherForm = counterWere(mon.mndx);
+    const otherForm = counter_were(mon.mndx);
     if (otherForm == null) {
         return;
     }
@@ -96,14 +102,14 @@ export function runWereTurnEnd(mon, ctx) {
     const protectedFromShifters = !!ctx?.player?.protectionFromShapeChangers;
 
     if (isHumanWereForm(mon.mndx)) {
-        // C ref: were.c were_change() human-form daytime/full-moon gate.
-        // Current runtime does not model moon phase timing, so keep baseline 50.
+        // Human form: chance to change into animal form
+        // Full implementation would use night() and flags.moonphase
         if (protectedFromShifters) return;
         if (rn2(50) !== 0) return;
 
-        applyWereFormChange(mon, otherForm);
+        new_were(mon, otherForm);
 
-        // C ref: were.c -- unseen jackal/wolf change can trigger howl + wake_nearto.
+        // Unseen jackal/wolf change can trigger howl + wake_nearto
         const deaf = !!ctx?.player?.deaf;
         if (deaf || canSeeMonster(mon, ctx?.player, ctx?.fov)) return;
         let howler = null;
@@ -115,8 +121,14 @@ export function runWereTurnEnd(mon, ctx) {
         return;
     }
 
-    // C ref: were.c were_change() beast-form reversion branch.
+    // Beast form: chance to revert to human form
     if (rn2(30) === 0 || protectedFromShifters) {
-        applyWereFormChange(mon, otherForm);
+        new_were(mon, otherForm);
     }
 }
+
+// TODO: were.c:142 — were_summon(): summon a horde of were-associated creatures
+// TODO: were.c:192 — you_were(): player changes to lycanthrope beast form
+// TODO: were.c:213 — you_unwere(): player reverts from beast form or gets cured
+// TODO: were.c:232 — set_ulycn(): set/clear player lycanthropy type
+

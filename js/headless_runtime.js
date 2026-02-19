@@ -22,7 +22,7 @@ import { rhack, dosearch0 } from './commands.js';
 import { makemon, setMakemonPlayerContext, runtimeDecideToShapeshift } from './makemon.js';
 import { M2_WERE } from './monsters.js';
 import { movemon, initrack, settrack } from './monmove.js';
-import { runWereTurnEnd } from './were.js';
+import { were_change } from './were.js';
 import { FOV } from './vision.js';
 import { getArrivalPosition } from './level_transition.js';
 import { doname, setObjectMoves } from './mkobj.js';
@@ -862,7 +862,7 @@ export class HeadlessGame {
             if (mon.dead) continue;
             runtimeDecideToShapeshift(mon, this.player.dungeonLevel);
             if (mon.type && (mon.type.flags2 & M2_WERE)) {
-                runWereTurnEnd(mon, {
+                were_change(mon, {
                     player: this.player,
                     map: this.map,
                     fov: this.fov,

@@ -153,7 +153,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[N/A]` | version.c | — | Version info |
 | `[~]` | vision.c | vision.js | Field of view / line of sight |
 | `[ ]` | weapon.c | — | Weapon skills |
-| `[~]` | were.c | were.js | Lycanthropy |
+| `[x]` | were.c | were.js | Lycanthropy. 3 of 8 functions implemented, 5 TODO |
 | `[ ]` | wield.c | — | Wielding weapons |
 | `[N/A]` | windows.c | — | Windowing system interface. JS: `display.js`, `browser_input.js` |
 | `[ ]` | wizard.c | — | Wizard of Yendor AI |
@@ -168,8 +168,8 @@ don't follow the same 1:1 C→JS mapping pattern.
 - **Total C files**: 129
 - **N/A (system/platform)**: 18
 - **Game logic files**: 111
-- **Complete (`[x]`)**: 1
-- **Partial JS match exists (`[~]`)**: 26
+- **Complete (`[x]`)**: 2
+- **Partial JS match exists (`[~]`)**: 25
 - **No JS match yet (`[ ]`)**: 84
 
 ### JS Files Without C Counterparts
@@ -224,3 +224,16 @@ These JS files don't directly correspond to a single C file:
 | `isaac64_reseed` | 124 | `isaac64_reseed` | 126 | Match (exported) |
 | `isaac64_next_uint64` | 161 | `isaac64_next_uint64` | 178 | Match (exported) |
 | `isaac64_next_uint` | 166 | `isaac64_next_uint` | 184 | Match (exported, added) |
+
+### were.c → were.js
+
+| C Function | C Line | JS Function | JS Line | Status |
+|------------|--------|-------------|---------|--------|
+| `were_change` | 9 | `were_change` | 95 | Match (exported, renamed from `runWereTurnEnd`) |
+| `counter_were` | 48 | `counter_were` | 17 | Match (exported, renamed from `counterWere`) |
+| `were_beastie` | 70 | — | — | TODO |
+| `new_were` | 96 | `new_were` | 72 | Match (exported, renamed from `applyWereFormChange`) |
+| `were_summon` | 142 | — | — | TODO |
+| `you_were` | 192 | — | — | TODO |
+| `you_unwere` | 213 | — | — | TODO |
+| `set_ulycn` | 232 | — | — | TODO |
