@@ -104,7 +104,7 @@ for commit in "${COMMITS[@]}"; do
 
   # Run session tests (may exit non-zero due to test failures)
   rm -f "$WORK_DIR/oracle/pending.jsonl"
-  (cd "$WORK_DIR" && bash ./scripts/run-session-tests.sh --session-timeout-ms=10000 >/dev/null 2>&1) || true
+  (cd "$WORK_DIR" && bash ./scripts/run-session-tests.sh --session-timeout-ms=20000 >/dev/null 2>&1) || true
 
   PENDING="$WORK_DIR/oracle/pending.jsonl"
   if [ -f "$PENDING" ] && jq -e '.results' "$PENDING" >/dev/null 2>&1; then

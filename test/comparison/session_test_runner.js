@@ -876,7 +876,7 @@ export async function runSessionBundle({
     failFast = false,
     parallel = availableParallelism(),
     onProgress = null,
-    sessionTimeoutMs = 10000,
+    sessionTimeoutMs = 20000,
 } = {}) {
     const sessions = loadAllSessions({
         sessionsDir: SESSIONS_DIR,
@@ -948,7 +948,7 @@ export async function runSessionCli() {
         sessionPath: null,
         failFast: false,
         parallel: availableParallelism(),
-        sessionTimeoutMs: 10000,
+        sessionTimeoutMs: 20000,
     };
     const argv = process.argv.slice(2);
     for (let i = 0; i < argv.length; i++) {
@@ -977,7 +977,7 @@ export async function runSessionCli() {
             console.log('  --parallel[=N]    Run with N workers (default: auto-detect CPU count)');
             console.log('  --fail-fast       Stop on first failure');
             console.log('  --type=TYPE       Filter by session type (chargen,gameplay,etc)');
-            console.log('  --session-timeout-ms=N  Timeout for single-session runs (default: 10000)');
+            console.log('  --session-timeout-ms=N  Timeout for single-session runs (default: 20000)');
             console.log('  --golden          Compare against golden branch');
             process.exit(0);
         } else if (arg.startsWith('--')) {

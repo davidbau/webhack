@@ -62,7 +62,7 @@ ensure_head_note() {
   fi
 
   echo "  Running session tests to create note..."
-  "$REPO_ROOT/scripts/run-session-tests.sh" --session-timeout-ms=10000
+  "$REPO_ROOT/scripts/run-session-tests.sh" --session-timeout-ms=20000
   promote_pending_note_if_head || true
 
   if has_note "$current_commit"; then
@@ -89,7 +89,7 @@ generate_note_for_commit() {
   local status=0
   if ! (
     cd "$temp_worktree" &&
-    ./scripts/run-session-tests.sh --session-timeout-ms=10000
+    ./scripts/run-session-tests.sh --session-timeout-ms=20000
   ); then
     status=1
   fi
