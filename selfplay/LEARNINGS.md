@@ -231,3 +231,44 @@
 - Combined learning:
   - Reducing pet-swap churn alone is not sufficient; naive suppression tends to trade away meaningful combat/progression.
   - Next candidate should prioritize "productive combat selection" (target identity/confidence + path/progression context), not blanket pet-class avoidance.
+
+## 2026-02-19 - Rejected: Evidence-Gated Pet-Loop Suppression (Train Regression)
+
+- Goal:
+  - Keep holdout improvements from lower `petSwap` churn while avoiding broad blanket pet-class suppression.
+
+- Candidate policy:
+  - In `selfplay/agent.js`, suppress lone Dlvl1 adjacent `d/f/C` combat only when loop evidence exists:
+    - repeated recent pet displacements (`>=4` in a recent window),
+    - sustained no-XP progress window,
+    - XL1-only scope.
+  - Added candidate-only telemetry (`petLoopIgnore`) during evaluation.
+
+- Holdout A/B (`31..43`, 600 turns):
+  - Baseline (main):
+    - Survived `13/13`, avg depth `1.462`, XL2+ `1/13`,
+    - XP avg `t600=8.23`, XP>=10 `4/13`,
+    - petSwap `26.31`, failedAdd `36.92`.
+  - Candidate:
+    - Survived `13/13`, avg depth `1.462`, XL2+ `1/13`,
+    - XP avg `t600=8.69`, XP>=10 `5/13`,
+    - petSwap `12.00`, failedAdd `36.38`,
+    - petLoopIgnore `43.46`.
+
+- Train guardrail A/B (`21..33`, 600 turns):
+  - Baseline (main):
+    - Survived `11/13`, avg depth `2.000`, XL2+ `0/13`,
+    - XP avg `t600=7.38`, XP>=10 `3/13`,
+    - failedAdd `23.69`.
+  - Candidate:
+    - Survived `10/13` (regression),
+    - Avg depth `1.923` (regression),
+    - XL2+ `0/13` (flat),
+    - XP avg `t600=7.54`,
+    - XP>=10 `4/13`,
+    - failedAdd `24.92` (regression).
+  - Notable new failure:
+    - Samurai seed 30 regressed to death with `maxXP=0`.
+
+- Net:
+  - Rejected due train-set survival/depth regression despite holdout-side pet-churn and XP improvements.
