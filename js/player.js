@@ -462,6 +462,7 @@ export class Player {
         this.gloves = null;
         this.boots = null;
         this.cloak = null;
+        this.shirt = null;  // C ref: uarmu
         this.amulet = null;
         this.leftRing = null;
         this.rightRing = null;

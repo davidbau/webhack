@@ -14,7 +14,7 @@ import {
     ARROW, ELVEN_ARROW, ORCISH_ARROW, YA, CROSSBOW_BOLT, DART, FLINT, ROCK,
     GOLD_PIECE, DILITHIUM_CRYSTAL, LOADSTONE,
     WAN_CANCELLATION, WAN_LIGHT, WAN_LIGHTNING,
-    BAG_OF_HOLDING, OILSKIN_SACK, BAG_OF_TRICKS, SACK,
+    BAG_OF_HOLDING, OILSKIN_SACK, BAG_OF_TRICKS, SACK, HORN_OF_PLENTY,
     LARGE_BOX, CHEST, ICE_BOX, CORPSE, STATUE, FIGURINE, EGG,
     GRAY_DRAGON_SCALES, YELLOW_DRAGON_SCALES, LENSES,
     ELVEN_SHIELD, ORCISH_SHIELD, SHIELD_OF_REFLECTION,
@@ -201,7 +201,7 @@ function is_corrodeable(obj) {
 }
 
 // C ref: Is_container(otmp) — is object a container?
-function Is_container(obj) {
+export function Is_container(obj) {
     return obj.otyp === LARGE_BOX || obj.otyp === CHEST || obj.otyp === ICE_BOX
         || obj.otyp === SACK || obj.otyp === OILSKIN_SACK
         || obj.otyp === BAG_OF_HOLDING || obj.otyp === BAG_OF_TRICKS;
@@ -1081,6 +1081,16 @@ export function doname(obj, player) {
         prefix = `${quan} `;
     }
 
+    // C ref: objnam.c doname_base() "empty" prefix for containers
+    const cknown = !!obj.cknown;
+    if (cknown
+        && ((obj.otyp === BAG_OF_TRICKS || obj.otyp === HORN_OF_PLENTY)
+            ? (obj.spe === 0 && !known)
+            : ((Is_container(obj) || obj.otyp === STATUE)
+               && (!obj.cobj || obj.cobj.length === 0)))) {
+        prefix += 'empty ';
+    }
+
     // C ref: objnam.c doname_base() BUC logic
     if (bknown && obj.oclass !== COIN_CLASS && !suppressWaterBuc) {
         if (obj.cursed) prefix += 'cursed ';
@@ -1098,7 +1108,11 @@ export function doname(obj, player) {
     }
 
     // C ref: objnam.c doname_base() known enchantment
-    if (known && (obj.oclass === WEAPON_CLASS || obj.oclass === ARMOR_CLASS
+    // C uses is_weptool(obj) ? WEAPON_CLASS : obj->oclass in its switch,
+    // so tools with a weapon skill (sub != 0) get enchantment display.
+    const isWeptool = obj.oclass === TOOL_CLASS && (od.sub || 0) !== 0;
+    if (known && (obj.oclass === WEAPON_CLASS || isWeptool
+        || obj.oclass === ARMOR_CLASS
         || (obj.oclass === RING_CLASS && od.charged))) {
         prefix += `${obj.spe >= 0 ? '+' : ''}${obj.spe} `;
     }
@@ -1122,7 +1136,8 @@ export function doname(obj, player) {
                 result += ' (wielded)';
             }
         } else if (player.swapWeapon === obj) {
-            result += ' (alternate weapon; not wielded)';
+            // C ref: objnam.c plur(obj->quan) for alternate weapon(s)
+            result += ` (alternate weapon${quan !== 1 ? 's' : ''}; not wielded)`;
         } else if (player.quiver === obj) {
             if (obj.otyp === FLINT || obj.otyp === ROCK) {
                 result += ' (in quiver pouch)';
@@ -1138,13 +1153,16 @@ export function doname(obj, player) {
             || player.gloves === obj
             || player.boots === obj
             || player.cloak === obj
+            || player.shirt === obj
         ) {
             result += ' (being worn)';
         }
     }
 
     // Charges suffix for wands and charged tools
-    if (showCharges) {
+    // C ref: weptools go through the WEAPON_CLASS branch in doname_base()
+    // and never reach the charges: label, so they don't show charges.
+    if (showCharges && !isWeptool) {
         result += ` (0:${obj.spe})`;
     }
 

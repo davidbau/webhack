@@ -14,7 +14,7 @@
 //   4. welcome(TRUE)           — rndencode + seer_turn
 
 import { rn2, rnd, rn1, rne, d, c_d, getRngLog } from './rng.js';
-import { mksobj, mkobj, weight, setStartupInventoryMode } from './mkobj.js';
+import { mksobj, mkobj, weight, setStartupInventoryMode, Is_container } from './mkobj.js';
 import { isok, NUM_ATTRS,
          A_STR, A_CON,
          PM_ARCHEOLOGIST, PM_BARBARIAN, PM_CAVEMAN, PM_HEALER,
@@ -81,6 +81,7 @@ import {
     POT_POLYMORPH, SPE_POLYMORPH,
     // Object data for level/charged checks
     objectData,
+    STATUE,
 } from './objects.js';
 import { roles, races, initialAlignmentRecordForRole } from './player.js';
 import { always_hostile, always_peaceful } from './mondata.js';
@@ -988,7 +989,8 @@ function iniInv(player, table) {
             obj.dknown = true;
             obj.bknown = true;
             obj.rknown = true;
-            if (obj.cobj || obj.contents || objectData[otyp]?.name === 'statue') {
+            // C ref: u_init.c Is_container(obj) || obj->otyp == STATUE
+            if (Is_container(obj) || obj.otyp === STATUE) {
                 obj.cknown = true;
                 obj.lknown = true;
                 obj.otrapped = 0;
@@ -1410,14 +1412,17 @@ function equipInitialGear(player) {
                 if (!player.cloak) player.cloak = item;
                 break;
             case ARM_SHIRT:
-                // Shirt slot isn't modeled yet; ignored for now.
+                if (!player.shirt) player.shirt = item;
                 break;
         }
     }
 
     for (const item of player.inventory) {
-        if (item.oclass !== WEAPON_CLASS) continue;
         const info = objectData[item.otyp];
+        // C ref: u_init.c ini_inv_use_obj() — weapons and weptools
+        // (TOOL_CLASS with oc_skill != P_NONE) are eligible for uwep/uswapwep.
+        const isWeptool = item.oclass === TOOL_CLASS && info && (info.sub || 0) !== 0;
+        if (item.oclass !== WEAPON_CLASS && !isWeptool) continue;
         // C ref: u_init.c:1282-1293 ini_inv_use_obj() — ammo (is_ammo)
         // and missiles (is_missile) go to quiver, not uwep.  Both have
         // negative oc_skill (sub < 0); melee weapons and launchers have
