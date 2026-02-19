@@ -1155,6 +1155,7 @@ export async function replaySession(seed, session, opts = {}) {
             inTutorialPrompt = true;
         }
         const stepMsg = stepScreen[0] || '';
+        const stepMsgPlain = stripAnsiSequences(stepMsg).trim();
         const stepFirstRng = ((step.rng || []).find((e) =>
             typeof e === 'string' && !e.startsWith('>') && !e.startsWith('<')
         ) || '');
@@ -1739,6 +1740,29 @@ export async function replaySession(seed, session, opts = {}) {
                 ]);
             }
             if (!settled.done) {
+                const capturedNeverMind = stepMsgPlain === 'Never mind.'
+                    && ((step.rng && step.rng.length) || 0) === 0;
+                if (capturedNeverMind) {
+                    // C prompt flows can cancel on this keystroke while JS stays
+                    // blocked in nhgetch(); force-cancel so the next command key
+                    // is not stolen by a stale prompt wait.
+                    pushInput(27);
+                    let forcedSettled = await Promise.race([
+                        pendingCommand.then(v => ({ done: true, value: v })),
+                        new Promise(resolve => setTimeout(() => resolve({ done: false }), 5)),
+                    ]);
+                    if (!forcedSettled.done) {
+                        pushInput(13);
+                        forcedSettled = await Promise.race([
+                            pendingCommand.then(v => ({ done: true, value: v })),
+                            new Promise(resolve => setTimeout(() => resolve({ done: false }), 5)),
+                        ]);
+                    }
+                    if (forcedSettled.done) {
+                        pendingCommand = null;
+                        pendingKind = null;
+                    }
+                }
                 const isCapturedSearchPrompt = ((stepScreen[0] || '').startsWith('Search for:'));
                 const hasCapturedPromptFrame = (stepScreen.length > 0 || stepScreenAnsi.length > 0)
                     && ((step.rng && step.rng.length) || 0) === 0;
