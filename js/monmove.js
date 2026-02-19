@@ -28,13 +28,14 @@ import { FOOD_CLASS, COIN_CLASS, BOULDER, ROCK, ROCK_CLASS,
          AMULET_CLASS, POTION_CLASS, SCROLL_CLASS, WAND_CLASS, RING_CLASS, SPBOOK_CLASS,
          PICK_AXE, DWARVISH_MATTOCK,
          CLOAK_OF_DISPLACEMENT, MINERAL, GOLD_PIECE,
+         SKELETON_KEY, LOCK_PICK, CREDIT_CARD,
          objectData } from './objects.js';
 import { next_ident, weight } from './mkobj.js';
 import { can_carry } from './dogmove.js';
 import { couldsee, m_cansee } from './vision.js';
 import { can_teleport, noeyes, perceives, nohands,
          hides_under, is_mercenary, monDisplayName, monNam,
-         mon_knows_traps } from './mondata.js';
+         mon_knows_traps, is_rider } from './mondata.js';
 import { PM_GRID_BUG, PM_SHOPKEEPER, mons,
          PM_LEPRECHAUN,
          PM_DISPLACER_BEAST,
@@ -119,6 +120,38 @@ function leppie_avoidance(mon, player) {
     if (lepreGold <= 0) return false;
     const heroGold = goldQuantity(player?.inventory || []);
     return lepreGold > heroGold;
+}
+
+// ========================================================================
+// mon_track_add — C ref: monmove.c:79
+// mon_track_clear — C ref: monmove.c:90
+// ========================================================================
+
+// C ref: monmove.c:79 — add position (x,y) to front of monster's track ring
+export function mon_track_add(mon, x, y) {
+    if (!Array.isArray(mon?.mtrack)) return;
+    for (let j = MTSZ - 1; j > 0; j--)
+        mon.mtrack[j] = mon.mtrack[j - 1];
+    mon.mtrack[0] = { x, y };
+}
+
+// C ref: monmove.c:90 — clear all entries in monster's position track
+export function mon_track_clear(mon) {
+    if (!Array.isArray(mon?.mtrack)) return;
+    for (let j = 0; j < mon.mtrack.length; j++)
+        mon.mtrack[j] = { x: 0, y: 0 };
+}
+
+// ========================================================================
+// monhaskey — C ref: monmove.c:97
+// ========================================================================
+
+// C ref: monmove.c:97 — check whether a monster carries a locking/unlocking tool
+// forUnlocking=true: credit card also counts (C: for_unlocking)
+export function monhaskey(mon, forUnlocking) {
+    const inv = mon?.minvent || [];
+    if (forUnlocking && inv.some(o => o?.otyp === CREDIT_CARD)) return true;
+    return inv.some(o => o?.otyp === SKELETON_KEY || o?.otyp === LOCK_PICK);
 }
 
 // ========================================================================
@@ -801,7 +834,8 @@ function m_move(mon, map, player, display = null, fov = null) {
     const ptr = mon.type || {};
     const verysmall = (ptr.size || 0) === MZ_TINY;
     const can_open = !(nohands(ptr) || verysmall);
-    const can_unlock = !!mon.iswiz;
+    // C ref: monmove.c:1768 — can_unlock = (can_open && monhaskey) || iswiz || is_rider
+    const can_unlock = (can_open && monhaskey(mon, true)) || !!mon.iswiz || is_rider(ptr);
 
     set_apparxy(mon, map, player);
 
@@ -982,12 +1016,8 @@ function m_move(mon, map, player, display = null, fov = null) {
     }
 
     if (nix !== omx || niy !== omy) {
-        if (mon.mtrack) {
-            for (let k = MTSZ - 1; k > 0; k--) {
-                mon.mtrack[k] = mon.mtrack[k - 1];
-            }
-            mon.mtrack[0] = { x: omx, y: omy };
-        }
+        // C ref: monmove.c:2065 — mon_track_add(mtmp, omx, omy)
+        mon_track_add(mon, omx, omy);
         mon.mx = nix;
         mon.my = niy;
 

@@ -1027,3 +1027,50 @@ Notes:
 | `do_supplemental_info` | 2249 | N/A | — | TODO (supplemental descriptions) |
 | `doidtrap` | 2332 | N/A | — | TODO (identify trap) |
 
+### monmove.c → monmove.js
+
+Notes:
+- `dochugw` (C:205) wraps `dochug` — inlined in JS (movemon iterates the monster list directly).
+- `onscary`, `mfndpos`, `petCorpseChanceRoll`, `consumePassivemmRng` imported from `mon.js` and re-exported.
+- `m_harmless_trap`, `floor_trigger`, `mintrap_postmove` imported from `trap.js` and re-exported.
+- `initrack`, `settrack` imported from `track.js` and re-exported.
+- `leppie_avoidance` private helper (C:1143); `leppie_stash` TODO.
+- `set_apparxy` implements C:2201 but simplified: displacement details differ.
+- `can_unlock` now uses `monhaskey(mon, true) || iswiz || is_rider` (C:1768-faithful).
+- `mon_track_add` / `mon_track_clear` also called inline in `dogmove.js` (C ref: dogmove.c:1319).
+
+| C Function | C Line | JS Function | Status |
+|---|---|---|---|
+| `mon_track_add` | 79 | `mon_track_add` | Match (exported) |
+| `mon_track_clear` | 90 | `mon_track_clear` | Match (exported) |
+| `monhaskey` | 97 | `monhaskey` | Match (exported; now used in can_unlock) |
+| `mon_yells` | 107 | — | TODO (needs message system) |
+| `m_can_break_boulder` | 134 | — | TODO (needs mspec_used field) |
+| `m_break_boulder` | 144 | — | TODO (needs boulder fracture) |
+| `watch_on_duty` | 177 | — | TODO (needs in_town check, message system) |
+| `dochugw` | 205 | (inlined) | Subsumed into movemon loop |
+| `onscary` | 242 | `onscary` | Re-exported from mon.js |
+| `mon_regen` | 308 | — | TODO (needs HP/nutrition system) |
+| `disturb` | 328 | — | TODO (needs message system) |
+| `release_hero` | 363 | — | TODO (needs message system) |
+| `find_pmmonst` | 376 | — | TODO (needs monster list + mvitals access) |
+| `bee_eat_jelly` | 395 | — | TODO (needs grow_up, delobj) |
+| `gelcube_digests` | 425 | — | TODO (needs digestion system) |
+| `monflee` | 463 | (partial) | Subset in `applyMonflee` (combat.js); full version TODO |
+| `distfleeck` | 534 | — | TODO (brave_gremlin roll consumed but not applied) |
+| `m_arrival` | 575 | — | TODO (arrival effects not yet in JS) |
+| `mind_blast` | 584 | — | TODO (mind blast not yet in JS) |
+| `m_everyturn_effect` | 651 | — | TODO (per-turn effects) |
+| `m_postmove_effect` | 673 | — | TODO (post-move effects) |
+| `dochug` | 691 | `dochug` | Match (private; missing Conflict, covetous, m_respond) |
+| `mon_would_take_item` | 1003 | `mon_would_take_item_search` | Partial (used in m_search_items_goal) |
+| `leppie_avoidance` | 1143 | `leppie_avoidance` | Match (private) |
+| `m_avoid_kicked_loc` | 1301 | `m_avoid_kicked_loc` | Match (exported) |
+| `m_avoid_soko_push_loc` | 1317 | `m_avoid_soko_push_loc` | Match (exported) |
+| `m_search_items` | 1334 | `m_search_items_goal` | Renamed (private; returns goal coords rather than modifying output pointers) |
+| `m_move` | 1717 | `m_move` | Match (private; missing boulder-push, vault guard, covetous teleport) |
+| `m_move_aggress` | 2091 | `m_move_aggress` | Match (private; simplified — first attack only) |
+| `set_apparxy` | 2201 | `set_apparxy` | Match (private; displacement simplification noted) |
+| `movemon` | (in mon.c) | `movemon` | Match (exported; delegates to mon.js movemon with dochug callback) |
+
+

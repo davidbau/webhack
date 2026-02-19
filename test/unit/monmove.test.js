@@ -6,9 +6,10 @@ import assert from 'node:assert/strict';
 import { initRng } from '../../js/rng.js';
 import { COLNO, ROWNO, ROOM, STONE, HWALL, WATER } from '../../js/config.js';
 import { GameMap } from '../../js/map.js';
-import { movemon } from '../../js/monmove.js';
+import { movemon, mon_track_add, mon_track_clear, monhaskey, MTSZ } from '../../js/monmove.js';
 import { Player } from '../../js/player.js';
-import { GOLD_PIECE, COIN_CLASS, WEAPON_CLASS, ARMOR_CLASS, ORCISH_DAGGER, ORCISH_HELM } from '../../js/objects.js';
+import { GOLD_PIECE, COIN_CLASS, WEAPON_CLASS, ARMOR_CLASS, ORCISH_DAGGER, ORCISH_HELM,
+         SKELETON_KEY, LOCK_PICK, CREDIT_CARD } from '../../js/objects.js';
 import { mons, PM_GOBLIN, PM_LITTLE_DOG, AT_WEAP, G_NOCORPSE } from '../../js/monsters.js';
 
 // Mock display
@@ -424,5 +425,107 @@ describe('Monster movement', () => {
             ORCISH_HELM,
             'top floor object should match C drop ordering for this inventory layout'
         );
+    });
+});
+
+// ========================================================================
+// mon_track_add — C ref: monmove.c:79
+// ========================================================================
+
+describe('mon_track_add', () => {
+    function makeTrack() {
+        return [
+            { x: 0, y: 0 }, { x: 0, y: 0 },
+            { x: 0, y: 0 }, { x: 0, y: 0 },
+        ];
+    }
+
+    it('shifts existing entries and places new position at index 0', () => {
+        const mon = { mtrack: makeTrack() };
+        mon_track_add(mon, 5, 7);
+        assert.deepEqual(mon.mtrack[0], { x: 5, y: 7 });
+    });
+
+    it('preserves previous entry at index 1 after one add', () => {
+        const mon = { mtrack: makeTrack() };
+        mon_track_add(mon, 5, 7);
+        mon_track_add(mon, 10, 3);
+        assert.deepEqual(mon.mtrack[0], { x: 10, y: 3 });
+        assert.deepEqual(mon.mtrack[1], { x: 5, y: 7 });
+    });
+
+    it('oldest entry is dropped when ring is full', () => {
+        const mon = { mtrack: makeTrack() };
+        for (let i = 0; i < MTSZ; i++) mon_track_add(mon, i, i);
+        // After MTSZ adds, mtrack[MTSZ-1] holds the first-added position
+        assert.deepEqual(mon.mtrack[MTSZ - 1], { x: 0, y: 0 });
+    });
+
+    it('is a no-op when mon.mtrack is absent', () => {
+        assert.doesNotThrow(() => mon_track_add({}, 1, 2));
+        assert.doesNotThrow(() => mon_track_add(null, 1, 2));
+    });
+});
+
+// ========================================================================
+// mon_track_clear — C ref: monmove.c:90
+// ========================================================================
+
+describe('mon_track_clear', () => {
+    it('zeroes all track entries', () => {
+        const mon = {
+            mtrack: [{ x: 3, y: 4 }, { x: 5, y: 6 }, { x: 7, y: 8 }, { x: 9, y: 10 }],
+        };
+        mon_track_clear(mon);
+        for (const t of mon.mtrack) {
+            assert.deepEqual(t, { x: 0, y: 0 });
+        }
+    });
+
+    it('is a no-op when mon.mtrack is absent', () => {
+        assert.doesNotThrow(() => mon_track_clear({}));
+        assert.doesNotThrow(() => mon_track_clear(null));
+    });
+});
+
+// ========================================================================
+// monhaskey — C ref: monmove.c:97
+// ========================================================================
+
+describe('monhaskey', () => {
+    it('returns false when monster has no inventory', () => {
+        assert.equal(monhaskey({ minvent: [] }, true), false);
+        assert.equal(monhaskey({ minvent: [] }, false), false);
+    });
+
+    it('returns false when inventory has unrelated items', () => {
+        const mon = { minvent: [{ otyp: GOLD_PIECE }] };
+        assert.equal(monhaskey(mon, true), false);
+        assert.equal(monhaskey(mon, false), false);
+    });
+
+    it('returns true with SKELETON_KEY regardless of forUnlocking', () => {
+        const mon = { minvent: [{ otyp: SKELETON_KEY }] };
+        assert.equal(monhaskey(mon, true), true);
+        assert.equal(monhaskey(mon, false), true);
+    });
+
+    it('returns true with LOCK_PICK regardless of forUnlocking', () => {
+        const mon = { minvent: [{ otyp: LOCK_PICK }] };
+        assert.equal(monhaskey(mon, true), true);
+        assert.equal(monhaskey(mon, false), true);
+    });
+
+    it('returns true with CREDIT_CARD only when forUnlocking=true', () => {
+        const mon = { minvent: [{ otyp: CREDIT_CARD }] };
+        assert.equal(monhaskey(mon, true), true,
+            'credit card should count for unlocking');
+        assert.equal(monhaskey(mon, false), false,
+            'credit card should not count for non-unlocking (e.g. lock-picking)');
+    });
+
+    it('is a no-op when mon is null', () => {
+        assert.doesNotThrow(() => monhaskey(null, true));
+        assert.equal(monhaskey(null, true), false);
     });
 });

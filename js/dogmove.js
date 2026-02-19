@@ -50,7 +50,8 @@ import { dist2, distmin, monnear, mfndpos,
          canSpotMonsterForMap, rememberInvisibleAt,
          attackVerb, monAttackName,
          addToMonsterInventory, petCorpseChanceRoll, consumePassivemmRng,
-         MTSZ, SQSRCHRADIUS, FARAWAY } from './monmove.js';
+         MTSZ, SQSRCHRADIUS, FARAWAY,
+         mon_track_add } from './monmove.js';
 
 // ========================================================================
 // Constants — C ref: dogmove.c:11-13
@@ -1504,12 +1505,7 @@ export function dog_move(mon, map, player, display, fov, after = false, game = n
 
         // Update track history (shift old positions, add current)
         // C ref: dogmove.c:1319 — mon_track_add(mtmp, omx, omy)
-        if (mon.mtrack) {
-            for (let k = MTSZ - 1; k > 0; k--) {
-                mon.mtrack[k] = mon.mtrack[k - 1];
-            }
-            mon.mtrack[0] = { x: omx, y: omy };
-        }
+        mon_track_add(mon, omx, omy);
         mon.mx = nix;
         mon.my = niy;
 
