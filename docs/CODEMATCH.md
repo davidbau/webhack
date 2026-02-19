@@ -101,8 +101,8 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[a]` | mthrowu.c | mthrowu.js | Monster ranged attacks: m_throw, thrwmu, lined_up, select_rwep, monmulti |
 | `[ ]` | muse.c | — | Monster item usage AI |
 | `[ ]` | music.c | — | Musical instruments |
-| `[~]` | nhlobj.c | — | Lua object utilities (place, container ops). JS: in `sp_lev.js` |
-| `[~]` | nhlsel.c | — | Lua selection bindings (wrap selvar.c). JS: in `sp_lev.js` |
+| `[N/A]` | nhlobj.c | — | Lua object bindings (l_obj_*). All 21 functions are Lua C API wrappers; JS port uses direct function calls (object(), monster() in sp_lev.js) with no Lua interpreter |
+| `[N/A]` | nhlsel.c | — | Lua selection bindings (l_selection_*). All ~40 functions wrap selvar.c for Lua; JS port uses the `selection` object exported from sp_lev.js directly |
 | `[N/A]` | nhlua.c | — | Lua interpreter integration |
 | `[N/A]` | nhmd4.c | — | MD4 hash implementation |
 | `[a]` | o_init.c | o_init.js | Object class initialization. Core shuffle functions aligned; discovery functions in `discovery.js` |
@@ -128,7 +128,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | role.c | — | Role/race/gender selection. JS: `player.js` |
 | `[ ]` | rumors.c | — | Rumor system. JS: `rumor_data.js` (data only) |
 | `[ ]` | save.c | — | Game save. JS: `storage.js` |
-| `[~]` | selvar.c | — | Selection geometry (flood, ellipse, gradient, line). JS: in `sp_lev.js` |
+| `[a]` | selvar.c | — | Selection geometry. JS: `selection` object in `sp_lev.js`. Most geometry functions aligned; ellipse/gradient/is_irregular/size_description not yet implemented |
 | `[N/A]` | sfbase.c | — | Save file base I/O routines |
 | `[N/A]` | sfstruct.c | — | Save file structure definitions |
 | `[~]` | shk.c | — | Shopkeeper behavior. JS: partially in `shknam.js` |
@@ -168,12 +168,12 @@ don't follow the same 1:1 C→JS mapping pattern.
 ### Summary
 
 - **Total C files**: 129
-- **N/A (system/platform)**: 19
-- **Game logic files**: 110
+- **N/A (system/platform)**: 21
+- **Game logic files**: 108
 - **Complete (`[x]`)**: 4
-- **Aligned (`[a]`)**: 18
+- **Aligned (`[a]`)**: 19
 - **Present (`[p]`)**: 1
-- **Needs alignment (`[~]`)**: 12
+- **Needs alignment (`[~]`)**: 9
 - **No JS file yet (`[ ]`)**: 75
 
 ### JS Files Without C Counterparts
@@ -618,4 +618,113 @@ Notes:
 | `couldsee` (macro) | vision.h | `couldsee` | 665 | Ported as function (exported) |
 | `m_cansee` (macro) | vision.h | `m_cansee` | 658 | Ported as function (exported) |
 
+
+### nhlobj.c — N/A (Lua bindings)
+
+All 21 functions in nhlobj.c are Lua C API wrappers (`l_obj_*` / `nhl_*`). The JS port has no Lua
+interpreter; object manipulation is handled by direct JS function calls (`object()`, `monster()`, etc.)
+exported from `sp_lev.js`. No function-level mapping exists.
+
+| C Function | Notes |
+|---|---|
+| `l_obj_check` | Lua type check helper — N/A |
+| `l_obj_gc` | Lua GC finalizer — N/A |
+| `l_obj_push` | Push obj onto Lua stack — N/A |
+| `nhl_push_obj` | Public push (called from nhlua.c) — N/A |
+| `nhl_obj_u_giveobj` | Give obj to player via Lua — N/A |
+| `l_obj_getcontents` | Iterate container contents — N/A |
+| `l_obj_add_to_container` | Place obj into container — N/A |
+| `l_obj_objects_to_table` | Serialize obj list to Lua table — N/A |
+| `l_obj_to_table` | Serialize single obj to Lua table — N/A |
+| `l_obj_new_readobjnam` | Create obj from name string — N/A |
+| `l_obj_at` | Get obj at map location — N/A |
+| `l_obj_placeobj` | Place obj at coordinates — N/A |
+| `l_obj_nextobj` | Iterator: next obj in list — N/A |
+| `l_obj_container` | Get containing obj — N/A |
+| `l_obj_isnull` | Null check — N/A |
+| `l_obj_timer_has` | Check obj timer — N/A |
+| `l_obj_timer_peek` | Read obj timer value — N/A |
+| `l_obj_timer_stop` | Stop obj timer — N/A |
+| `l_obj_timer_start` | Start obj timer — N/A |
+| `l_obj_bury` | Bury obj in floor — N/A |
+| `l_obj_register` | Register Lua metatable — N/A |
+
+### nhlsel.c — N/A (Lua selection bindings)
+
+All ~40 functions in nhlsel.c are Lua C API wrappers (`l_selection_*`) that expose `selvar.c`
+selection geometry to Lua scripts. The JS port uses the `selection` object exported from `sp_lev.js`
+directly. See selvar.c section below for the geometry function mapping.
+
+| C Function | Notes |
+|---|---|
+| `l_selection_check` | Lua type check — N/A |
+| `l_selection_push_new` | Lua stack alloc — N/A |
+| `l_selection_push_copy` | Lua stack copy — N/A |
+| `l_selection_to` | Lua type coerce — N/A |
+| `l_selection_gc` | Lua GC finalizer — N/A |
+| `l_selection_new` | Wraps `selection_new` → `selection.new()` in JS |
+| `l_selection_clone` | Wraps `selection_clone` → N/A in JS (GC, create new) |
+| `l_selection_numpoints` | `sel.numpoints()` |
+| `l_selection_getpoint` | Access coords array directly in JS |
+| `l_selection_setpoint` | `sel.set(x, y)` |
+| `l_selection_not` | `sel.negate()` |
+| `l_selection_and` | `sel.intersect(other)` |
+| `l_selection_or` | `sel.union(other)` |
+| `l_selection_xor` | N/A (not yet in JS) |
+| `l_selection_sub` | N/A (not yet in JS) |
+| `l_selection_filter_percent` | `sel.percentage(pct)` |
+| `l_selection_rndcoord` | `sel.rndcoord()` |
+| `l_selection_room` | `selection.room()` |
+| `l_selection_getbounds` | `sel.bounds()` |
+| `params_sel_2coords` | Internal helper — N/A |
+| `l_selection_line` | `selection.line(x1, y1, x2, y2)` |
+| `l_selection_randline` | `selection.randline(x1, y1, x2, y2, roughness)` |
+| `l_selection_rect` | `selection.rect(x1, y1, x2, y2)` |
+| `l_selection_fillrect` | `selection.fillrect(x1, y1, x2, y2)` |
+| `l_selection_grow` | `sel.grow(iterations)` |
+| `l_selection_filter_mapchar` | `sel.filter_mapchar(ch)` |
+| `l_selection_match` | `selection.match(pattern)` |
+| `l_selection_flood` | `selection.floodfill(x, y, matchFn)` |
+| `l_selection_circle` | N/A (not yet in JS) |
+| `l_selection_ellipse` | N/A (not yet in JS) |
+| `l_selection_gradient` | N/A (not yet in JS) |
+| `l_selection_iterate` | `sel.iterate(func)` |
+| `l_selection_size_description` | N/A (not yet in JS) |
+| `l_selection_ipairs` | Lua ipairs protocol — N/A |
+| `l_selection_register` | Lua metatable registration — N/A |
+
+### selvar.c → sp_lev.js (`selection` object)
+
+Selection geometry functions are implemented as methods of the `selection` object exported from
+`sp_lev.js` (line 6813). The Lua-specific memory management (`selection_free`, `selection_clear`,
+`selection_clone`) is handled by GC. The Lua binding wrapper functions are in nhlsel.c (N/A).
+
+| C Function | C Line | JS Equivalent | JS Line | Notes |
+|---|---|---|---|---|
+| `selection_new` | 15 | `selection.new()` | 7081 | Match |
+| `selection_free` | 33 | N/A | — | GC handles memory |
+| `selection_clear` | 48 | N/A | — | GC — create new instead |
+| `selection_clone` | 65 | N/A | — | GC — create new and copy |
+| `selection_getbounds` | 77 | `sel.bounds()` | 7159 | Match |
+| `selection_recalc_bounds` | 99 | N/A | — | Bounds recalculated on demand |
+| `selection_getpoint` | 168 | (coords array) | — | Access coords directly |
+| `selection_setpoint` | 181 | `sel.set(x, y)` | 7105 | Match |
+| `selection_not` | 211 | `sel.negate()` | 7183 | Match (also `selection.negate(sel)` at 7335) |
+| `selection_filter_percent` | 224 | `sel.percentage(pct)` | 7121 | Match (also `selection.percentage(sel, pct)` at 7384) |
+| `selection_filter_mapchar` | 248 | `sel.filter_mapchar(ch)` | 7176 | Match (also `selection.filter_mapchar(sel, ch)` at 7555) |
+| `selection_rndcoord` | 284 | `sel.rndcoord()` | 7131 | Match (also `selection.rndcoord(sel)` at 7241) |
+| `selection_do_grow` | 321 | `sel.grow(n)` | 7190 | Match (also `selection.grow(sel, n)` at 7282) |
+| `set_selection_floodfillchk` | 372 | N/A | — | JS closures capture matchFn directly |
+| `sel_flood_havepoint` | 379 | N/A | — | Internal staticfn helper |
+| `selection_floodfill` | 395 | `selection.floodfill(x, y, matchFn)` | 7415 | Match |
+| `selection_do_ellipse` | 456 | N/A | — | TODO (not yet in JS) |
+| `line_dist_coord` | 542 | N/A | — | Internal helper for gradient |
+| `selection_do_gradient` | 570 | N/A | — | TODO (not yet in JS) |
+| `selection_do_line` | 626 | `selection.line(x1, y1, x2, y2)` | 6980 | Match (Bresenham) |
+| `selection_do_randline` | 683 | `selection.randline(...)` | 7011 | Match |
+| `selection_iterate` | 726 | `sel.iterate(func)` | 7149 | Match |
+| `selection_is_irregular` | 747 | N/A | — | Not yet in JS |
+| `selection_size_description` | 764 | N/A | — | Not yet in JS |
+| `selection_from_mkroom` | 781 | `selection.room()` | 6824 | Match (C ref comment present in JS) |
+| `selection_force_newsyms` | 802 | N/A | — | Display concern — not needed in JS |
 
