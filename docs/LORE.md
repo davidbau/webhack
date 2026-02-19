@@ -676,6 +676,11 @@ Practical rule: when replay sees this exact signature, do not execute the timed
 turn on the bookkeeping frame; defer it to the next captured frame so state and
 RNG attribution match C keylog boundaries.
 
+Additional replay rule: apply screen-driven HP/PW/AC stat sync after sparse
+boundary carry attribution, and skip that sync on the frame exporting deferred
+RNG/state. Otherwise, source-frame HP can be restored too early (for example,
+after projectile damage) and later deferred turn-end RNG (`regen_hp`) drifts.
+
 ### Throw `?` overlay menus can require a right-offset cap at column 41
 
 In non-wizard tourist gameplay, the throw prompt (`What do you want to throw?`)

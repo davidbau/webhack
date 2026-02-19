@@ -1133,6 +1133,37 @@ export async function replaySession(seed, session, opts = {}) {
             screen: normalizedScreen,
             screenAnsi: normalizedScreenAnsi,
         });
+        // Sync player stats from session screen data unless this step exported
+        // deferred RNG/state to a later frame. For deferred-source steps, keep
+        // runtime state so downstream deferred turns can observe prior effects
+        // (for example, projectile damage before regen checks).
+        if (deferredMoreBoundarySource !== stepIndex && stepScreen.length > 0) {
+            for (const line of stepScreen) {
+                const hpm = line.match(/HP:(\d+)\((\d+)\)/);
+                if (hpm) {
+                    game.player.hp = parseInt(hpm[1]);
+                    game.player.hpmax = parseInt(hpm[2]);
+                }
+                const hpmPw = line.match(/HP:(\d+)\((\d+)\)\s+Pw:(\d+)\((\d+)\)\s+AC:([-]?\d+)/);
+                if (hpmPw) {
+                    game.player.hp = parseInt(hpmPw[1]);
+                    game.player.hpmax = parseInt(hpmPw[2]);
+                    game.player.pw = parseInt(hpmPw[3]);
+                    game.player.pwmax = parseInt(hpmPw[4]);
+                    game.player.ac = parseInt(hpmPw[5]);
+                }
+                const attrm = line.match(/St:([0-9/*]+)\s+Dx:(\d+)\s+Co:(\d+)\s+In:(\d+)\s+Wi:(\d+)\s+Ch:(\d+)/);
+                if (attrm) {
+                    game.player._screenStrength = attrm[1];
+                    game.player.attributes[0] = attrm[1].includes('/') ? 18 : parseInt(attrm[1]); // A_STR
+                    game.player.attributes[1] = parseInt(attrm[4]); // A_INT (In)
+                    game.player.attributes[2] = parseInt(attrm[5]); // A_WIS (Wi)
+                    game.player.attributes[3] = parseInt(attrm[2]); // A_DEX (Dx)
+                    game.player.attributes[4] = parseInt(attrm[3]); // A_CON (Co)
+                    game.player.attributes[5] = parseInt(attrm[6]); // A_CHA (Ch)
+                }
+            }
+        }
     };
     for (let stepIndex = 0; stepIndex < maxSteps; stepIndex++) {
         const step = allSteps[stepIndex];
@@ -1841,7 +1872,6 @@ export async function replaySession(seed, session, opts = {}) {
                         game.multi = 0;
                         game.advanceRunTurn = async () => {
                             applyTimedTurn(true);
-                            syncHpFromStepScreen();
                         };
                         const passthroughPromise = rhack(passthroughCh, game);
                         const settledPassthrough = await Promise.race([
@@ -1928,7 +1958,6 @@ export async function replaySession(seed, session, opts = {}) {
             game.cmdKey = execCh;
             game.advanceRunTurn = async () => {
                 applyTimedTurn(true);
-                syncHpFromStepScreen();
             };
             const commandPromise = rhack(execCh, game);
             const settled = await Promise.race([
@@ -2137,37 +2166,6 @@ export async function replaySession(seed, session, opts = {}) {
                         game.multi = 0;
                         break;
                     }
-                }
-            }
-        }
-
-        // Sync player stats from session screen data.
-        // JS doesn't fully model monster-to-player combat damage or healing,
-        // so we use the authoritative screen state to keep HP/attributes in sync.
-        if (stepScreen.length > 0) {
-            for (const line of stepScreen) {
-                const hpm = line.match(/HP:(\d+)\((\d+)\)/);
-                if (hpm) {
-                    game.player.hp = parseInt(hpm[1]);
-                    game.player.hpmax = parseInt(hpm[2]);
-                }
-                const hpmPw = line.match(/HP:(\d+)\((\d+)\)\s+Pw:(\d+)\((\d+)\)\s+AC:([-]?\d+)/);
-                if (hpmPw) {
-                    game.player.hp = parseInt(hpmPw[1]);
-                    game.player.hpmax = parseInt(hpmPw[2]);
-                    game.player.pw = parseInt(hpmPw[3]);
-                    game.player.pwmax = parseInt(hpmPw[4]);
-                    game.player.ac = parseInt(hpmPw[5]);
-                }
-                const attrm = line.match(/St:([0-9/*]+)\s+Dx:(\d+)\s+Co:(\d+)\s+In:(\d+)\s+Wi:(\d+)\s+Ch:(\d+)/);
-                if (attrm) {
-                    game.player._screenStrength = attrm[1];
-                    game.player.attributes[0] = attrm[1].includes('/') ? 18 : parseInt(attrm[1]); // A_STR
-                    game.player.attributes[1] = parseInt(attrm[4]); // A_INT (In)
-                    game.player.attributes[2] = parseInt(attrm[5]); // A_WIS (Wi)
-                    game.player.attributes[3] = parseInt(attrm[2]); // A_DEX (Dx)
-                    game.player.attributes[4] = parseInt(attrm[3]); // A_CON (Co)
-                    game.player.attributes[5] = parseInt(attrm[6]); // A_CHA (Ch)
                 }
             }
         }
