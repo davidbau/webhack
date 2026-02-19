@@ -5,8 +5,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { initRng } from '../../js/rng.js';
 import { ACCESSIBLE } from '../../js/config.js';
-import { makemon, rndmonnum, NO_MM_FLAGS, MM_NOGRP, setMakemonPlayerContext } from '../../js/makemon.js';
-import { mons } from '../../js/monsters.js';
+import { makemon, rndmonnum, NO_MM_FLAGS, MM_NOGRP, setMakemonPlayerContext, mbirth_limit } from '../../js/makemon.js';
+import { mons, PM_NAZGUL, PM_ERINYS, PM_LITTLE_DOG } from '../../js/monsters.js';
 import { initLevelGeneration, makelevel, wallification } from '../../js/dungeon.js';
 
 describe('Monster creation (C-faithful)', () => {
@@ -141,5 +141,27 @@ describe('Level monster population (C-faithful)', () => {
             assert.ok(Array.isArray(mon.attacks), `${mon.name} should have attacks array`);
             assert.ok(Array.isArray(mon.mtrack), `${mon.name} should have mtrack array`);
         }
+    });
+});
+
+// ========================================================================
+// mbirth_limit
+// ========================================================================
+
+describe('mbirth_limit', () => {
+    it('returns 9 for PM_NAZGUL', () => {
+        assert.equal(mbirth_limit(PM_NAZGUL), 9);
+    });
+
+    it('returns 3 for PM_ERINYS', () => {
+        assert.equal(mbirth_limit(PM_ERINYS), 3);
+    });
+
+    it('returns 120 (MAXMONNO) for ordinary monsters', () => {
+        assert.equal(mbirth_limit(PM_LITTLE_DOG), 120);
+    });
+
+    it('returns 120 for index 0', () => {
+        assert.equal(mbirth_limit(0), 120);
     });
 });

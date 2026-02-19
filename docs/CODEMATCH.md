@@ -82,7 +82,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | light.c | — | Light source management |
 | `[ ]` | lock.c | — | Lock picking and door opening |
 | `[N/A]` | mail.c | — | In-game mail system (uses real mail on Unix) |
-| `[a]` | makemon.c | makemon.js | Monster creation. Core functions aligned; clone_mon/propagate/mbirth_limit TODO |
+| `[a]` | makemon.c | makemon.js | Monster creation. Core functions aligned; clone_mon/propagate TODO |
 | `[ ]` | mcastu.c | — | Monster spellcasting |
 | `[N/A]` | mdlib.c | — | Metadata library utilities |
 | `[ ]` | mhitm.c | — | Monster-vs-monster combat |
@@ -611,7 +611,7 @@ Notes:
 | `makemon_rnd_goodpos` | 1078 | `makemon_rnd_goodpos` | 1548 | Match (private) |
 | `makemon` | 1149 | `makemon` | 1648 | Match (exported) |
 | `unmakemon` | 1511 | — | — | TODO (remove monster from map; not yet needed) |
-| `mbirth_limit` | 1539 | — | — | TODO (birth limit not yet tracked) |
+| `mbirth_limit` | 1539 | `mbirth_limit` | 561 | Match (exported) |
 | `create_critters` | 1553 | — | — | TODO (special level monster creation) |
 | `uncommon` | 1590 | `uncommon` | 286 | Match (private) |
 | `align_shift` | 1608 | `align_shift` | 297 | Match (private) |

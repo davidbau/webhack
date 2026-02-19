@@ -555,6 +555,14 @@ export function def_char_to_monclass(ch) {
     return MAXMCLASSES;
 }
 
+// cf. makemon.c:1539 — return the birth limit for a monster type
+// (how many of this monster can exist before the population is considered too large)
+// C ref: global.h MAXMONNO = 120
+export function mbirth_limit(mndx) {
+    const MAXMONNO = 120;
+    return mndx === PM_NAZGUL ? 9 : mndx === PM_ERINYS ? 3 : MAXMONNO;
+}
+
 // ========================================================================
 // newmonhp -- HP calculation (exact C port)
 // C ref: makemon.c:1013-1055
