@@ -2184,6 +2184,12 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
     // so during movemon() svm.moves = (completed turns + 1).
     // JS player.turns is incremented after movemon(), so add 1 to match C.
     const turnCount = (player.turns || 0) + 1;
+    const env = (typeof process !== 'undefined' && process.env) ? process.env : null;
+    const dogGoalTraceStep = env?.WEBHACK_DOGGOAL_TRACE_STEP;
+    const dogGoalTraceEnabled = !!dogGoalTraceStep;
+    const dogGoalStepLabel = monmoveStepLabel(map);
+    const traceDogGoal = dogGoalTraceEnabled
+        && (dogGoalTraceStep === dogGoalStepLabel || dogGoalTraceStep === '*');
 
     // C ref: dogmove.c:1024-1029 — dog_invent before dog_goal
     if (edog) {
@@ -2227,6 +2233,14 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
         gx = player.x;
         gy = player.y;
     } else {
+        if (traceDogGoal) {
+            console.log('[DOGGOAL_TRACE]',
+                `step=${dogGoalStepLabel}`,
+                `mon=${mon.m_id ?? '?'}`,
+                `pos=(${omx},${omy})`,
+                `range=[${minX}..${maxX}]x[${minY}..${maxY}]`,
+                `objects=${map.objects.length}`);
+        }
         // C ref: dog_goal iterates fobj (ALL objects on level)
         // C's fobj is LIFO (place_object prepends), so iterate in reverse to match
         for (let oi = map.objects.length - 1; oi >= 0; oi--) {
@@ -2235,6 +2249,18 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
             const ox = obj.ox, oy = obj.oy;
 
             if (ox < minX || ox > maxX || oy < minY || oy > maxY) continue;
+
+            if (traceDogGoal) {
+                console.log('[DOGGOAL_TRACE]',
+                    `step=${dogGoalStepLabel}`,
+                    `mon=${mon.m_id ?? '?'}`,
+                    `oi=${oi}`,
+                    `obj=${obj?.o_id ?? '?'}`,
+                    `otyp=${obj?.otyp ?? '?'}`,
+                    `xy=(${ox},${oy})`,
+                    `cursed=${obj?.cursed ? 1 : 0}`,
+                    `opoisoned=${obj?.opoisoned ? 1 : 0}`);
+            }
 
             const otyp = dogfood(mon, obj, turnCount);
             // C ref: dogmove.c:526 — skip inferior goals
