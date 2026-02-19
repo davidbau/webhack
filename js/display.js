@@ -145,6 +145,59 @@ const TERRAIN_SYMBOLS_DEC = {
     [SCORR]:   { ch: ' ', color: CLR_GRAY },
 };
 
+// seenv angle bits (C ref: rm.h:379-386)
+const SV0 = 0x01, SV1 = 0x02, SV2 = 0x04, SV3 = 0x08;
+const SV4 = 0x10, SV5 = 0x20, SV6 = 0x40, SV7 = 0x80;
+
+// WM_MASK constants (C ref: rm.h:287,353-354)
+const WM_MASK = 0x07;
+const WM_C_OUTER = 1;
+const WM_C_INNER = 2;
+
+// Check whether a wall cell should render as stone (invisible) based on
+// its seenv bits and wall_info mode.  Returns true if the wall should be
+// visible, false if it should show as stone.
+// C ref: display.c:3502-3765 wall_angle()
+function wallIsVisible(typ, seenv, wallInfo) {
+    if (!seenv) return false;
+    const mode = wallInfo & WM_MASK;
+    switch (typ) {
+    case VWALL:
+        if (mode === 0) return true;
+        if (mode === 1) return !!(seenv & (SV1 | SV2 | SV3 | SV4 | SV5));
+        if (mode === 2) return !!(seenv & (SV0 | SV1 | SV5 | SV6 | SV7));
+        return true;
+    case HWALL:
+        if (mode === 0) return true;
+        if (mode === 1) return !!(seenv & (SV3 | SV4 | SV5 | SV6 | SV7));
+        if (mode === 2) return !!(seenv & (SV0 | SV1 | SV2 | SV3 | SV7));
+        return true;
+    case TLCORNER:
+        if (mode === 0) return true;
+        if (mode === WM_C_OUTER) return !!(seenv & (SV3 | SV4 | SV5));
+        if (mode === WM_C_INNER) return !!(seenv & ~SV4);
+        return true;
+    case TRCORNER:
+        if (mode === 0) return true;
+        if (mode === WM_C_OUTER) return !!(seenv & (SV5 | SV6 | SV7));
+        if (mode === WM_C_INNER) return !!(seenv & ~SV6);
+        return true;
+    case BLCORNER:
+        if (mode === 0) return true;
+        if (mode === WM_C_OUTER) return !!(seenv & (SV1 | SV2 | SV3));
+        if (mode === WM_C_INNER) return !!(seenv & ~SV2);
+        return true;
+    case BRCORNER:
+        if (mode === 0) return true;
+        if (mode === WM_C_OUTER) return !!(seenv & (SV7 | SV0 | SV1));
+        if (mode === WM_C_INNER) return !!(seenv & ~SV0);
+        return true;
+    default:
+        // T-walls, crosswalls, and other types: always visible if seenv > 0
+        return true;
+    }
+}
+
 export class Display {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
@@ -423,7 +476,12 @@ export class Display {
                             this.cellInfo[row][col] = { name: 'remembered trap', desc: '(remembered)', color: CLR_BLACK };
                             continue;
                         }
-                        // Show remembered (dimmed)
+                        // Show remembered (dimmed) — check wall_angle first
+                        if (IS_WALL(loc.typ) && !wallIsVisible(loc.typ, loc.seenv, loc.flags)) {
+                            this.setCell(col, row, ' ', CLR_GRAY);
+                            this.cellInfo[row][col] = null;
+                            continue;
+                        }
                         const sym = this.terrainSymbol(loc, gameMap, x, y);
                         const rememberedColor = (loc.typ === ROOM) ? NO_COLOR : sym.color;
                         this.setCell(col, row, sym.ch, rememberedColor);
@@ -443,8 +501,8 @@ export class Display {
                     continue;
                 }
 
-                // Mark as seen
-                loc.seenv = 0xFF;
+                // seenv is now tracked by the vision code (vision.js compute())
+                // which sets the correct angle bits per direction.
 
                 // Check for player at this position
                 if (player && x === player.x && y === player.y) {
@@ -538,7 +596,14 @@ export class Display {
                     }
                 }
 
-                // Show terrain
+                // Show terrain — check wall_angle visibility first
+                // C ref: display.c:2311 — wall_angle returns S_stone for
+                // walls not visible from the current seenv angles
+                if (IS_WALL(loc.typ) && !wallIsVisible(loc.typ, loc.seenv, loc.flags)) {
+                    this.setCell(col, row, ' ', CLR_GRAY);
+                    this.cellInfo[row][col] = null;
+                    continue;
+                }
                 const sym = this.terrainSymbol(loc, gameMap, x, y);
                 this.setCell(col, row, sym.ch, sym.color);
                 const desc = this._terrainDesc(loc);

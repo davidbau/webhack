@@ -5,7 +5,8 @@
 
 import { COLNO, ROWNO, DOOR, SDOOR, POOL,
          IS_WALL, IS_DOOR, isok,
-         D_CLOSED, D_LOCKED } from './config.js';
+         D_CLOSED, D_LOCKED,
+         CROSSWALL, TRWALL } from './config.js';
 import { BOULDER } from './objects.js';
 
 // Vision bit flags (C ref: vision.h)
@@ -18,6 +19,19 @@ let cs_rows, cs_left, cs_right;
 let viz_clear;  // reference to FOV instance's viz_clear
 
 function sign(z) { return z < 0 ? -1 : (z ? 1 : 0); }
+
+// seenv angle bits (C ref: rm.h:379-386)
+const SV0 = 0x01, SV1 = 0x02, SV2 = 0x04, SV3 = 0x08;
+const SV4 = 0x10, SV5 = 0x20, SV6 = 0x40, SV7 = 0x80;
+const SVALL = 0xFF;
+
+// C ref: display.c:3347-3351
+// seenv_matrix[dy+1][dx+1] gives the seenv bit for direction (dx,dy) from hero
+const seenv_matrix = [
+    [ SV2, SV1, SV0 ],   // dy=-1 (above hero)
+    [ SV3, SVALL, SV7 ],  // dy=0  (same row)
+    [ SV4, SV5, SV6 ],    // dy=+1 (below hero)
+];
 
 // ========================================================================
 // does_block() -- what blocks vision
@@ -477,17 +491,15 @@ export class FOV {
         // Run Algorithm C to compute COULD_SEE
         view_from(py, px, cs, csLeft, csRight);
 
-        // Apply night vision (range 1): adjacent squares with COULD_SEE get IN_SIGHT
+        // Apply night vision (range 1): adjacent squares with COULD_SEE get IN_SIGHT.
         // C ref: vision.c:670-699 (u.nv_range = 1 for standard hero)
+        // C marks ALL cells with COULD_SEE within nv_range as IN_SIGHT — no
+        // viz_clear check — so walls adjacent to the hero are visible.
         for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
                 const nx = px + dx, ny = py + dy;
                 if (nx >= 0 && nx < COLNO && ny >= 0 && ny < ROWNO) {
                     if (!cs[ny][nx]) continue;
-                    if (!this.viz_clear[ny][nx]) {
-                        const nloc = gameMap.at(nx, ny);
-                        if (!nloc || nloc.typ !== DOOR) continue;
-                    }
                     cs[ny][nx] |= IN_SIGHT;
                 }
             }
@@ -527,6 +539,47 @@ export class FOV {
 
         // Store cs_array for couldsee() checks
         this._cs = cs;
+
+        // Update seenv on map cells for wall angle tracking.
+        // C ref: vision.c:747-749 — seenv |= new_angle(lev, sv, row, col)
+        // Hero's own cell always gets SVALL.
+        const heroLoc = gameMap.at(px, py);
+        if (heroLoc) heroLoc.seenv = SVALL;
+
+        for (let row = 0; row < ROWNO; row++) {
+            for (let col = 0; col < COLNO; col++) {
+                if (!(cs[row][col] & IN_SIGHT)) continue;
+                if (col === px && row === py) continue; // hero handled above
+                const loc = gameMap.at(col, row);
+                if (!loc) continue;
+                const dx = sign(col - px);    // C: colbump-based, effectively sign(col - u.ux)
+                const dy = sign(py - row);    // C: sign(u.uy - row) — note opposite sign
+                let sv = seenv_matrix[dy + 1][dx + 1];
+                // C ref: vision.c:414-451 new_angle() extension for
+                // crosswalls/T-walls: extend spine if adjacent cell is clear.
+                if (loc.typ >= CROSSWALL && loc.typ <= TRWALL) {
+                    switch (sv) {
+                    case SV0:
+                        if (col > 0 && this.viz_clear[row][col - 1]) sv |= SV7;
+                        if (row > 0 && this.viz_clear[row - 1][col]) sv |= SV1;
+                        break;
+                    case SV2:
+                        if (row > 0 && this.viz_clear[row - 1][col]) sv |= SV1;
+                        if (col < COLNO - 1 && this.viz_clear[row][col + 1]) sv |= SV3;
+                        break;
+                    case SV4:
+                        if (col < COLNO - 1 && this.viz_clear[row][col + 1]) sv |= SV3;
+                        if (row < ROWNO - 1 && this.viz_clear[row + 1][col]) sv |= SV5;
+                        break;
+                    case SV6:
+                        if (row < ROWNO - 1 && this.viz_clear[row + 1][col]) sv |= SV5;
+                        if (col > 0 && this.viz_clear[row][col - 1]) sv |= SV7;
+                        break;
+                    }
+                }
+                loc.seenv |= sv;
+            }
+        }
 
         // Copy to visible[x][y] for canSee() API
         for (let x = 0; x < COLNO; x++) {

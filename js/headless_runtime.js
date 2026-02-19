@@ -46,6 +46,53 @@ import {
     D_ISOPEN, D_CLOSED, D_LOCKED,
 } from './config.js';
 
+// seenv angle bits (C ref: rm.h:379-386)
+const SV0 = 0x01, SV1 = 0x02, SV2 = 0x04, SV3 = 0x08;
+const SV4 = 0x10, SV5 = 0x20, SV6 = 0x40, SV7 = 0x80;
+const WM_MASK = 0x07;
+const WM_C_OUTER = 1;
+const WM_C_INNER = 2;
+
+// C ref: display.c:3502-3765 wall_angle() — check if wall should render
+function wallIsVisible(typ, seenv, wallInfo) {
+    if (!seenv) return false;
+    const mode = wallInfo & WM_MASK;
+    switch (typ) {
+    case VWALL:
+        if (mode === 0) return true;
+        if (mode === 1) return !!(seenv & (SV1 | SV2 | SV3 | SV4 | SV5));
+        if (mode === 2) return !!(seenv & (SV0 | SV1 | SV5 | SV6 | SV7));
+        return true;
+    case HWALL:
+        if (mode === 0) return true;
+        if (mode === 1) return !!(seenv & (SV3 | SV4 | SV5 | SV6 | SV7));
+        if (mode === 2) return !!(seenv & (SV0 | SV1 | SV2 | SV3 | SV7));
+        return true;
+    case TLCORNER:
+        if (mode === 0) return true;
+        if (mode === WM_C_OUTER) return !!(seenv & (SV3 | SV4 | SV5));
+        if (mode === WM_C_INNER) return !!(seenv & ~SV4);
+        return true;
+    case TRCORNER:
+        if (mode === 0) return true;
+        if (mode === WM_C_OUTER) return !!(seenv & (SV5 | SV6 | SV7));
+        if (mode === WM_C_INNER) return !!(seenv & ~SV6);
+        return true;
+    case BLCORNER:
+        if (mode === 0) return true;
+        if (mode === WM_C_OUTER) return !!(seenv & (SV1 | SV2 | SV3));
+        if (mode === WM_C_INNER) return !!(seenv & ~SV2);
+        return true;
+    case BRCORNER:
+        if (mode === 0) return true;
+        if (mode === WM_C_OUTER) return !!(seenv & (SV7 | SV0 | SV1));
+        if (mode === WM_C_INNER) return !!(seenv & ~SV0);
+        return true;
+    default:
+        return true;
+    }
+}
+
 const DEFAULT_GAME_FLAGS = {
     pickup: false,
     verbose: false,
@@ -1745,6 +1792,10 @@ export class HeadlessDisplay {
                             this.setCell(col, row, loc.mem_trap, CLR_BLACK);
                             continue;
                         }
+                        if (IS_WALL(loc.typ) && !wallIsVisible(loc.typ, loc.seenv, loc.flags)) {
+                            this.setCell(col, row, ' ', CLR_GRAY);
+                            continue;
+                        }
                         const sym = this.terrainSymbol(loc, gameMap, x, y);
                         const rememberedColor = (loc.typ === ROOM) ? 8 : sym.color;
                         this.setCell(col, row, sym.ch, rememberedColor);
@@ -1760,7 +1811,7 @@ export class HeadlessDisplay {
                     continue;
                 }
 
-                loc.seenv = 0xFF;
+                // seenv is now tracked by vision.js compute()
 
                 if (player && x === player.x && y === player.y) {
                     this.setCell(col, row, '@', CLR_WHITE);
@@ -1832,6 +1883,10 @@ export class HeadlessDisplay {
                     }
                 }
 
+                if (IS_WALL(loc.typ) && !wallIsVisible(loc.typ, loc.seenv, loc.flags)) {
+                    this.setCell(col, row, ' ', CLR_GRAY);
+                    continue;
+                }
                 const sym = this.terrainSymbol(loc, gameMap, x, y);
                 this.setCell(col, row, sym.ch, sym.color);
             }
