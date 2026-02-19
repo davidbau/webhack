@@ -143,6 +143,7 @@ export class TmuxAdapter extends GameAdapter {
         const name = options.name || 'Agent';
         const gender = options.gender || 'female';
         const align = options.align || 'neutral';
+        const tutorial = options.tutorial === true;
         const rngLogPath = options.rngLogPath || null;
         const wizard = options.wizard !== undefined ? options.wizard : true;
 
@@ -159,9 +160,9 @@ export class TmuxAdapter extends GameAdapter {
             `OPTIONS=align:${align}`,
             'OPTIONS=showexp',
             'OPTIONS=!autopickup',
-            'OPTIONS=!tutorial',
             'OPTIONS=suppress_alert:3.4.3',
         ];
+        rcOptions.push(tutorial ? 'OPTIONS=tutorial' : 'OPTIONS=!tutorial');
 
         // Add symbol set if specified
         if (this.symset === 'DECgraphics') {
@@ -202,7 +203,7 @@ export class TmuxAdapter extends GameAdapter {
         this._running = true;
 
         // Skip through character selection if needed
-        await this._skipChargen();
+        await this._skipChargen({ stopAtTutorialPrompt: tutorial });
     }
 
     /**
@@ -297,7 +298,8 @@ export class TmuxAdapter extends GameAdapter {
      * The .nethackrc should auto-select character, but there may be
      * confirmation prompts.
      */
-    async _skipChargen() {
+    async _skipChargen(options = {}) {
+        const stopAtTutorialPrompt = options.stopAtTutorialPrompt === true;
         // Wait a bit then check what's on screen
         await sleep(300);
 
@@ -332,8 +334,14 @@ export class TmuxAdapter extends GameAdapter {
                 continue;
             }
 
+            // In tutorial mode, stop at the tutorial question so manual capture
+            // can answer y/n directly.
+            const fullScreen = g.map(row => row.map(c => c.ch).join('')).join('\n');
+            if (stopAtTutorialPrompt && fullScreen.includes('Do you want a tutorial?')) {
+                break;
+            }
+
             // Check if we see a map (player @ visible or dungeon features) — we're in the game
-            const fullScreen = g.map(row => row.map(c => c.ch).join('')).join('');
             if (fullScreen.includes('@')) {
                 break; // We're in the game
             }

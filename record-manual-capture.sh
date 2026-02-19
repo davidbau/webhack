@@ -30,11 +30,14 @@ Common options:
   --name=NAME              Character name (default: Recorder)
   --wizard                 Enable debug/wizard mode (default)
   --no-wizard              Disable debug/wizard mode
+  --tutorial               Enable tutorial prompt; recorder stops there for manual y/n
+  --no-tutorial            Skip tutorial prompt (default)
   --symset=ASCII|DECgraphics
   --help, -h               Show this help
 
 Examples:
   ./record-manual-capture.sh --seed=5
+  ./record-manual-capture.sh --seed=5 --tutorial
   ./record-manual-capture.sh --seed=42 --keylog=/tmp/seed42.jsonl
   ./record-manual-capture.sh --tmux-socket=selfplay --session=manual-nh
 EOF

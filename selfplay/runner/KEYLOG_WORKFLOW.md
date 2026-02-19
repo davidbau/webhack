@@ -20,11 +20,18 @@ node selfplay/runner/c_manual_record.js --seed=5 --keylog=/tmp/seed5_manual.json
 Optional flags:
 
 - `--role=... --race=... --gender=... --align=... --name=...`
+- `--tutorial` (stop at tutorial prompt; answer `y`/`n` manually)
 - `--symset=ASCII|DECgraphics`
 - `--tmux-socket=selfplay|default|<name>`
 - `--session=<tmux-session-name>`
 - `--keep-session` (default)
 - `--no-keep-session`
+
+Tutorial example:
+
+```bash
+node selfplay/runner/c_manual_record.js --seed=5 --tutorial --keylog=/tmp/seed5_tutorial_manual.jsonl
+```
 
 To run in your normal (default) tmux server:
 
