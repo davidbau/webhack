@@ -2138,9 +2138,13 @@ async function handleEat(player, display, game) {
                 display.putstr_message('You cannot eat that!');
                 return { moved: false, tookTime: false };
             }
-            // C ref: invent.c getobj() — You("don't have that object.");
-            // then continue (re-prompt). No --More-- modal, no extra keypress.
-            display.putstr_message("You don't have that object.");
+            // C tty captures can render this as a sticky --More-- frame before
+            // returning to the eat prompt; consume explicit acknowledgement.
+            display.putstr_message("You don't have that object.--More--");
+            while (true) {
+                const moreCh = await nhgetch();
+                if (moreCh === 32 || moreCh === 10 || moreCh === 13 || moreCh === 27) break;
+            }
             continue;
         }
         // C ref: eat.c doesplit() path for stacked comestibles:

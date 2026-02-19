@@ -48,7 +48,7 @@ describe('direction prompt cancel flow', () => {
 
         assert.equal(result.tookTime, false);
         assert.equal(messages[0], 'In what direction?');
-        assert.equal(messages.at(-1), 'Never mind.');
+        assert.equal(messages.at(-1), 'What a strange direction!  Never mind.');
     });
 
     // C ref: doopen() routes through get_adjacent_loc() and emits "Never mind.",
@@ -72,7 +72,7 @@ describe('direction prompt cancel flow', () => {
         const result = await rhack('o'.charCodeAt(0), game);
 
         assert.equal(result.tookTime, false);
-        assert.equal(messages.at(-1), 'Never mind.');
+        assert.equal(messages.at(-1), 'What a strange direction!  Never mind.');
     });
 
     it('open uses C wording when no door exists in chosen direction', async () => {
