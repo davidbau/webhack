@@ -1,6 +1,7 @@
 # C-to-JS Correspondence Ledger (Core Gameplay)
 
 **See also:**
+[CODEMATCH.md](CODEMATCH.md) (structural C↔JS file/function mapping, [issues #32–#138](https://github.com/davidbau/menace/issues?q=label%3Acodematch)) |
 [DESIGN.md](DESIGN.md) (architecture) |
 [DEVELOPMENT.md](DEVELOPMENT.md) (dev workflow) |
 [PARITY_TEST_MATRIX.md](PARITY_TEST_MATRIX.md) (test reference) |
@@ -8,9 +9,10 @@
 
 Last updated: 2026-02-18
 
-This document is the authoritative C-to-JS correspondence ledger for gameplay
-parity closure work (PROJECT_PLAN Phase 3). It tracks file-level ownership,
-function-level mapping, and current status for high-priority runtime paths.
+This document tracks **active parity debugging** by domain: which functions are
+diverging from C behavior and which issues track them (PROJECT_PLAN Phase 2–3).
+For **structural coverage** (complete C↔JS file/function mapping and refactoring
+status), see [CODEMATCH.md](CODEMATCH.md).
 
 ## Status Legend
 

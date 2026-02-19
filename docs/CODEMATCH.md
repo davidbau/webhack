@@ -3,6 +3,10 @@
 This document tracks the mapping between NetHack C source files (`nethack-c/src/*.c`)
 and corresponding JavaScript files (`js/*.js`) in this JS port.
 
+**See also:** [C_PARITY_WORKLIST.md](C_PARITY_WORKLIST.md) tracks active parity
+debugging by domain (which functions are diverging and which issues track them).
+This document tracks structural coverage (which C files/functions have JS counterparts).
+
 **Goal**: Every C file containing game logic should have a corresponding JS file with
 the same name, and every function in the C file should have a corresponding function
 with the same name in the JS file (where applicable).
