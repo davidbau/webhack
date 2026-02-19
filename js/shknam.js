@@ -3,6 +3,7 @@
 // C ref: shknam.c — shop stocking, shopkeeper creation and naming
 
 import { rn2, rnd } from './rng.js';
+import { letter, upstart } from './hacklib.js';
 import {
     objectData, bases, NUM_OBJECTS,
     FOOD_CLASS, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
@@ -17,7 +18,8 @@ import {
     WAN_LIGHT, SCR_LIGHT, SPE_LIGHT,
     SCR_FOOD_DETECTION, LUMP_OF_ROYAL_JELLY,
 } from './objects.js';
-import { MAXOCLASSES, ROOM, SHOPBASE, ROOMOFFSET, SDOOR, DOOR, D_NODOOR, D_ISOPEN, D_TRAPPED, D_LOCKED } from './config.js';
+import { MAXOCLASSES, ROOM, SHOPBASE, ROOMOFFSET, SDOOR, DOOR, CORR,
+         D_NODOOR, D_ISOPEN, D_TRAPPED, D_LOCKED } from './config.js';
 import { makemon, mkclass, NO_MM_FLAGS, registerGetShopItem } from './makemon.js';
 import { mksobj, mkobj, RANDOM_CLASS } from './mkobj.js';
 import { PM_SHOPKEEPER, S_MIMIC } from './monsters.js';
@@ -485,7 +487,7 @@ function nameshk(shk, nlp, ubirthday, ledgerNo) {
 // shkinit — C ref: shknam.c:628-692
 // ========================================================================
 
-function shkinit(shp, sroom, map, depth, ubirthday, ledgerNo) {
+function shkinit(shp, shp_indx, sroom, map, depth, ubirthday, ledgerNo) {
     // C ref: shknam.c:636 — find good door
     const door = good_shopdoor(sroom, map);
     if (!door) return -1;
@@ -502,6 +504,7 @@ function shkinit(shp, sroom, map, depth, ubirthday, ledgerNo) {
     // C ref: shknam.c:666-681 — set shopkeeper flags
     shk.peaceful = true;
     shk.isshk = true;
+    shk.shoptype = shp_indx + SHOPBASE; // C ref: shknam.c:672 eshkp->shoptype = sroom->rtype
     shk.shoproom = (map.rooms || []).indexOf(sroom) + ROOMOFFSET;
     // Minimal ESHK-like state used by shk_move/move_special parity.
     shk.shk = { x: sx, y: sy }; // shopkeeper "home" square
@@ -595,7 +598,7 @@ export function stock_room(shp_indx, sroom, map, depth, ubirthday, ledgerNo) {
     const shp = shtypes[shp_indx];
 
     // C ref: shknam.c:733 — create shopkeeper
-    const sh = shkinit(shp, sroom, map, depth, ubirthday, ledgerNo);
+    const sh = shkinit(shp, shp_indx, sroom, map, depth, ubirthday, ledgerNo);
     if (sh < 0) return;
 
     // C ref: shknam.c:737-748 — fix door
@@ -648,3 +651,122 @@ export function stock_room(shp_indx, sroom, map, depth, ubirthday, ledgerNo) {
     if (!map.flags) map.flags = {};
     map.flags.has_shop = true;
 }
+
+// ========================================================================
+// Shop utility predicates — used by monster movement code
+// ========================================================================
+
+// C ref: in_rooms(x,y,SHOPBASE) — is (x,y) inside a shop?
+export function pointInShop(x, y, map) {
+    const loc = map.at(x, y);
+    const roomno = loc?.roomno || 0;
+
+    if (roomno >= ROOMOFFSET) {
+        const roomIdx = roomno - ROOMOFFSET;
+        const room = map.rooms?.[roomIdx];
+        return !!(room && room.rtype >= SHOPBASE);
+    }
+
+    // C ref: in_rooms() handles SHARED/SHARED_PLUS tiles by scanning
+    // nearby roomno entries for eligible rooms. Our map roomno assignment
+    // can leave doorway/corridor connectors as NO_ROOM, so use a narrow
+    // fallback for door/corridor (and shared-like roomno values).
+    const isSharedLike = roomno === 1 || roomno === 2;
+    const isDoorCorr = loc && (loc.typ === DOOR || loc.typ === CORR);
+    if (!isSharedLike && !isDoorCorr) return false;
+
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const nloc = map.at(x + dx, y + dy);
+            const nr = nloc?.roomno || 0;
+            if (nr < ROOMOFFSET) continue;
+            const room = map.rooms?.[nr - ROOMOFFSET];
+            if (room && room.rtype >= SHOPBASE) return true;
+        }
+    }
+    return false;
+}
+
+// ========================================================================
+// saleable — C ref: shknam.c:805-827
+// Does shkp's shop stock this item type?
+// ========================================================================
+
+export function saleable(shkp, obj) {
+    const shp_indx = shkp.shoptype - SHOPBASE;
+    const shp = shtypes[shp_indx];
+    if (!shp) return false;
+    if (shp.symb === RANDOM_CLASS) return true;
+    for (let i = 0; i < shp.iprobs.length && shp.iprobs[i].iprob; i++) {
+        const itype = shp.iprobs[i].itype;
+        if (itype === VEGETARIAN_CLASS) {
+            if (veggy_item(obj.otyp)) return true;
+        } else if (itype < 0) {
+            if (itype === -obj.otyp) return true;
+        } else {
+            if (itype === obj.oclass) return true;
+        }
+    }
+    return false;
+}
+
+// ========================================================================
+// shkname — C ref: shknam.c:856-898
+// Returns shopkeeper's name, stripped of gender-prefix char.
+// Hallucination support omitted (requires game state).
+// ========================================================================
+
+export function shkname(shk) {
+    let shknm = shk.shknam || '';
+    // C ref: if (!letter(*shknm)) ++shknm;
+    if (shknm.length > 0 && !letter(shknm[0])) shknm = shknm.slice(1);
+    return shknm;
+}
+
+// ========================================================================
+// Shknam — C ref: shknam.c:843-854
+// Capitalized version of shkname() for beginning of sentence.
+// ========================================================================
+
+export function Shknam(shk) {
+    return upstart(shkname(shk));
+}
+
+// ========================================================================
+// shkname_is_pname — C ref: shknam.c:900-906
+// Returns true if shopkeeper's name has a "personal name" prefix
+// (i.e., starts with '-', '+', or '=').
+// ========================================================================
+
+export function shkname_is_pname(shk) {
+    const c = shk.shknam?.[0];
+    return c === '-' || c === '+' || c === '=';
+}
+
+// ========================================================================
+// is_izchak — C ref: shknam.c:908-927
+// Returns true if the shopkeeper is Izchak.
+// Note: C also checks in_town() and hallucination state; JS omits these
+// since in_town() is not yet implemented as a standalone utility.
+// ========================================================================
+
+export function is_izchak(shkp) {
+    if (!shkp.isshk) return false;
+    return shkname(shkp) === 'Izchak';
+}
+
+// C ref: in_rooms(x,y,SHOPBASE) check used by monmove.c m_search_items().
+export function monsterInShop(mon, map) {
+    // C ref: inhishop(shkp) checks shopkeeper's own assigned shop room.
+    if (mon?.isshk && Number.isInteger(mon.shoproom) && mon.shoproom >= ROOMOFFSET) {
+        const loc = map.at(mon.mx, mon.my);
+        const roomno = loc?.roomno || 0;
+        if (roomno === mon.shoproom) {
+            const room = map.rooms?.[roomno - ROOMOFFSET];
+            return !!(room && room.rtype >= SHOPBASE);
+        }
+        return false;
+    }
+    return pointInShop(mon.mx, mon.my, map);
+}
+

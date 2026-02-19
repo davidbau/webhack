@@ -875,6 +875,59 @@
 - Net:
   - Keep as behavior-neutral observability infrastructure for candidate triage.
 
+## 2026-02-19 - Rejected: Pet-Confirmed Non-Blocking Suppression + Blocking Periodic Flee
+
+- Goal:
+  - Suppress the low-XP Dlvl1 blocking dog loop without destroying the natural oscillation-flee escape cycle that allows exploration windows.
+
+- Context:
+  - 7-seed triage baseline (`Samurai40, Tourist41, Valkyrie42, Caveman33, Ranger28, Rogue29, Healer34`, 600 turns):
+    - survived `7/7`, avg depth `1.143`, XL2+ `1/7`, XP t600 `5.57`.
+    - Key cases: Healer34 `maxXP=21` (XL2), Ranger28 `maxXP=6` depth 2, Rogue29 `maxXP=5`.
+
+- Key insight on baseline mechanics:
+  - The baseline's oscillation-flee mechanism creates "dog-free" exploration windows through a natural cycle:
+    - 8 blocking dog attacks → positions bounce → oscillation detected → hold 3 turns → flee.
+  - This cycle was responsible for much of the wild-monster XP in Healer/Ranger/Rogue seeds.
+
+- Attempt 1: Pet-confirmed non-blocking suppression (Candidate "pet-confirmed")
+  - In `selfplay/agent.js`, added:
+    - `isLikelyPetDogContext` check: adjacent `d` on Dlvl1, XL1, XP=0, lone, confirmed via `knownPetChars`/`petPositions`.
+    - When non-blocking: skip attack, fall through to exploration.
+    - When blocking: attack as normal (pet swap).
+    - Oscillation suppression: `&&  !(isLikelyPetDogContext && !isBlocking)` to avoid non-blocking turns polluting position history.
+  - 7-seed triage result:
+    - survived `7/7` (flat), avg depth `1.286` (improved).
+    - But avg XP t600 `3.00` (major regression vs `5.57`):
+      - Healer34: `maxXP=1` (regression from 21), Ranger28: `maxXP=1` (from 6), Rogue29: `maxXP=1` (from 5).
+      - Tourist41: `maxXP=9` (improved from 1).
+  - Root cause: Oscillation suppression prevented the natural hold→flee escape cycle.
+    - Non-blocking exploration turns diversified position history → `_detectCombatOscillation` never fired.
+    - Without the flee cycle, seeds that relied on it for exploration windows lost all wild-monster combat.
+
+- Attempt 2: Blocking periodic flee (Candidate "blockingflee")
+  - Added `this.blockingPetDogLoopCount = 0` to constructor.
+  - Moved `isBlocking` computation before oscillation check (bug fix: was declared after first use).
+  - Oscillation formula: `&& !(isLikelyPetDogContext && !isBlocking)` (non-blocking suppression retained).
+  - Non-blocking pet-dog: fall through to exploration.
+  - Blocking pet-dog: accumulate `blockingPetDogLoopCount++`; after 8, trigger explicit flee.
+  - 7-seed triage result (blockingflee):
+    - survived `4/7` (major regression from `7/7` baseline!):
+      - Tourist41: KILLED by rat (r) on Dlvl1 — over-explored into danger after flee.
+      - Ranger28: KILLED by dog (d) — periodic flee destabilized safe zone.
+      - Rogue29: KILLED by rat (r) — same pattern.
+    - Healer34: survived but `fleeHp=301` (HP-emergency flee spike — instability).
+    - Valkyrie42: survived, `maxXP=2` (improved from 0).
+  - Root cause: Periodic flee from blocking dog drove agents into dangerous open territory.
+    - The flee exited the safe dog-adjacent zone and pushed the agent into patchy Dlvl1 rooms with rats/hostile dogs.
+    - Natural oscillation-flee had worked better because it was bounded by the local position pattern; explicit periodic flee is less constrained.
+
+- Net:
+  - Both attempts rejected.
+  - Interference with the oscillation-flee escape cycle is the core hazard for any dog-loop suppression.
+  - Any future approach must either preserve that cycle or replace it with an equivalently bounded escape mechanism.
+  - Documented: `blockingPetDogLoopCount` strategy is NOT safe; reverted to HEAD.
+
 ## 2026-02-19 - Keep: Optional Attack-Decision Guardrails in Matrix Diff
 
 - Change:

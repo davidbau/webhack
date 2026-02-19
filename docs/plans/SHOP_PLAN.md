@@ -108,22 +108,17 @@ creates gold via newobj → `rnd(2)`. Then sets quantity. In JS, replicate with
 #### 1h. `nameshk(shk, nlp)` — C ref: `shknam.c:487-554`
 RNG depends on shop type and m_id:
 - Compute `nseed = Math.floor(ubirthday / 257)`
-  - `ubirthday` = game seed (the original seed value, available from nethack.js)
+  - `ubirthday` is set from game-start wall clock time in C (`u_init.c: time(&ubirthday)`).
 - `name_wanted = m_id + ledger_no + (nseed % 13) - (nseed % 5)`
-  - `ledger_no` for regular dungeon = depth + 1 (surface is ledger 0, level 1 is ledger 2, etc.)
-  - Actually: `ledger_no(&u.uz)` = `dnum * (maxledger/n_dgns) + dlevel` but for main dungeon
-    dnum=0, so `ledger_no = dlevel` where dlevel = 1-indexed depth within branch.
-    More precisely, the C macro is: `ledger_no(&u.uz)` =
-    `svd.dungeons[u.uz.dnum].ledger_start + u.uz.dlevel` where ledger_start for
-    the Dungeons of Doom is typically 0. So `ledger_no = depth` for main dungeon.
+  - `ledger_no(&u.uz)` = `svd.dungeons[u.uz.dnum].ledger_start + u.uz.dlevel`.
 - `name_wanted = name_wanted % names_avail`
 - If `nlp === shktools`: always `rn2(names_avail)` (1 RNG call)
 - Else if `name_wanted < names_avail`: direct lookup (0 RNG calls)
 - Else: `rn2(names_avail)` fallback (1 RNG call)
 - First shopkeeper on a level typically gets name directly (no collision loop)
 
-**Needs**: `ubirthday` accessible from shknam.js. Could export from nethack.js
-or pass as parameter. Simplest: pass `seed` and `depth` to `shkinit`.
+**Needs**: `ubirthday` and `ledger_no` accessible from shknam.js;
+pass both into `shkinit()/nameshk()`.
 
 #### 1i. `mkshobj_at(shp, shpIndex, sx, sy, mkspecl, map, depth)`
 C ref: `shknam.c:453-483`. **RNG per tile**:

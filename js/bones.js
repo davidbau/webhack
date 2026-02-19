@@ -37,7 +37,7 @@ import {
 
 // Check if bones can be saved at this depth.
 // C ref: bones.c:61 — depth check + rn2(1+(depth>>2)) ghost probability
-export function canMakeBones(game) {
+export function can_make_bones(game) {
     const depth = game.player.dungeonLevel;
     // C ref: bones.c:70 — can't make bones on level 1
     if (depth <= 1) return false;
@@ -77,7 +77,7 @@ export function resetobjs(list, restore) {
 
 // Move player inventory to floor at death position.
 // C ref: bones.c:319 — iterate invent, curse with rn2(5), give with rn2(8)
-export function dropUponDeath(game) {
+export function drop_upon_death(game) {
     const { player, map } = game;
     const x = player.x;
     const y = player.y;
@@ -90,7 +90,7 @@ export function dropUponDeath(game) {
         }
         // C ref: bones.c:356 — rn2(8) chance to give item to nearby monster
         if (!rn2(8)) {
-            if (giveToNearbyMon(map, obj, x, y)) {
+            if (give_to_nearby_mon(map, obj, x, y)) {
                 toRemove.push(obj);
                 continue;
             }
@@ -125,7 +125,7 @@ export function dropUponDeath(game) {
 
 // Give an item to a random nearby monster using reservoir sampling.
 // C ref: bones.c:286 — rn2(++nmon) reservoir sampling
-export function giveToNearbyMon(map, otmp, x, y) {
+export function give_to_nearby_mon(map, otmp, x, y) {
     let nmon = 0;
     let chosen = null;
     for (const mon of map.monsters) {
@@ -154,11 +154,11 @@ export function giveToNearbyMon(map, otmp, x, y) {
 
 // Mark objects as ghostly (from bones level).
 // C ref: bones.c:134
-export function setGhostlyObjlist(list) {
+export function set_ghostly_objlist(list) {
     for (const obj of list) {
         obj.ghostly = true;
         if (obj.contents && obj.contents.length > 0) {
-            setGhostlyObjlist(obj.contents);
+            set_ghostly_objlist(obj.contents);
         }
     }
 }
@@ -169,7 +169,7 @@ export function setGhostlyObjlist(list) {
 
 // Strip tame, shopkeepers, temple priests, unique monsters, Izchak from bones.
 // C ref: bones.c:154
-export function removeMonFromBones(map) {
+export function remove_mon_from_bones(map) {
     map.monsters = map.monsters.filter(mon => {
         if (mon.dead) return false;
         // C ref: bones.c:167 — remove tame monsters
@@ -190,10 +190,15 @@ export function removeMonFromBones(map) {
 
 // Replace non-printable chars in a name.
 // C ref: bones.c:42
-export function sanitizeName(name) {
+export function sanitize_name(name) {
     if (!name) return 'anonymous';
     return name.replace(/[^ -~]/g, '_');
 }
+
+// TODO: bones.c:18 — no_bones_level(): check if this level forbids bones
+//   (e.g. special levels, quest levels, vibrating square level, astral)
+// TODO: bones.c:42 — goodfruit(): check if a fruit id is usable on a bones level
+// TODO: bones.c:308 — fixuporacle(): restore oracle monster after bones load
 
 // ========================================================================
 // savebones — C ref: bones.c savebones()
@@ -207,12 +212,12 @@ export function savebones(game) {
     const depth = player.dungeonLevel;
 
     // C ref: bones.c:407 — can_make_bones check (RNG consumed)
-    // Note: canMakeBones consumes rn2 even if it returns false
-    const canMake = canMakeBones(game);
+    // Note: can_make_bones consumes rn2 even if it returns false
+    const canMake = can_make_bones(game);
 
     // Drop inventory onto the floor (always, even if not saving bones)
     // C ref: bones.c:451 — drop_upon_death
-    dropUponDeath(game);
+    drop_upon_death(game);
 
     if (!canMake) return;
 
@@ -220,7 +225,7 @@ export function savebones(game) {
     resetobjs(map.objects, false);
 
     // C ref: bones.c:464 — remove_mon_from_bones
-    removeMonFromBones(map);
+    remove_mon_from_bones(map);
 
     // C ref: bones.c:480 — create ghost at player position
     const ghostType = mons[PM_GHOST];
@@ -228,7 +233,7 @@ export function savebones(game) {
     const ghost = {
         mndx: PM_GHOST,
         type: ghostType,
-        name: 'Ghost of ' + sanitizeName(player.name),
+        name: 'Ghost of ' + sanitize_name(player.name),
         displayChar: symEntry ? symEntry.sym : ' ',
         displayColor: ghostType.color,
         mx: player.x, my: player.y,
@@ -250,7 +255,7 @@ export function savebones(game) {
 
     // C ref: bones.c:503 — cemetery metadata
     map.cemetery = {
-        who: sanitizeName(player.name),
+        who: sanitize_name(player.name),
         when: Date.now(),
         frpg: player.roleName || 'Unknown',
         hp: player.hp,
@@ -288,7 +293,7 @@ export function getbones(game, depth) {
     bonesMap.isBones = true;
 
     // C ref: bones.c:572 — set_ghostly_objlist
-    setGhostlyObjlist(bonesMap.objects);
+    set_ghostly_objlist(bonesMap.objects);
 
     // C ref: bones.c:575 — resetobjs(fobj, TRUE) for restore
     resetobjs(bonesMap.objects, true);
@@ -296,7 +301,7 @@ export function getbones(game, depth) {
     // C ref: bones.c:580 — sanitize ghost name/stats
     for (const mon of bonesMap.monsters) {
         if (mon.mndx === PM_GHOST) {
-            mon.name = sanitizeName(mon.name);
+            mon.name = sanitize_name(mon.name);
         }
     }
 

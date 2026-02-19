@@ -99,6 +99,21 @@ status), see [CODEMATCH.md](CODEMATCH.md).
 | Pickup/search/read command paths (`pickup.c`, `invent.c`, `read.c`, `do.c`) | `handlePickup`, `dosearch0`, `handleRead` (`js/commands.js`) | `partial` | Wait/search safety timing mismatch tracked in #7. |
 | `moveloop_core` turn sequencing (`allmain.c`) | `processTurnEnd` / `simulateTurnEnd` (`js/nethack.js`, `js/headless_runtime.js`) | `partial` | Turn loop exists; downstream divergence depends on command/AI parity gaps. |
 
+## PRNG Timing Parity (#143)
+
+PRNG calls must happen at the same step as C. Screen parity forces this for
+99%+ of calls. Calls may happen *later* only for invisible state; calls must
+**never** happen *earlier* (always a bug). See [DECISIONS.md — Decision 13](DECISIONS.md#decision-13-prng-timing-parity).
+
+**Diagnostic tool:** `node test/comparison/rng_shift_analysis.js` identifies
+time-shifts (extra/missing calls) vs value diffs across sessions, and ranks
+functions by shift frequency. Use this to find the highest-impact code paths.
+
+**Shift categories:**
+- **JS extra** → premature/misplaced JS computation (always a bug)
+- **C extra** → missing JS implementation (expected during porting)
+- **Value diff** → accumulated drift from earlier shifts (fix earliest shift first)
+
 ## Active Priority Queue (Issue-Driven)
 
 1. #13 tutorial strict replay after first `nhl_random` divergence.

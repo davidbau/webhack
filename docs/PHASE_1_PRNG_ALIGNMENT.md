@@ -553,7 +553,7 @@ node --test test/comparison/rng_log_compare.test.js
 | `js/mkobj_gen.js` | Object creation (mkobj/mksobj) |
 | `js/makemon_gen.js` | Monster creation (makemon/rndmonst_adj) |
 | `test/comparison/c-harness/setup.sh` | C binary build script |
-| `test/comparison/c-harness/patches/` | Three C patches |
+| `test/comparison/c-harness/patches/` | Numbered C harness patches (`001`+) |
 | `test/comparison/c-harness/run_dumpmap.py` | TMux-based C map extraction |
 | `test/comparison/c_vs_js_map.test.js` | Cell-by-cell comparison test |
 | `test/comparison/rng_log_compare.test.js` | Call-by-call RNG comparison |

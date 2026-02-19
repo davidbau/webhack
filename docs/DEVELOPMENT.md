@@ -614,10 +614,10 @@ The converter tracks several state machines simultaneously:
 Patches live in `test/comparison/c-harness/patches/` and are applied by
 `setup.sh`. To add one:
 
-1. Make changes in `nethack-c/nethack/`
-2. `cd nethack-c/nethack && git diff > ../../test/comparison/c-harness/patches/003-your-patch.patch`
-3. Add the `git apply` line to `setup.sh`
-4. Run `bash test/comparison/c-harness/setup.sh` to verify
+1. Make changes under `nethack-c/`.
+2. Export a numbered patch into `test/comparison/c-harness/patches/`, e.g.
+   `cd nethack-c && git diff > ../test/comparison/c-harness/patches/012-your-patch.patch`
+3. Run `bash test/comparison/c-harness/setup.sh` to verify apply/build/install.
 
 ## The C Harness
 
@@ -625,25 +625,25 @@ Patches live in `test/comparison/c-harness/patches/` and are applied by
 
 The C harness builds a patched NetHack 3.7 binary for ground-truth comparison.
 The C source is **frozen at commit `79c688cc6`** and never modified directly —
-only patches in `test/comparison/c-harness/patches/` are applied on top.
-Five patches make the C binary testable:
+only numbered patches in `test/comparison/c-harness/patches/` are applied on top
+(`001` through `011` as of 2026-02-19).
 
-**`001-deterministic-seed.patch`** — Reads `NETHACK_SEED` from the environment
-instead of `/dev/urandom`. Crucially, does NOT set `has_strong_rngseed`, so
-`reseed_random()` between levels becomes a no-op. One seed → deterministic game.
+Core harness capabilities come from:
 
-**`002-map-dumper.patch`** — Adds the `#dumpmap` wizard command, which writes
-`levl[x][y].typ` as 21 rows of 80 space-separated integers to `NETHACK_DUMPMAP`.
+**`001-deterministic-seed.patch`** — Seed control via `NETHACK_SEED`.
 
-**`003-prng-logging.patch`** — When `NETHACK_RNGLOG` is set, logs every
-`rn2()`/`rnd()`/`d()` call with args, result, and caller context
-(`__func__`, `__FILE__`, `__LINE__`). Format: `rn2(12)=2 @ shuffle(o_init.c:128)`.
+**`002-fixed-datetime-for-replay.patch`** and
+**`011-fix-ubirthday-with-getnow.patch`** — Fixed datetime support for replay
+determinism, including shopkeeper-name `ubirthday` parity.
 
-**`004-obj-dumper.patch`** — Adds object inspection/dumping support for
-verifying inventory and object creation against JS.
+**`003-map-dumper.patch`** — `#dumpmap` wizard command for raw typ grids.
 
-**`005-midlog-infrastructure.patch`** — Enables mid-session RNG log control
-for capturing traces at specific points during gameplay.
+**`004-prng-logging.patch`**, **`009-midlog-infrastructure.patch`**, and
+**`010-lua-rnglog-caller-context.patch`** — high-fidelity RNG tracing with
+caller context.
+
+**`005-obj-dumper.patch`** and **`008-checkpoint-snapshots.patch`** — object
+and full-checkpoint state dumps for step-local divergence debugging.
 
 ### Why raw terrain grids instead of terminal output?
 

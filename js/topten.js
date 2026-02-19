@@ -1,5 +1,19 @@
 // topten.js -- High score list persistence and display
 // C ref: topten.c — struct toptenentry, topten(), outentry()
+//
+// C↔JS function mapping summary:
+//   observable_depth  → observable_depth (exported; trivial depth wrapper)
+//   topten            → buildEntry + saveScore + loadScores (split; localStorage)
+//   outheader         → formatTopTenHeader (renamed)
+//   outentry          → formatTopTenEntry (renamed)
+//   topten_print/bold → N/A (terminal output)
+//   readentry/writeentry/writexlentry/discardexcess → N/A (file I/O)
+//   free_ttlist       → N/A (GC handles memory in JS)
+//   score_wanted/prscore/classmon → N/A (CLI scoring query mode)
+//   formatkiller      → TODO (needs killer format, an(), game state)
+//   encodexlogflags   → TODO (needs wizard/discover/roleplay flags)
+//   encodeconduct     → TODO (needs u.uconduct, num_genocides, sokoban_in_play)
+//   encodeachieve     → TODO (needs u.uachieved achievements array)
 
 const TOPTEN_KEY = 'menace-topten';
 const MAX_ENTRIES = 100; // C ref: sysopt.entrymax
@@ -113,6 +127,13 @@ export function getPlayerRank(scores, newEntry) {
         }
     }
     return scores.length + 1;
+}
+
+// C ref: topten.c:183 — return the observable depth for the score record.
+// In C this handles endgame planes (returning negative values), which are
+// not yet in the JS port, so the depth passes through unchanged.
+export function observable_depth(depth) {
+    return depth;
 }
 
 // Get the topten localStorage key (for storage.js integration)

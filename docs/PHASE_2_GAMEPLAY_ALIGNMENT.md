@@ -112,6 +112,16 @@ annotated with the C source location and a context tag (`[dog_goal]`,
 debugging tool — when JS diverged, the C annotation at the divergence point
 told you exactly which subsystem was wrong.
 
+> **Warning: `action` labels are unreliable and should not be trusted.**
+> The `action` field (e.g. `"action": "move-west"`) is a heuristic assigned
+> by `run_session.py`'s `describe_key()` function purely from the **key
+> character**, with no knowledge of actual game state. For example, `'n'`
+> always maps to `"move-se"` — but in practice it could be a throw direction,
+> a spell direction, a text response ("no"), or any other context where that
+> key is pressed. The labels are frequently wrong and should not be used for
+> debugging or replay logic. See [issue #144](https://github.com/davidbau/menace/issues/144)
+> for the planned removal of these labels from session files.
+
 ## 3. Capturing C Reference Data
 
 The C reference harness builds on the tmux-based automation from Phase 1,

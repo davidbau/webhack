@@ -194,11 +194,18 @@ and is the startup step. Subsequent steps have string keys:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `key` | string\|null | yes | Key sent to NetHack (null for startup) |
-| `action` | string | yes | Human-readable description |
+| `action` | string | yes | **Unreliable heuristic label** — assigned by `describe_key()` from the key character alone, with no knowledge of actual game state. Do not use for debugging or replay logic (see below). |
 | `rng` | string[] | yes | RNG calls during this step (may be empty) |
 | `screen` | string | no | ANSI-compressed screen after this step (v3 canonical) |
 | `typGrid` | string | no | RLE terrain grid (on level changes) |
 | `checkpoints` | array | no | State snapshots (during level generation) |
+
+> **Warning: `action` labels are unreliable.** The `action` field is generated
+> by `describe_key()` in `run_session.py` purely from the key character — `'n'`
+> always becomes `"move-se"` even if it's a throw direction, spell direction, or
+> text input like "no". Labels are frequently wrong and **must not be used** for
+> debugging or replay decisions. See [issue #144](https://github.com/davidbau/menace/issues/144)
+> for planned removal.
 
 ### Screen Semantics (Important)
 

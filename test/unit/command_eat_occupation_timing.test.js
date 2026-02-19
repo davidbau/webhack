@@ -42,7 +42,10 @@ describe('eat occupation timing', () => {
         clearInputQueue();
     });
 
-    it('removes inventory food in the post-turn finish hook', async () => {
+    it('removes inventory food during the final occupation tick', async () => {
+        // C ref: eat.c done_eating()/useup() runs from eatfood() when the
+        // occupation completes, before movemon — so food is consumed during the
+        // final occupation tick, not deferred to a post-turn hook.
         const game = makeGame();
         const ration = game.player.inventory[0];
         pushInput('d'.charCodeAt(0));
@@ -53,7 +56,7 @@ describe('eat occupation timing', () => {
         assert.ok(game.player.inventory.includes(ration), 'food should remain during ongoing occupation');
 
         let sawContinue = false;
-        let removedInFinishHook = false;
+        let removedOnFinalTick = false;
 
         while (game.occupation) {
             const occ = game.occupation;
@@ -64,17 +67,13 @@ describe('eat occupation timing', () => {
                 sawContinue = true;
                 assert.ok(hasAfter, 'food should still be present on non-final occupation turns');
             } else {
-                assert.ok(hadBefore && hasAfter, 'food should remain through final occupation tick');
                 game.occupation = null;
-                if (typeof occ.onFinishAfterTurn === 'function') {
-                    occ.onFinishAfterTurn(game);
-                }
-                removedInFinishHook = !game.player.inventory.includes(ration);
+                removedOnFinalTick = hadBefore && !hasAfter;
             }
         }
 
         assert.ok(sawContinue, 'food ration should require multiple occupation turns');
-        assert.ok(removedInFinishHook, 'food should be removed by the finish hook');
+        assert.ok(removedOnFinalTick, 'food should be removed during the final occupation tick');
     });
 
     it('keeps split stack piece in inventory until eating finishes', async () => {

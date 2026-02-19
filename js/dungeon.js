@@ -15,6 +15,7 @@ import {
     DIR_N, DIR_S, DIR_E, DIR_W, DIR_180,
     xdir, ydir, N_DIRS,
     OROOM, THEMEROOM, VAULT, SHOPBASE, MAXNROFROOMS, ROOMOFFSET,
+    COURT, SWAMP, BEEHIVE, MORGUE, BARRACKS, ZOO, TEMPLE, LEPREHALL, COCKNEST, ANTHOLE,
     DBWALL,
     IS_WALL, IS_STWALL, IS_DOOR, IS_ROOM, IS_OBSTRUCTED, IS_FURNITURE,
     IS_POOL, IS_LAVA, isok,
@@ -129,8 +130,12 @@ let _branchTopology = [];
 // Used by mklev.c fill_ordinary_room() bonus supply chest gating.
 // Keep default dnum literal (0 = DUNGEONS_OF_DOOM) to avoid circular-import TDZ.
 let _oracleLevel = { dnum: 0, dlevel: 5 };
+// C ref: dungeon.c svd.dungeons[*].num_dunlevs/ledger_start bookkeeping.
+let _dungeonLevelCounts = new Map();
 // C ref: decl.h gi.in_mklev — true only while makelevel() runs.
 let inMklev = false;
+// Mirror C global wizard mode checks used by mkroom.c pick_room().
+let _wizardMode = true;
 
 // C ref: gi.in_mklev is also TRUE while special-level Lua code runs.
 // Exposed for sp_lev.js to bracket des.* generation phases.
@@ -170,36 +175,22 @@ export function clearBranchTopology() {
     _branchTopology = [];
     _oracleLevel = { dnum: DUNGEONS_OF_DOOM, dlevel: 5 };
     _dungeonLedgerStartByDnum = new Map([[DUNGEONS_OF_DOOM, 0]]);
+    _dungeonLevelCounts = new Map();
 }
 import { EPITAPH_FILE_TEXT } from './epitaph_data.js';
 import { ENGRAVE_FILE_TEXT } from './engrave_data.js';
 import { shtypes, stock_room } from './shknam.js';
 import { obj_resists } from './objdata.js';
+import { getnow } from './calendar.js';
 
 // Module-level ubirthday surrogate for nameshk() — set by setGameSeed() before level gen.
 // C ref: shknam.c uses ubirthday (seconds since epoch) rather than game seed.
-const DEFAULT_FIXED_DATETIME = '20000110090000';
 let _gameUbirthday = 0;
 let _dungeonLedgerStartByDnum = new Map([[DUNGEONS_OF_DOOM, 0]]);
 
-function parseFixedDatetimeToEpochSeconds(dt) {
-    if (typeof dt !== 'string' || !/^\d{14}$/.test(dt)) return null;
-    const y = Number.parseInt(dt.slice(0, 4), 10);
-    const mo = Number.parseInt(dt.slice(4, 6), 10);
-    const md = Number.parseInt(dt.slice(6, 8), 10);
-    const h = Number.parseInt(dt.slice(8, 10), 10);
-    const mi = Number.parseInt(dt.slice(10, 12), 10);
-    const s = Number.parseInt(dt.slice(12, 14), 10);
-    const ms = new Date(y, mo - 1, md, h, mi, s).getTime();
-    if (!Number.isFinite(ms)) return null;
-    return Math.floor(ms / 1000);
-}
-
 function resolveUbirthday(seed) {
-    const fixed = (typeof process !== 'undefined' && process?.env?.NETHACK_FIXED_DATETIME)
-        || DEFAULT_FIXED_DATETIME;
-    const parsed = parseFixedDatetimeToEpochSeconds(fixed);
-    if (Number.isFinite(parsed)) return parsed;
+    const parsed = getnow();
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
     if (Number.isFinite(seed)) return seed;
     return 0;
 }
@@ -219,183 +210,13 @@ function getLedgerNoForLevel(dnum, dlevel) {
     return clev;
 }
 
-// ========================================================================
-// rect.c -- Rectangle pool for BSP room placement
-// C ref: rect.c
-// ========================================================================
-
-const XLIM = 4;
-const YLIM = 3;
-
-// Module-level rect pool (reset per level generation)
-let rects = [];
-let rect_cnt = 0;
-const n_rects = Math.floor((COLNO * ROWNO) / 30);
-
-// C ref: rect.c init_rect() - exported for sp_lev.js special level initialization
-export function init_rect() {
-    rects = new Array(n_rects);
-    rect_cnt = 1;
-    rects[0] = { lx: 0, ly: 0, hx: COLNO - 1, hy: ROWNO - 1 };
-}
-
-// Debug exports for rectangle pool inspection
-export function get_rect_count() {
-    return rect_cnt;
-}
-
-export function get_rects() {
-    return rects.slice(0, rect_cnt);
-}
-
-// C ref: rect.c rnd_rect() - exported for sp_lev.js themed room generation
-export function rnd_rect() {
-    const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_THEMEROOMS === '1';
-    const DEBUG_POOL = typeof process !== 'undefined' && process.env.DEBUG_RECT_POOL === '1';
-    if (DEBUG) {
-        const stack = new Error().stack.split('\n')[2].trim(); // Get caller
-        console.log(`  rnd_rect: ENTRY rect_cnt=${rect_cnt} from ${stack}`);
-    }
-    if (DEBUG_POOL) {
-        const callCount = typeof getRngCallCount === 'function' ? getRngCallCount() : -1;
-        console.log(`  rnd_rect[${callCount}]: pool=${rect_cnt} [${rects.slice(0, rect_cnt).map(r => `(${r.lx},${r.ly})-(${r.hx},${r.hy})`).join(', ')}]`);
-    }
-    const result = rect_cnt > 0 ? rects[rn2(rect_cnt)] : null;
-    if (DEBUG) {
-        if (result) {
-            console.log(`  rnd_rect: selected rect (${result.lx},${result.ly})-(${result.hx},${result.hy}), pool=${rect_cnt}`);
-        } else {
-            console.log(`  rnd_rect: NO RECTS AVAILABLE, pool=${rect_cnt}`);
-        }
-    }
-    return result;
-}
-
-// C ref: rect.c get_rect_ind()
-function get_rect_ind(r) {
-    for (let i = 0; i < rect_cnt; i++) {
-        if (rects[i].lx === r.lx && rects[i].ly === r.ly &&
-            rects[i].hx === r.hx && rects[i].hy === r.hy)
-            return i;
-    }
-    return -1;
-}
-
-// C ref: rect.c get_rect() -- find a free rect that contains r
-export function get_rect(r) {
-    for (let i = 0; i < rect_cnt; i++) {
-        if (r.lx >= rects[i].lx && r.ly >= rects[i].ly &&
-            r.hx <= rects[i].hx && r.hy <= rects[i].hy)
-            return rects[i];
-    }
-    return null;
-}
-
-// C ref: rect.c remove_rect()
-function remove_rect(r) {
-    const ind = get_rect_ind(r);
-    if (ind >= 0) {
-        rects[ind] = rects[--rect_cnt];
-    }
-}
-
-// C ref: rect.c add_rect()
-function add_rect(r) {
-    if (rect_cnt >= n_rects) return;
-    if (get_rect(r)) return; // already contained in another rect
-    rects[rect_cnt] = { lx: r.lx, ly: r.ly, hx: r.hx, hy: r.hy };
-    rect_cnt++;
-}
-
-// C ref: rect.c intersect() -- returns intersection or null
-function intersect(r1, r2) {
-    if (r2.lx > r1.hx || r2.ly > r1.hy || r2.hx < r1.lx || r2.hy < r1.ly)
-        return null;
-    const r3 = {
-        lx: Math.max(r2.lx, r1.lx),
-        ly: Math.max(r2.ly, r1.ly),
-        hx: Math.min(r2.hx, r1.hx),
-        hy: Math.min(r2.hy, r1.hy)
-    };
-    if (r3.lx > r3.hx || r3.ly > r3.hy) return null;
-    return r3;
-}
-
-// C ref: rect.c split_rects() -- split r1 around allocated r2
-export function split_rects(r1, r2) {
-    const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_RECTS === '1';
-    const old_cnt = rect_cnt;
-    const old_r = { lx: r1.lx, ly: r1.ly, hx: r1.hx, hy: r1.hy };
-    remove_rect(r1);
-
-    // Walk down since rect_cnt & rects will change
-    for (let i = rect_cnt - 1; i >= 0; i--) {
-        const r = intersect(rects[i], r2);
-        if (r) split_rects(rects[i], r);
-    }
-
-    if (r2.ly - old_r.ly - 1
-        > (old_r.hy < ROWNO - 1 ? 2 * YLIM : YLIM + 1) + 4) {
-        add_rect({ lx: old_r.lx, ly: old_r.ly, hx: old_r.hx, hy: r2.ly - 2 });
-    }
-    if (r2.lx - old_r.lx - 1
-        > (old_r.hx < COLNO - 1 ? 2 * XLIM : XLIM + 1) + 4) {
-        add_rect({ lx: old_r.lx, ly: old_r.ly, hx: r2.lx - 2, hy: old_r.hy });
-    }
-    if (old_r.hy - r2.hy - 1
-        > (old_r.ly > 0 ? 2 * YLIM : YLIM + 1) + 4) {
-        add_rect({ lx: old_r.lx, ly: r2.hy + 2, hx: old_r.hx, hy: old_r.hy });
-    }
-    if (old_r.hx - r2.hx - 1
-        > (old_r.lx > 0 ? 2 * XLIM : XLIM + 1) + 4) {
-        add_rect({ lx: r2.hx + 2, ly: old_r.ly, hx: old_r.hx, hy: old_r.hy });
-    }
-
-    if (DEBUG) {
-        const top_space = r2.ly - old_r.ly - 1;
-        const top_thresh = (old_r.hy < ROWNO - 1 ? 2 * YLIM : YLIM + 1) + 4;
-        const left_space = r2.lx - old_r.lx - 1;
-        const left_thresh = (old_r.hx < COLNO - 1 ? 2 * XLIM : XLIM + 1) + 4;
-        const bottom_space = old_r.hy - r2.hy - 1;
-        const bottom_thresh = (old_r.ly > 0 ? 2 * YLIM : YLIM + 1) + 4;
-        const right_space = old_r.hx - r2.hx - 1;
-        const right_thresh = (old_r.lx > 0 ? 2 * XLIM : XLIM + 1) + 4;
-
-        console.log(`  split_rects: (${old_r.lx},${old_r.ly})-(${old_r.hx},${old_r.hy}) by room (${r2.lx},${r2.ly})-(${r2.hx},${r2.hy}), pool ${old_cnt}->${rect_cnt}`);
-        console.log(`    T:${top_space}>${top_thresh}=${top_space>top_thresh}, L:${left_space}>${left_thresh}=${left_space>left_thresh}, B:${bottom_space}>${bottom_thresh}=${bottom_space>bottom_thresh}, R:${right_space}>${right_thresh}=${right_space>right_thresh}`);
-    }
-}
-
-// C ref: rect.c split_rects() -- exported for sp_lev.js fixed-position rooms
-// After creating a fixed-position room, split all intersecting rectangles in the pool
-// to avoid future random rooms overlapping with it.
-export function update_rect_pool_for_room(room) {
-    const DEBUG = typeof process !== 'undefined' && process.env.DEBUG_RECTS === '1';
-    const old_cnt = rect_cnt;
-
-    // C ref: sp_lev.c:1635-1638 — r2 bounds include border (x-1, y-1) to (x+w, y+h)
-    // Room object has inclusive bounds (lx, ly) to (hx, hy), but split_rects needs
-    // borders: (lx-1, ly-1) to (hx+1, hy+1)
-    const r2 = {
-        lx: room.lx - 1,
-        ly: room.ly - 1,
-        hx: room.hx + 1,
-        hy: room.hy + 1
-    };
-
-    // Walk through all rectangles and split those that intersect with r2
-    // Need to walk backwards since split_rects modifies the pool
-    for (let i = rect_cnt - 1; i >= 0; i--) {
-        const r = intersect(rects[i], r2);
-        if (r) {
-            split_rects(rects[i], r);
-        }
-    }
-
-    if (DEBUG && rect_cnt !== old_cnt) {
-        console.log(`  update_rect_pool_for_room: split around (${r2.lx},${r2.ly})-(${r2.hx},${r2.hy}), pool ${old_cnt}->${rect_cnt}`);
-    }
-}
+// Rectangle allocation — imported from rect.js (C ref: rect.c)
+import {
+    XLIM, YLIM, init_rect, get_rect_count, get_rects, rnd_rect, get_rect,
+    split_rects, update_rect_pool_for_room, rect_bounds
+} from './rect.js';
+export { init_rect, get_rect_count, get_rects, rnd_rect, get_rect,
+    split_rects, update_rect_pool_for_room };
 
 // ========================================================================
 // sp_lev.c -- Room creation (check_room, create_room)
@@ -4034,6 +3855,124 @@ function do_fill_vault(map, vaultCheck, depth) {
     }
 }
 
+function place_gold_stack(map, x, y, amount) {
+    const gold = mksobj(GOLD_PIECE, true, false);
+    if (!gold) return;
+    gold.ox = x;
+    gold.oy = y;
+    gold.quan = amount;
+    gold.owt = weight(gold);
+    map.objects.push(gold);
+}
+
+// C ref: mkroom.c fill_zoo() — currently implements ZOO branch.
+function fill_zoo_room(map, sroom, depth) {
+    if (sroom.rtype !== ZOO) return;
+    const door = Array.isArray(map.doors) ? map.doors[sroom.fdoor] : null;
+    const difficulty = Math.max(Math.trunc(depth), 1);
+    let goldlim = 500 * difficulty;
+
+    for (let sx = sroom.lx; sx <= sroom.hx; sx++) {
+        for (let sy = sroom.ly; sy <= sroom.hy; sy++) {
+            const loc = map.at(sx, sy);
+            if (!loc || loc.typ <= DOOR) continue; // SPACE_POS
+            if (sroom.doorct && door
+                && ((sx === sroom.lx && door.x === sx - 1)
+                    || (sx === sroom.hx && door.x === sx + 1)
+                    || (sy === sroom.ly && door.y === sy - 1)
+                    || (sy === sroom.hy && door.y === sy + 1))) {
+                continue;
+            }
+
+            const mon = makemon(null, sx, sy, MM_NOGRP, depth, map);
+            if (mon) mon.sleeping = true;
+
+            let amountScale;
+            if (sroom.doorct && door) {
+                const dx = sx - door.x;
+                const dy = sy - door.y;
+                const distval = (dx * dx) + (dy * dy);
+                amountScale = distval * distval;
+            } else {
+                amountScale = goldlim;
+            }
+            if (amountScale >= goldlim) amountScale = 5 * difficulty;
+            goldlim -= amountScale;
+            place_gold_stack(map, sx, sy, rn1(Math.max(amountScale, 1), 10));
+        }
+    }
+}
+
+// C ref: sp_lev.c fill_special_room()
+function fill_special_room(map, croom, depth) {
+    if (!croom) return;
+    for (let i = 0; i < croom.nsubrooms; i++) {
+        fill_special_room(map, croom.sbrooms[i], depth);
+    }
+    if (croom.rtype === OROOM || croom.rtype === THEMEROOM
+        || croom.needfill === FILL_NONE) {
+        return;
+    }
+
+    if (croom.needfill === FILL_NORMAL) {
+        if (croom.rtype >= SHOPBASE) {
+            stock_room(
+                croom.rtype - SHOPBASE,
+                croom,
+                map,
+                depth,
+                _gameUbirthday,
+                getLedgerNoForLevel(map._genDnum, map._genDlevel),
+            );
+            map.flags.has_shop = true;
+            return;
+        }
+        switch (croom.rtype) {
+        case VAULT:
+            for (let vx = croom.lx; vx <= croom.hx; vx++) {
+                for (let vy = croom.ly; vy <= croom.hy; vy++) {
+                    rn2(Math.abs(depth) * 100 || 100);
+                }
+            }
+            break;
+        case ZOO:
+            fill_zoo_room(map, croom, depth);
+            break;
+        default:
+            break;
+        }
+    }
+
+    switch (croom.rtype) {
+    case VAULT:
+        map.flags.has_vault = true;
+        break;
+    case ZOO:
+        map.flags.has_zoo = true;
+        break;
+    case COURT:
+        map.flags.has_court = true;
+        break;
+    case MORGUE:
+        map.flags.has_morgue = true;
+        break;
+    case BEEHIVE:
+        map.flags.has_beehive = true;
+        break;
+    case BARRACKS:
+        map.flags.has_barracks = true;
+        break;
+    case TEMPLE:
+        map.flags.has_temple = true;
+        break;
+    case SWAMP:
+        map.flags.has_swamp = true;
+        break;
+    default:
+        break;
+    }
+}
+
 const XL_UP = 1;
 const XL_DOWN = 2;
 const XL_LEFT = 4;
@@ -4185,7 +4124,8 @@ function makerogueghost(map, _depth) {
 
     // C makemon(PM_GHOST, ...) RNG side effects needed before stairs:
     // newmonhp(), ghost naming, and saddle roll.
-    rnd(2);
+    // C ref: makemon.c:1252 — ghost creation consumes mtmp->m_id = next_ident().
+    next_ident();
     d(11, 8);
     rn2(2);
     if (rn2(7)) rn2(34);
@@ -4348,7 +4288,7 @@ function parentDepthFromSelector(selector, dungeonLayouts) {
         return { base: selector.base, count: selector.count };
     }
     if (selector.kind === 'chain') {
-        const parentPlaced = dungeonLayouts[selector.parentDungeon]?.placed || [];
+        const parentPlaced = dungeonLayouts.get(selector.parentDungeon)?.placed || [];
         const chainLevel = parentPlaced[selector.chainLevelIndex];
         if (!Number.isFinite(chainLevel)) {
             return { base: selector.base, count: selector.count };
@@ -4438,6 +4378,7 @@ function buildBranchTopology(dungeonLayouts, parentRolls) {
 }
 
 export function initDungeon(roleIndex, wizard = true) {
+    _wizardMode = !!wizard;
     // 0. role_init: quest nemesis gender — rn2(100) for roles whose
     // nemesis lacks M2_MALE/M2_FEMALE/M2_NEUTER flags.
     // C ref: role.c:2060 — only Archeologist (Minion of Huhetotl) and
@@ -4612,6 +4553,11 @@ export function initDungeon(roleIndex, wizard = true) {
     }
 
     _branchTopology = buildBranchTopology(dungeonLayouts, parentRolls);
+    _dungeonLevelCounts = new Map();
+    for (const [jsDnum, layout] of dungeonLayouts.entries()) {
+        if (!layout || !Number.isInteger(layout.numLevels)) continue;
+        _dungeonLevelCounts.set(jsDnum, layout.numLevels);
+    }
 
     // 3. init_castle_tune: 5 × rn2(7)
     for (let i = 0; i < 5; i++) rn2(7);
@@ -4949,12 +4895,76 @@ function isbig(sroom) {
 
 // C ref: mkroom.c:640-663
 function has_dnstairs_room(croom, map) {
+    if (!Number.isInteger(map?.dnstair?.x) || !Number.isInteger(map?.dnstair?.y)) {
+        return false;
+    }
     return map.dnstair.x >= croom.lx && map.dnstair.x <= croom.hx
         && map.dnstair.y >= croom.ly && map.dnstair.y <= croom.hy;
 }
 function has_upstairs_room(croom, map) {
+    if (!Number.isInteger(map?.upstair?.x) || !Number.isInteger(map?.upstair?.y)) {
+        return false;
+    }
     return map.upstair.x >= croom.lx && map.upstair.x <= croom.hx
         && map.upstair.y >= croom.ly && map.upstair.y <= croom.hy;
+}
+
+// C ref: mkroom.c:219-241 pick_room()
+function pick_room(map, strict) {
+    if (!map.nroom) return null;
+    let idx = rn2(map.nroom);
+    for (let i = map.nroom; i > 0; i--, idx++) {
+        if (idx >= map.nroom) idx = 0;
+        const sroom = map.rooms[idx];
+        if (!sroom || sroom.hx < 0) return null;
+        if (sroom.rtype !== OROOM) continue;
+        if (!strict) {
+            if (has_upstairs_room(sroom, map)
+                || (has_dnstairs_room(sroom, map) && rn2(3))) {
+                continue;
+            }
+        } else if (has_upstairs_room(sroom, map) || has_dnstairs_room(sroom, map)) {
+            continue;
+        }
+        if (sroom.doorct === 1 || !rn2(5) || _wizardMode) return sroom;
+    }
+    return null;
+}
+
+// C ref: mkroom.c:244-253 mkzoo()
+function mkzoo(map, type) {
+    const sroom = pick_room(map, false);
+    if (!sroom) return;
+    sroom.rtype = type;
+    sroom.needfill = FILL_NORMAL;
+}
+
+// C ref: mkroom.c:52-92 do_mkroom()
+function do_mkroom(map, roomtype) {
+    if (roomtype >= SHOPBASE) {
+        mkshop(map);
+        return;
+    }
+    switch (roomtype) {
+    case COURT:
+    case ZOO:
+    case BEEHIVE:
+    case MORGUE:
+    case BARRACKS:
+    case LEPREHALL:
+    case COCKNEST:
+        mkzoo(map, roomtype);
+        return;
+    case ANTHOLE:
+        // C gates this on antholemon(); keep existing behavior for now.
+        return;
+    case TEMPLE:
+    case SWAMP:
+        // Full temple/swamp generation is not yet ported; preserve prior behavior.
+        return;
+    default:
+        return;
+    }
 }
 
 // C ref: mkroom.c:1049-1096 — check if room shape traps shopkeeper
@@ -5036,9 +5046,11 @@ function mkshop(map) {
 // C ref: early_init() → o_init.c init_objects(), dungeon.c init_dungeons(),
 //        u_init.c u_init(), nhlua pre_themerooms
 export function initLevelGeneration(roleIndex, wizard = true, opts = {}) {
+    _wizardMode = !!wizard;
     init_objects();
     setMakemonRoleContext(roleIndex, opts);
     _branchTopology = [];  // reset before recalculating from init_dungeons RNG
+    _dungeonLevelCounts = new Map();
     initDungeon(roleIndex, wizard);
     _themeroomsLoaded = false;
     _specialThemesLoaded = false;
@@ -5242,25 +5254,25 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
         if (depth > 1 && map.nroom >= room_threshold && rn2(depth) < 3) {
             mkshop(map);
         } else if (depth > 4 && !rn2(6)) {
-            // do_mkroom(COURT)
+            do_mkroom(map, COURT);
         } else if (depth > 5 && !rn2(8)) {
-            // do_mkroom(LEPREHALL)
+            do_mkroom(map, LEPREHALL);
         } else if (depth > 6 && !rn2(7)) {
-            // do_mkroom(ZOO)
+            do_mkroom(map, ZOO);
         } else if (depth > 8 && !rn2(5)) {
-            // do_mkroom(TEMPLE)
+            do_mkroom(map, TEMPLE);
         } else if (depth > 9 && !rn2(5)) {
-            // do_mkroom(BEEHIVE)
+            do_mkroom(map, BEEHIVE);
         } else if (depth > 11 && !rn2(6)) {
-            // do_mkroom(MORGUE)
+            do_mkroom(map, MORGUE);
         } else if (depth > 12 && !rn2(8)) {
             // do_mkroom(ANTHOLE) — antholemon() check skipped
         } else if (depth > 14 && !rn2(4)) {
-            // do_mkroom(BARRACKS)
+            do_mkroom(map, BARRACKS);
         } else if (depth > 15 && !rn2(6)) {
-            // do_mkroom(SWAMP)
+            do_mkroom(map, SWAMP);
         } else if (depth > 16 && !rn2(8)) {
-            // do_mkroom(COCKNEST)
+            do_mkroom(map, COCKNEST);
         }
     }
 
@@ -5340,37 +5352,13 @@ export function makelevel(depth, dnum, dlevel, opts = {}) {
         if (fillable) bonusCountdown--;
     }
 
-    // C ref: mklev.c:1405-1407 — second fill_special_room pass for all rooms.
-    // This runs AFTER fill_ordinary_room and BEFORE mineralize.
-    // Shop stocking comes first, then vault gold.
-    // Only iterate over main rooms (nroom), not subrooms
+    // C ref: mklev.c:1405-1407 + sp_lev.c:2723-2795 — second fill_special_room
+    // pass for all rooms, after fill_ordinary_room and before mineralize.
+    // Only iterate over main rooms (nroom); fill_special_room() recurses subrooms.
     for (let i = 0; i < map.nroom; i++) {
         const croom = map.rooms[i];
         if (!croom || croom.hx <= 0) continue;
-        if (croom.rtype >= SHOPBASE && croom.needfill === FILL_NORMAL) {
-            stock_room(
-                croom.rtype - SHOPBASE,
-                croom,
-                map,
-                depth,
-                _gameUbirthday,
-                getLedgerNoForLevel(map._genDnum, map._genDlevel),
-            );
-        }
-    }
-    // For VAULT rooms, gold was already placed during vault creation (first fill),
-    // so mkgold just adds to existing gold: only rn2 for amount, no rnd(2) since
-    // g_at(x,y) finds the existing gold object and skips mksobj_at/newobj.
-    for (let i = 0; i < map.nroom; i++) {
-        const croom = map.rooms[i];
-        if (!croom || croom.hx <= 0) continue;
-        if (croom.rtype === VAULT && croom.needfill === FILL_NORMAL) {
-            for (let vx = croom.lx; vx <= croom.hx; vx++) {
-                for (let vy = croom.ly; vy <= croom.hy; vy++) {
-                    rn2(Math.abs(depth) * 100 || 100);
-                }
-            }
-        }
+        fill_special_room(map, croom, depth);
     }
 
     // C ref: mklev.c:1409 — run themed-room post-level callbacks (e.g. garden wall->tree).

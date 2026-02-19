@@ -891,7 +891,7 @@ function spellDisciplineForRole(otyp, roleIndex) {
     return SPELL_DISCIPLINE_BY_NAME[name] || null;
 }
 
-function restrictedSpellDiscipline(otyp, roleIndex) {
+function restricted_spell_discipline(otyp, roleIndex) {
     const discipline = spellDisciplineForRole(otyp, roleIndex);
     if (!discipline) return false;
     const allowed = ROLE_ALLOWED_SPELL_DISCIPLINES[roleIndex];
@@ -901,7 +901,7 @@ function restrictedSpellDiscipline(otyp, roleIndex) {
 
 // ---- UNDEF_TYP Item Filter ----
 // C ref: u_init.c ini_inv_mkobj_filter() — create random object, reject dangerous items
-function iniInvMkobjFilter(oclass, gotSp1, roleIndex, race) {
+function ini_inv_mkobj_filter(oclass, gotSp1, roleIndex, race) {
     let trycnt = 0;
     while (true) {
         if (++trycnt > 1000) break; // fallback (shouldn't happen)
@@ -921,7 +921,7 @@ function iniInvMkobjFilter(oclass, gotSp1, roleIndex, race) {
             || (otyp === SPE_FORCE_BOLT && roleIndex === PM_WIZARD)
             || (oclass === SPBOOK_CLASS
                 && ((objectData[otyp].oc2 || 0) > (gotSp1 ? 3 : 1)
-                    || restrictedSpellDiscipline(otyp, roleIndex)))
+                    || restricted_spell_discipline(otyp, roleIndex)))
             || otyp === SPE_NOVEL) {
             continue; // reject, try again
         }
@@ -931,9 +931,17 @@ function iniInvMkobjFilter(oclass, gotSp1, roleIndex, race) {
     return mksobj(FOOD_RATION, true, false, true);
 }
 
+// C ref: spell.c initialspell() — learn a spell from a starting inventory spellbook
+function initialSpell(player, obj) {
+    const spells = player.spells || (player.spells = []);
+    if (spells.some(s => s.otyp === obj.otyp)) return; // already known
+    const od = objectData[obj.otyp] || {};
+    spells.push({ otyp: obj.otyp, sp_lev: od.oc2 || 1, sp_know: 20000 }); // KEEN=20000
+}
+
 // ---- ini_inv: Create starting inventory from trobj table ----
 // C ref: u_init.c ini_inv() — processes table entries, handles UNDEF_TYP
-function iniInv(player, table) {
+function ini_inv(player, table) {
     let tropIdx = 0;
     let quan = trquan(table[tropIdx]);
     let gotSp1 = false;
@@ -950,7 +958,7 @@ function iniInv(player, table) {
             otyp = trop.otyp;
         } else {
             // Random item: mkobj with filter
-            obj = iniInvMkobjFilter(trop.oclass, gotSp1, player.roleIndex, player.race);
+            obj = ini_inv_mkobj_filter(trop.oclass, gotSp1, player.roleIndex, player.race);
             otyp = obj.otyp;
             // C ref: u_init.c:1318-1337 — nocreate tracking
             switch (otyp) {
@@ -1034,6 +1042,11 @@ function iniInv(player, table) {
         // Add to player inventory
         player.addToInventory(obj);
 
+        // C ref: u_init.c ini_inv_use_obj() — initial spellbooks are auto-learned
+        if (obj.oclass === SPBOOK_CLASS && obj.otyp !== SPE_BLANK_PAPER) {
+            initialSpell(player, obj);
+        }
+
         // Track level-1 spellbooks for filter
         if (obj.oclass === SPBOOK_CLASS && (objectData[otyp].oc2 || 0) === 1) {
             gotSp1 = true;
@@ -1064,68 +1077,68 @@ function u_init_role(player) {
 
     switch (player.roleIndex) {
         case PM_ARCHEOLOGIST:
-            iniInv(player, Archeologist_inv);
-            if (!rn2(10)) iniInv(player, Tinopener_inv);
-            else if (!rn2(4)) iniInv(player, Lamp_inv);
-            else if (!rn2(5)) iniInv(player, Magicmarker_inv);
+            ini_inv(player, Archeologist_inv);
+            if (!rn2(10)) ini_inv(player, Tinopener_inv);
+            else if (!rn2(4)) ini_inv(player, Lamp_inv);
+            else if (!rn2(5)) ini_inv(player, Magicmarker_inv);
             break;
         case PM_BARBARIAN:
             if (rn2(100) >= 50) {
-                iniInv(player, Barbarian_0_inv);
+                ini_inv(player, Barbarian_0_inv);
             } else {
-                iniInv(player, Barbarian_1_inv);
+                ini_inv(player, Barbarian_1_inv);
             }
-            if (!rn2(6)) iniInv(player, Lamp_inv);
+            if (!rn2(6)) ini_inv(player, Lamp_inv);
             break;
         case PM_CAVEMAN:
-            iniInv(player, Caveman_inv);
+            ini_inv(player, Caveman_inv);
             break;
         case PM_HEALER:
             player.umoney0 = rn1(1000, 1001); // u.umoney0 = rn1(1000, 1001)
-            iniInv(player, Healer_inv);
-            if (!rn2(25)) iniInv(player, Lamp_inv);
+            ini_inv(player, Healer_inv);
+            if (!rn2(25)) ini_inv(player, Lamp_inv);
             break;
         case PM_KNIGHT:
-            iniInv(player, Knight_inv);
+            ini_inv(player, Knight_inv);
             break;
         case PM_MONK:
-            iniInv(player, Monk_inv);
-            iniInv(player, M_spell[Math.floor(rn2(90) / 30)]);
-            if (!rn2(4)) iniInv(player, Magicmarker_inv);
-            else if (!rn2(10)) iniInv(player, Lamp_inv);
+            ini_inv(player, Monk_inv);
+            ini_inv(player, M_spell[Math.floor(rn2(90) / 30)]);
+            if (!rn2(4)) ini_inv(player, Magicmarker_inv);
+            else if (!rn2(10)) ini_inv(player, Lamp_inv);
             break;
         case PM_PRIEST:
-            iniInv(player, Priest_inv);
-            if (!rn2(5)) iniInv(player, Magicmarker_inv);
-            else if (!rn2(10)) iniInv(player, Lamp_inv);
+            ini_inv(player, Priest_inv);
+            if (!rn2(5)) ini_inv(player, Magicmarker_inv);
+            else if (!rn2(10)) ini_inv(player, Lamp_inv);
             break;
         case PM_RANGER:
-            iniInv(player, Ranger_inv);
+            ini_inv(player, Ranger_inv);
             break;
         case PM_ROGUE:
             player.umoney0 = 0; // u.umoney0 = 0 (no RNG)
-            iniInv(player, Rogue_inv);
-            if (!rn2(5)) iniInv(player, Blindfold_inv);
+            ini_inv(player, Rogue_inv);
+            if (!rn2(5)) ini_inv(player, Blindfold_inv);
             break;
         case PM_SAMURAI:
-            iniInv(player, Samurai_inv);
-            if (!rn2(5)) iniInv(player, Blindfold_inv);
+            ini_inv(player, Samurai_inv);
+            if (!rn2(5)) ini_inv(player, Blindfold_inv);
             break;
         case PM_TOURIST:
             player.umoney0 = rnd(1000); // u.umoney0 = rnd(1000)
-            iniInv(player, Tourist_inv);
-            if (!rn2(25)) iniInv(player, Tinopener_inv);
-            else if (!rn2(25)) iniInv(player, Leash_inv);
-            else if (!rn2(25)) iniInv(player, Towel_inv);
-            else if (!rn2(20)) iniInv(player, Magicmarker_inv);
+            ini_inv(player, Tourist_inv);
+            if (!rn2(25)) ini_inv(player, Tinopener_inv);
+            else if (!rn2(25)) ini_inv(player, Leash_inv);
+            else if (!rn2(25)) ini_inv(player, Towel_inv);
+            else if (!rn2(20)) ini_inv(player, Magicmarker_inv);
             break;
         case PM_VALKYRIE:
-            iniInv(player, Valkyrie_inv);
-            if (!rn2(6)) iniInv(player, Lamp_inv);
+            ini_inv(player, Valkyrie_inv);
+            if (!rn2(6)) ini_inv(player, Lamp_inv);
             break;
         case PM_WIZARD:
-            iniInv(player, Wizard_inv);
-            if (!rn2(5)) iniInv(player, Blindfold_inv);
+            ini_inv(player, Wizard_inv);
+            if (!rn2(5)) ini_inv(player, Blindfold_inv);
             break;
         default:
             throw new Error(`u_init_role: unknown role index ${player.roleIndex}`);
@@ -1146,7 +1159,7 @@ function u_init_race(player) {
                 const Instrument_inv = [
                     { otyp: instrTyp, spe: 0, oclass: TOOL_CLASS, qmin: 1, qmax: 1, bless: 0 },
                 ];
-                iniInv(player, Instrument_inv);
+                ini_inv(player, Instrument_inv);
             }
             break;
         case RACE_DWARF:
@@ -1156,7 +1169,7 @@ function u_init_race(player) {
         case RACE_ORC:
             // Compensate for generally inferior equipment
             if (player.roleIndex !== PM_WIZARD) {
-                iniInv(player, Xtra_food);
+                ini_inv(player, Xtra_food);
             }
             break;
     }
@@ -1202,7 +1215,7 @@ const RACE_HP = { [RACE_HUMAN]: 2, [RACE_ELF]: 1, [RACE_DWARF]: 4, [RACE_GNOME]:
 const RACE_PW = { [RACE_HUMAN]: 1, [RACE_ELF]: 2, [RACE_DWARF]: 0, [RACE_GNOME]: 2, [RACE_ORC]: 1 };
 
 // Race-specific inventory substitutions
-// C ref: u_init.c inv_subs[] — applied per item in iniInv
+// C ref: u_init.c inv_subs[] — applied per item in ini_inv
 const INV_SUBS = [
     [RACE_ELF, DAGGER, ELVEN_DAGGER],
     [RACE_ELF, SPEAR, ELVEN_SPEAR],
@@ -1600,7 +1613,7 @@ export function simulatePostLevelInit(player, map, depth) {
     u_init_race(player);
     // C ref: u_init.c u_init_inventory_attrs() — ini_inv(Money) after role/race items.
     if (player.umoney0 > 0) {
-        iniInv(player, Money_inv);
+        ini_inv(player, Money_inv);
     }
     // C ref: u_init.c u.umoney0 += hidden_gold(TRUE)
     player.umoney0 += hiddenGold(player, true);

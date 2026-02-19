@@ -20,7 +20,7 @@ import { M2_WERE } from './monsters.js';
 import { FOOD_CLASS } from './objects.js';
 import { setObjectMoves } from './mkobj.js';
 import { were_change } from './were.js';
-import { rhack } from './commands.js';
+import { rhack, ageSpells } from './commands.js';
 import { movemon, initrack, settrack } from './monmove.js';
 import { simulatePostLevelInit, mon_arrive } from './u_init.js';
 import { getArrivalPosition } from './level_transition.js';
@@ -1363,7 +1363,6 @@ export class NetHackGame {
                     continue;
                 }
                 // Occupation turn takes time: run full turn effects
-                settrack(this.player);
                 movemon(this.map, this.player, this.display, this.fov, this);
                 this.processTurnEnd();
                 if (this.player.isDead) {
@@ -1387,7 +1386,6 @@ export class NetHackGame {
 
                 if (result.tookTime) {
                     // Run turn effects
-                    settrack(this.player);
                     movemon(this.map, this.player, this.display, this.fov, this);
                     this.processTurnEnd();
                     if (this.player.isDead) {
@@ -1472,7 +1470,6 @@ export class NetHackGame {
             // C-faithful running: allow run commands to advance one timed turn
             // per movement step instead of batching all movement first.
             this.advanceRunTurn = async () => {
-                settrack(this.player);
                 movemon(this.map, this.player, this.display, this.fov, this);
                 this.processTurnEnd();
 
@@ -1509,9 +1506,6 @@ export class NetHackGame {
             // If time passed, process turn effects
             // C ref: allmain.c moveloop_core() -- context.move handling
             if (result.tookTime) {
-                // C ref: allmain.c moveloop_core() -> settrack() before movemon
-                settrack(this.player);
-
                 // Move monsters
                 // C ref: allmain.c moveloop_core() -> movemon()
                 movemon(this.map, this.player, this.display, this.fov, this);
@@ -1621,6 +1615,8 @@ export class NetHackGame {
             return;
         }
 
+        // C ref: allmain.c:239 — settrack() happens after movemon and before moves++.
+        settrack(this.player);
         this.turnCount++;
         this.player.turns = this.turnCount;
         // C ref: allmain.c -- random spawn happens before svm.moves++.
@@ -1739,6 +1735,9 @@ export class NetHackGame {
         if (this.player.hunger === 300) {
             this.display.putstr_message('You are beginning to feel hungry.');
         }
+
+        // C ref: allmain.c:354 age_spells() — decrement spell retention each turn
+        ageSpells(this.player);
 
         // C ref: allmain.c:359 — engrave wipe check
         // rn2(40 + ACURR(A_DEX) * 3) — for Valkyrie with DEX ~14, this is rn2(82)

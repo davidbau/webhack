@@ -14,6 +14,7 @@ import { mons, G_FREQ, MZ_TINY, M2_NEUTER, M2_MALE, M2_FEMALE,
          MR_FIRE, MR_COLD, MR_SLEEP, MR_ELEC,
          PM_LIZARD, PM_LICHEN, S_TROLL } from './monsters.js';
 import { rndmonnum } from './makemon.js';
+import { next_ident } from './mkobj.js';
 import { checkLevelUp } from './combat.js';
 import { nhgetch } from './input.js';
 import { nonliving, monDisplayName } from './mondata.js';
@@ -188,9 +189,8 @@ function xkilled(mon, map, player, display) {
     const createCorpse = corpse_chance(mon);
 
     if (createCorpse) {
-        // C ref: mksobj(CORPSE, TRUE, FALSE) — creates corpse through full init path
-        // newobj → next_ident → rnd(2)
-        rnd(2);
+        // C ref: mksobj(CORPSE, TRUE, FALSE) — newobj() consumes next_ident().
+        const o_id = next_ident();
 
         // C ref: mksobj_init → rndmonnum for corpse init
         const rndmndx = rndmonnum(1);
@@ -218,6 +218,7 @@ function xkilled(mon, map, player, display) {
                 otyp: CORPSE,
                 oclass: FOOD_CLASS,
                 material: FLESH,
+                o_id,
                 corpsenm: mon.mndx || 0,
                 displayChar: '%',
                 displayColor: 7,

@@ -1050,6 +1050,11 @@ function mkmonmoney(mon, amount) {
 function m_initinv(mon, mndx, depth, m_lev) {
     const ptr = mons[mndx];
     const mm = ptr.symbol;
+    const mongets = (otyp, init = true, artif = false) => {
+        const obj = mksobj(otyp, init, artif);
+        addToMinvent(mon, obj);
+        return obj;
+    };
 
     switch (mm) {
     case S_HUMAN:
@@ -1214,11 +1219,11 @@ function m_initinv(mon, mndx, depth, m_lev) {
     const rollDef = rn2(50);
     if (m_lev > rollDef) {
         const otyp = rnd_defensive_item(mndx);
-        if (otyp) mksobj(otyp, true, false);
+        if (otyp) mongets(otyp, true, false);
     }
     if (m_lev > rn2(100)) {
         const otyp = rnd_misc_item(mon);
-        if (otyp) mksobj(otyp, true, false);
+        if (otyp) mongets(otyp, true, false);
     }
     if ((ptr.flags2 & M2_GREEDY) && !findgold(mon?.minvent) && !rn2(5)) {
         // C ref: mkmonmoney(mtmp, d(level_difficulty(), minvent ? 5 : 10))

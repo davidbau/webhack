@@ -19,7 +19,8 @@ import { objectData, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
          TOUCHSTONE, LUCKSTONE, LOADSTONE, MAGIC_MARKER,
          CREAM_PIE, EUCALYPTUS_LEAF, LUMP_OF_ROYAL_JELLY,
          POT_OIL, TRIPE_RATION, CLOVE_OF_GARLIC, PICK_AXE, DWARVISH_MATTOCK,
-         CREDIT_CARD, EXPENSIVE_CAMERA, MIRROR, FIGURINE } from './objects.js';
+         CREDIT_CARD, EXPENSIVE_CAMERA, MIRROR, FIGURINE,
+         SPE_BLANK_PAPER, SPE_NOVEL, SPE_BOOK_OF_THE_DEAD } from './objects.js';
 import { nhgetch, ynFunction, getlin } from './input.js';
 import { playerAttackMonster, applyMonflee } from './combat.js';
 import { makemon, setMakemonPlayerContext } from './makemon.js';
@@ -67,6 +68,8 @@ const STATUS_CONDITION_DEFAULT_ON = new Set([
 ]);
 
 const SPELL_KEEN_TURNS = 20000;
+const SPELL_KEEN = 20000; // C ref: spell.c KEEN
+const MAX_SPELL_STUDY = 3; // C ref: spell.h MAX_SPELL_STUDY
 const SPELL_SKILL_UNSKILLED = 1;
 const SPELL_SKILL_BASIC = 2;
 const SPELL_CATEGORY_ATTACK = 'attack';
@@ -560,7 +563,7 @@ export async function rhack(ch, game) {
     // C ref: read.c doread()
     if (c === 'r') {
         if (game.menuRequested) game.menuRequested = false;
-        return await handleRead(player, display);
+        return await handleRead(player, display, game);
     }
 
     // Zap wand
@@ -3306,7 +3309,7 @@ async function handleEngrave(player, display) {
 
 // Handle reading
 // C ref: read.c doread()
-async function handleRead(player, display) {
+async function handleRead(player, display, game) {
     const readableClasses = new Set([SCROLL_CLASS, SPBOOK_CLASS]);
     const readable = (player.inventory || []).filter((o) => o && readableClasses.has(o.oclass));
     const letters = readable.map((o) => o.invlet).join('');
@@ -3352,9 +3355,111 @@ async function handleRead(player, display) {
         if (anyItem) {
             if (anyItem.oclass === SPBOOK_CLASS) {
                 replacePromptMessage();
-                display.putstr_message('Refresh your memory anyway? [yn] (n)');
-                await nhgetch();
-                return { moved: false, tookTime: false };
+                // C ref: spell.c study_book()
+                const od = objectData[anyItem.otyp] || {};
+                // Blank paper check
+                if (anyItem.otyp === SPE_BLANK_PAPER) {
+                    display.putstr_message('This spellbook is all blank.');
+                    return { moved: false, tookTime: true };
+                }
+                // Novel check (not implemented further)
+                if (anyItem.otyp === SPE_NOVEL) {
+                    display.putstr_message('You read the novel for a while.');
+                    return { moved: false, tookTime: true };
+                }
+                // Calculate study delay (C ref: spell.c:537-558)
+                const ocLevel = od.oc2 || 1;
+                const ocDelay = od.delay || 1;
+                let delayTurns;
+                if (ocLevel <= 2) delayTurns = ocDelay;
+                else if (ocLevel <= 4) delayTurns = (ocLevel - 1) * ocDelay;
+                else if (ocLevel <= 6) delayTurns = ocLevel * ocDelay;
+                else delayTurns = 8 * ocDelay; // level 7
+
+                // C ref: spell.c:561-572 — check if spell already known and well-retained
+                const spells = player.spells || (player.spells = []);
+                const knownEntry = spells.find(s => s.otyp === anyItem.otyp);
+                if (knownEntry && knownEntry.sp_know > SPELL_KEEN / 10) {
+                    const spellName = String(od.name || 'this spell').toLowerCase();
+                    display.putstr_message(`You know "${spellName}" quite well already.`);
+                    display.putstr_message('Refresh your memory anyway? [yn] (n)');
+                    const ans = await nhgetch();
+                    replacePromptMessage();
+                    if (String.fromCharCode(ans) !== 'y') {
+                        return { moved: false, tookTime: false };
+                    }
+                }
+
+                // C ref: spell.c:577-602 — difficulty check (uncursed, non-BOTD books)
+                if (!anyItem.blessed && anyItem.otyp !== SPE_BOOK_OF_THE_DEAD) {
+                    if (anyItem.cursed) {
+                        // Cursed: too hard (C: cursed_book() + nomul for delay)
+                        display.putstr_message("This book is beyond your comprehension.");
+                        return { moved: false, tookTime: true };
+                    }
+                    // Uncursed: roll difficulty
+                    const intel = (player.attributes ? player.attributes[A_INT] : 12) || 12;
+                    const readAbility = intel + 4 + Math.floor((player.level || 1) / 2) - 2 * ocLevel;
+                    if (rnd(20) > readAbility) {
+                        display.putstr_message("You can't make heads or tails of this.");
+                        return { moved: false, tookTime: true };
+                    }
+                }
+
+                // Start studying (C ref: "You begin to memorize the runes.")
+                display.putstr_message('You begin to memorize the runes.');
+                const bookRef = anyItem;
+                const bookOd = od;
+                const bookOcLevel = ocLevel;
+                game.occupation = {
+                    occtxt: 'studying',
+                    delayLeft: delayTurns,
+                    fn(g) {
+                        if (this.delayLeft > 0) {
+                            this.delayLeft--;
+                            return true; // still studying
+                        }
+                        // C ref: spell.c learn() — study complete
+                        // exercise(A_WIS, TRUE) — no RNG
+                        const spellsArr = g.player.spells || (g.player.spells = []);
+                        const ent = spellsArr.find(s => s.otyp === bookRef.otyp);
+                        const spellName = String(bookOd.name || 'unknown spell').toLowerCase();
+                        const studyCount = bookRef.spestudied || 0;
+                        if (ent) {
+                            // Already known — refresh
+                            if (studyCount >= MAX_SPELL_STUDY) {
+                                g.display.putstr_message('This spellbook is too faint to be read any more.');
+                                bookRef.otyp = SPE_BLANK_PAPER;
+                            } else {
+                                g.display.putstr_message(
+                                    `Your knowledge of "${spellName}" is ${ent.sp_know ? 'keener' : 'restored'}.`);
+                                ent.sp_know = SPELL_KEEN + 1; // incrnknow(i, 1)
+                                bookRef.spestudied = studyCount + 1;
+                            }
+                        } else {
+                            // New spell
+                            if (studyCount >= MAX_SPELL_STUDY) {
+                                g.display.putstr_message('This spellbook is too faint to read even once.');
+                                bookRef.otyp = SPE_BLANK_PAPER;
+                            } else {
+                                const spellIdx = spellsArr.length;
+                                spellsArr.push({ otyp: bookRef.otyp, sp_lev: bookOcLevel, sp_know: SPELL_KEEN + 1 });
+                                bookRef.spestudied = studyCount + 1;
+                                if (spellIdx === 0) {
+                                    g.display.putstr_message(`You learn "${spellName}".`);
+                                } else {
+                                    const spellet = spellIdx < 26
+                                        ? String.fromCharCode('a'.charCodeAt(0) + spellIdx)
+                                        : String.fromCharCode('A'.charCodeAt(0) + spellIdx - 26);
+                                    g.display.putstr_message(
+                                        `You add "${spellName}" to your repertoire, as '${spellet}'.`);
+                                }
+                            }
+                        }
+                        return false; // occupation done
+                    },
+                };
+                return { moved: false, tookTime: true };
             }
             if (anyItem.oclass === SCROLL_CLASS) {
                 replacePromptMessage();
@@ -3812,9 +3917,18 @@ function estimateSpellFailPercent(player, spellName, spellLevel, category) {
     return Math.max(0, Math.min(99, 100 - chance));
 }
 
+// C ref: spell.c age_spells() — decrement spell retention each turn
+export function ageSpells(player) {
+    const spells = player.spells;
+    if (!spells) return;
+    for (const s of spells) {
+        if (s.sp_know > 0) s.sp_know--;
+    }
+}
+
 async function handleKnownSpells(player, display) {
-    const spellbooks = (player.inventory || []).filter((obj) => (obj.oclass ?? obj.oc_class) === SPBOOK_CLASS);
-    if (spellbooks.length === 0) {
+    const knownSpells = (player.spells || []).filter(s => s.sp_know > 0);
+    if (knownSpells.length === 0) {
         display.putstr_message("You don't know any spells right now.");
         return { moved: false, tookTime: false };
     }
@@ -3825,14 +3939,14 @@ async function handleKnownSpells(player, display) {
         ? '    Name                 Level Category     Fail Retention  turns'
         : '    Name                 Level Category     Fail Retention');
 
-    for (let i = 0; i < spellbooks.length && i < 52; i++) {
-        const book = spellbooks[i];
-        const od = objectData[book.otyp] || null;
-        const spellName = String(od?.name || book.name || 'unknown spell').toLowerCase();
-        const spellLevel = Math.max(1, Number(od?.oc2 || 1));
+    for (let i = 0; i < knownSpells.length && i < 52; i++) {
+        const sp = knownSpells[i];
+        const od = objectData[sp.otyp] || null;
+        const spellName = String(od?.name || 'unknown spell').toLowerCase();
+        const spellLevel = Math.max(1, Number(od?.oc2 || sp.sp_lev || 1));
         const category = spellCategoryForName(spellName);
         const skillRank = spellSkillRank(player, category);
-        const turnsLeft = Math.max(0, SPELL_KEEN_TURNS - Number(player.turns || 0));
+        const turnsLeft = Math.max(0, sp.sp_know);
         const fail = estimateSpellFailPercent(player, spellName, spellLevel, category);
         const retention = spellRetentionText(turnsLeft, skillRank);
         const menuLet = i < 26 ? String.fromCharCode('a'.charCodeAt(0) + i) : String.fromCharCode('A'.charCodeAt(0) + i - 26);
@@ -5226,8 +5340,8 @@ async function wizLevelChange(game) {
         return { moved: false, tookTime: false };
     }
     game.changeLevel(level, 'teleport');
-    // C ref: wizcmds.c wiz_level_tele() returns ECMD_OK (no turn consumed).
-    return { moved: false, tookTime: false };
+    // C ref: wizcmds.c wiz_level_tele() returns ECMD_OK (time consumed).
+    return { moved: false, tookTime: true };
 }
 
 // Wizard mode: reveal entire map (magic mapping)

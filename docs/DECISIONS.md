@@ -412,5 +412,41 @@ longer needed.  The PRNG log comparison tests track progress toward this goal.
 
 ---
 
+## Decision 13: PRNG Timing Parity
+
+> *"You sense a disturbance in the random number plane."*
+
+**Context:** Session comparison tests compare JS and C PRNG call sequences using
+strict index-based comparison. When one side makes an extra or missing RNG call,
+all subsequent indices become misaligned, making it impossible to tell whether the
+rest of the sequence matches. A single missing call early on causes hundreds of
+apparent mismatches downstream.
+
+**Principle:** PRNG calls must happen at the same step as C. Screen parity forces
+this in 99%+ of cases — any call that affects visible output must happen on the
+same turn or the screen will diverge. Calls may happen *later* than C only for
+invisible internal state (e.g., deferred exercise checks). Calls must **never**
+happen *earlier* than C — an earlier call means JS is computing something C hasn't
+yet, which always indicates a bug (premature computation, misplaced logic, or a
+missing guard).
+
+**Categories of divergence:**
+- **JS extra** (JS made a call C didn't at this step): indicates premature or
+  misplaced computation in JS. Always a bug to investigate.
+- **C extra** (C made a call JS didn't at this step): indicates missing JS
+  implementation. Expected during porting; tracked as parity work.
+- **Value diff** (both sides called RNG but got different results): indicates
+  accumulated drift from earlier shifts. Fix the earliest shift first.
+
+**Diagnosis:** Use `node test/comparison/rng_shift_analysis.js` to identify
+time-shifts across sessions. The tool uses bounded-lookahead alignment to
+distinguish shifts (insertions/deletions) from value mismatches, and aggregates
+the most-affected functions across all sessions.
+
+**See also:** [C_PARITY_WORKLIST.md](C_PARITY_WORKLIST.md) (PRNG Timing section),
+Issue [#143](https://github.com/davidbau/menace/issues/143).
+
+---
+
 > *"You have reached the bottom of the decision log. There are more decisions
 > to come. The strident call of the DevTeam echoes in the distance."*

@@ -34,10 +34,9 @@ const seenv_matrix = [
 ];
 
 // ========================================================================
-// does_block() -- what blocks vision
-// C ref: vision.c:152-202
+// does_block — C ref: vision.c:153 — what blocks vision
 // ========================================================================
-function doesBlock(map, x, y) {
+function does_block(map, x, y) {
     const loc = map.at(x, y);
     if (!loc) return true;
     // C: IS_OBSTRUCTED(typ) = typ < POOL (types 0-15: stone, walls, tree, sdoor, scorr)
@@ -432,7 +431,7 @@ export class FOV {
             let dig_left = 0;
             let block = true; // position (0,y) is always stone
             for (let x = 1; x < COLNO; x++) {
-                const isBlocked = doesBlock(map, x, y);
+                const isBlocked = does_block(map, x, y);
                 if (block !== isBlocked) {
                     if (block) {
                         // Was blocked, now clear: set ptrs for blocked segment
@@ -500,6 +499,13 @@ export class FOV {
                 const nx = px + dx, ny = py + dy;
                 if (nx >= 0 && nx < COLNO && ny >= 0 && ny < ROWNO) {
                     if (!cs[ny][nx]) continue;
+                    // Prevent peeking diagonally around opaque corners for
+                    // adjacent wall/door/stone cells.
+                    if (dx !== 0 && dy !== 0 && !this.viz_clear[ny][nx]) {
+                        const ortho1Clear = this.viz_clear[py][nx];
+                        const ortho2Clear = this.viz_clear[ny][px];
+                        if (!ortho1Clear || !ortho2Clear) continue;
+                    }
                     cs[ny][nx] |= IN_SIGHT;
                 }
             }

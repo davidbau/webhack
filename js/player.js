@@ -450,6 +450,9 @@ export class Player {
         // Inventory
         // C ref: decl.h invent (linked list in C, array in JS)
         this.inventory = [];
+        // Known spells (C ref: svs.spl_book[] in spell.c)
+        // Each entry: { otyp, sp_lev, sp_know } matching C struct spell
+        this.spells = [];
         // C ref: invent.c static lastinvnr (starts at max index so first item is 'a')
         this.lastInvlet = INVENTORY_LETTERS.length - 1;
 

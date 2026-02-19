@@ -989,3 +989,36 @@ export function getSymbolChar(idx, useDECgraphics = false) {
     // Otherwise use default ASCII from defsyms
     return defsyms[idx].ch;
 }
+
+// ============================================================================
+// drawing.c lookup functions
+// C ref: drawing.c:91-130 — character-to-class conversion utilities
+// ============================================================================
+
+// drawing.c:91 — convert a character into its object class.
+// Returns the index of the matching class, or MAXOCLASSES if not found.
+export function def_char_to_objclass(ch) {
+    for (let i = 1; i < MAXOCLASSES; i++) {
+        if (def_oc_syms[i] && def_oc_syms[i].sym === ch) return i;
+    }
+    return MAXOCLASSES;
+}
+
+// drawing.c:108 — convert a character into its monster class.
+// Returns the index of the first matching class, or MAXMCLASSES if not found.
+export function def_char_to_monclass(ch) {
+    for (let i = 1; i < MAXMCLASSES; i++) {
+        if (def_monsyms[i] && def_monsyms[i].sym === ch) return i;
+    }
+    return MAXMCLASSES;
+}
+
+// drawing.c:120 — does 'ch' represent a furniture character?
+// Returns the defsyms[] index if found, or 0 if not.
+// C scans explanation strings for "stair".."fountain"; JS uses S_upstair..S_fountain.
+export function def_char_is_furniture(ch) {
+    for (let i = S_upstair; i <= S_fountain; i++) {
+        if (defsyms[i] && defsyms[i].ch === ch) return i;
+    }
+    return 0;
+}

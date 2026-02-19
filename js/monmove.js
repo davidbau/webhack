@@ -1,598 +1,159 @@
 // monmove.js -- Monster movement AI
-// C-faithful port of mon.c movemon(), monmove.c dochug(), dogmove.c dog_move()
+// C ref: monmove.c — dochug(), m_move(), m_move_aggress(), set_apparxy()
+// Pet AI (dogmove.c) is in dogmove.js
 // Focus: exact RNG consumption alignment with C NetHack
+//
+// INCOMPLETE / MISSING vs C monmove.c:
+// - dochug: no Conflict handling (C:870), no covetous/quest/vault guards
+// - dochug: m_respond() not implemented (C:764, handles spell/gaze/breath)
+// - dochug: flees_light (gremlin+artifact light) not implemented (C:555)
+// - dochug: in_your_sanctuary (temple) not implemented (C:564)
+// - m_move: no boulder-pushing by strong monsters (C:2020)
+// - m_move: no vault guard movement (C:1730)
+// - m_move: covetous monster teleport-to-hero not implemented (C:1737)
+// - m_move_aggress: simplified attack — only first attack used, no full mattackm
+// - set_apparxy: displacement displacement-offset details simplified
+// - shk_move: simplified from full C shk.c; no billing/theft tracking
+// - undesirable_disp: not yet implemented (C:2279)
+// - distfleeck: brave_gremlin roll consumed but not applied (C:541)
 
-import { COLNO, ROWNO, STONE, IS_WALL, IS_DOOR, IS_ROOM,
-         ACCESSIBLE, IS_OBSTRUCTED, CORR, DOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN,
-         POOL, LAVAPOOL, WATER, LAVAWALL, IRONBARS,
-         SHOPBASE, ROOM, ROOMOFFSET, IS_POOL, IS_LAVA,
-         NORMAL_SPEED, isok, A_STR, STAIRS, LADDER } from './config.js';
+import { COLNO, ROWNO, IS_WALL, IS_DOOR, IS_ROOM,
+         ACCESSIBLE, CORR, DOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN,
+         SHOPBASE, ROOM, ROOMOFFSET,
+         NORMAL_SPEED, isok } from './config.js';
 import { rn2, rnd, c_d } from './rng.js';
-import { exercise } from './attrib_exercise.js';
-import { monsterAttackPlayer, checkLevelUp, applyMonflee } from './combat.js';
-import { CORPSE, FOOD_CLASS, COIN_CLASS, BOULDER, ROCK, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS,
+import { monsterAttackPlayer, applyMonflee } from './combat.js';
+import { FOOD_CLASS, COIN_CLASS, BOULDER, ROCK, ROCK_CLASS,
          WEAPON_CLASS, ARMOR_CLASS, GEM_CLASS,
          AMULET_CLASS, POTION_CLASS, SCROLL_CLASS, WAND_CLASS, RING_CLASS, SPBOOK_CLASS,
-         PICK_AXE, DWARVISH_MATTOCK, SKELETON_KEY, LOCK_PICK, CREDIT_CARD,
-         UNICORN_HORN, SCR_SCARE_MONSTER, CLOAK_OF_DISPLACEMENT, MINERAL, GOLD_PIECE,
+         PICK_AXE, DWARVISH_MATTOCK,
+         CLOAK_OF_DISPLACEMENT, MINERAL, GOLD_PIECE,
          objectData } from './objects.js';
-import { doname, mkcorpstat, next_ident } from './mkobj.js';
-import { observeObject } from './discovery.js';
-import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT,
-         POISON, UNDEF, TABU } from './dog.js';
-import { couldsee, m_cansee, do_clear_area } from './vision.js';
-import { placeFloorObject } from './floor_objects.js';
-import { can_teleport, noeyes, perceives, is_animal, is_mindless, nohands, nonliving,
-         is_displacer, is_hider, monDisplayName, hasGivenName, monNam,
-         } from './mondata.js';
-import { PM_GRID_BUG, PM_IRON_GOLEM, PM_SHOPKEEPER, mons,
-         PM_LEPRECHAUN, PM_XAN, PM_YELLOW_LIGHT, PM_BLACK_LIGHT,
-         PM_PURPLE_WORM, PM_BABY_PURPLE_WORM, PM_SHRIEKER,
-         PM_DEATH, PM_PESTILENCE, PM_FAMINE,
-         AT_NONE, AT_CLAW, AT_BITE, AT_KICK, AT_BUTT, AT_TUCH, AT_STNG, AT_WEAP,
-         AD_PHYS,
-         AD_ACID, AD_ENCH,
-         M1_FLY, M1_SWIM, M1_AMPHIBIOUS, M1_AMORPHOUS, M1_CLING, M1_SEE_INVIS, S_MIMIC,
+import { next_ident, weight } from './mkobj.js';
+import { can_carry } from './dogmove.js';
+import { couldsee, m_cansee } from './vision.js';
+import { can_teleport, noeyes, perceives, nohands,
+         hides_under, is_mercenary, monDisplayName, monNam,
+         mon_knows_traps } from './mondata.js';
+import { PM_GRID_BUG, PM_SHOPKEEPER, mons,
+         PM_LEPRECHAUN,
+         PM_DISPLACER_BEAST,
+         PM_WHITE_UNICORN, PM_GRAY_UNICORN, PM_BLACK_UNICORN,
+         AT_NONE, AT_CLAW, AT_WEAP,
+         S_MIMIC,
          S_DOG, S_NYMPH, S_LEPRECHAUN, S_HUMAN,
-         M1_WALLWALK, M1_TUNNEL, M1_NEEDPICK, M1_SLITHY, M1_UNSOLID,
          M2_COLLECT, M2_STRONG, M2_ROCKTHROW, M2_GREEDY, M2_JEWELS, M2_MAGIC,
-         MZ_TINY, MZ_SMALL, MZ_MEDIUM, MZ_HUMAN, WT_HUMAN, MR_FIRE, MR_SLEEP, G_FREQ, G_NOCORPSE,
-         PM_DISPLACER_BEAST, PM_FIRE_ELEMENTAL, PM_SALAMANDER,
-         S_EYE, S_LIGHT, S_EEL, S_PIERCER, S_VORTEX, S_ELEMENTAL } from './monsters.js';
-import { STATUE_TRAP, MAGIC_TRAP, VIBRATING_SQUARE, RUST_TRAP, FIRE_TRAP,
-         SLP_GAS_TRAP, BEAR_TRAP, PIT, SPIKED_PIT, HOLE, TRAPDOOR,
-         TELEP_TRAP, WEB, ANTI_MAGIC, MAGIC_PORTAL } from './symbols.js';
+         MZ_TINY, MZ_HUMAN, WT_HUMAN,
+         M2_WANDER } from './monsters.js';
+import { dog_move, could_reach_item } from './dogmove.js';
+import { initrack, settrack, gettrack } from './track.js';
+import { pointInShop, monsterInShop } from './shknam.js';
 
-function monmoveTraceEnabled() {
-    const env = (typeof process !== 'undefined' && process.env) ? process.env : {};
-    return env.WEBHACK_MONMOVE_TRACE === '1';
-}
+// Shared utilities — re-exported for consumers
+import { dist2, distmin, monnear,
+         monmoveTrace, monmovePhase3Trace, monmoveStepLabel,
+         attackVerb, monAttackName,
+         canSpotMonsterForMap, rememberInvisibleAt,
+         addToMonsterInventory, canMergeMonsterInventoryObj,
+         MTSZ, SQSRCHRADIUS, FARAWAY, BOLT_LIM } from './monutil.js';
+export { dist2, distmin, monnear,
+         monmoveTrace, monmovePhase3Trace, monmoveStepLabel,
+         attackVerb, monAttackName,
+         canSpotMonsterForMap, rememberInvisibleAt,
+         addToMonsterInventory, canMergeMonsterInventoryObj,
+         MTSZ, SQSRCHRADIUS, FARAWAY, BOLT_LIM };
 
-function monmoveTrace(...args) {
-    if (!monmoveTraceEnabled()) return;
-    console.log('[MONMOVE_TRACE]', ...args);
-}
+// Re-export track functions (track.c)
+export { initrack, settrack };
 
-function monmovePhase3TraceEnabled() {
-    const env = (typeof process !== 'undefined' && process.env) ? process.env : {};
-    return env.WEBHACK_MONMOVE_PHASE3_TRACE === '1';
-}
+// Re-export mon.c functions
+import { movemon as _movemon, mfndpos, handleHiderPremove,
+         onscary,
+         petCorpseChanceRoll, consumePassivemmRng } from './mon.js';
+export { mfndpos, onscary, petCorpseChanceRoll, consumePassivemmRng };
 
-function monmovePhase3Trace(...args) {
-    if (!monmovePhase3TraceEnabled()) return;
-    console.log('[MONMOVE_PHASE3]', ...args);
-}
+// Re-export trap.c functions
+import { m_harmless_trap, floor_trigger, mintrap_postmove } from './trap.js';
+export { m_harmless_trap, floor_trigger, mintrap_postmove };
 
-function monmoveStepLabel(map) {
-    const idx = map?._replayStepIndex;
-    return Number.isInteger(idx) ? String(idx + 1) : '?';
-}
-
-const MTSZ = 4;           // C ref: monst.h — track history size
-const SQSRCHRADIUS = 5;   // C ref: dogmove.c — object search radius
-const FARAWAY = 127;      // C ref: hack.h — large distance sentinel
-const BOLT_LIM = 8;       // C ref: hack.h BOLT_LIM (threat radius baseline)
-
-function attackVerb(type) {
-    switch (type) {
-        case AT_BITE: return 'bites';
-        case AT_CLAW: return 'claws';
-        // C ref: mhitm.c hitmm() uses generic "hits" for AT_KICK.
-        case AT_KICK: return 'hits';
-        case AT_BUTT: return 'butts';
-        case AT_TUCH: return 'touches';
-        case AT_STNG: return 'stings';
-        case AT_WEAP: return 'hits';
-        default: return 'hits';
-    }
-}
-
-function monAttackName(mon) {
-    // C ref: do_name.c Monnam() — uses ARTICLE_THE regardless of tame status,
-    // and "saddled" is prepended when a saddle is worn.
-    return monNam(mon, { article: 'the', capitalize: true });
-}
-
-function rememberInvisibleAt(map, x, y, player) {
-    if (!map || !isok(x, y)) return;
-    if (player && x === player.x && y === player.y) return;
-    const loc = map.at(x, y);
-    if (!loc) return;
-    loc.mem_invis = true;
-}
-
-function canSpotMonsterForMap(mon, map, player, fov) {
-    if (!mon || !map || !player) return false;
-    const visible = fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my);
-    if (!visible) return false;
-    if (player.blind) return false;
-    if (mon.mundetected) return false;
-    if (mon.minvis && !player.seeInvisible) return false;
-    return true;
-}
-
+// Re-export mthrowu.c functions
+import { thrwmu, hasWeaponAttack, maybeMonsterWieldBeforeAttack, linedUpToPlayer } from './mthrowu.js';
 
 // ========================================================================
-// Player track — C ref: track.c
-// Circular buffer recording player positions for pet pathfinding.
+// movemon — wrapper that binds dochug into mon.js movemon
 // ========================================================================
-const UTSZ = 100;         // C ref: track.c — track buffer size
-let _utrack = new Array(UTSZ).fill(null).map(() => ({ x: 0, y: 0 }));
-let _utcnt = 0;
-let _utpnt = 0;
-
-export function initrack() {
-    _utrack = new Array(UTSZ).fill(null).map(() => ({ x: 0, y: 0 }));
-    _utcnt = 0;
-    _utpnt = 0;
-}
-
-// C ref: track.c settrack() — record player position (called after movemon, before moves++)
-export function settrack(player) {
-    if (_utcnt < UTSZ) _utcnt++;
-    if (_utpnt === UTSZ) _utpnt = 0;
-    _utrack[_utpnt].x = player.x;
-    _utrack[_utpnt].y = player.y;
-    _utpnt++;
-}
-
-// C ref: track.c gettrack() — find most recent track entry adjacent to (x,y)
-// Returns the track entry if distmin=1 (adjacent), null if distmin=0 (same pos) or not found.
-function gettrack(x, y) {
-    let cnt = _utcnt;
-    let idx = _utpnt;
-    while (cnt-- > 0) {
-        if (idx === 0) idx = UTSZ - 1;
-        else idx--;
-        const tc = _utrack[idx];
-        const ndist = Math.max(Math.abs(x - tc.x), Math.abs(y - tc.y)); // distmin
-        if (ndist <= 1) return ndist ? tc : null;
-    }
-    return null;
+export function movemon(map, player, display, fov, game = null) {
+    _movemon(map, player, display, fov, game, { dochug, handleHiderPremove });
 }
 
 // C direction tables (C ref: monmove.c)
 const xdir = [0, 1, 1, 1, 0, -1, -1, -1];
 const ydir = [-1, -1, 0, 1, 1, 1, 0, -1];
 
-// Squared distance
-function dist2(x1, y1, x2, y2) {
-    return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
-}
+// ========================================================================
+// onscary — C ref: monmove.c:241 (also in mon.c; we delegate to mon.js)
+// ========================================================================
+// (imported and re-exported above)
 
-// C ref: hack.h distmin()
-function distmin(x1, y1, x2, y2) {
-    return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
-}
-
-// C ref: mon.c monnear() + NODIAG()
-function monnear(mon, x, y) {
-    const distance = dist2(mon.mx, mon.my, x, y);
-    // C ref: hack.h NODIAG(monnum) is only PM_GRID_BUG.
-    const nodiag = mon.mndx === PM_GRID_BUG;
-    if (distance === 2 && nodiag) return false;
-    return distance < 3;
-}
-
+// ========================================================================
+// leppie_avoidance — C ref: monmove.c:1142
+// ========================================================================
 function hasGold(inv) {
     return Array.isArray(inv)
         && inv.some(o => o && o.oclass === COIN_CLASS && (o.quan ?? 1) > 0);
 }
 
-// C ref: mthrowu.c blocking_terrain() subset used by lined_up().
-function blockingTerrainForLinedup(map, x, y) {
-    if (!isok(x, y)) return true;
-    const loc = map.at(x, y);
-    if (!loc) return true;
-    if (IS_OBSTRUCTED(loc.typ)) return true;
-    if (IS_DOOR(loc.typ) && (loc.flags & (D_CLOSED | D_LOCKED))) return true;
-    return false;
-}
-
-// C ref: mthrowu.c linedup()/lined_up() for monster vs hero.
-function linedUpToPlayer(mon, map, player, fov = null) {
-    const ax = Number.isInteger(mon.mux) ? mon.mux : player.x;
-    const ay = Number.isInteger(mon.muy) ? mon.muy : player.y;
-    const bx = mon.mx;
-    const by = mon.my;
-    const tbx = ax - bx;
-    const tby = ay - by;
-    if (!tbx && !tby) return false;
-
-    if (!(!tbx || !tby || Math.abs(tbx) === Math.abs(tby))) return false;
-    if (distmin(tbx, tby, 0, 0) >= BOLT_LIM) return false;
-
-    // C ref: if target is hero square, use couldsee(mon_pos), otherwise clear_path().
-    const inSight = (ax === player.x && ay === player.y)
-        // C ref: linedup() uses couldsee(bx, by) for hero target.
-        // Use current FOV COULD_SEE bitmap when available.
-        ? ((fov && typeof fov.couldSee === 'function')
-            ? fov.couldSee(bx, by)
-            : couldsee(map, player, bx, by))
-        // C ref: linedup() uses clear_path(ax, ay, bx, by) for non-hero target.
-        : m_cansee({ mx: ax, my: ay }, map, bx, by);
-    if (inSight) return true;
-
-    // C ref: hero target uses boulderhandling=2.
-    const dx = Math.sign(ax - bx);
-    const dy = Math.sign(ay - by);
-    let cx = bx;
-    let cy = by;
-    let boulderspots = 0;
-    do {
-        cx += dx;
-        cy += dy;
-        if (blockingTerrainForLinedup(map, cx, cy)) return false;
-        const objs = map.objectsAt?.(cx, cy) || [];
-        if (objs.some((o) => o && !o.buried && o.otyp === BOULDER)) boulderspots++;
-    } while (cx !== ax || cy !== ay);
-    const denom = 2 + boulderspots;
-    return rn2(denom) < 2;
-}
-
-// ========================================================================
-// Monster ranged attacks (throwing)
-// C ref: mthrowu.c thrwmu(), monshoot(), monmulti(), m_throw()
-// ========================================================================
-
-// C ref: weapon.c select_rwep() — select best ranged weapon from monster inventory.
-// Deterministic (no RNG). Returns the weapon object or null.
-function select_rwep(mon) {
-    const inv = mon.minvent || [];
-    if (inv.length === 0) return null;
-    // Simple heuristic matching C priority: find first weapon-class item.
-    // C scans for: cockatrice eggs, pies (kops), boulders (giants),
-    // polearms, throw-and-return weapons, ammo+launcher, stackable weapons.
-    // For early-game monsters (goblins, orcs), the typical case is a
-    // stackable weapon (daggers, arrows) that they carry.
+function goldQuantity(inv) {
+    if (!Array.isArray(inv)) return 0;
+    let total = 0;
     for (const obj of inv) {
-        if (!obj) continue;
-        const od = objectData[obj.otyp];
-        if (!od) continue;
-        if (od.oc_class === WEAPON_CLASS) return obj;
+        if (!obj || obj.oclass !== COIN_CLASS) continue;
+        total += Number(obj.quan || 0);
     }
-    return null;
+    return total;
 }
 
-function monsterUseup(mon, obj) {
-    if (!mon || !obj) return;
-    const inv = mon.minvent || [];
-    const idx = inv.indexOf(obj);
-    if (idx < 0) return;
-    const qty = Number.isInteger(obj.quan) ? obj.quan : 1;
-    if (qty > 1) {
-        obj.quan = qty - 1;
-        return;
-    }
-    inv.splice(idx, 1);
-    if (mon.weapon === obj) mon.weapon = null;
+function leppie_avoidance(mon, player) {
+    if (!mon || mon.mndx !== PM_LEPRECHAUN) return false;
+    const lepreGold = goldQuantity(mon.minvent || []);
+    if (lepreGold <= 0) return false;
+    const heroGold = goldQuantity(player?.inventory || []);
+    return lepreGold > heroGold;
 }
 
-// C ref: mthrowu.c monmulti() — compute multishot count.
-// Consumes rnd(multishot) when multishot > 0 and quan > 1.
-function monmulti(mon, otmp) {
-    let multishot = 1;
-    const quan = otmp.quan ?? 1;
-    // C ref: mthrowu.c:207 — only enter multishot block when quan > 1
-    // and the weapon is a stackable weapon (not ammo needing launcher,
-    // which we simplify since we don't track launchers).
-    const od = objectData[otmp.otyp];
-    if (quan > 1 && od && od.oc_class === WEAPON_CLASS && !mon.confused) {
-        // C ref: prince/lord/mplayer bonuses (deterministic)
-        // Simplified: most early-game monsters are none of these.
-        // rnd(multishot) is the randomizer.
-        multishot = rnd(multishot);
-    }
-    if (multishot > quan) multishot = quan;
-    if (multishot < 1) multishot = 1;
-    return multishot;
+// ========================================================================
+// m_avoid_kicked_loc — C ref: monmove.c:1300
+// ========================================================================
+export function m_avoid_kicked_loc(mon, nx, ny, player) {
+    const kl = player?.kickedloc;
+    const monCanSee = (mon?.mcansee !== false) && !mon?.blind;
+    if (!kl || !isok(kl.x, kl.y)) return false;
+    if (!(mon?.peaceful || mon?.tame)) return false;
+    if (player?.conflict) return false;
+    if (!monCanSee || mon?.confused || mon?.stunned) return false;
+    return nx === kl.x && ny === kl.y && dist2(nx, ny, player.x, player.y) <= 2;
 }
 
-function thrownObjectName(obj, player) {
-    if (!obj) return 'a weapon';
-    // C ref: mthrowu.c uses xname() for visible throw messages; when a
-    // thrown item is being explicitly named, appearance is known (dknown).
-    const oneShot = { ...obj, quan: 1, dknown: true };
-    return doname(oneShot, player);
+// ========================================================================
+// m_avoid_soko_push_loc — C ref: monmove.c:1316
+// ========================================================================
+export function m_avoid_soko_push_loc(mon, nx, ny, map, player) {
+    if (!map?.flags?.sokoban) return false;
+    if (!(mon?.peaceful || mon?.tame)) return false;
+    if (mon?.confused || mon?.stunned) return false;
+    if (player?.conflict) return false;
+    if (dist2(nx, ny, player.x, player.y) !== 4) return false;
+    const bx = nx + Math.sign(player.x - nx);
+    const by = ny + Math.sign(player.y - ny);
+    return (map.objects || []).some((obj) =>
+        !obj?.buried && obj.otyp === BOULDER && obj.ox === bx && obj.oy === by
+    );
 }
 
-// C ref: mthrowu.c m_throw() — simulate projectile flight.
-// Consumes rn2(5) at each step, plus hit/damage rolls on collision.
-function m_throw(mon, startX, startY, dx, dy, range, weapon, map, player, display, game) {
-    let x = startX;
-    let y = startY;
-    let dropX = startX;
-    let dropY = startY;
-
-    // C ref: mthrowu.c:601 — misfire check for cursed/greased weapons
-    if ((weapon.cursed || weapon.greased) && (dx || dy) && !rn2(7)) {
-        dx = rn2(3) - 1;
-        dy = rn2(3) - 1;
-        if (!dx && !dy) {
-            return { drop: true, x: startX, y: startY }; // missile drops at thrower's feet
-        }
-    }
-
-    const od = objectData[weapon.otyp];
-
-    // C ref: mthrowu.c:652 — main flight loop
-    while (range-- > 0) {
-        x += dx;
-        y += dy;
-        if (!isok(x, y)) break;
-        const loc = map.at(x, y);
-        if (!loc) break;
-        if (ACCESSIBLE(loc.typ)) {
-            dropX = x;
-            dropY = y;
-        }
-
-        // Check for monster at this position
-        const mtmp = map.monsterAt(x, y);
-        if (mtmp && !mtmp.dead) {
-            // C ref: mthrowu.c:664 ohitmon() — hit roll and damage
-            const mac = mtmp.mac ?? 10;
-            const hitThreshold = 5 + mac;
-            const dieRoll = rnd(20);
-            if (hitThreshold < dieRoll) {
-                // Miss — projectile continues if range > 0, stops otherwise
-                if (!range) break; // last step, missile drops
-                // Missile continues past the miss
-            } else {
-                // Hit! Calculate damage
-                // C ref: weapon.c dmgval() — rnd(oc_wsdam) for small monsters
-                const sdam = od ? (od.sdam || 0) : 0;
-                let damage = sdam > 0 ? rnd(sdam) : 0;
-                damage += (weapon.spe || 0);
-                if (damage < 1) damage = 1;
-
-                mtmp.mhp -= damage;
-                if (mtmp.mhp <= 0) {
-                    mtmp.dead = true;
-                    map.removeMonster(mtmp);
-                    // C ref: mon.c xkilled() — award XP and create corpse
-                    const exp = (mtmp.mlevel + 1) * (mtmp.mlevel + 1);
-                    player.exp += exp;
-                    player.score += exp;
-                    checkLevelUp(player, display);
-                    // C ref: mon.c:3581 — treasure drop rn2(6)
-                    rn2(6);
-                    // C ref: mon.c corpse_chance()
-                    const mdat2 = mons[mtmp.mndx] || {};
-                    const gfreq = (mdat2.geno || 0) & G_FREQ;
-                    const verysmall = (mdat2.size || 0) === MZ_TINY;
-                    const corpsetmp = 2 + (gfreq < 2 ? 1 : 0) + (verysmall ? 1 : 0);
-                    if (!rn2(corpsetmp)) {
-                        // Corpse creation stub — consume the same RNG as mkcorpstat path
-                        // TODO: full corpse creation
-                    }
-                }
-                break; // projectile stops after hitting
-            }
-        }
-
-        // Check for player at this position
-        if (x === player.x && y === player.y) {
-            // C ref: mthrowu.c:694-716 thitu() — hit roll against player AC
-            const sdam = od ? (od.sdam || 0) : 0;
-            let dam = sdam > 0 ? rnd(sdam) : 0;
-            dam += (weapon.spe || 0);
-            if (dam < 1) dam = 1;
-            const hitv = 3 - distmin(player.x, player.y, mon.mx, mon.my) + 8 + (weapon.spe || 0);
-            const dieRoll = rnd(20);
-            // C ref: mthrowu.c:764 — stop_occupation() on ANY projectile
-            // passing through player position, regardless of hit/miss.
-            if (game && game.occupation) {
-                if (game.occupation.occtxt === 'waiting' || game.occupation.occtxt === 'searching') {
-                    if (display) display.putstr_message(`You stop ${game.occupation.occtxt}.`);
-                }
-                game.occupation = null;
-                game.multi = 0;
-            }
-            if (player.ac + hitv <= dieRoll) {
-                // Miss — C ref: mthrowu.c:766 — projectile continues flight
-                if (display) {
-                    let missMsg = 'It misses.';
-                    const verbose = game?.flags?.verbose !== false;
-                    if (player.blind || !verbose) {
-                        missMsg = 'It misses.';
-                    } else if (player.ac + hitv <= dieRoll - 2) {
-                        const objName = thrownObjectName(weapon, player);
-                        const capName = objName.charAt(0).toUpperCase() + objName.slice(1);
-                        missMsg = `${capName} misses you.`;
-                    } else {
-                        missMsg = `You are almost hit by ${thrownObjectName(weapon, player)}.`;
-                    }
-                    // C ref: mthrowu.c may require --More-- between stacked
-                    // combat messages. We don't block for input here, so suppress
-                    // the message when it won't fit. Never break the flight loop
-                    // here — C continues the missile and consumes rn2(5) per step.
-                    if (display.topMessage && display.messageNeedsMore
-                        && Number.isInteger(display.cols)) {
-                        const combined = `${display.topMessage}  ${missMsg}`;
-                        if (combined.length + 9 >= display.cols) {
-                            missMsg = null;
-                        }
-                    }
-                    if (missMsg) display.putstr_message(missMsg);
-                }
-                // Do NOT break — missile continues past player on miss
-            } else {
-                // Hit — projectile stops here
-                if (display) {
-                    display.putstr_message(`You are hit by ${thrownObjectName(weapon, player)}!`);
-                }
-                if (player.takeDamage) {
-                    player.takeDamage(dam, monDisplayName(mon));
-                } else {
-                    player.hp -= dam;
-                }
-                // C ref: mthrowu.c:151 — exercise(A_STR, FALSE) on projectile hit
-                exercise(player, A_STR, false);
-                break; // C ref: mthrowu.c — only a hit stops the projectile
-            }
-        }
-
-        // Check for wall/blocked terrain
-        if (IS_WALL(loc.typ) || IS_OBSTRUCTED(loc.typ)
-            || (IS_DOOR(loc.typ) && (loc.flags & (D_CLOSED | D_LOCKED)))) {
-            break;
-        }
-
-        // C ref: mthrowu.c:772 — forcehit = !rn2(5); iron bars check
-        // This rn2(5) is consumed every step that doesn't hit a creature.
-        const forcehit = !rn2(5);
-        // C ref: MT_FLIGHTCHECK — if end of range or iron bars + forcehit
-        if (!range) break; // end of path
-        if (loc.typ === IRONBARS && forcehit) break; // iron bars with forcehit
-    }
-    return { drop: true, x: dropX, y: dropY };
-}
-
-// C ref: mthrowu.c thrwmu() — monster throws at player.
-// Returns true if the monster acted (threw something).
-function thrwmu(mon, map, player, display, game) {
-    // C ref: mthrowu.c:1157-1161 — mon_wield_item check (simplified: skip)
-    // C ref: mthrowu.c:1165 — select_rwep (deterministic)
-    const otmp = select_rwep(mon);
-    if (!otmp) return false;
-
-    // C ref: mthrowu.c:1169 — polearm check (simplified: skip for now)
-
-    // C ref: mthrowu.c:1228 — lined_up check
-    if (!linedUpToPlayer(mon, map, player)) return false;
-
-    const targetX = Number.isInteger(mon.mux) ? mon.mux : player.x;
-    const targetY = Number.isInteger(mon.muy) ? mon.muy : player.y;
-    // C ref: mthrowu.c:1229-1231 URETREATING:
-    // distmin(u.ux, u.uy, mon) > distmin(u.ux0, u.uy0, mon).
-    // JS stores u.ux0/u.uy0 as game.ux0/game.uy0 at command start.
-    const ux0 = Number.isInteger(game?.ux0) ? game.ux0 : player.x;
-    const uy0 = Number.isInteger(game?.uy0) ? game.uy0 : player.y;
-    const retreating = distmin(player.x, player.y, mon.mx, mon.my)
-        > distmin(ux0, uy0, mon.mx, mon.my);
-    const retreatRange = BOLT_LIM - distmin(mon.mx, mon.my, targetX, targetY);
-    if (retreating && retreatRange > 0 && rn2(retreatRange)) return false;
-
-    // C ref: mthrowu.c:1235 — monshoot(mtmp, otmp, mwep)
-    const dm = distmin(mon.mx, mon.my, targetX, targetY);
-    const multishot = monmulti(mon, otmp);
-    const available = Number.isInteger(otmp.quan) ? otmp.quan : 1;
-    const shots = Math.max(1, Math.min(multishot, available));
-
-    // Show throw message
-    if (display) {
-        display.putstr_message(`The ${monDisplayName(mon)} throws ${thrownObjectName(otmp, player)}!`);
-    }
-
-    // Direction from monster to target (set by linedUpToPlayer via tbx/tby)
-    const ddx = Math.sign(targetX - mon.mx);
-    const ddy = Math.sign(targetY - mon.my);
-
-    // Fire each missile
-    for (let i = 0; i < shots; i++) {
-        const projectile = {
-            ...otmp,
-            quan: 1,
-            ox: mon.mx,
-            oy: mon.my,
-            invlet: null,
-        };
-        monsterUseup(mon, otmp);
-        const result = m_throw(mon, mon.mx, mon.my, ddx, ddy, dm, projectile, map, player, display, game);
-        if (result?.drop && isok(result.x, result.y)) {
-            const spot = map.at(result.x, result.y);
-            if (spot && ACCESSIBLE(spot.typ)) {
-                projectile.ox = result.x;
-                projectile.oy = result.y;
-                map.objects.push(projectile);
-            }
-        }
-        if (mon.dead) break;
-    }
-
-    return true;
-}
-
-// Check if a monster has any AT_WEAP attacks (can throw weapons).
-function hasWeaponAttack(mon) {
-    const attacks = mon.attacks || (mon.type && mon.type.attacks) || [];
-    return attacks.some(a => a && a.type === AT_WEAP);
-}
-
-function chooseMonsterWieldWeapon(mon) {
-    if (!Array.isArray(mon?.minvent)) return null;
-    for (const obj of mon.minvent) {
-        if (!obj || obj.oclass !== WEAPON_CLASS) continue;
-        return obj;
-    }
-    return null;
-}
-
-function maybeMonsterWieldBeforeAttack(mon, player, display) {
-    // C ref: monmove.c mattacku path can spend a turn wielding weapon
-    // before the first AT_WEAP melee/ranged attack.
-    if (!hasWeaponAttack(mon)) return false;
-    if (mon.weapon) return false;
-    const wieldObj = chooseMonsterWieldWeapon(mon);
-    if (!wieldObj) return false;
-    mon.weapon = wieldObj;
-    if (display) {
-        display.putstr_message(`The ${monDisplayName(mon)} wields ${thrownObjectName(wieldObj, player)}!`);
-    }
-    return true;
-}
-
-function playerHasGold(player) {
-    return (player?.gold || 0) > 0 || hasGold(player?.inventory);
-}
-
-function pointInShop(x, y, map) {
-    const loc = map.at(x, y);
-    const roomno = loc?.roomno || 0;
-
-    if (roomno >= ROOMOFFSET) {
-        const roomIdx = roomno - ROOMOFFSET;
-        const room = map.rooms?.[roomIdx];
-        return !!(room && room.rtype >= SHOPBASE);
-    }
-
-    // C ref: in_rooms() handles SHARED/SHARED_PLUS tiles by scanning
-    // nearby roomno entries for eligible rooms. Our map roomno assignment
-    // can leave doorway/corridor connectors as NO_ROOM, so use a narrow
-    // fallback for door/corridor (and shared-like roomno values).
-    const isSharedLike = roomno === 1 || roomno === 2;
-    const isDoorCorr = loc && (loc.typ === DOOR || loc.typ === CORR);
-    if (!isSharedLike && !isDoorCorr) return false;
-
-    for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
-            const nloc = map.at(x + dx, y + dy);
-            const nr = nloc?.roomno || 0;
-            if (nr < ROOMOFFSET) continue;
-            const room = map.rooms?.[nr - ROOMOFFSET];
-            if (room && room.rtype >= SHOPBASE) return true;
-        }
-    }
-    return false;
-}
-
-// C ref: in_rooms(x,y,SHOPBASE) check used by monmove.c m_search_items().
-function monsterInShop(mon, map) {
-    // C ref: inhishop(shkp) checks shopkeeper's own assigned shop room.
-    if (mon?.isshk && Number.isInteger(mon.shoproom) && mon.shoproom >= ROOMOFFSET) {
-        const loc = map.at(mon.mx, mon.my);
-        const roomno = loc?.roomno || 0;
-        if (roomno === mon.shoproom) {
-            const room = map.rooms?.[roomno - ROOMOFFSET];
-            return !!(room && room.rtype >= SHOPBASE);
-        }
-        return false;
-    }
-    return pointInShop(mon.mx, mon.my, map);
-}
-
-const MAX_CARR_CAP = 1000; // C ref: weight.h
+// ========================================================================
+// m_search_items — C ref: monmove.c:1333
+// ========================================================================
+const MAX_CARR_CAP = 1000;
 const PRACTICAL_CLASSES = new Set([WEAPON_CLASS, ARMOR_CLASS, GEM_CLASS, FOOD_CLASS]);
 const MAGICAL_CLASSES = new Set([AMULET_CLASS, POTION_CLASS, SCROLL_CLASS, WAND_CLASS, RING_CLASS, SPBOOK_CLASS]);
 
@@ -626,8 +187,6 @@ function curr_mon_load_for_search(mon) {
 function mon_would_take_item_search(mon, obj, map) {
     const ptr = mon?.type || {};
     if (!obj) return false;
-    // C ref: mon.c/mpickstuff() and dogmove.c dog_invent() skip special
-    // branch-prize objects (mines/sokoban) until the hero has picked them up.
     if (obj.achievement) return false;
     if (mon?.tame && obj.cursed) return false;
 
@@ -651,555 +210,18 @@ function mon_would_take_item_search(mon, obj, map) {
     return false;
 }
 
-// C ref: mon.c mpickstuff() early gates.
-function maybeMonsterPickStuff(mon, map) {
-    // C ref: mpickstuff() in-shop gates.
-    if (mon.isshk && monsterInShop(mon, map)) return false;
-
-    // Non-tame monsters usually skip looting shop floor merchandise.
-    if (!mon.tame && monsterInShop(mon, map) && rn2(25)) return false;
-
-    const pile = (map.objectsAt?.(mon.mx, mon.my) || [])
-        .filter((obj) => obj && !obj.buried);
-    for (const obj of pile) {
-        if (obj.otyp === ROCK) continue;
-        if (!mon_would_take_item_search(mon, obj, map)) continue;
-        const carryAmt = can_carry(mon, obj);
-        if (carryAmt <= 0) continue;
-
-        let picked = obj;
-        const quan = Number(obj.quan || 1);
-        if (carryAmt < quan) {
-            obj.quan = quan - carryAmt;
-            picked = { ...obj, quan: carryAmt, o_id: next_ident() };
-        } else {
-            map.removeObject(obj);
-        }
-        if (!mon.minvent) mon.minvent = [];
-        mon.minvent.push(picked);
-        return true;
-    }
-    return false;
+function playerHasGold(player) {
+    return (player?.gold || 0) > 0 || hasGold(player?.inventory);
 }
 
-function wipeoutEngravingText(text, cnt) {
-    if (!text || cnt <= 0) return text || '';
-    const chars = text.split('');
-    const lth = chars.length;
-    while (cnt-- > 0) {
-        let nxt;
-        do {
-            nxt = rn2(lth);
-        } while (chars[nxt] === ' ');
-        chars[nxt] = ' ';
-    }
-    return chars.join('');
+function cansee_for_hider_avoidance(map, player, fov, x, y) {
+    if (!player) return false;
+    if (player.blind) return false;
+    if (fov && typeof fov.canSee === 'function') return !!fov.canSee(x, y);
+    return !!couldsee(map, player, x, y);
 }
 
-// C ref: engrave.c wipe_engr_at(), used by monmove.c pre-movement.
-function wipeEngravingAt(map, x, y, cnt) {
-    if (!map || !Array.isArray(map.engravings)) return;
-    const idx = map.engravings.findIndex((e) => e && e.x === x && e.y === y);
-    if (idx < 0) return;
-    const engr = map.engravings[idx];
-    if (!engr || engr.type === 'headstone' || engr.nowipeout) return;
-    let erase = cnt;
-    if (engr.type !== 'dust' && engr.type !== 'blood') {
-        erase = rn2(1 + Math.floor(50 / (cnt + 1))) ? 0 : 1;
-    }
-    if (erase > 0) {
-        engr.text = wipeoutEngravingText(engr.text || '', erase).replace(/^ +/, '');
-        if (!engr.text) map.engravings.splice(idx, 1);
-    }
-}
-
-// C ref: monmove.c m_avoid_kicked_loc()
-function m_avoid_kicked_loc(mon, nx, ny, player) {
-    const kl = player?.kickedloc;
-    const monCanSee = (mon?.mcansee !== false) && !mon?.blind;
-    if (!kl || !isok(kl.x, kl.y)) return false;
-    if (!(mon?.peaceful || mon?.tame)) return false;
-    if (player?.conflict) return false;
-    if (!monCanSee || mon?.confused || mon?.stunned) return false;
-    return nx === kl.x && ny === kl.y && dist2(nx, ny, player.x, player.y) <= 2;
-}
-
-// C ref: monmove.c m_avoid_soko_push_loc()
-function m_avoid_soko_push_loc(mon, nx, ny, map, player) {
-    if (!map?.flags?.sokoban) return false;
-    if (!(mon?.peaceful || mon?.tame)) return false;
-    if (mon?.confused || mon?.stunned) return false;
-    if (player?.conflict) return false;
-    if (dist2(nx, ny, player.x, player.y) !== 4) return false;
-    const bx = nx + Math.sign(player.x - nx);
-    const by = ny + Math.sign(player.y - ny);
-    return (map.objects || []).some((obj) =>
-        !obj?.buried && obj.otyp === BOULDER && obj.ox === bx && obj.oy === by
-    );
-}
-
-// C ref: monmove.c set_apparxy().
-// Track monster's apparent player coordinates (mux/muy), which can differ from
-// actual player position when monster cannot currently perceive the hero.
-function set_apparxy(mon, map, player) {
-    let mx = Number.isInteger(mon.mux) ? mon.mux : 0;
-    let my = Number.isInteger(mon.muy) ? mon.muy : 0;
-
-    // C ref: set_apparxy() early-return path.
-    if (mon.tame || (mx === player.x && my === player.y)) {
-        mon.mux = player.x;
-        mon.muy = player.y;
-        return;
-    }
-
-    const mdat = mons[mon.mndx] || mon.type || {};
-    const monCanSee = mon.mcansee !== false;
-    const notseen = (!monCanSee || (player.invisible && !perceives(mdat)));
-    // C ref: Displaced && mtmp->data != &mons[PM_DISPLACER_BEAST]
-    const playerDisplaced = !!(player.cloak && player.cloak.otyp === CLOAK_OF_DISPLACEMENT);
-    const notthere = playerDisplaced && mon.mndx !== PM_DISPLACER_BEAST;
-    let displ;
-    if (notseen) {
-        displ = 1;
-    } else if (notthere) {
-        displ = couldsee(map, player, mx, my) ? 2 : 1;
-    } else {
-        displ = 0;
-    }
-
-    if (!displ) {
-        mon.mux = player.x;
-        mon.muy = player.y;
-        return;
-    }
-
-    // C ref: gotu = notseen ? !rn2(3) : notthere ? !rn2(4) : FALSE.
-    const gotu = notseen ? !rn2(3) : (notthere ? !rn2(4) : false);
-
-    if (!gotu) {
-        let tryCnt = 0;
-        do {
-            if (++tryCnt > 200) {
-                mx = player.x;
-                my = player.y;
-                break;
-            }
-            mx = player.x - displ + rn2(2 * displ + 1);
-            my = player.y - displ + rn2(2 * displ + 1);
-            const loc = map.at(mx, my);
-            const closedDoor = !!loc && IS_DOOR(loc.typ) && (loc.flags & (D_CLOSED | D_LOCKED));
-            const blocked = !loc || !(ACCESSIBLE(loc.typ) && !closedDoor);
-            if (!isok(mx, my)) continue;
-            if (displ !== 2 && mx === mon.mx && my === mon.my) continue;
-            if ((mx !== player.x || my !== player.y) && blocked) continue;
-            if (!couldsee(map, player, mx, my)) continue;
-            break;
-        } while (true);
-    } else {
-        mx = player.x;
-        my = player.y;
-    }
-
-    mon.mux = mx;
-    mon.muy = my;
-}
-
-// C ref: mon.c:3243 corpse_chance() RNG.
-// Always consumes rn2() to match C; caller checks G_NOCORPSE separately.
-function petCorpseChanceRoll(mon) {
-    const mdat = mon?.type || {};
-    const gfreq = (mdat.geno || 0) & G_FREQ;
-    const verysmall = (mdat.size || 0) === MZ_TINY;
-    const corpsetmp = 2 + (gfreq < 2 ? 1 : 0) + (verysmall ? 1 : 0);
-    return rn2(corpsetmp);
-}
-
-// C ref: mhitm.c passivemm() RNG-only probe for pet melee path.
-// We currently model only RNG consumption order, not full passive effects.
-function consumePassivemmRng(attacker, defender, strike, defenderDied) {
-    const ddef = defender?.type || (Number.isInteger(defender?.mndx) ? mons[defender.mndx] : null);
-    const passive = ddef?.attacks?.find((a) => a && a.type === AT_NONE) || null;
-    // C has fixed-size mattk[] with implicit trailing AT_NONE entries.
-    // When no explicit passive attack exists, this falls back to AD_PHYS.
-    const adtyp = passive ? passive.damage : AD_PHYS;
-    // C ref: passivemm() AD_ACID special path consumes rn2(30)/rn2(6)
-    // regardless of hit, and rn2(2) on hit.
-    if (adtyp === AD_ACID) {
-        if (strike) rn2(2);
-        rn2(30);
-        rn2(6);
-        return;
-    }
-
-    // C ref: passivemm() AD_ENCH has no RNG.
-    if (adtyp === AD_ENCH) return;
-
-    // C ref: passivemm() early return if defender died or is cancelled.
-    if (defenderDied || defender?.mcan) return;
-
-    // C ref: passivemm() generic passive gate.
-    rn2(3);
-}
-
-// ========================================================================
-// Trap harmlessness check — C ref: trap.c m_harmless_trap()
-// ========================================================================
-// Returns true if the trap is harmless to this monster (no avoidance needed).
-function m_harmless_trap(mon, trap) {
-    const mdat = mons[mon.mndx] || {};
-    const flags1 = mdat.flags1 || 0;
-    const mr1 = mdat.mr1 || 0;
-    const msize = mdat.size || 0;
-
-    // C ref: floor_trigger + check_in_air — flyers avoid floor traps
-    const isFloor = trap.ttyp >= 1 && trap.ttyp <= TRAPDOOR; // ARROW..TRAPDOOR
-    if (isFloor && (flags1 & M1_FLY)) return true;
-
-    switch (trap.ttyp) {
-    case STATUE_TRAP:
-    case MAGIC_TRAP:
-    case VIBRATING_SQUARE:
-        return true;
-    case RUST_TRAP:
-        // Only harmful to iron golems
-        return mon.mndx !== PM_IRON_GOLEM;
-    case FIRE_TRAP:
-        return !!(mr1 & MR_FIRE);
-    case SLP_GAS_TRAP:
-        return !!(mr1 & MR_SLEEP);
-    case BEAR_TRAP:
-        return msize <= MZ_SMALL || !!(flags1 & M1_AMORPHOUS);
-    case PIT: case SPIKED_PIT: case HOLE: case TRAPDOOR:
-        return !!(flags1 & M1_CLING);
-    case WEB:
-        return !!(flags1 & M1_AMORPHOUS);
-    case ANTI_MAGIC:
-        // Simplified: no resists_magm check yet
-        return false;
-    default:
-        return false;
-    }
-}
-
-// ============================================================================
-// Monster trap resolution after movement
-// C ref: monmove.c postmov() -> mintrap()
-// ============================================================================
-const Trap_Effect_Finished = 0;
-const Trap_Caught_Mon = 1;
-const Trap_Killed_Mon = 2;
-const Trap_Moved_Mon = 3;
-
-function mintrap_postmove(mon, map, player) {
-    const trap = map.trapAt(mon.mx, mon.my);
-    if (!trap) {
-        mon.mtrapped = 0;
-        return Trap_Effect_Finished;
-    }
-
-    // Entering a harmless trap has no effect for this monster.
-    if (!mon.mtrapped && m_harmless_trap(mon, trap)) {
-        return Trap_Effect_Finished;
-    }
-
-    switch (trap.ttyp) {
-    case PIT:
-    case SPIKED_PIT: {
-        // C ref: trap.c trapeffect_pit(monster) — non-passwall monsters get trapped.
-        mon.mtrapped = 1;
-        const dmg = rnd(trap.ttyp === PIT ? 6 : 10);
-        mon.mhp -= Math.max(0, dmg);
-        if (mon.mhp <= 0) {
-            mon.dead = true;
-            map.removeMonster(mon);
-            return Trap_Killed_Mon;
-        }
-        return Trap_Caught_Mon;
-    }
-    case TELEP_TRAP: {
-        // C ref: teleport.c mtele_trap() — monster teleported by trap.
-        // tele_restrict: skip if level prevents teleportation.
-        if (map.flags && map.flags.noteleport) return Trap_Effect_Finished;
-        // C ref: teleport.c rloc() — 50 random attempts for a valid position.
-        for (let tries = 0; tries < 50; tries++) {
-            const nx = rnd(COLNO - 1); // C: rnd(COLNO-1) = 1..79
-            const ny = rn2(ROWNO);     // C: rn2(ROWNO) = 0..20
-            const loc = map.at(nx, ny);
-            if (!loc || !ACCESSIBLE(loc.typ)) continue;
-            if (map.monsterAt(nx, ny)) continue;
-            if (player && nx === player.x && ny === player.y) continue;
-            if (nx === mon.mx && ny === mon.my) continue;
-            mon.mx = nx;
-            mon.my = ny;
-            return Trap_Moved_Mon;
-        }
-        // Fallback: exhaustive search not implemented; RNG consumed above.
-        return Trap_Moved_Mon;
-    }
-    default:
-        return Trap_Effect_Finished;
-    }
-}
-
-// ========================================================================
-// mfndpos — collect valid adjacent positions in column-major order
-// ========================================================================
-// C ref: mon.c mfndpos() — returns positions a monster can move to
-// Iterates (x-1..x+1) × (y-1..y+1) in column-major order, skipping current pos.
-// Handles NODIAG (grid bugs), terrain, doors, monsters, player, boulders.
-function mfndpos(mon, map, player, opts = {}) {
-    const isRider = (m) => m?.mndx === PM_DEATH || m?.mndx === PM_PESTILENCE || m?.mndx === PM_FAMINE;
-    const monLevel = (m) => Number.isInteger(m?.m_lev) ? m.m_lev
-        : (Number.isInteger(m?.mlevel) ? m.mlevel
-            : (Number.isInteger(m?.type?.level) ? m.type.level : 0));
-    const allowDoorOpen = !!opts.allowDoorOpen;
-    const allowDoorUnlock = !!opts.allowDoorUnlock;
-    const omx = mon.mx, omy = mon.my;
-    const nodiag = (mon.mndx === PM_GRID_BUG);
-    const mflags1 = mon.type?.flags1 || 0;
-    const mdat = mon.type || {};
-    const mlet = mdat.symbol ?? -1;
-    // C ref: mon.c:2112-2118 m_in_air — flyers, floaters, ceiling clingers
-    const isFlyer = !!(mflags1 & M1_FLY);
-    const isFloater = (mlet === S_EYE || mlet === S_LIGHT);
-    const m_in_air = isFlyer || isFloater;
-    // C ref: mon.c:2147-2148 — eels want water, swimmers can handle pools
-    const wantpool = (mlet === S_EEL);
-    const isSwimmer = !!(mflags1 & (M1_SWIM | M1_AMPHIBIOUS));
-    const poolok = (m_in_air || (isSwimmer && !wantpool));
-    // C ref: mon.c:2152-2154 — lavaok includes likes_lava but not floating eye
-    // C ref: mondata.h:190 — likes_lava(ptr) = fire elemental or salamander
-    const likesLava = (mon.mndx === PM_FIRE_ELEMENTAL || mon.mndx === PM_SALAMANDER);
-    const lavaok = (m_in_air && !isFloater) || likesLava;
-    // C ref: mon.c:2155 — thrudoor if ALLOW_WALL or BUSTDOOR
-    const canPassWall = !!(mflags1 & M1_WALLWALK);
-    const thrudoor = canPassWall; // simplified: ALLOW_WALL implies passes_walls
-    // C ref: mon.c:2086-2091 — ALLOW_BARS for passes_bars monsters
-    const allowBars = passes_bars(mdat);
-    // C ref: mon.c:2218 — amorphous/can_fog can move under/through closed doors
-    const isAmorphous = !!(mflags1 & M1_AMORPHOUS);
-    // C ref: mon.c:2061-2062 — tame monsters get ALLOW_M | ALLOW_TRAPS
-    const allowM = !!mon.tame;
-    const allowSSM = !!(mon.tame || mon.peaceful || mon.isshk || mon.ispriest);
-    const positions = [];
-    const maxx = Math.min(omx + 1, COLNO - 1);
-    const maxy = Math.min(omy + 1, ROWNO - 1);
-
-    for (let nx = Math.max(1, omx - 1); nx <= maxx; nx++) {
-        for (let ny = Math.max(0, omy - 1); ny <= maxy; ny++) {
-            if (nx === omx && ny === omy) continue;
-
-            // C ref: NODIAG — grid bugs can only move in cardinal directions
-            if (nx !== omx && ny !== omy && nodiag) continue;
-
-            const loc = map.at(nx, ny);
-            if (!loc) continue;
-            const ntyp = loc.typ;
-
-            // ---- C-faithful terrain gate (mon.c:2196-2243) ----
-            // 1. IS_OBSTRUCTED: stone, walls, tree, sdoor, scorr (typ < POOL)
-            // C ref: mon.c:2196-2199 — ALLOW_WALL/may_passwall or ALLOW_DIG/may_dig
-            // Simplified: passes_walls bypasses, otherwise obstructed means skip.
-            if (ntyp < POOL) {
-                if (!canPassWall) continue;
-            }
-            // 2. WATER terrain — only swimmers pass (C ref: mon.c:2206-2207)
-            if (ntyp === WATER && !isSwimmer) continue;
-            // 3. IRONBARS — only monsters that pass bars (C ref: mon.c:2209-2214)
-            if (ntyp === IRONBARS && !allowBars) continue;
-            // 4. Doors — closed/locked need OPENDOOR/UNLOCKDOOR or amorphous
-            // C ref: mon.c:2215-2222
-            if (IS_DOOR(ntyp)
-                && !(isAmorphous && !mon.engulfing)
-                && (((loc.flags & D_CLOSED) && !allowDoorOpen)
-                    || ((loc.flags & D_LOCKED) && !allowDoorUnlock))
-                && !thrudoor) continue;
-            // 5. LAVAWALL — requires lavaok and ALLOW_WALL equivalent
-            // C ref: mon.c:2240 — (!lavaok || !(flag & ALLOW_WALL)) && LAVAWALL
-            if (ntyp === LAVAWALL && !lavaok) continue;
-            // 6. Pool/lava positive gate (C ref: mon.c:2242-2243)
-            if (!poolok && IS_POOL(ntyp) !== wantpool) continue;
-            if (!lavaok && IS_LAVA(ntyp)) continue;
-
-            // C ref: mon.c:2228-2238 — no diagonal moves through doorways
-            // If either current pos or target is a non-broken door, diagonal blocked
-            if (nx !== omx && ny !== omy) {
-                const monLoc = map.at(omx, omy);
-                if ((IS_DOOR(ntyp) && (loc.flags & ~D_BROKEN))
-                    || (monLoc && IS_DOOR(monLoc.typ) && (monLoc.flags & ~D_BROKEN)))
-                    continue;
-            }
-
-            const monAtPos = map.monsterAt(nx, ny);
-            // C ref: MON_AT + mm_aggression/mm_displacement gating:
-            // occupied positions are only included when monster-vs-monster
-            // interaction is allowed for this pair.
-            // Important: C mm_aggression is narrow (not generic hostile-vs-tame).
-            let allowMAttack = false;
-            let allowMDisp = false;
-            if (monAtPos && !monAtPos.dead) {
-                if (allowM) {
-                    allowMAttack = !monAtPos.tame && !monAtPos.peaceful;
-                } else {
-                    // C ref: mon.c mm_aggression() special cases.
-                    // Keep only implemented combinations here.
-                    const attackerIdx = mon.mndx;
-                    const defenderIdx = monAtPos.mndx;
-                    const isPurpleWorm = attackerIdx === PM_PURPLE_WORM || attackerIdx === PM_BABY_PURPLE_WORM;
-                    const isShrieker = defenderIdx === PM_SHRIEKER;
-                    allowMAttack = isPurpleWorm && isShrieker;
-                }
-                // C ref: mon.c mm_displacement()
-                // Only displacers can barge through, with additional guards.
-                if (!allowMAttack && is_displacer(mon.type || {})) {
-                    const defenderIsDisplacer = is_displacer(monAtPos.type || {});
-                    const attackerHigherLevel = monLevel(mon) > monLevel(monAtPos);
-                    const defenderIsGridBugDiag = (monAtPos.mndx === PM_GRID_BUG)
-                        && (mon.mx !== monAtPos.mx && mon.my !== monAtPos.my);
-                    const defenderMultiworm = !!monAtPos.wormno;
-                    const attackerSize = Number.isInteger(mon.type?.size) ? mon.type.size : 0;
-                    const defenderSize = Number.isInteger(monAtPos.type?.size) ? monAtPos.type.size : 0;
-                    const sizeOk = isRider(mon) || attackerSize >= defenderSize;
-                    allowMDisp = (!defenderIsDisplacer || attackerHigherLevel)
-                        && !defenderIsGridBugDiag
-                        && !monAtPos.mtrapped
-                        && !defenderMultiworm
-                        && sizeOk;
-                }
-            }
-            if (monAtPos && !allowMAttack && !allowMDisp) continue;
-
-            // C ref: u_at — skip player position
-            if (nx === player.x && ny === player.y) continue;
-            if (onscary(map, nx, ny) && !allowSSM) continue;
-
-            // C ref: sobj_at(BOULDER) — skip positions with boulders
-            // (simplified: no monster can move boulders for now)
-            let hasBoulder = false;
-            for (const obj of map.objects) {
-                if (obj.buried) continue;
-                if (obj.ox === nx && obj.oy === ny && obj.otyp === BOULDER) {
-                    hasBoulder = true;
-                    break;
-                }
-            }
-            if (hasBoulder) continue;
-
-            // C ref: t_at() — check for traps and set ALLOW_TRAPS flag
-            // C ref: mon.c:2337-2352 — trap handling in mfndpos
-            let allowTraps = false;
-            const trap = map.trapAt(nx, ny);
-            if (trap) {
-                // C ref: line 2347 — if (!m_harmless_trap(mon, ttmp))
-                // Only set ALLOW_TRAPS if trap is NOT harmless
-                if (!m_harmless_trap(mon, trap)) {
-                    // C ref: For pets (ALLOW_TRAPS in flags), include position with flag
-                    // Non-pets would skip here if they know the trap type, but pets always include it
-                    allowTraps = true;
-                }
-            }
-
-            // C ref: mon.c:2329-2330 diagonal tight-squeeze check.
-            // If both orthogonal side cells are bad_rock for this monster
-            // and it cannot squeeze through, diagonal move is disallowed.
-            if (nx !== omx && ny !== omy) {
-                const sideAIsBadRock = bad_rock_for_mon(mon, map, omx, ny);
-                const sideBIsBadRock = bad_rock_for_mon(mon, map, nx, omy);
-                if (sideAIsBadRock && sideBIsBadRock && cant_squeeze_thru_mon(mon))
-                    continue;
-            }
-
-            // C ref: mon.c mfndpos() only sets NOTONL when monster can see hero.
-            const mux = Number.isInteger(mon.mux) ? mon.mux : player.x;
-            const muy = Number.isInteger(mon.muy) ? mon.muy : player.y;
-            const monSeeHero = (mon.mcansee !== false)
-                && !mon.blind
-                && m_cansee(mon, map, player.x, player.y)
-                && (!player.invisible || perceives(mon.type || {}));
-            const notOnLine = monSeeHero
-                && (nx === mux || ny === muy
-                    || (ny - muy) === (nx - mux)
-                    || (ny - muy) === -(nx - mux));
-
-            positions.push({
-                x: nx,
-                y: ny,
-                allowTraps,
-                allowM: !!allowMAttack,
-                allowMDisp: !!allowMDisp,
-                notOnLine,
-            });
-        }
-    }
-    return positions;
-}
-
-// C ref: hack.c bad_rock() / cant_squeeze_thru() subset used by mon.c mfndpos().
-function bad_rock_for_mon(mon, map, x, y) {
-    const loc = map.at(x, y);
-    if (!loc) return true;
-    if (!IS_OBSTRUCTED(loc.typ)) return false;
-    const f1 = mon.type?.flags1 || 0;
-    const canTunnel = !!(f1 & M1_TUNNEL);
-    const needsPick = !!(f1 & M1_NEEDPICK);
-    const canPassWall = !!(f1 & M1_WALLWALK);
-    // JS terrain metadata does not yet model nonpasswall/nondiggable fully.
-    // Keep conservative parity: wallwalk bypasses obstructions; tunneling
-    // monsters without NEEDPICK can generally treat rock as passable.
-    if (canPassWall) return false;
-    if (canTunnel && !needsPick) return false;
-    return true;
-}
-
-function cant_squeeze_thru_mon(mon) {
-    const ptr = mon.type || {};
-    const f1 = ptr.flags1 || 0;
-    if (f1 & M1_WALLWALK) return false;
-    const size = ptr.size || 0;
-    const canMorph = !!(f1 & (M1_AMORPHOUS | M1_UNSOLID | M1_SLITHY));
-    // C bigmonst gate (size > MZ_MEDIUM) unless morphic/unsolid/slithy.
-    if (size > MZ_MEDIUM && !canMorph) return true;
-    // C load gate uses curr_mon_load() > WT_TOOMUCH_DIAGONAL (600).
-    const load = Array.isArray(mon.minvent)
-        ? mon.minvent.reduce((a, o) => a + (o?.owt || 0), 0)
-        : 0;
-    return load > 600;
-}
-
-// C ref: mondata.c passes_bars() — can this monster pass through iron bars?
-// passes_walls || amorphous || is_whirly || verysmall || (slithy && !bigmonst)
-function passes_bars(mdat) {
-    const f1 = mdat?.flags1 || 0;
-    if (f1 & M1_WALLWALK) return true;  // passes_walls
-    if (f1 & M1_AMORPHOUS) return true; // amorphous
-    const mlet = mdat?.symbol ?? -1;
-    if (mlet === S_VORTEX || mlet === S_ELEMENTAL) return true; // is_whirly
-    const size = mdat?.size || 0;
-    if (size === MZ_TINY) return true;  // verysmall
-    if ((f1 & M1_SLITHY) && size <= MZ_MEDIUM) return true; // slithy && !bigmonst
-    return false;
-}
-
-// C ref: mon.c onscary() subset used by mfndpos().
-function onscary(map, x, y) {
-    for (const obj of map.objects) {
-        if (obj.buried) continue;
-        if (obj.ox === x && obj.oy === y
-            && obj.otyp === SCR_SCARE_MONSTER
-            && !obj.cursed) {
-            return true;
-        }
-    }
-    for (const engr of map.engravings || []) {
-        if (!engr || engr.x !== x || engr.y !== y) continue;
-        if (/elbereth/i.test(String(engr.text || ''))) return true;
-    }
-    return false;
-}
-
-// C ref: monmove.c m_search_items() subset.
-// Search nearby objects and update movement intent fields used by m_move().
-function m_search_items_goal(mon, map, ggx, ggy, appr) {
+function m_search_items_goal(mon, map, player, fov, ggx, ggy, appr) {
     const omx = mon.mx;
     const omy = mon.my;
     let minr = SQSRCHRADIUS;
@@ -1209,8 +231,10 @@ function m_search_items_goal(mon, map, ggx, ggy, appr) {
     if (!mon.peaceful && distmin(mux, muy, omx, omy) < SQSRCHRADIUS) {
         minr--;
     }
+    if (!mon.peaceful && is_mercenary(mon.type || {})) {
+        minr = 1;
+    }
 
-    // C ref: monmove.c m_search_items() — in shop, usually skip.
     if (pointInShop(omx, omy, map) && (rn2(25) || mon.isshk)) {
         if (minr < SQSRCHRADIUS && appr === -1) {
             if (distmin(omx, omy, mux, muy) <= 3) {
@@ -1230,24 +254,52 @@ function m_search_items_goal(mon, map, ggx, ggy, appr) {
 
     for (let xx = lmx; xx <= hmx; xx++) {
         for (let yy = lmy; yy <= hmy; yy++) {
-            if (minr < distmin(omx, omy, xx, yy)) continue;
-            if (!could_reach_item(map, mon, xx, yy)) continue;
-            if (onscary(map, xx, yy)) continue;
-            if (!m_cansee(mon, map, xx, yy)) continue;
-
             const pile = map.objectsAt
                 ? map.objectsAt(xx, yy)
                 : map.objects.filter((o) => !o.buried && o.ox === xx && o.oy === yy);
             if (!pile || pile.length === 0) continue;
+            if (minr < distmin(omx, omy, xx, yy)) continue;
+            if (!could_reach_item(map, mon, xx, yy)) continue;
+            if (hides_under(mon.type || {}) && cansee_for_hider_avoidance(map, player, fov, xx, yy)) continue;
+            const occ = map.monsterAt(xx, yy);
+            if (occ && occ !== mon) {
+                const occHelpless = !!occ.sleeping
+                    || (Number(occ.mfrozen || 0) > 0)
+                    || occ.mcanmove === false;
+                const occHidden = !!occ.mundetected;
+                const occMimicDisguise = !!occ.mappearance && !occ.iswiz;
+                const occImmobile = Number(occ.type?.speed || 0) <= 0;
+                if (occHelpless || occHidden || occMimicDisguise || occImmobile) continue;
+            }
+            if (onscary(map, xx, yy)) continue;
+            const trap = map.trapAt(xx, yy);
+            if (trap && mon_knows_traps(mon, trap.ttyp)) {
+                if (ggx === xx && ggy === yy) {
+                    ggx = mux;
+                    ggy = muy;
+                }
+                continue;
+            }
+            if (!m_cansee(mon, map, xx, yy)) continue;
+            const costly = pointInShop(xx, yy, map);
 
             for (const obj of pile) {
                 if (obj?.otyp === ROCK) continue;
+                if (costly && !obj?.no_charge) continue;
                 if (!mon_would_take_item_search(mon, obj, map)) continue;
                 if (can_carry(mon, obj) <= 0) continue;
 
                 minr = distmin(omx, omy, xx, yy);
                 ggx = xx;
                 ggy = yy;
+                monmoveTrace('m_search-pick',
+                    `id=${mon.m_id ?? '?'}`,
+                    `name=${mon.type?.name || mon.name || '?'}`,
+                    `obj=(${obj?.otyp ?? '?'},class=${obj?.oclass ?? '?'},quan=${obj?.quan ?? '?'})`,
+                    `at=(${xx},${yy})`,
+                    `minr=${minr}`,
+                    `mux=(${mux},${muy})`,
+                    `appr=${appr}`);
                 if (ggx === omx && ggy === omy) {
                     return { ggx, ggy, appr, done: true };
                 }
@@ -1256,7 +308,6 @@ function m_search_items_goal(mon, map, ggx, ggy, appr) {
         }
     }
 
-    // C ref: m_search_items() finish_search block can change flee behavior.
     if (minr < SQSRCHRADIUS && appr === -1) {
         if (distmin(omx, omy, mux, muy) <= 3) {
             ggx = mux;
@@ -1270,426 +321,65 @@ function m_search_items_goal(mon, map, ggx, ggy, appr) {
 }
 
 // ========================================================================
-// dog_goal helper functions — C-faithful checks
+// dochug — C ref: monmove.c:690
 // ========================================================================
 
-// C ref: dogmove.c:144-153 — cursed_object_at(x, y)
-// Checks if ANY object at position (x, y) is cursed
-function cursed_object_at(map, x, y) {
-    for (const obj of map.objects) {
-        if (obj.buried) continue;
-        if (obj.ox === x && obj.oy === y && obj.cursed)
-            return true;
+function wipeoutEngravingText(text, cnt) {
+    if (!text || cnt <= 0) return text || '';
+    const chars = text.split('');
+    const lth = chars.length;
+    while (cnt-- > 0) {
+        let nxt;
+        do {
+            nxt = rn2(lth);
+        } while (chars[nxt] === ' ');
+        chars[nxt] = ' ';
     }
-    return false;
+    return chars.join('');
 }
 
-// C ref: dogmove.c:1353-1362 — could_reach_item(mon, nx, ny)
-// Check if monster could pick up objects from location (no pool/lava/boulder blocking)
-function could_reach_item(map, mon, nx, ny) {
-    const loc = map.at(nx, ny);
-    if (!loc) return false;
-    const typ = loc.typ;
-    // C ref: is_pool/is_lava terrain checks (rm.h macros).
-    // Use shared terrain helpers so WATER/MOAT squares stay blocked for
-    // non-swimmers when pets consider picking up floor items.
-    const isPool = IS_POOL(typ);
-    const isLava = IS_LAVA(typ);
-    // C: sobj_at(BOULDER, nx, ny) — is there a boulder at this position?
-    let hasBoulder = false;
-    for (const obj of map.objects) {
-        if (obj.buried) continue;
-        if (obj.ox === nx && obj.oy === ny && obj.otyp === BOULDER) {
-            hasBoulder = true; break;
-        }
+function wipeEngravingAt(map, x, y, cnt) {
+    if (!map || !Array.isArray(map.engravings)) return;
+    const idx = map.engravings.findIndex((e) => e && e.x === x && e.y === y);
+    if (idx < 0) return;
+    const engr = map.engravings[idx];
+    if (!engr || engr.type === 'headstone' || engr.nowipeout) return;
+    let erase = cnt;
+    if (engr.type !== 'dust' && engr.type !== 'blood') {
+        erase = rn2(1 + Math.floor(50 / (cnt + 1))) ? 0 : 1;
     }
-    // Little dogs can't swim, don't like lava, can't throw rocks
-    if (isPool) return false; // simplified: pets aren't swimmers
-    if (isLava) return false; // simplified: pets don't like lava
-    if (hasBoulder) return false; // simplified: pets can't throw rocks
-    return true;
+    if (erase > 0) {
+        engr.text = wipeoutEngravingText(engr.text || '', erase).replace(/^ +/, '');
+        if (!engr.text) map.engravings.splice(idx, 1);
+    }
 }
 
-// C ref: dogmove.c:1371-1407 — can_reach_location(mon, mx, my, fx, fy)
-// Recursive pathfinding: can monster navigate from (mx,my) to (fx,fy)?
-// Uses greedy approach: only steps through cells closer to target.
-function can_reach_location(map, mon, mx, my, fx, fy) {
-    if (mx === fx && my === fy) return true;
-    if (!isok(mx, my)) return false;
-
-    const d = dist2(mx, my, fx, fy);
-    for (let i = mx - 1; i <= mx + 1; i++) {
-        for (let j = my - 1; j <= my + 1; j++) {
-            if (!isok(i, j)) continue;
-            if (dist2(i, j, fx, fy) >= d) continue;
-            const loc = map.at(i, j);
-            if (!loc) continue;
-            // C: IS_OBSTRUCTED(typ) = typ < POOL
-            if (loc.typ < POOL) continue;
-            // C: closed/locked doors block
-            if (IS_DOOR(loc.typ) && (loc.flags & (D_CLOSED | D_LOCKED)))
-                continue;
-            if (!could_reach_item(map, mon, i, j)) continue;
-            if (can_reach_location(map, mon, i, j, fx, fy))
-                return true;
-        }
-    }
-    return false;
-}
-
-// C ref: dogmove.c droppables(mon)
-// Pick next inventory item a tame monster is willing to drop.
-function droppables(mon) {
-    const inv = mon.minvent || [];
-    const mdat = mon.type || {};
-    const wep = mon.weapon || null;
-    const dummy = { dummy: true, oartifact: 1 };
-    let pickaxe = null;
-    let unihorn = null;
-    let key = null;
-    const verysmall = (mdat.size || 0) === MZ_TINY;
-
-    if (is_animal(mdat) || is_mindless(mdat)) {
-        pickaxe = unihorn = key = dummy;
-    } else {
-        if (!(mdat.flags1 & M1_TUNNEL) || !(mdat.flags1 & M1_NEEDPICK)) pickaxe = dummy;
-        if (nohands(mdat) || verysmall) key = dummy;
-    }
-    if (wep) {
-        if (wep.otyp === PICK_AXE || wep.otyp === DWARVISH_MATTOCK) pickaxe = wep;
-        if (wep.otyp === UNICORN_HORN) unihorn = wep;
-    }
-
-    for (const obj of inv) {
-        switch (obj.otyp) {
-        case DWARVISH_MATTOCK:
-            if (pickaxe && pickaxe !== dummy
-                && pickaxe.otyp === PICK_AXE
-                && pickaxe !== wep
-                && (!pickaxe.oartifact || obj.oartifact)) {
-                return pickaxe;
-            }
-            // fall through
-        case PICK_AXE:
-            if (!pickaxe || (obj.oartifact && !pickaxe.oartifact)) {
-                if (pickaxe && pickaxe !== dummy) return pickaxe;
-                pickaxe = obj;
-                continue;
-            }
-            break;
-        case UNICORN_HORN:
-            if (obj.cursed) break;
-            if (!unihorn || (obj.oartifact && !unihorn.oartifact)) {
-                if (unihorn && unihorn !== dummy) return unihorn;
-                unihorn = obj;
-                continue;
-            }
-            break;
-        case SKELETON_KEY:
-            if (key && key !== dummy
-                && key.otyp === LOCK_PICK
-                && (!key.oartifact || obj.oartifact)) {
-                return key;
-            }
-            // fall through
-        case LOCK_PICK:
-            if (key && key !== dummy
-                && key.otyp === CREDIT_CARD
-                && (!key.oartifact || obj.oartifact)) {
-                return key;
-            }
-            // fall through
-        case CREDIT_CARD:
-            if (!key || (obj.oartifact && !key.oartifact)) {
-                if (key && key !== dummy) return key;
-                key = obj;
-                continue;
-            }
-            break;
-        default:
-            break;
-        }
-        // C ref: dogmove.c droppables() — generic drop candidates skip worn/wielded.
-        // Cursed filtering is handled only for specific tool classes above.
-        if (!obj.owornmask && obj !== wep) return obj;
-    }
-    return null;
-}
-
-function canSeeForRestrap(mon, map, player, fov) {
-    if (!mon || !map || !player) return false;
-    const canSeeSquare = fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my);
-    return !!canSeeSquare && !player.blind;
-}
-
-// C ref: mon.c restrap() and movemon_singlemon() hider gate.
-// Returns true when the monster should spend the turn hiding/inert.
-function handleHiderPremove(mon, map, player, fov) {
-    const ptr = mon.type || {};
-    if (!is_hider(ptr)) return false;
-
-    const trap = mon.mtrapped ? map.trapAt(mon.mx, mon.my) : null;
-    const trappedOutsidePit = !!(mon.mtrapped && trap && trap.ttyp !== PIT && trap.ttyp !== SPIKED_PIT);
-    const isCeilingHider = ptr.symbol === S_PIERCER;
-    // We do not currently model no-ceiling levels in runtime flags.
-    const hasCeiling = !(map?.flags?.is_airlevel || map?.flags?.is_waterlevel);
-    const sensedAndAdjacent = canSpotMonsterForMap(mon, map, player, fov) && monnear(mon, player.x, player.y);
-
-    const blocked =
-        mon.mcan
-        || mon.m_ap_type
-        || mon.appear_as_type
-        || canSeeForRestrap(mon, map, player, fov)
-        || rn2(3)
-        || trappedOutsidePit
-        || (isCeilingHider && !hasCeiling)
-        || sensedAndAdjacent;
-
-    if (!blocked) {
-        if (ptr.symbol === S_MIMIC) {
-            if (!(mon.sleeping || (mon.mfrozen > 0))) {
-                mon.m_ap_type = mon.m_ap_type || 'object';
-                return true;
-            }
-        } else if (map.at(mon.mx, mon.my)?.typ === ROOM) {
-            mon.mundetected = true;
-            return true;
-        }
-    }
-
-    // C ref: movemon_singlemon() skips dochugw for hidden/disguised hiders.
-    return !!(mon.m_ap_type || mon.appear_as_type || mon.mundetected);
-}
-
-// ========================================================================
-// dog_invent — pet inventory management (pickup/drop at current position)
-// C ref: dogmove.c:392-471
-// Returns: 0 (no action), 1 (ate something), 2 (died)
-// ========================================================================
-function dog_invent(mon, edog, udist, map, turnCount, display, player, fov = null) {
-    if (mon.meating) return 0;
-    const omx = mon.mx, omy = mon.my;
-
-    const hasDrop = !!droppables(mon);
-
-    if (hasDrop) {
-        // C ref: dogmove.c:411-421 — drop path
-        if (!rn2(udist + 1) || !rn2(edog.apport)) {
-            if (rn2(10) < edog.apport) {
-                let dropObj;
-                while ((dropObj = droppables(mon)) != null) {
-                    const idx = mon.minvent.indexOf(dropObj);
-                    if (idx >= 0) mon.minvent.splice(idx, 1);
-                    dropObj.ox = omx;
-                    dropObj.oy = omy;
-                    placeFloorObject(map, dropObj);
-                    const canSeePet = display && player && (
-                        fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my)
-                    );
-                    if (canSeePet) {
-                        observeObject(dropObj);
-                        // C ref: weapon.c:766 — Monnam(mon) uses ARTICLE_THE
-                        const monLabel = monNam(mon, { article: 'the', capitalize: true });
-                        display.putstr_message(`${monLabel} drops ${doname(dropObj, null)}.`);
-                    }
-                }
-                if (edog.apport > 1) edog.apport--;
-                edog.dropdist = udist;
-                edog.droptime = turnCount;
-            }
-        }
-    } else {
-        // C ref: dogmove.c:423-470 — pickup/eat path
-        // Find the top object at pet's position (last in array = top of C's chain)
-        let obj = null;
-        for (let i = map.objects.length - 1; i >= 0; i--) {
-            if (map.objects[i].buried) continue;
-            if (map.objects[i].ox === omx && map.objects[i].oy === omy) {
-                obj = map.objects[i]; break;
-            }
-        }
-
-        if (obj
-            && obj.oclass !== BALL_CLASS
-            && obj.oclass !== CHAIN_CLASS
-            && obj.oclass !== ROCK_CLASS
-            && !obj.achievement) {
-            const edible = dogfood(mon, obj, turnCount);
-
-            // C ref: dogmove.c:436-438 — eat if edible enough
-            if ((edible <= CADAVER
-                || (edog.mhpmax_penalty && edible === ACCFOOD))
-                && could_reach_item(map, mon, obj.ox, obj.oy)) {
-                const canSeePet = display && player && (
-                    fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my)
-                );
-                if (canSeePet) {
-                    display.putstr_message(`${monNam(mon, { capitalize: true })} eats ${doname(obj, null)}.`);
-                }
-                dog_eat(mon, obj, map, turnCount);
-                return 1;
-            }
-
-            // C ref: dogmove.c:440-467 — carry check
-            const carryamt = can_carry(mon, obj);
-            if (carryamt > 0 && !obj.cursed
-                && could_reach_item(map, mon, obj.ox, obj.oy)) {
-                if (rn2(20) < edog.apport + 3) {
-                    if (rn2(udist) || !rn2(edog.apport)) {
-                        // C ref: dogmove.c:452-454 — splitobj when carrying
-                        // only part of a stack; leave remainder on the floor.
-                        let picked = obj;
-                        const quan = obj.quan || 1;
-                        if (carryamt > 0 && carryamt < quan) {
-                            obj.quan = quan - carryamt;
-                            // C ref: splitobj() allocates a new object, consuming
-                            // next_ident() via newobj().
-                            picked = { ...obj, quan: carryamt, o_id: next_ident() };
-                        } else {
-                            map.removeObject(obj);
-                        }
-                        if (!mon.minvent) mon.minvent = [];
-                        mon.minvent.push(picked);
-                        // C ref: dogmove.c "The <pet> picks up <obj>." when observed.
-                        const canSeePet = display && player && (
-                            fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my)
-                        );
-                        if (canSeePet) {
-                            observeObject(picked);
-                            // C ref: dogmove.c:454 — Monnam(mtmp) uses ARTICLE_THE
-                            const monLabel = monNam(mon, { article: 'the', capitalize: true });
-                            display.putstr_message(`${monLabel} picks up ${doname(picked, null)}.`);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return 0;
-}
-
-// ========================================================================
-// movemon — multi-pass monster processing
-// ========================================================================
-
-// Move all monsters on the level
-// C ref: mon.c movemon() — multi-pass loop until no monster can move
-// Called from gameLoop after hero action, BEFORE mcalcmove.
-export function movemon(map, player, display, fov, game = null) {
-    if (game) game._suppressMonsterHitMessagesThisTurn = false;
-    const turnCount = (player.turns || 0) + 1;
-    let anyMoved;
-    do {
-        anyMoved = false;
-        for (const mon of map.monsters) {
-            if (mon.dead) continue;
-            if (mon.movement >= NORMAL_SPEED) {
-                const oldx = mon.mx;
-                const oldy = mon.my;
-                const alreadySawMon = !!(game && game.occupation
-                    && ((fov?.canSee ? fov.canSee(oldx, oldy) : couldsee(map, player, oldx, oldy))));
-                mon.movement -= NORMAL_SPEED;
-                anyMoved = true;
-                monmoveTrace('turn-start',
-                    `step=${monmoveStepLabel(map)}`,
-                    `id=${mon.m_id ?? '?'}`,
-                    `mndx=${mon.mndx ?? '?'}`,
-                    `name=${mon.type?.name || mon.name || '?'}`,
-                    `pos=(${oldx},${oldy})`,
-                    `flee=${mon.flee ? 1 : 0}`,
-                    `peace=${mon.peaceful ? 1 : 0}`,
-                    `conf=${mon.confused ? 1 : 0}`);
-                if (handleHiderPremove(mon, map, player, fov)) {
-                    continue;
-                }
-                dochug(mon, map, player, display, fov, game);
-                // C ref: monmove.c dochugw() threat-notice interruption gate.
-                // If an occupied hero newly notices a hostile, attack-capable
-                // monster close enough to threaten, stop the occupation now.
-                if (game && game.occupation && !mon.dead) {
-                    // Waiting/searching are interrupted by explicit combat/safety
-                    // paths; applying this threat gate there causes replay drift.
-                    if (game.occupation.occtxt === 'waiting' || game.occupation.occtxt === 'searching') {
-                        continue;
-                    }
-                    const attacks = mon.type?.attacks || [];
-                    const noAttacks = !attacks.some((a) => a && a.type !== AT_NONE);
-                    const threatRangeSq = (BOLT_LIM + 1) * (BOLT_LIM + 1);
-                    const oldDist = dist2(oldx, oldy, player.x, player.y);
-                    const newDist = dist2(mon.mx, mon.my, player.x, player.y);
-                    const canSeeNow = fov?.canSee ? fov.canSee(mon.mx, mon.my)
-                        : couldsee(map, player, mon.mx, mon.my);
-                    const couldSeeOld = fov?.canSee ? fov.canSee(oldx, oldy)
-                        : couldsee(map, player, oldx, oldy);
-                    if (!mon.peaceful
-                        && !noAttacks
-                        && newDist <= threatRangeSq
-                        && (!alreadySawMon || !couldSeeOld || oldDist > threatRangeSq)
-                        && canSeeNow
-                        && mon.mcanmove !== false
-                        && !onscary(map, player.x, player.y)) {
-                        game.display.putstr_message(`You stop ${game.occupation.occtxt}.`);
-                        game.occupation = null;
-                        game.multi = 0;
-                    }
-                }
-            }
-        }
-        // C ref: allmain.c:206-207 — when the hero has bonus movement
-        // (u.umovement >= NORMAL_SPEED, i.e. Fast/Very Fast triggered),
-        // the outer movemon loop breaks after one pass so the hero acts
-        // before monsters spend their remaining movement budget.
-        if (game && game._bonusMovement > 0) break;
-    } while (anyMoved);
-
-    // Remove dead monsters
-    map.monsters = map.monsters.filter(m => !m.dead);
-    player.displacedPetThisTurn = false;
-}
-
-// ========================================================================
-// dochug — per-monster action dispatch
-// ========================================================================
-
-// C ref: monmove.c dochug() — process one monster's turn
 function dochug(mon, map, player, display, fov, game = null) {
-    // C ref: special-level "waiting" monsters are initialized to remain inert
-    // until explicitly disturbed/engaged by scripted flow.
     if (mon.waiting && map?.flags?.is_tutorial) return;
 
-    // C ref: mimic behavior — disguised mimics stay inert until disturbed.
-    // Minimal parity gate: don't process roaming AI for mimic-class monsters.
     if (mon.type && mon.type.symbol === S_MIMIC) {
         return;
     }
 
-    // C ref: monmove.c:735 — monsters wipe floor engravings before movement.
     wipeEngravingAt(map, mon.mx, mon.my, 1);
 
-    // Phase 2: Sleep check
-    // C ref: monmove.c disturb() — wake sleeping monster if player visible & close
+    // Phase 2: Sleep check — C ref: monmove.c disturb()
     function disturb(monster) {
-        // C ref: couldsee() and mdistu() <= 100 gate.
         const canSee = fov && fov.canSee(monster.mx, monster.my);
         if (!canSee) return false;
         if (dist2(monster.mx, monster.my, player.x, player.y) > 100) return false;
 
-        // C ref: !Stealth || (ettin && rn2(10)).
-        // Replay player state does not yet model stealth intrinsics by default.
         if (player.stealth) {
             const isEttin = monster.type?.name === 'ettin';
             if (!(isEttin && rn2(10))) return false;
         }
 
-        // C ref: nymph/jabberwock/leprechaun: only wake 1/50.
         const sym = monster.type?.symbol;
         const isHardSleeper = sym === S_NYMPH
             || monster.type?.name === 'jabberwock'
             || sym === S_LEPRECHAUN;
         if (isHardSleeper && rn2(50)) return false;
 
-        // C ref: Aggravate_monster || dog/human || !rn2(7) (non-mimics).
-        // We do not model mimic furniture/object disguise state here.
         const aggravate = !!player.aggravateMonster;
         const isDogOrHuman = sym === S_DOG || sym === S_HUMAN;
         if (!(aggravate || isDogOrHuman || !rn2(7))) return false;
@@ -1702,22 +392,17 @@ function dochug(mon, map, player, display, fov, game = null) {
         return;
     }
 
-    // C ref: monmove.c phase-1 timeout checks.
-    // Confused monsters may recover with 1/50 chance each turn.
+    // INCOMPLETE: C:745 m_respond() — monster spell/gaze/breath attacks not implemented
+    // INCOMPLETE: C:759 special monster actions (covetous, quest nemesis) not implemented
+
     if (mon.confused && !rn2(50)) mon.confused = false;
-    // Stunned monsters may recover with 1/10 chance each turn.
     if (mon.stunned && !rn2(10)) mon.stunned = false;
 
-    // C ref: monmove.c:745-750 — fleeing teleport-capable monsters
-    // check !rn2(40) and may spend their turn teleporting away.
-    // NOTE: In C, flee teleport is checked BEFORE flee recovery (rn2(25)).
     if (mon.flee && !rn2(40) && can_teleport(mon.type || {})
         && !mon.iswiz && !(map.flags && map.flags.noteleport)) {
-            // Simplified rloc() equivalent: random accessible unoccupied square.
-            // C ref: teleport.c:1844-1849 — 50 random attempts
             for (let tries = 0; tries < 50; tries++) {
-                const nx = rnd(COLNO - 1); // C: rnd(COLNO-1) = 1..79
-                const ny = rn2(ROWNO);     // C: rn2(ROWNO) = 0..20
+                const nx = rnd(COLNO - 1);
+                const ny = rn2(ROWNO);
                 const loc = map.at(nx, ny);
                 if (!loc || !ACCESSIBLE(loc.typ)) continue;
                 if (map.monsterAt(nx, ny)) continue;
@@ -1729,19 +414,16 @@ function dochug(mon, map, player, display, fov, game = null) {
             return;
     }
 
-    // C ref: monmove.c:759-761 — fleeing monster may regain courage.
-    // NOTE: In C, flee recovery is checked AFTER flee teleport and m_respond.
     if (mon.flee && !(mon.fleetim > 0)
         && (mon.mhp ?? 0) >= (mon.mhpmax ?? 0)
         && !rn2(25)) {
         mon.flee = false;
     }
 
-    // C ref: monmove.c:779 — set_apparxy after flee checks, before distfleeck.
+    // C ref: monmove.c:779 — set_apparxy after flee checks
     set_apparxy(mon, map, player);
 
     // distfleeck: always rn2(5) for every non-sleeping monster
-    // C ref: monmove.c:792 — distfleeck(mtmp, &inrange, &nearby, &scared)
     const braveGremlinRoll = rn2(5);
     monmoveTrace('distfleeck',
         `step=${monmoveStepLabel(map)}`,
@@ -1751,18 +433,11 @@ function dochug(mon, map, player, display, fov, game = null) {
         `pos=(${mon.mx},${mon.my})`,
         `roll=${braveGremlinRoll}`);
 
-    // Phase 3: Evaluate condition block for ALL monsters (including tame)
-    // C ref: monmove.c:882-887 — short-circuit OR evaluation
-    // This determines whether monster wanders/moves (condition TRUE)
-    // or falls through to Phase 4 attack (condition FALSE)
-    // C ref: distfleeck(monmove.c): inrange/nearby are based on the monster's
-    // remembered hero position (mux,muy), not always current player coords.
     const targetX = Number.isInteger(mon.mux) ? mon.mux : player.x;
     const targetY = Number.isInteger(mon.muy) ? mon.muy : player.y;
-    const BOLT_LIM = 8;
-    const inrange = dist2(mon.mx, mon.my, targetX, targetY) <= (BOLT_LIM * BOLT_LIM);
+    const BOLT_LIM_LOCAL = 8;
+    const inrange = dist2(mon.mx, mon.my, targetX, targetY) <= (BOLT_LIM_LOCAL * BOLT_LIM_LOCAL);
     const nearby = inrange && monnear(mon, targetX, targetY);
-    const M2_WANDER = 0x800000;
     const isWanderer = !!(mon.type && mon.type.flags2 & M2_WANDER);
     const monCanSee = (mon.mcansee !== false) && !mon.blind;
 
@@ -1785,23 +460,18 @@ function dochug(mon, map, player, display, fov, game = null) {
         `peace=${mon.peaceful ? 1 : 0}`,
     );
     // Short-circuit OR matching C's evaluation order
-    // Each rn2() is only consumed if earlier conditions didn't short-circuit
     let phase3Cond = !nearby;
     if (phase3Cond) monmovePhase3Trace(`step=${monmoveStepLabel(map)}`, `id=${mon.m_id ?? '?'}`, 'gate=!nearby');
     if (!phase3Cond) phase3Cond = !!(mon.flee);
     if (phase3Cond && mon.flee) monmovePhase3Trace(`step=${monmoveStepLabel(map)}`, `id=${mon.m_id ?? '?'}`, 'gate=mflee');
     if (!phase3Cond) {
-        // C ref: monmove.c:552-567 — distfleeck scared check
-        // Determine position where monster checks for scary things
-        // C: if (!mtmp->mcansee || (Invis && !perceives(mtmp->data)))
-        //      use remembered hero pos; else use actual hero pos
         const seescaryX = monCanSee ? player.x : targetX;
         const seescaryY = monCanSee ? player.y : targetY;
         const sawscary = onscary(map, seescaryX, seescaryY);
-        // flees_light: Gremlin + artifact light — not yet implemented
-        // in_your_sanctuary: temple mechanics — not yet implemented
+        // INCOMPLETE: flees_light (gremlin+artifact) not implemented (C:555)
+        // INCOMPLETE: in_your_sanctuary (temple) not implemented (C:564)
         if (nearby && sawscary) {
-            phase3Cond = true; // scared
+            phase3Cond = true;
             scaredNow = true;
             applyMonflee(mon, rnd(rn2(7) ? 10 : 100), true);
             monmovePhase3Trace(`step=${monmoveStepLabel(map)}`, `id=${mon.m_id ?? '?'}`, 'gate=scared');
@@ -1822,9 +492,6 @@ function dochug(mon, map, player, display, fov, game = null) {
             `take=${phase3Cond ? 1 : 0}`,
         );
     }
-    // C ref: monmove.c phase-three leprechaun clause:
-    // (mdat->mlet == S_LEPRECHAUN && !findgold(player_inventory)
-    //  && (findgold(mon_inventory) || rn2(2)))
     if (!phase3Cond && mon.mndx === PM_LEPRECHAUN) {
         const playerHasGoldNow = playerHasGold(player);
         const monHasGold = hasGold(mon.minvent);
@@ -1841,7 +508,7 @@ function dochug(mon, map, player, display, fov, game = null) {
             `take=${phase3Cond ? 1 : 0}`,
         );
     }
-    // skip Conflict check
+    // INCOMPLETE: Conflict artifact check not implemented (C:870)
     if (!phase3Cond && !monCanSee) {
         const blindRoll = rn2(4);
         phase3Cond = !blindRoll;
@@ -1857,8 +524,7 @@ function dochug(mon, map, player, display, fov, game = null) {
     if (phase3Cond && mon.peaceful) monmovePhase3Trace(`step=${monmoveStepLabel(map)}`, `id=${mon.m_id ?? '?'}`, 'gate=peaceful');
     monmovePhase3Trace(`step=${monmoveStepLabel(map)}`, `id=${mon.m_id ?? '?'}`, `phase3Cond=${phase3Cond ? 1 : 0}`);
 
-    // C ref: monmove.c phase-two wield gate before movement.
-    // Monsters with AT_WEAP may spend their turn wielding when in range.
+    // Wield gate before movement
     if (!mon.peaceful
         && inrange
         && dist2(mon.mx, mon.my, targetX, targetY) <= 8
@@ -1869,29 +535,18 @@ function dochug(mon, map, player, display, fov, game = null) {
         }
     }
 
-    // C ref: monmove.c:911-962 — Phase 3 movement + optional Phase 4 ranged.
-    // After m_move, C recalculates distfleeck. If the monster MOVED
-    // (MMOVE_MOVED) and is still not nearby but has ranged attacks (AT_WEAP),
-    // it falls through to Phase 4 for a ranged attack on the same turn.
-    let mmoved = false; // track if the monster actually moved
-    let phase4Allowed = !phase3Cond; // Phase 4 is always allowed if Phase 3 was skipped
+    // Phase 3 movement + optional Phase 4 ranged
+    let mmoved = false;
+    let phase4Allowed = !phase3Cond;
     if (phase3Cond) {
-        // C ref: monmove.c:1743-1748 — meating check (inside m_move)
-        // If monster is still eating, decrement meating and skip movement
         if (mon.meating) {
             mon.meating--;
-            // C ref: dogmove.c:1454 finish_meating — clear meating when done
-            // (no RNG consumed)
         } else if (mon.tame) {
-            // Inside condition block: m_move (routes to dog_move for tame)
-            // C ref: monmove.c:911 — m_move() for all monsters in this path
             const omx = mon.mx, omy = mon.my;
             dog_move(mon, map, player, display, fov, false, game);
             if (!mon.dead && (mon.mx !== omx || mon.my !== omy)) {
                 const trapResult = mintrap_postmove(mon, map, player);
-                if (trapResult === Trap_Killed_Mon || trapResult === Trap_Moved_Mon) {
-                    // C ref: postmov() returns MMOVE_DIED for trap kill/teleport.
-                    // distfleeck rn2(5) is skipped; no further processing.
+                if (trapResult === 2 || trapResult === 3) {
                     return;
                 }
                 mmoved = true;
@@ -1903,7 +558,7 @@ function dochug(mon, map, player, display, fov, game = null) {
             let trapDied = false;
             if (!mon.dead && (mon.mx !== omx || mon.my !== omy)) {
                 const trapResult = mintrap_postmove(mon, map, player);
-                if (trapResult === Trap_Killed_Mon || trapResult === Trap_Moved_Mon) {
+                if (trapResult === 2 || trapResult === 3) {
                     trapDied = true;
                 } else {
                     mmoved = true;
@@ -1914,8 +569,6 @@ function dochug(mon, map, player, display, fov, game = null) {
                 && (mmoved || moveDone)
                 && map.objectsAt(mon.mx, mon.my).length > 0
                 && maybeMonsterPickStuff(mon, map)) {
-                // C ref: mpickstuff() can convert MMOVE_MOVED into MMOVE_DONE,
-                // suppressing follow-on attack handling for this turn.
                 mmoved = false;
             } else if (moveDone) {
                 mmoved = false;
@@ -1923,7 +576,6 @@ function dochug(mon, map, player, display, fov, game = null) {
             if (trapDied) return;
         }
         // distfleeck recalc after m_move
-        // C ref: monmove.c:918-919 — skipped when status == MMOVE_DIED
         const postMoveBraveRoll = rn2(5);
         monmoveTrace('distfleeck-postmove',
             `step=${monmoveStepLabel(map)}`,
@@ -1933,9 +585,6 @@ function dochug(mon, map, player, display, fov, game = null) {
             `pos=(${mon.mx},${mon.my})`,
             `roll=${postMoveBraveRoll}`);
 
-        // C ref: monmove.c:949-953 — MMOVE_MOVED case:
-        // "Monsters can move and then shoot on same turn"
-        // If monster moved and still not nearby but has ranged attacks, allow Phase 4.
         if (mmoved && !mon.dead) {
             const targetX2 = Number.isInteger(mon.mux) ? mon.mux : player.x;
             const targetY2 = Number.isInteger(mon.muy) ? mon.muy : player.y;
@@ -1947,18 +596,13 @@ function dochug(mon, map, player, display, fov, game = null) {
     }
 
     // Phase 4: Standard Attacks
-    // C ref: monmove.c:966-975 — attack when in range and not scared.
-    // C calls mattacku(mtmp) which computes range2 = !monnear(mtmp, mux, muy).
-    // For AT_WEAP with range2=TRUE, C dispatches to thrwmu() (ranged throw).
-    // For melee attacks (range2=FALSE), C uses normal hit/miss rolls.
     if (phase4Allowed && !mon.peaceful && !mon.flee && !mon.dead) {
         const targetX2 = Number.isInteger(mon.mux) ? mon.mux : player.x;
         const targetY2 = Number.isInteger(mon.muy) ? mon.muy : player.y;
-        const inrange2 = dist2(mon.mx, mon.my, targetX2, targetY2) <= (BOLT_LIM * BOLT_LIM);
+        const inrange2 = dist2(mon.mx, mon.my, targetX2, targetY2) <= (BOLT_LIM_LOCAL * BOLT_LIM_LOCAL);
         const nearby2 = inrange2 && monnear(mon, targetX2, targetY2);
         if (inrange2) {
             if (nearby2) {
-                // Adjacent: melee attack (only if not already handled by Phase 3)
                 if (!phase3Cond) {
                     if (maybeMonsterWieldBeforeAttack(mon, player, display)) {
                         return;
@@ -1966,8 +610,6 @@ function dochug(mon, map, player, display, fov, game = null) {
                     monsterAttackPlayer(mon, player, display, game);
                 }
             } else if (hasWeaponAttack(mon)) {
-                // At range with AT_WEAP: ranged throw
-                // C ref: mhitu.c:882-885 — AT_WEAP + range2 -> thrwmu(mtmp)
                 thrwmu(mon, map, player, display, game);
             }
         }
@@ -1975,740 +617,7 @@ function dochug(mon, map, player, display, fov, game = null) {
 }
 
 // ========================================================================
-// Pet ranged attack evaluation
-// C ref: dogmove.c find_targ(), score_targ(), best_target(), pet_ranged_attk()
-// ========================================================================
-
-// C ref: dogmove.c:654-696 find_targ() — find first visible monster along a line
-//
-// CRITICAL FOR RNG ALIGNMENT: C checks mtmp->mux/muy (pet's tracked player
-// position) along the scan line. If the player is in the path, find_targ
-// returns &gy.youmonst, which score_targ handles with an early -3000 return
-// BEFORE consuming rnd(5). For tame pets, mux/muy always equals the player's
-// actual position (see set_apparxy in monmove.c:2211-2214).
-//
-// Without this check, JS scans past the player and finds monsters beyond,
-// consuming extra rnd(5) calls that C never makes. This is a recurring bug
-// pattern — see memory/pet_ranged_attk_bug.md for full documentation.
-function find_targ(mon, dx, dy, maxdist, map, player) {
-    const mux = Number.isInteger(mon.mux) ? mon.mux : 0;
-    const muy = Number.isInteger(mon.muy) ? mon.muy : 0;
-    let curx = mon.mx, cury = mon.my;
-    for (let dist = 0; dist < maxdist; dist++) {
-        curx += dx;
-        cury += dy;
-        if (!isok(curx, cury)) break;
-        // C ref: dogmove.c:679 — if pet can't see this cell, stop
-        if (!m_cansee(mon, map, curx, cury)) break;
-        // C ref: dogmove.c:682-683 — if pet thinks player is here, return player
-        // Uses mtmp->mux/muy (apparent player position), not always u.ux/u.uy.
-        if (curx === mux && cury === muy) {
-            return { isPlayer: true, mx: player.x, my: player.y };
-        }
-        // C ref: dogmove.c:685-693 — check for monster at position
-        const targ = map.monsterAt(curx, cury);
-        if (targ && !targ.dead) {
-            // C ref: dogmove.c:687-690 — must be visible to the pet and not hidden
-            const perceiveInvis = !!(mons[mon.mndx]?.flags1 & M1_SEE_INVIS);
-            if ((!targ.minvis || perceiveInvis) && !targ.mundetected) {
-                return targ;
-            }
-            // Pet can't see it — clear target and keep scanning
-        }
-    }
-    return null;
-}
-
-// C ref: dogmove.c:698-740 find_friends() — check if allies are behind target
-// Scans beyond the target in the same direction to see if the player or
-// tame monsters are in the line of fire. Returns 1 if so (pet should not fire).
-function find_friends(mon, target, maxdist, map, player) {
-    const dx = Math.sign(target.mx - mon.mx);
-    const dy = Math.sign(target.my - mon.my);
-    const mux = Number.isInteger(mon.mux) ? mon.mux : 0;
-    const muy = Number.isInteger(mon.muy) ? mon.muy : 0;
-    let curx = target.mx, cury = target.my;
-    let dist = Math.max(Math.abs(target.mx - mon.mx), Math.abs(target.my - mon.my));
-
-    for (; dist <= maxdist; ++dist) {
-        curx += dx;
-        cury += dy;
-        if (!isok(curx, cury)) return false;
-        // C ref: dogmove.c:717-718 — if pet can't see beyond, stop
-        if (!m_cansee(mon, map, curx, cury)) return false;
-        // C ref: dogmove.c:721-722 — player behind target
-        if (curx === mux && cury === muy) return true;
-        // C ref: dogmove.c:724-736 — tame monster behind target
-        const pal = map.monsterAt(curx, cury);
-        if (pal && !pal.dead) {
-            if (pal.tame) {
-                const perceiveInvis = !!(mons[mon.mndx]?.flags1 & M1_SEE_INVIS);
-                if (!pal.minvis || perceiveInvis) return true;
-            }
-            // Quest leaders/guardians — skip for now (not in early game)
-        }
-    }
-    return false;
-}
-
-// C ref: dogmove.c:742-840 score_targ() — evaluate target attractiveness
-//
-// RNG CRITICAL: rnd(5) fuzz factor at line 835, rn2(3) if confused at 753/837.
-// Several early returns (lines 774, 778, 783, 789, 794) exit BEFORE consuming
-// rnd(5). The player target (isPlayer) hits line 786→789 returning -3000 before
-// rnd(5) — this is critical for RNG alignment.
-//
-// For vampire shifters (line 818), rn2() is consumed. Not relevant for early
-// game pets but included for correctness.
-function score_targ(mon, target, map, player) {
-    let score = 0;
-    // C ref: dogmove.c:753 — if not confused, or 1-in-3 chance, do full scoring
-    if (!mon.confused || !rn2(3)) {
-        // C ref: dogmove.c:758-769 — alignment checks (minions/priests)
-        // Simplified: early-game monsters are not minions/priests
-
-        // C ref: dogmove.c:771-774 — quest friendlies (not in early game)
-
-        // C ref: dogmove.c:776-779 — coaligned priests (not in early game)
-
-        // C ref: dogmove.c:780-783 — adjacent targets penalized
-        const dm = Math.max(Math.abs(mon.mx - target.mx), Math.abs(mon.my - target.my));
-        if (dm <= 1) {
-            score -= 3000;
-            return score;
-        }
-        // C ref: dogmove.c:785-789 — tame monsters and player never targeted
-        // Returns BEFORE rnd(5) at line 835
-        if (target.tame || target.isPlayer) {
-            score -= 3000;
-            return score;
-        }
-        // C ref: dogmove.c:791-794 — friends behind target
-        if (find_friends(mon, target, 15, map, player)) {
-            score -= 3000;
-            return score;
-        }
-        // C ref: dogmove.c:797-798 — hostile bonus
-        if (!target.peaceful) score += 10;
-        // C ref: dogmove.c:800-801 — passive monster penalty
-        const mdat = mons[target.mndx];
-        if (mdat && mdat.attacks && mdat.attacks[0] && mdat.attacks[0].type === 0) {
-            score -= 1000;
-        }
-        // C ref: dogmove.c:804-807 — weak target penalty
-        const targLev = target.mlevel || 0;
-        const monLev = mon.mlevel || 0;
-        if ((targLev < 2 && monLev > 5)
-            || (monLev > 12 && targLev < monLev - 9)) {
-            score -= 25;
-        }
-        // C ref: dogmove.c:813-822 — vampire shifter level adjustment
-        // rn2() consumed here for vampire shifters — not relevant early game
-        let mtmpLev = monLev;
-        // (vampire shifter check omitted — no vampires in early game)
-
-        // C ref: dogmove.c:826-827 — vastly stronger foe penalty
-        if (targLev > mtmpLev + 4)
-            score -= (targLev - mtmpLev) * 20;
-        // C ref: dogmove.c:831 — beefiest monster bonus
-        score += targLev * 2 + Math.floor((target.mhp || 0) / 3);
-    }
-    // C ref: dogmove.c:835 — fuzz factor (consumed for all targets that reach here)
-    score += rnd(5);
-    // C ref: dogmove.c:837-838 — confused penalty
-    if (mon.confused && !rn2(3)) score -= 1000;
-    return score;
-}
-
-// C ref: dogmove.c:842-890 best_target() — find best ranged attack target
-function best_target(mon, forced, map, player) {
-    // C ref: dogmove.c:854 — if (!mtmp->mcansee) return 0;
-    const monCanSee = (mon.mcansee !== false)
-        && !mon.blind
-        && !(Number.isFinite(mon.mblinded) && mon.mblinded > 0)
-        && !mon.mblind;
-    if (!monCanSee) return null;
-    let bestscore = -40000;
-    let bestTarg = null;
-    // C ref: dogmove.c:861-882 — scan all 8 directions
-    for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-            if (!dx && !dy) continue;
-            const targ = find_targ(mon, dx, dy, 7, map, player);
-            if (!targ) continue;
-            const currscore = score_targ(mon, targ, map, player);
-            if (currscore > bestscore) {
-                bestscore = currscore;
-                bestTarg = targ;
-            }
-        }
-    }
-    // C ref: dogmove.c:886-887 — filter negative scores
-    if (!forced && bestscore < 0) bestTarg = null;
-    return bestTarg;
-}
-
-// C ref: dogmove.c:892-970 pet_ranged_attk() — pet considers ranged attack
-// For early game pets (dogs/cats), they have no ranged attacks,
-// but best_target still evaluates targets (consuming RNG via score_targ).
-// The actual attack path (mattackm) is not reached for melee-only pets.
-function pet_ranged_attk(mon, map, player, display, game = null) {
-    const mtarg = best_target(mon, false, map, player);
-    // C ref: dogmove.c:912-970 — if target exists, pet may attempt attack.
-    if (!mtarg) return 0;
-    if (mtarg.isPlayer) {
-        monsterAttackPlayer(mon, player, display, game);
-        return 1; // acted (MMOVE_DONE)
-    }
-    // For melee-only pets, mattackm is relevant only when target is adjacent.
-    const dm = Math.max(Math.abs(mon.mx - mtarg.mx), Math.abs(mon.my - mtarg.my));
-    if (dm <= 1) {
-        rnd(20); // C ref: mhitm.c mattackm() to-hit roll
-    }
-    return 0; // miss/no-ranged-action in early-game pet traces
-}
-
-// ========================================================================
-// dog_move — tame pet AI
-// ========================================================================
-
-// C ref: dogmove.c dog_move() — full pet movement logic
-// Returns: -2 (skip), 0 (stay), 1 (moved), 2 (moved+ate)
-function dog_move(mon, map, player, display, fov, after = false, game = null) {
-    const omx = mon.mx, omy = mon.my;
-    // C ref: hack.h #define distu(xx,yy) dist2(xx,yy,u.ux,u.uy)
-    const udist = dist2(omx, omy, player.x, player.y);
-    const edogRaw = mon.edog || null;
-    const edog = edogRaw || { apport: 0, hungrytime: 1000, whistletime: 0 };
-    // C ref: dog_move uses svm.moves which is incremented at end of turn,
-    // so during movemon() svm.moves = (completed turns + 1).
-    // JS player.turns is incremented after movemon(), so add 1 to match C.
-    const turnCount = (player.turns || 0) + 1;
-    // C ref: dogmove.c:1024-1029 — dog_invent before dog_goal
-    if (edog) {
-        const invResult = dog_invent(mon, edog, udist, map, turnCount, display, player, fov);
-        if (invResult === 1) return 1; // ate something — done
-        if (invResult === 2) return 0; // died
-    }
-
-    // C ref: dogmove.c — whappr = (monstermoves - edog->whistletime < 5)
-    const whappr = (turnCount - edog.whistletime) < 5 ? 1 : 0;
-
-    // dog_goal — scan nearby objects for food/items
-    // C ref: dogmove.c dog_goal():500-554
-    let gx = 0, gy = 0, gtyp = UNDEF;
-    const minX = Math.max(1, omx - SQSRCHRADIUS);
-    const maxX = Math.min(COLNO - 1, omx + SQSRCHRADIUS);
-    const minY = Math.max(0, omy - SQSRCHRADIUS);
-    const maxY = Math.min(ROWNO - 1, omy + SQSRCHRADIUS);
-
-    // C ref: in_masters_sight = couldsee(omx, omy)
-    if (fov && typeof fov.compute === 'function') {
-        fov.compute(map, player.x, player.y);
-    }
-    const inMastersSight = (fov && typeof fov.couldSee === 'function')
-        ? !!fov.couldSee(omx, omy)
-        : couldsee(map, player, omx, omy);
-
-    // C ref: dogmove.c:498 — dog_has_minvent = (droppables(mtmp) != 0)
-    const dogHasMinvent = !!droppables(mon);
-
-    // C ref: dogmove.c:545 — lighting check for apport branch
-    const dogLoc = map.at(omx, omy);
-    const playerLoc0 = map.at(player.x, player.y);
-    const dogLit = !!(dogLoc && dogLoc.lit);
-    const playerLit = !!(playerLoc0 && playerLoc0.lit);
-
-    // C ref: dogmove.c:498-555
-    // Pets without EDOG (or leashed pets) don't pick object goals.
-    if (!edogRaw || mon.mleashed) {
-        gtyp = APPORT;
-        gx = player.x;
-        gy = player.y;
-    } else {
-        // C ref: dog_goal iterates fobj (ALL objects on level)
-        // C's fobj is LIFO (place_object prepends), so iterate in reverse to match
-        for (let oi = map.objects.length - 1; oi >= 0; oi--) {
-            const obj = map.objects[oi];
-            if (obj.buried) continue;
-            const ox = obj.ox, oy = obj.oy;
-
-            if (ox < minX || ox > maxX || oy < minY || oy > maxY) continue;
-
-            const otyp = dogfood(mon, obj, turnCount);
-            // C ref: dogmove.c:526 — skip inferior goals
-            if (otyp > gtyp || otyp === UNDEF) continue;
-
-            // C ref: dogmove.c:529-531 — skip cursed POSITIONS unless starving
-            // C uses cursed_object_at(nx, ny) which checks ALL objects at position
-            if (cursed_object_at(map, ox, oy)
-                && !(edog.mhpmax_penalty && otyp < MANFOOD)) continue;
-
-            // C ref: dogmove.c:533-535 — skip unreachable goals
-            if (!could_reach_item(map, mon, ox, oy)
-                || !can_reach_location(map, mon, omx, omy, ox, oy))
-                continue;
-
-            if (otyp < MANFOOD) {
-                // Good food — direct goal
-                // C ref: dogmove.c:536-542
-                if (otyp < gtyp || dist2(ox, oy, omx, omy) < dist2(gx, gy, omx, omy)) {
-                    gx = ox; gy = oy; gtyp = otyp;
-                }
-            } else if (gtyp === UNDEF && inMastersSight
-                    && !dogHasMinvent
-                    && (!dogLit || playerLit)
-                    && (otyp === MANFOOD || m_cansee(mon, map, ox, oy))
-                    && edog.apport > rn2(8)
-                    && can_carry(mon, obj) > 0) {
-                // C ref: dogmove.c:543-552 — APPORT/MANFOOD with apport+carry check
-                gx = ox; gy = oy; gtyp = APPORT;
-            }
-        }
-    }
-    // Follow player logic
-    // C ref: dogmove.c:567-609
-    let appr = 0;
-    if (gtyp === UNDEF || (gtyp !== DOGFOOD && gtyp !== APPORT
-                           && turnCount < edog.hungrytime)) {
-        // No good goal found — follow player
-        gx = player.x; gy = player.y;
-
-        // C ref: dogmove.c:565-566 — if called from "after" path and already
-        // adjacent to the hero's square, skip movement this turn.
-        if (after && udist <= 4) {
-            return 0;
-        }
-
-        appr = (udist >= 9) ? 1 : (mon.flee) ? -1 : 0;
-
-        if (udist > 1) {
-            // C ref: dogmove.c:575-578 — approach check
-            const playerLoc = map.at(player.x, player.y);
-            const playerInRoom = playerLoc && IS_ROOM(playerLoc.typ);
-            if (!playerInRoom || !rn2(4) || whappr
-                || (dogHasMinvent && rn2(edog.apport))) {
-                appr = 1;
-            }
-        }
-
-        // C ref: dogmove.c:583-606 — check stairs, food in inventory, portal
-        if (appr === 0) {
-            // C ref: On_stairs(u.ux, u.uy) — checks ALL stairway types
-            // (regular stairs, ladders, branch stairs)
-            const onStairs = (player.x === map.upstair?.x && player.y === map.upstair?.y)
-                || (player.x === map.dnstair?.x && player.y === map.dnstair?.y)
-                || (player.x === map.upladder?.x && player.y === map.upladder?.y)
-                || (player.x === map.dnladder?.x && player.y === map.dnladder?.y);
-            const pLoc = map.at(player.x, player.y);
-            // C ref: On_stairs() checks stairway_at() which maintains a
-            // linked list of ALL stairways (regular, ladders, branch).
-            // JS tracks only one up/down stair, so also check the tile type
-            // as a fallback for any untracked branch stairs or ladders.
-            const onStairsOrTile = onStairs
-                || (pLoc && (pLoc.typ === STAIRS || pLoc.typ === LADDER));
-            if (onStairsOrTile) {
-                appr = 1;
-            } else {
-                // C ref: scan player inventory for DOGFOOD items
-                // Each dogfood() call consumes rn2(100) via obj_resists
-                const invItems = [...player.inventory].sort((a, b) => {
-                    const ra = ((a?.invlet || '\x7f').charCodeAt(0) ^ 32);
-                    const rb = ((b?.invlet || '\x7f').charCodeAt(0) ^ 32);
-                    return ra - rb;
-                });
-                for (const invObj of invItems) {
-                    const invFood = dogfood(mon, invObj, turnCount);
-                    if (invFood === DOGFOOD) {
-                        appr = 1;
-                        break;
-                    }
-                }
-                // C ref: dogmove.c:586-595 — magic portal proximity also
-                // makes pets follow more tightly.
-                if (appr === 0) {
-                    for (const trap of map.traps || []) {
-                        if (trap && trap.ttyp === MAGIC_PORTAL) {
-                            const dx = trap.tx - player.x;
-                            const dy = trap.ty - player.y;
-                            if ((dx * dx + dy * dy) <= 2) appr = 1;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        // Good goal exists
-        appr = 1;
-    }
-
-    // C ref: dogmove.c:610-611 — confused pets don't approach or flee
-    if (mon.confused) appr = 0;
-
-    // C ref: dogmove.c:603-637 — redirect goal when pet can't see master
-    if (gx === player.x && gy === player.y && !inMastersSight) {
-        const cp = gettrack(omx, omy);
-        if (cp) {
-            gx = cp.x; gy = cp.y;
-            if (edog) edog.ogoal.x = 0;
-        } else {
-            if (edog && edog.ogoal.x
-                && (edog.ogoal.x !== omx || edog.ogoal.y !== omy)) {
-                gx = edog.ogoal.x; gy = edog.ogoal.y;
-                edog.ogoal.x = 0;
-            } else {
-                let fardist = FARAWAY * FARAWAY;
-                gx = FARAWAY; gy = FARAWAY;
-                // C ref: do_clear_area(omx, omy, 9, wantdoor, &fardist)
-                // wantdoor finds visible-from-pet position closest to player
-                const wdState = { dist: fardist };
-                do_clear_area(fov, map, omx, omy, 9, (x, y, st) => {
-                    const ndist = dist2(x, y, player.x, player.y);
-                    if (st.dist > ndist) {
-                        gx = x; gy = y; st.dist = ndist;
-                    }
-                }, wdState);
-                if (gx === FARAWAY || (gx === omx && gy === omy)) {
-                    gx = player.x; gy = player.y;
-                } else if (edog) {
-                    edog.ogoal.x = gx; edog.ogoal.y = gy;
-                }
-            }
-        }
-    } else if (edog) {
-        edog.ogoal.x = 0;
-    }
-
-    // ========================================================================
-    // Position evaluation loop — uses mfndpos for C-faithful position collection
-    // C ref: dogmove.c:1063-1268
-    // ========================================================================
-
-    // Collect valid positions (column-major order, no stay pos, boulder filter)
-    const positions = mfndpos(mon, map, player);
-    const cnt = positions.length;
-    let nix = omx, niy = omy;
-    let nidist = dist2(omx, omy, gx, gy);
-    let chcnt = 0;
-    let chi = -1;
-    let uncursedcnt = 0;
-    const cursemsg = new Array(cnt).fill(false);
-
-    // First pass: count uncursed positions
-    // C ref: dogmove.c:1063-1072
-    for (let i = 0; i < cnt; i++) {
-        const nx = positions[i].x, ny = positions[i].y;
-        if (map.monsterAt(nx, ny) && !positions[i].allowM && !positions[i].allowMDisp) {
-            continue;
-        }
-        if (cursed_object_at(map, nx, ny)) continue;
-        uncursedcnt++;
-    }
-
-    // Second pass: evaluate positions
-    // C ref: dogmove.c:1088-1268
-    // C ref: distmin check for backtrack avoidance (hoisted from loop)
-    let do_eat = false;
-    let eatObj = null;
-    const distmin_pu = Math.max(Math.abs(omx - player.x), Math.abs(omy - player.y));
-    for (let i = 0; i < cnt; i++) {
-        const nx = positions[i].x, ny = positions[i].y;
-        // C ref: dogmove.c:1086-1088 — if leashed, we drag the pet along.
-        if (mon.mleashed && dist2(nx, ny, player.x, player.y) > 4) {
-            continue;
-        }
-
-        // C ref: dogmove.c:1088-1166 — pet melee against adjacent monster.
-        // Minimal faithful path: consume mattackm to-hit roll and stop after
-        // one melee attempt (MMOVE_DONE) like C.
-        if (positions[i].allowM) {
-            const target = map.monsterAt(nx, ny);
-            if (target && !target.dead) {
-                // C ref: dogmove.c:1114-1128 — balk if target too strong/dangerous.
-                const balk = (mon.mlevel || 1)
-                    + Math.floor((5 * (mon.mhp || 1)) / Math.max(1, mon.mhpmax || 1))
-                    - 2;
-                if ((target.mlevel || 0) >= balk
-                    || (target.tame && mon.tame)
-                    || (target.peaceful && (mon.mhp || 1) * 4 < Math.max(1, mon.mhpmax || 1))) {
-                    continue;
-                }
-
-                const attacks = (Array.isArray(mon.attacks) && mon.attacks.length > 0)
-                    ? mon.attacks.filter((a) => a && a.type !== AT_NONE)
-                    : [{ type: AT_CLAW, dice: 1, sides: 1 }];
-                // C ref: mhitm.c mattackm() marks the attacker as having moved
-                // this turn; movemon() does not stamp mlstmv for ordinary moves.
-                mon.mlstmv = turnCount;
-                const monVisible = fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my);
-                const targetVisible = fov?.canSee ? fov.canSee(target.mx, target.my) : couldsee(map, player, target.mx, target.my);
-                // C ref: mhitm.c mattackm() sets visibility when either
-                // participant is visible to the hero, not only when both are.
-                const mmVisible = monVisible || targetVisible;
-                // C ref: mhitm.c pre_mm_attack() map_invisible() for unseen participants.
-                if (mmVisible) {
-                    if (!canSpotMonsterForMap(mon, map, player, fov)) {
-                        rememberInvisibleAt(map, mon.mx, mon.my, player);
-                    }
-                    if (!canSpotMonsterForMap(target, map, player, fov)) {
-                        rememberInvisibleAt(map, target.mx, target.my, player);
-                    }
-                }
-                const suppressTurnDetail = !!player.displacedPetThisTurn
-                    || (game?.occupation?.occtxt === 'searching');
-                let anyHit = false;
-                let defenderDied = false;
-                for (let ai = 0; ai < attacks.length; ai++) {
-                    const attk = attacks[ai];
-                    const roll = rnd(20 + ai); // C ref: mhitm.c mattackm to-hit roll
-                    const toHit = (target.mac ?? 10) + (mon.mlevel || 1);
-                    const hit = toHit > roll;
-                    if (hit) {
-                        anyHit = true;
-                        const dice = (attk && attk.dice) ? attk.dice : 1;
-                        const sides = (attk && attk.sides) ? attk.sides : 1;
-                        const dmg = c_d(Math.max(1, dice), Math.max(1, sides));
-                        const willKill = (target.mhp - Math.max(1, dmg)) <= 0;
-                        const suppressDetail = suppressTurnDetail && !willKill;
-                        if (display && mmVisible && !suppressDetail) {
-                            // C ref: mhitm.c — mon_nam(mdef) uses ARTICLE_THE
-                            display.putstr_message(`${monAttackName(mon)} ${attackVerb(attk?.type)} ${monNam(target, { article: 'the' })}.`);
-                        }
-                        // C ref: mhitm.c mdamagem() rolls damage before knockback RNG.
-                        rn2(3);
-                        rn2(6);
-                        target.mhp -= Math.max(1, dmg);
-                        if (target.mhp <= 0) {
-                            if (Array.isArray(target.minvent) && target.minvent.length > 0) {
-                                // C ref: relobj()/mdrop_obj() drops minvent in chain order;
-                                // JS inventory arrays are push-ordered, so reverse to match
-                                // floor pile top ordering seen in C captures.
-                                for (let idx = target.minvent.length - 1; idx >= 0; idx--) {
-                                    const obj = target.minvent[idx];
-                                    if (!obj) continue;
-                                    obj.ox = target.mx;
-                                    obj.oy = target.my;
-                                    placeFloorObject(map, obj);
-                                }
-                                target.minvent = [];
-                                target.weapon = null;
-                            }
-                            target.dead = true;
-                            if (display && mmVisible) {
-                                // C ref: mon.c:3382 — Monnam(mdef) uses ARTICLE_THE
-                                // C ref: nonliving monsters (undead, golems) are "destroyed" not "killed"
-                                const tdat = target.type || {};
-                                const deathVerb = nonliving(tdat) ? 'destroyed' : 'killed';
-                                display.putstr_message(`${monNam(target, { article: 'the', capitalize: true })} is ${deathVerb}!`);
-                            }
-                            if (petCorpseChanceRoll(target) === 0
-                                && !(((target?.type?.geno || 0) & G_NOCORPSE) !== 0)) {
-                                const corpse = mkcorpstat(CORPSE, target.mndx || 0, true);
-                                // C ref: corpse age should reflect current move count.
-                                corpse.age = turnCount;
-                                corpse.ox = target.mx;
-                                corpse.oy = target.my;
-                                placeFloorObject(map, corpse);
-                            }
-                            const victimLevel = Number.isInteger(target.m_lev) ? target.m_lev
-                                : (Number.isInteger(target.mlevel) ? target.mlevel
-                                    : (Number.isInteger(target.type?.level) ? target.type.level : 0));
-                            rnd(Math.max(1, victimLevel + 1)); // C ref: makemon.c grow_up(victim)
-                            consumePassivemmRng(mon, target, true, true);
-                            defenderDied = true;
-                            break;
-                        } else {
-                            consumePassivemmRng(mon, target, true, false);
-                        }
-                    } else {
-                        consumePassivemmRng(mon, target, false, false);
-                        if (display && mmVisible && !suppressTurnDetail) {
-                            // C ref: mhitm.c missmm — mon_nam(mdef) uses ARTICLE_THE
-                            display.putstr_message(`${monAttackName(mon)} misses ${monNam(target, { article: 'the' })}.`);
-                        }
-                    }
-                }
-                // C ref: dogmove.c:1151-1160 — retaliation check happens once
-                // after mattackm returns for the whole pet-vs-monster exchange.
-                if (anyHit && !defenderDied && rn2(4)
-                    && target.mlstmv !== turnCount
-                    && monnear(target, mon.mx, mon.my)) {
-                    // C ref: dogmove.c retaliation uses mattackm(target, mon).
-                    target.mlstmv = turnCount;
-                    const retaliateAttk = (Array.isArray(target.attacks) && target.attacks.length > 0)
-                        ? target.attacks.find((a) => a && a.type !== AT_NONE)
-                        : null;
-                    const dice = (retaliateAttk && retaliateAttk.dice) ? retaliateAttk.dice : 1;
-                    const sides = (retaliateAttk && retaliateAttk.sides) ? retaliateAttk.sides : 1;
-                    const roll = rnd(20);
-                    const toHit = (mon.mac ?? 10) + (target.mlevel || 1);
-                    const hit = toHit > roll;
-                    if (hit) {
-                        const dmg = c_d(Math.max(1, dice), Math.max(1, sides));
-                        const monDied = (mon.mhp - Math.max(1, dmg)) <= 0;
-                        const suppressDetail = suppressTurnDetail && !monDied;
-                        if (display && mmVisible && !suppressDetail) {
-                            // C ref: mhitm.c — retaliation is mattackm(target, mon).
-                            display.putstr_message(`${monAttackName(target)} ${attackVerb(retaliateAttk?.type)} ${monNam(mon, { article: 'the' })}.`);
-                        }
-                        rn2(3); // mhitm_knockback distance probe
-                        rn2(6); // mhitm_knockback chance probe
-                        mon.mhp -= Math.max(1, dmg);
-                        const monDiedNow = mon.mhp <= 0;
-                        if (monDiedNow) {
-                            mon.dead = true;
-                        }
-                        consumePassivemmRng(target, mon, true, monDiedNow);
-                    } else {
-                        if (display && mmVisible && !suppressTurnDetail) {
-                            // C ref: mhitm.c missmm — mon_nam(mdef) uses ARTICLE_THE
-                            display.putstr_message(`${monAttackName(target)} misses ${monNam(mon, { article: 'the' })}.`);
-                        }
-                        consumePassivemmRng(target, mon, false, false);
-                    }
-                }
-                return 0; // MMOVE_DONE-equivalent for this simplified path
-            }
-        }
-
-        // C ref: monmove.c m_avoid_kicked_loc() via dogmove.c:1177
-        if (m_avoid_kicked_loc(mon, nx, ny, player)) {
-            continue;
-        }
-        if (m_avoid_soko_push_loc(mon, nx, ny, map, player)) {
-            continue;
-        }
-
-        // Trap avoidance — C ref: dogmove.c:1182-1204
-        // Pets avoid harmful seen traps with 39/40 probability
-        // Only check if mfndpos flagged this position as having a trap (ALLOW_TRAPS)
-        if (positions[i].allowTraps) {
-            const trap = map.trapAt(nx, ny);
-            if (trap && !m_harmless_trap(mon, trap)) {
-                if (!mon.mleashed) {
-                    if (trap.tseen && rn2(40)) {
-                        continue;
-                    }
-                }
-            }
-        }
-
-        // Check for food at adjacent position
-        // C ref: dogmove.c:1207-1227 — dogfood check at position
-        // If food found, goto newdogpos (skip rest of loop)
-        if (edog) {
-            let foundFood = false;
-            const canReachFood = could_reach_item(map, mon, nx, ny);
-            for (let oi = map.objects.length - 1; oi >= 0; oi--) {
-                const obj = map.objects[oi];
-                if (obj.buried) continue;
-                if (obj.ox !== nx || obj.oy !== ny) continue;
-                if (obj.cursed) {
-                    cursemsg[i] = true;
-                } else if (canReachFood) {
-                    const otyp = dogfood(mon, obj, turnCount);
-                    if (otyp < MANFOOD
-                        && (otyp < ACCFOOD || turnCount >= edog.hungrytime)) {
-                        nix = nx; niy = ny; chi = i;
-                        do_eat = true;
-                        eatObj = obj;
-                        foundFood = true;
-                        cursemsg[i] = false; // C ref: not reluctant
-                        break;
-                    }
-                }
-            }
-            if (foundFood) break; // goto newdogpos
-        }
-
-        // Cursed avoidance
-        // C ref: dogmove.c:1230-1232
-        if (cursemsg[i] && !mon.mleashed && uncursedcnt > 0 && rn2(13 * uncursedcnt)) {
-            continue;
-        }
-
-        // Track backtracking avoidance
-        // C ref: dogmove.c:1239-1245 — only if not leashed and far from player
-        // distmin > 5 check prevents backtrack avoidance when close to player
-        // k = edog ? uncursedcnt : cnt; limit j < MTSZ && j < k - 1
-        if (!mon.mleashed && mon.mtrack && distmin_pu > 5) {
-            const k = edog ? uncursedcnt : cnt;
-            let skipThis = false;
-            for (let j = 0; j < MTSZ && j < k - 1; j++) {
-                if (nx === mon.mtrack[j].x && ny === mon.mtrack[j].y) {
-                    if (rn2(MTSZ * (k - j))) {
-                        skipThis = true;
-                        break;
-                    }
-                    // C ref: dogmove.c:1242-1244
-                    // If rn2(...) == 0, keep scanning later mtrack entries.
-                    // Duplicate coordinates can consume additional rn2() calls.
-                }
-            }
-            if (skipThis) {
-                continue;
-            }
-        }
-
-        // Distance comparison
-        // C ref: dogmove.c:1247-1257
-        const ndist = dist2(nx, ny, gx, gy);
-        const j = (ndist - nidist) * appr;
-        if ((j === 0 && !rn2(++chcnt)) || j < 0
-            || (j > 0 && !whappr
-                && ((omx === nix && omy === niy && !rn2(3)) || !rn2(12)))) {
-            nix = nx;
-            niy = ny;
-            nidist = ndist;
-            if (j < 0) chcnt = 0;
-            chi = i;
-        }
-    }
-
-    // C ref: dogmove.c:1274-1279 — pet ranged attack before newdogpos
-    // IMPORTANT: In C, when food is found (goto newdogpos at line 1236),
-    // this code is SKIPPED because the goto jumps past it. Only execute
-    // pet_ranged_attk when the pet didn't find food to eat.
-    // Even if pet has no ranged attacks, best_target still evaluates
-    // all visible monsters and calls score_targ (consuming rnd(5) each).
-    if (!do_eat) {
-        const ranged = pet_ranged_attk(mon, map, player, display, null);
-        if (ranged) return 0;
-    }
-
-    // Move the dog
-    // C ref: dogmove.c:1282-1327 — newdogpos label
-    if (nix !== omx || niy !== omy) {
-        // Update track history (shift old positions, add current)
-        // C ref: dogmove.c:1319 — mon_track_add(mtmp, omx, omy)
-        if (mon.mtrack) {
-            for (let k = MTSZ - 1; k > 0; k--) {
-                mon.mtrack[k] = mon.mtrack[k - 1];
-            }
-            mon.mtrack[0] = { x: omx, y: omy };
-        }
-        mon.mx = nix;
-        mon.my = niy;
-
-        // C ref: dogmove.c:1324-1327 — eat after moving
-        if (do_eat && eatObj) {
-            const sawPet = fov?.canSee ? fov.canSee(omx, omy) : couldsee(map, player, omx, omy);
-            const seeObj = fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my);
-            if (display && (sawPet || seeObj)) {
-                // C ref: dogmove.c:290 uses noit_Monnam() which gives "Your" for tame,
-                // unlike the Monnam() used elsewhere which always gives "The".
-                display.putstr_message(`${monNam(mon, { capitalize: true })} eats ${doname(eatObj, null)}.`);
-            }
-            dog_eat(mon, eatObj, map, turnCount);
-        }
-    }
-
-    return nix !== omx || niy !== omy ? 1 : 0;
-}
-
-// ========================================================================
-// m_move — hostile/peaceful monster movement
+// m_move — C ref: monmove.c:1716
 // ========================================================================
 
 function onlineu(mon, player) {
@@ -2717,8 +626,7 @@ function onlineu(mon, player) {
     return dx === 0 || dy === 0 || dy === dx || dy === -dx;
 }
 
-// C ref: priest.c move_special() — shared special movement path for
-// shopkeepers and priests.
+// C ref: priest.c move_special()
 function move_special(mon, map, player, inHisShop, appr, uondoor, avoid, ggx, ggy) {
     const omx = mon.mx;
     const omy = mon.my;
@@ -2775,7 +683,6 @@ function move_special(mon, map, player, inHisShop, appr, uondoor, avoid, ggx, gg
     return 0;
 }
 
-// C ref: shk.c shk_move() — minimal port for peaceful shopkeeper behavior.
 function shk_move(mon, map, player) {
     const omx = mon.mx;
     const omy = mon.my;
@@ -2790,7 +697,6 @@ function shk_move(mon, map, player) {
     let uondoor = (player.x === door.x && player.y === door.y);
     let badinv = false;
 
-    // C ref: shk.c shk_move() near-player early checks.
     if (udist < 3) {
         if (!mon.peaceful) {
             return 0;
@@ -2805,7 +711,6 @@ function shk_move(mon, map, player) {
         gty = player.y;
         avoid = false;
     } else {
-        // C ref: shk.c shk_move() peaceful branch order.
         if (player.invis || player.usteed) {
             avoid = false;
         } else {
@@ -2814,8 +719,6 @@ function shk_move(mon, map, player) {
                     o && (o.otyp === PICK_AXE || o.otyp === DWARVISH_MATTOCK));
                 const hasPickaxeOnGround = !!(map.objectsAt?.(player.x, player.y) || []).find((o) =>
                     o && (o.otyp === PICK_AXE || o.otyp === DWARVISH_MATTOCK));
-                // C Fast gate is omitted in JS state; keep conservative parity:
-                // standing on a pickaxe/mattock counts as badinv.
                 badinv = hasPickaxeInInventory || hasPickaxeOnGround;
                 if (satdoor && badinv) return 0;
                 avoid = !badinv;
@@ -2841,21 +744,50 @@ function shk_move(mon, map, player) {
     return move_special(mon, map, player, inHisShop, appr, uondoor, avoid, gtx, gty);
 }
 
-// C ref: monmove.c m_move() — uses mfndpos + C-faithful position evaluation
-// Key differences from dog_move:
-//   - Position eval: first valid pos accepted (mmoved), then only strictly nearer
-//   - No rn2(3)/rn2(12) fallback for worse positions (that's dog_move only)
-//   - mfndpos provides positions in column-major order with NODIAG filtering
+// C ref: mon.c mpickstuff() early gates.
+function maybeMonsterPickStuff(mon, map) {
+    if (mon.isshk && monsterInShop(mon, map)) return false;
+    if (!mon.tame && monsterInShop(mon, map) && rn2(25)) return false;
+
+    const pile = (map.objectsAt?.(mon.mx, mon.my) || [])
+        .filter((obj) => obj && !obj.buried);
+    for (const obj of pile) {
+        if (obj.otyp === ROCK) continue;
+        if (!mon_would_take_item_search(mon, obj, map)) continue;
+        const carryAmt = can_carry(mon, obj);
+        if (carryAmt <= 0) continue;
+
+        let picked = obj;
+        const quan = Number(obj.quan || 1);
+        if (carryAmt < quan) {
+            obj.quan = quan - carryAmt;
+            obj.owt = weight(obj);
+            picked = { ...obj, quan: carryAmt, o_id: next_ident() };
+            picked.owt = weight(picked);
+        } else {
+            map.removeObject(obj);
+        }
+        addToMonsterInventory(mon, picked);
+        return true;
+    }
+    return false;
+}
+
+// INCOMPLETE vs C m_move():
+// - No vault guard movement (C:1730)
+// - No covetous monster teleport-to-hero (C:1737)
+// - No boulder-pushing by strong monsters (C:2020)
+// - No door-breaking by strong hostiles (C:2035)
+// - No pool/lava avoidance messaging
+// - Inventory-based door unlock limited to iswiz only
 function m_move(mon, map, player, display = null, fov = null) {
     mon._mMoveDone = false;
-    // C ref: monmove.c dispatch for shopkeeper/guard/priest before generic m_move().
     if (mon.isshk) {
         const omx = mon.mx, omy = mon.my;
         shk_move(mon, map, player);
         return mon.mx !== omx || mon.my !== omy;
     }
     if (mon.ispriest) {
-        // Priests with no shrine metadata fall back to generic movement.
         if (mon.epri && mon.epri.shrpos) {
             const omx = mon.mx, omy = mon.my;
             const ggx = mon.epri.shrpos.x + (rn2(3) - 1);
@@ -2863,44 +795,36 @@ function m_move(mon, map, player, display = null, fov = null) {
             move_special(mon, map, player, false, 1, false, true, ggx, ggy);
             return mon.mx !== omx || mon.my !== omy;
         }
-        // else fall through to generic m_move behavior
     }
 
     const omx = mon.mx, omy = mon.my;
     const ptr = mon.type || {};
     const verysmall = (ptr.size || 0) === MZ_TINY;
     const can_open = !(nohands(ptr) || verysmall);
-    const can_unlock = !!mon.iswiz; // inventory-based unlock path is not modeled yet
+    const can_unlock = !!mon.iswiz;
 
-    // C ref: monmove.c:1763 — set_apparxy(mtmp) before main movement logic.
     set_apparxy(mon, map, player);
 
     let ggx = mon.mux ?? player.x, ggy = mon.muy ?? player.y;
 
-    // C ref: monmove.c — appr setup
     let appr = mon.flee ? -1 : 1;
 
-    // C ref: should_see = couldsee(omx, omy) && lighting && dist <= 36
-    // Controls whether monster tracks player by sight or by scent
     const monLoc = map.at(omx, omy);
     const playerLoc = map.at(ggx, ggy);
     const should_see = couldsee(map, player, omx, omy)
         && (playerLoc && playerLoc.lit || !(monLoc && monLoc.lit))
         && (dist2(omx, omy, ggx, ggy) <= 36);
 
-    // C ref: monmove.c appr=0 conditions (simplified for current monsters)
-    // mcansee check, invisibility, stealth, bat/stalker randomness
-    // For now, only the relevant conditions for seed 42 scenario
     if (mon.confused) {
         appr = 0;
     }
-    // C: peaceful monsters don't approach (unless shopkeeper)
     if (mon.peaceful) {
         appr = 0;
     }
+    if (appr === 1 && leppie_avoidance(mon, player)) {
+        appr = -1;
+    }
 
-    // C ref: monmove.c:1880-1886 — when monster can't currently see where it
-    // thinks the hero is, tracking monsters follow recent player trail.
     if (!should_see && !noeyes(mon.type || {})) {
         const cp = gettrack(omx, omy);
         if (cp) {
@@ -2909,7 +833,6 @@ function m_move(mon, map, player, display = null, fov = null) {
         }
     }
 
-    // C ref: monmove.c:1890-1907 — getitems gate consumes lined_up() RNG.
     let getitems = false;
     const isRogueLevel = !!(map?.flags?.is_rogue || map?.flags?.roguelike || map?.flags?.is_rogue_lev);
     if ((!mon.peaceful || !rn2(10)) && !isRogueLevel) {
@@ -2920,19 +843,31 @@ function m_move(mon, map, player, display = null, fov = null) {
         if (appr !== 1 || !inLine) getitems = true;
     }
     if (getitems) {
-        const searchState = m_search_items_goal(mon, map, ggx, ggy, appr);
+        const replayStep = Number.isInteger(map?._replayStepIndex) ? map._replayStepIndex + 1 : '?';
+        const apprBeforeSearch = appr;
+        const ggxBeforeSearch = ggx;
+        const ggyBeforeSearch = ggy;
+        const searchState = m_search_items_goal(mon, map, player, fov, ggx, ggy, appr);
         ggx = searchState.ggx;
         ggy = searchState.ggy;
         appr = searchState.appr;
+        monmoveTrace('m_move-search',
+            `step=${replayStep}`,
+            `id=${mon.m_id ?? '?'}`,
+            `name=${mon.type?.name || mon.name || '?'}`,
+            `mux=(${mon.mux ?? '?'},${mon.muy ?? '?'})`,
+            `from=(${ggxBeforeSearch},${ggyBeforeSearch})`,
+            `to=(${ggx},${ggy})`,
+            `appr=${apprBeforeSearch}->${appr}`);
         if (searchState.done) {
             mon._mMoveDone = true;
             return false;
         }
     }
 
-    // Collect valid positions via mfndpos (column-major, NODIAG, boulder filter)
     const positions = mfndpos(mon, map, player, { allowDoorOpen: can_open, allowDoorUnlock: can_unlock });
     const cnt = positions.length;
+    const replayStep = Number.isInteger(map?._replayStepIndex) ? map._replayStepIndex + 1 : '?';
     const posSummary = positions.map((p) => `(${p.x},${p.y})`).join(' ');
     const trackSummary = Array.isArray(mon.mtrack)
         ? mon.mtrack.map((t) => `(${t?.x ?? '?'},${t?.y ?? '?'})`).join(' ')
@@ -2944,6 +879,7 @@ function m_move(mon, map, player, display = null, fov = null) {
         `name=${mon.type?.name || mon.name || '?'}`,
         `pos=(${omx},${omy})`,
         `target=(${ggx},${ggy})`,
+        `mux=(${mon.mux ?? '?'},${mon.muy ?? '?'})`,
         `mcansee=${mon.mcansee === false ? 0 : 1}`,
         `blind=${mon.blind ? 1 : 0}`,
         `shouldSee=${should_see ? 1 : 0}`,
@@ -2952,9 +888,11 @@ function m_move(mon, map, player, display = null, fov = null) {
         `cnt=${cnt}`,
         `poss=${posSummary}`,
         `track=${trackSummary}`);
-    const maybeTeleportAfterFailedMove = () => {
-        // C ref: monmove.c fallback path can call rloc() for teleporting monsters.
-        if (!can_teleport(ptr) || (map.flags && map.flags.noteleport)) return false;
+    const tryUnicornFallbackTeleport = () => {
+        const isUnicorn = mon.mndx === PM_WHITE_UNICORN
+            || mon.mndx === PM_GRAY_UNICORN
+            || mon.mndx === PM_BLACK_UNICORN;
+        if (!isUnicorn || rn2(2) || (map.flags && map.flags.noteleport)) return false;
         for (let tries = 0; tries < 200; tries++) {
             const nx = rnd(COLNO - 1);
             const ny = rn2(ROWNO);
@@ -2968,52 +906,30 @@ function m_move(mon, map, player, display = null, fov = null) {
         }
         return false;
     };
-    if (cnt === 0) return maybeTeleportAfterFailedMove(); // no valid positions
+    if (cnt === 0) return tryUnicornFallbackTeleport();
 
-    // ========================================================================
-    // Position evaluation — C-faithful m_move logic
-    // C ref: monmove.c position eval loop
-    // Unlike dog_move, this does NOT use rn2(3)/rn2(12) for worse positions.
-    // Selection: mmoved==NOTHING accepts first, then (appr==1 && nearer),
-    //            (appr==-1 && !nearer), or (appr==0 && !rn2(++chcnt)).
-    // ========================================================================
     let nix = omx, niy = omy;
     let nidist = dist2(omx, omy, ggx, ggy);
     let chcnt = 0;
-    let mmoved = false; // C: mmoved = MMOVE_NOTHING
+    let chosenIdx = -1;
+    let mmoved = false;
     const jcnt = Math.min(MTSZ, cnt - 1);
-    // C ref: monmove.c:1938-1941 — shortsighted levels make distant hostiles
-    // wander rather than strictly approach the hero.
     if (!mon.peaceful
         && map?.flags?.shortsighted
         && nidist > (couldsee(map, player, nix, niy) ? 144 : 36)
         && appr === 1) {
         appr = 0;
     }
-    // C ref: monmove.c should_displace() gate; JS mdisplacement behavior is
-    // not yet implemented, so keep this false but preserve skip ordering.
     const betterWithDisplacing = false;
 
     for (let i = 0; i < cnt; i++) {
         const nx = positions[i].x;
         const ny = positions[i].y;
 
-        // C ref: monmove.c:1953
         if (m_avoid_kicked_loc(mon, nx, ny, player)) continue;
 
-        // C ref: monmove.c:1959-1961 — ALLOW_MDISP squares may be skipped
-        // before mtrack checks, but they still contribute to cnt.
         if (positions[i].allowMDisp && !positions[i].allowM && !betterWithDisplacing) continue;
 
-        // C ref: monmove.c undesirable_disp()/trap avoidance —
-        // monsters usually avoid harmful known traps (39/40 chance).
-        if (positions[i].allowTraps) {
-            const trap = map.trapAt(nx, ny);
-            if (trap && trap.tseen && rn2(40)) continue;
-        }
-
-        // Track backtracking avoidance
-        // C ref: monmove.c — only check when appr != 0
         if (appr !== 0 && mon.mtrack) {
             let skipThis = false;
             for (let j = 0; j < jcnt; j++) {
@@ -3034,9 +950,6 @@ function m_move(mon, map, player, display = null, fov = null) {
                         skipThis = true;
                         break;
                     }
-                    // C ref: monmove.c:1960-1964 — when rn2(...) == 0,
-                    // continue checking later mtrack entries; duplicate
-                    // coordinates can consume additional rn2() calls.
                 }
             }
             if (skipThis) continue;
@@ -3045,11 +958,6 @@ function m_move(mon, map, player, display = null, fov = null) {
         const ndist = dist2(nx, ny, ggx, ggy);
         const nearer = ndist < nidist;
 
-        // C ref: monmove.c position selection
-        // appr==1: accept strictly nearer positions
-        // appr==-1: accept not-nearer (farther/equal) positions
-        // appr==0: random selection via rn2(++chcnt)
-        // mmoved==false: always accept first valid position
         if ((appr === 1 && nearer)
             || (appr === -1 && !nearer)
             || (appr === 0 && !rn2(++chcnt))
@@ -3057,14 +965,23 @@ function m_move(mon, map, player, display = null, fov = null) {
             nix = nx;
             niy = ny;
             nidist = ndist;
+            chosenIdx = i;
             mmoved = true;
         }
     }
-    if (!mmoved && maybeTeleportAfterFailedMove()) return true;
+    if (!mmoved && tryUnicornFallbackTeleport()) return true;
 
-    // Move the monster
+    if (mmoved && chosenIdx >= 0) {
+        const chosen = positions[chosenIdx];
+        const attacksMonster = !!chosen.allowM
+            || (nix === (mon.mux ?? -1) && niy === (mon.muy ?? -1));
+        if (attacksMonster && m_move_aggress(mon, map, player, nix, niy, display, fov)) {
+            mon._mMoveDone = true;
+            return false;
+        }
+    }
+
     if (nix !== omx || niy !== omy) {
-        // Update track history (C ref: mon_track_add)
         if (mon.mtrack) {
             for (let k = MTSZ - 1; k > 0; k--) {
                 mon.mtrack[k] = mon.mtrack[k - 1];
@@ -3074,7 +991,6 @@ function m_move(mon, map, player, display = null, fov = null) {
         mon.mx = nix;
         mon.my = niy;
 
-        // C ref: monmove.c postmov door-opening feedback.
         const here = map.at(mon.mx, mon.my);
         if (here && IS_DOOR(here.typ)) {
             const wasLocked = !!(here.flags & D_LOCKED);
@@ -3085,7 +1001,6 @@ function m_move(mon, map, player, display = null, fov = null) {
                 if (display) {
                     const canSeeDoor = fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my);
                     if (canSeeDoor && mon.name) {
-                        // C ref: monmove.c:1587 — Monnam(mtmp) uses ARTICLE_THE
                         display.putstr_message(`${monNam(mon, { article: 'the', capitalize: true })} opens a door.`);
                     } else {
                         display.putstr_message('You hear a door open.');
@@ -3096,4 +1011,176 @@ function m_move(mon, map, player, display = null, fov = null) {
         return true;
     }
     return false;
+}
+
+// ========================================================================
+// m_move_aggress — C ref: monmove.c:2090
+// ========================================================================
+// INCOMPLETE vs C m_move_aggress():
+// - Only first attack type used (C uses full mattackm multi-attack loop)
+// - No special attack handling (engulf, gaze, breath, etc.)
+// - No experience/corpse drop for killed defenders
+// - Retaliation simplified (single attack, no multi-round)
+function m_move_aggress(mon, map, player, nx, ny, display = null, fov = null) {
+    const target = map.monsterAt(nx, ny);
+    if (!target || target === mon || target.dead) return false;
+
+    if (target.sleeping) {
+        target.sleeping = false;
+        target.msleeping = false;
+    }
+
+    const attackerVisible = canSpotMonsterForMap(mon, map, player, fov);
+    const defenderVisible = canSpotMonsterForMap(target, map, player, fov);
+    const replayStep = Number.isInteger(map?._replayStepIndex) ? map._replayStepIndex + 1 : '?';
+    monmoveTrace('m_move_aggress',
+        `step=${replayStep}`,
+        `attacker=${mon.m_id ?? '?'}(${mon.type?.name || mon.name || '?'})`,
+        `defender=${target.m_id ?? '?'}(${target.type?.name || target.name || '?'})`,
+        `at=(${mon.mx},${mon.my})->(${target.mx},${target.my})`,
+        `vis=${attackerVisible || defenderVisible ? 1 : 0}`);
+    if (!attackerVisible && !defenderVisible && !player?.deaf) {
+        if (display?.putstr_message && !map?._heardDistantNoiseThisTurn) {
+            display.putstr_message('You hear some noises in the distance.');
+        }
+        if (map) map._heardDistantNoiseThisTurn = true;
+    }
+
+    const turnCount = (player.turns || 0) + 1;
+
+    const attk = (Array.isArray(mon.attacks) && mon.attacks.length > 0)
+        ? (mon.attacks.find((a) => a && a.type !== AT_NONE) || { type: AT_CLAW, dice: 1, sides: 1 })
+        : { type: AT_CLAW, dice: 1, sides: 1 };
+
+    const roll = rnd(20);
+    const toHit = (target.mac ?? 10) + (mon.mlevel || 1);
+    const hit = toHit > roll;
+    let defenderDied = false;
+    if (hit) {
+        const dice = (attk && attk.dice) ? attk.dice : 1;
+        const sides = (attk && attk.sides) ? attk.sides : 1;
+        const dmg = c_d(Math.max(1, dice), Math.max(1, sides));
+        rn2(3);
+        rn2(6);
+        target.mhp -= Math.max(1, dmg);
+        if (target.mhp <= 0) {
+            target.dead = true;
+            if (typeof map.removeMonster === 'function') map.removeMonster(target);
+            defenderDied = true;
+        }
+        consumePassivemmRng(mon, target, true, defenderDied);
+    } else {
+        consumePassivemmRng(mon, target, false, false);
+    }
+
+    const retaliationRoll = (hit && !defenderDied) ? rn2(4) : 0;
+    const targetMove = Number(target.movement || 0);
+    const retaliationSpeedRoll = (hit && !defenderDied && retaliationRoll)
+        ? rn2(NORMAL_SPEED)
+        : 0;
+    monmoveTrace('m_move_aggress-retal-gate',
+        `step=${replayStep}`,
+        `attacker=${mon.m_id ?? '?'}`,
+        `defender=${target.m_id ?? '?'}`,
+        `hit=${hit ? 1 : 0}`,
+        `defenderDied=${defenderDied ? 1 : 0}`,
+        `retRoll=${retaliationRoll}`,
+        `targetMove=${targetMove}`,
+        `speedRoll=${retaliationSpeedRoll}`);
+    if (hit && !defenderDied
+        && retaliationRoll
+        && targetMove > retaliationSpeedRoll) {
+        monmoveTrace('m_move_aggress-retal',
+            `step=${replayStep}`,
+            `attacker=${mon.m_id ?? '?'}`,
+            `defender=${target.m_id ?? '?'}`,
+            `targetMove=${targetMove}`,
+            `turnCount=${turnCount}`);
+        if (targetMove > NORMAL_SPEED) target.movement = targetMove - NORMAL_SPEED;
+        else target.movement = 0;
+        const rattk = (Array.isArray(target.attacks) && target.attacks.length > 0)
+            ? (target.attacks.find((a) => a && a.type !== AT_NONE) || { type: AT_CLAW, dice: 1, sides: 1 })
+            : { type: AT_CLAW, dice: 1, sides: 1 };
+        const rroll = rnd(20);
+        const rtoHit = (mon.mac ?? 10) + (target.mlevel || 1);
+        const rhit = rtoHit > rroll;
+        if (rhit) {
+            const rdice = (rattk && rattk.dice) ? rattk.dice : 1;
+            const rsides = (rattk && rattk.sides) ? rattk.sides : 1;
+            const rdmg = c_d(Math.max(1, rdice), Math.max(1, rsides));
+            rn2(3);
+            rn2(6);
+            mon.mhp -= Math.max(1, rdmg);
+            const attackerDied = mon.mhp <= 0;
+            if (attackerDied) mon.dead = true;
+            consumePassivemmRng(target, mon, true, attackerDied);
+        } else {
+            consumePassivemmRng(target, mon, false, false);
+        }
+    }
+
+    return true;
+}
+
+// ========================================================================
+// set_apparxy — C ref: monmove.c:2200
+// ========================================================================
+function set_apparxy(mon, map, player) {
+    let mx = Number.isInteger(mon.mux) ? mon.mux : 0;
+    let my = Number.isInteger(mon.muy) ? mon.muy : 0;
+
+    if (mon.tame || (mx === player.x && my === player.y)) {
+        mon.mux = player.x;
+        mon.muy = player.y;
+        return;
+    }
+
+    const mdat = mons[mon.mndx] || mon.type || {};
+    const monCanSee = mon.mcansee !== false;
+    const notseen = (!monCanSee || (player.invisible && !perceives(mdat)));
+    const playerDisplaced = !!(player.cloak && player.cloak.otyp === CLOAK_OF_DISPLACEMENT);
+    const notthere = playerDisplaced && mon.mndx !== PM_DISPLACER_BEAST;
+    let displ;
+    if (notseen) {
+        displ = 1;
+    } else if (notthere) {
+        displ = couldsee(map, player, mx, my) ? 2 : 1;
+    } else {
+        displ = 0;
+    }
+
+    if (!displ) {
+        mon.mux = player.x;
+        mon.muy = player.y;
+        return;
+    }
+
+    const gotu = notseen ? !rn2(3) : (notthere ? !rn2(4) : false);
+
+    if (!gotu) {
+        let tryCnt = 0;
+        do {
+            if (++tryCnt > 200) {
+                mx = player.x;
+                my = player.y;
+                break;
+            }
+            mx = player.x - displ + rn2(2 * displ + 1);
+            my = player.y - displ + rn2(2 * displ + 1);
+            const loc = map.at(mx, my);
+            const closedDoor = !!loc && IS_DOOR(loc.typ) && (loc.flags & (D_CLOSED | D_LOCKED));
+            const blocked = !loc || !(ACCESSIBLE(loc.typ) && !closedDoor);
+            if (!isok(mx, my)) continue;
+            if (displ !== 2 && mx === mon.mx && my === mon.my) continue;
+            if ((mx !== player.x || my !== player.y) && blocked) continue;
+            if (!couldsee(map, player, mx, my)) continue;
+            break;
+        } while (true);
+    } else {
+        mx = player.x;
+        my = player.y;
+    }
+
+    mon.mux = mx;
+    mon.muy = my;
 }

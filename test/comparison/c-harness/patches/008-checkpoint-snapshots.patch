@@ -61,6 +61,7 @@ index d77454878..843e21f50 100644
 +    FILE *fp;
 +    int x, y, i, first;
 +    struct trap *ttmp;
++    struct obj *otmp;
 +    struct monst *mtmp;
 +    struct mkroom *croom;
 +    stairway *stway;
@@ -81,6 +82,9 @@ index d77454878..843e21f50 100644
 +    json_write_escaped(fp, phase);
 +    fprintf(fp, "\",\"rngCallCount\":%d", rng_log_get_call_count());
 +    fprintf(fp, ",\"dnum\":%d,\"dlevel\":%d", (int) u.uz.dnum, (int) u.uz.dlevel);
++    fprintf(fp,
++            ",\"u_acurrstr\":%d,\"u_str\":%d,\"u_ux\":%d,\"u_uy\":%d,\"u_blind\":%d",
++            ACURRSTR, ABASE(A_STR), u.ux, u.uy, Blind ? 1 : 0);
 +
 +    /* typGrid */
 +    fputs(",\"typGrid\":[", fp);
@@ -140,18 +144,80 @@ index d77454878..843e21f50 100644
 +            }
 +    fputc(']', fp);
 +
++    /* objects, deterministic scan order by y/x then list order */
++    fputs(",\"objects\":[", fp);
++    first = 1;
++    for (y = 0; y < ROWNO; y++)
++        for (x = 0; x < COLNO; x++)
++            for (otmp = svl.level.objects[x][y]; otmp; otmp = otmp->nexthere) {
++                if (!first)
++                    fputc(',', fp);
++                first = 0;
++                fprintf(fp,
++                        "{\"x\":%d,\"y\":%d,\"otyp\":%d,\"oclass\":%d,"
++                        "\"quan\":%ld,\"no_charge\":%d,\"cursed\":%d}",
++                        x, y, otmp->otyp, otmp->oclass, otmp->quan,
++                        otmp->no_charge ? 1 : 0, otmp->cursed ? 1 : 0);
++            }
++    fputc(']', fp);
++
 +    /* monsters, deterministic scan order by y/x */
 +    fputs(",\"monsters\":[", fp);
 +    first = 1;
 +    for (y = 0; y < ROWNO; y++)
 +        for (x = 0; x < COLNO; x++)
 +            if ((mtmp = m_at(x, y)) != 0 && !DEADMONSTER(mtmp)) {
++                int minvload = 0, minvcount = 0;
++                long minvgold = 0L;
++                struct obj *invotmp;
++                for (invotmp = mtmp->minvent; invotmp; invotmp = invotmp->nobj) {
++                    minvcount++;
++                    minvload += invotmp->owt;
++                    if (invotmp->oclass == COIN_CLASS)
++                        minvgold += invotmp->quan;
++                }
 +                if (!first)
 +                    fputc(',', fp);
 +                first = 0;
 +                fprintf(fp,
-+                        "{\"x\":%d,\"y\":%d,\"mnum\":%d,\"mhp\":%d,\"mpeaceful\":%d}",
-+                        x, y, monsndx(mtmp->data), mtmp->mhp, mtmp->mpeaceful ? 1 : 0);
++                        "{\"x\":%d,\"y\":%d,\"m_id\":%u,\"mnum\":%d,\"mhp\":%d,"
++                        "\"mpeaceful\":%d,\"movement\":%d,\"mtame\":%d,"
++                        "\"minvis\":%d,\"perminvis\":%d,\"invis_blkd\":%d,"
++                        "\"mundetected\":%d,\"msleeping\":%d,\"mcanmove\":%d,"
++                        "\"mblinded\":%d,\"m_ap_type\":%d,\"mappearance\":%u,"
++                        "\"canseemon\":%d,\"mux\":%d,\"muy\":%d,\"mflee\":%d,"
++                        "\"mfleetim\":%d,\"mconf\":%d,\"mstun\":%d,"
++                        "\"minvcount\":%d,\"minvload\":%d,\"minvgold\":%ld,"
++                        "\"mtrack\":[{\"x\":%d,\"y\":%d},{\"x\":%d,\"y\":%d},"
++                        "{\"x\":%d,\"y\":%d},{\"x\":%d,\"y\":%d}],\"minvent\":[",
++                        x, y, mtmp->m_id, monsndx(mtmp->data), mtmp->mhp,
++                        mtmp->mpeaceful ? 1 : 0, (int) mtmp->movement,
++                        (int) mtmp->mtame, mtmp->minvis ? 1 : 0,
++                        mtmp->perminvis ? 1 : 0, mtmp->invis_blkd ? 1 : 0,
++                        mtmp->mundetected ? 1 : 0, mtmp->msleeping ? 1 : 0,
++                        mtmp->mcanmove ? 1 : 0, (int) mtmp->mblinded,
++                        (int) mtmp->m_ap_type, (unsigned) mtmp->mappearance,
++                        canseemon(mtmp) ? 1 : 0,
++                        (int) mtmp->mux, (int) mtmp->muy, mtmp->mflee ? 1 : 0,
++                        (int) mtmp->mfleetim, mtmp->mconf ? 1 : 0,
++                        mtmp->mstun ? 1 : 0, minvcount, minvload, minvgold,
++                        mtmp->mtrack[0].x, mtmp->mtrack[0].y,
++                        mtmp->mtrack[1].x, mtmp->mtrack[1].y,
++                        mtmp->mtrack[2].x, mtmp->mtrack[2].y,
++                        mtmp->mtrack[3].x, mtmp->mtrack[3].y);
++                {
++                    boolean firstinv = TRUE;
++                    for (invotmp = mtmp->minvent; invotmp; invotmp = invotmp->nobj) {
++                        if (!firstinv)
++                            fputc(',', fp);
++                        firstinv = FALSE;
++                        fprintf(fp,
++                                "{\"otyp\":%d,\"oclass\":%d,\"quan\":%ld,\"owt\":%d,\"cursed\":%d}",
++                                invotmp->otyp, invotmp->oclass, invotmp->quan,
++                                invotmp->owt, invotmp->cursed ? 1 : 0);
++                    }
++                }
++                fputs("]}", fp);
 +            }
 +    fputc(']', fp);
 +

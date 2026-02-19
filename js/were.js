@@ -10,6 +10,16 @@ import {
     PM_HUMAN_WERERAT,
     PM_HUMAN_WEREJACKAL,
     PM_HUMAN_WEREWOLF,
+    PM_SEWER_RAT,
+    PM_GIANT_RAT,
+    PM_RABID_RAT,
+    PM_JACKAL,
+    PM_FOX,
+    PM_COYOTE,
+    PM_WOLF,
+    PM_WARG,
+    PM_WINTER_WOLF,
+    PM_WINTER_WOLF_CUB,
 } from './monsters.js';
 
 // cf. were.c:48 — map lycanthrope to its alternate form
@@ -33,7 +43,28 @@ export function counter_were(pm) {
 }
 
 // cf. were.c:70 — convert monsters similar to werecritters into appropriate werebeast
-// TODO: were.c:70 — were_beastie(): not yet called in JS (needs PM_SEWER_RAT etc. imports)
+export function were_beastie(pm) {
+    switch (pm) {
+    case PM_WERERAT:
+    case PM_SEWER_RAT:
+    case PM_GIANT_RAT:
+    case PM_RABID_RAT:
+        return PM_WERERAT;
+    case PM_WEREJACKAL:
+    case PM_JACKAL:
+    case PM_FOX:
+    case PM_COYOTE:
+        return PM_WEREJACKAL;
+    case PM_WEREWOLF:
+    case PM_WOLF:
+    case PM_WARG:
+    case PM_WINTER_WOLF:
+    case PM_WINTER_WOLF_CUB:
+        return PM_WEREWOLF;
+    default:
+        return null;
+    }
+}
 
 // Helper: check if mndx is a human were form (not in C; derived from counter_were logic)
 function isHumanWereForm(mndx) {
@@ -127,8 +158,14 @@ export function were_change(mon, ctx) {
     }
 }
 
-// TODO: were.c:142 — were_summon(): summon a horde of were-associated creatures
-// TODO: were.c:192 — you_were(): player changes to lycanthrope beast form
-// TODO: were.c:213 — you_unwere(): player reverts from beast form or gets cured
-// TODO: were.c:232 — set_ulycn(): set/clear player lycanthropy type
+// TODO: were.c:142 — were_summon(): summon a horde of were-associated creatures (needs makemon)
+// TODO: were.c:192 — you_were(): player changes to lycanthrope beast form (needs polymon)
+// TODO: were.c:213 — you_unwere(): player reverts from beast form or gets cured (needs rehumanize)
+
+// cf. were.c:232 — set/clear player lycanthropy type
+export function set_ulycn(player, which) {
+    if (!player) return;
+    player.ulycn = which;
+    // TODO: call set_uasmon() to update innate intrinsics (Drain_resistance)
+}
 

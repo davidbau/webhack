@@ -102,9 +102,14 @@ def run_capture(session_path, step_index, output_path, phase_tag=None):
     session_name = f"webhack-step-snapshot-{seed}-{os.getpid()}"
 
     try:
+        monmove_debug = os.environ.get("NETHACK_MONMOVE_DEBUG")
+        monmove_debug_env = (
+            f"NETHACK_MONMOVE_DEBUG={monmove_debug} " if monmove_debug else ""
+        )
         cmd = (
             f"NETHACKDIR={INSTALL_DIR} "
             f"{fixed_datetime_env()}"
+            f"{monmove_debug_env}"
             f"NETHACK_SEED={seed} "
             f"NETHACK_RNGLOG={rng_log_file} "
             f"NETHACK_DUMPSNAP={checkpoint_file} "
@@ -125,6 +130,7 @@ def run_capture(session_path, step_index, output_path, phase_tag=None):
         time.sleep(0.02)
 
         replayed_steps = replay_steps(session_name, keys, step_index)
+        pre_snapshot_screen = tmux_capture(session_name)
 
         tag = phase_tag or f"manual_step_{step_index}"
         tmux_send(session_name, "#", 0.2)
@@ -147,6 +153,7 @@ def run_capture(session_path, step_index, output_path, phase_tag=None):
             "rngCallCount": rng_count,
             "checkpointCount": len(checkpoints),
             "checkpoint": last,
+            "preSnapshotScreen": pre_snapshot_screen,
             "screen": tmux_capture(session_name),
             "clearMore": get_clear_more_stats(),
         }

@@ -25,7 +25,18 @@ import {
     M3_COVETOUS, M3_WAITMASK,
     M3_INFRAVISION, M3_INFRAVISIBLE, M3_DISPLACES,
     S_DOG, S_FELINE, S_GOLEM,
-    AT_BREA,
+    S_GHOST, S_IMP, S_RODENT, S_VAMPIRE,
+    S_VORTEX, S_ELEMENTAL,
+    MZ_TINY, MZ_SMALL, MZ_MEDIUM, MZ_LARGE,
+    AT_ANY, AT_NONE, AT_BOOM, AT_SPIT, AT_GAZE, AT_MAGC,
+    AT_ENGL, AT_HUGS, AT_BREA,
+    AD_ANY, AD_STCK, AD_WRAP,
+    PM_SHADE, PM_TENGU,
+    PM_ROCK_MOLE, PM_WOODCHUCK,
+    PM_PONY, PM_HORSE, PM_WARHORSE,
+    PM_WHITE_UNICORN, PM_GRAY_UNICORN, PM_BLACK_UNICORN, PM_KI_RIN,
+    PM_HORNED_DEVIL, PM_MINOTAUR, PM_ASMODEUS, PM_BALROG,
+    PM_MARILITH, PM_WINGED_GARGOYLE, PM_AIR_ELEMENTAL,
 } from './monsters.js';
 
 // ========================================================================
@@ -346,4 +357,189 @@ export function monNam(mon, { capitalize = false, article = null } = {}) {
         result = result.charAt(0).toUpperCase() + result.slice(1);
     }
     return result;
+}
+
+// ========================================================================
+// Trap awareness — C ref: mondata.c
+// ========================================================================
+
+// C ref: mondata.c mon_knows_traps(mtmp, ttyp)
+export function mon_knows_traps(mon, ttyp) {
+    const seen = Number(mon?.mtrapseen || 0) >>> 0;
+    if (ttyp === -1) return seen !== 0; // ALL_TRAPS
+    if (ttyp === 0) return seen === 0;  // NO_TRAP
+    const bit = ttyp - 1;
+    if (bit < 0 || bit >= 31) return false;
+    return (seen & (1 << bit)) !== 0;
+}
+
+// C ref: mondata.c mon_learns_traps(mtmp, ttyp)
+export function mon_learns_traps(mon, ttyp) {
+    if (!mon) return;
+    const seen = Number(mon.mtrapseen || 0) >>> 0;
+    if (ttyp === -1) {
+        mon.mtrapseen = 0x7fffffff;
+        return;
+    }
+    if (ttyp === 0) {
+        mon.mtrapseen = 0;
+        return;
+    }
+    const bit = ttyp - 1;
+    if (bit < 0 || bit >= 31) return;
+    mon.mtrapseen = (seen | (1 << bit)) >>> 0;
+}
+
+// ========================================================================
+// passes_bars — C ref: mondata.c
+// ========================================================================
+
+// C ref: mondata.c passes_bars() — can this monster pass through iron bars?
+// passes_walls || amorphous || is_whirly || verysmall || (slithy && !bigmonst)
+export function passes_bars(mdat) {
+    const f1 = mdat?.flags1 || 0;
+    if (f1 & M1_WALLWALK) return true;  // passes_walls
+    if (f1 & M1_AMORPHOUS) return true; // amorphous
+    const mlet = mdat?.symbol ?? -1;
+    if (mlet === S_VORTEX || mlet === S_ELEMENTAL) return true; // is_whirly
+    const size = mdat?.size || 0;
+    if (size === MZ_TINY) return true;  // verysmall
+    if ((f1 & M1_SLITHY) && size <= MZ_MEDIUM) return true; // slithy && !bigmonst
+    return false;
+}
+
+// ========================================================================
+// Attack/damage queries — C ref: mondata.c
+// ========================================================================
+
+// C ref: mondata.c dmgtype_fromattack(ptr, dtyp, atyp)
+// Returns true if monster has an attack of type atyp dealing damage dtyp.
+// atyp == AT_ANY matches any attack type.
+export function dmgtype_fromattack(ptr, dtyp, atyp) {
+    if (!ptr.attacks) return false;
+    for (const atk of ptr.attacks) {
+        if (atk.damage === dtyp && (atyp === AT_ANY || atk.type === atyp))
+            return true;
+    }
+    return false;
+}
+
+// C ref: mondata.c dmgtype(ptr, dtyp)
+// Returns true if monster deals this damage type from any attack.
+export function dmgtype(ptr, dtyp) {
+    return dmgtype_fromattack(ptr, dtyp, AT_ANY);
+}
+
+// C ref: mondata.c noattacks(ptr)
+// Returns true if monster has no real attacks (AT_BOOM passive ignored).
+export function noattacks(ptr) {
+    if (!ptr.attacks) return true;
+    for (const atk of ptr.attacks) {
+        if (atk.type === AT_BOOM) continue;
+        if (atk.type !== AT_NONE && atk.type) return false;
+    }
+    return true;
+}
+
+// C ref: mondata.c ranged_attk(ptr)
+// Returns true if monster has any distance attack (DISTANCE_ATTK_TYPE macro).
+// DISTANCE_ATTK_TYPE = AT_SPIT || AT_BREA || AT_MAGC || AT_GAZE
+export function ranged_attk(ptr) {
+    if (!ptr.attacks) return false;
+    for (const atk of ptr.attacks) {
+        const t = atk.type;
+        if (t === AT_SPIT || t === AT_BREA || t === AT_MAGC || t === AT_GAZE)
+            return true;
+    }
+    return false;
+}
+
+// C ref: mondata.c sticks(ptr)
+// Returns true if monster can stick/grab/wrap targets it hits.
+export function sticks(ptr) {
+    return dmgtype(ptr, AD_STCK)
+        || (dmgtype(ptr, AD_WRAP) && !attacktype(ptr, AT_ENGL))
+        || attacktype(ptr, AT_HUGS);
+}
+
+// ========================================================================
+// Silver/blessing vulnerability — C ref: mondata.c
+// ========================================================================
+
+// C ref: mondata.c hates_silver(ptr)
+// Returns true if this monster type is especially affected by silver weapons.
+export function hates_silver(ptr) {
+    return is_were(ptr)
+        || ptr.symbol === S_VAMPIRE
+        || is_demon(ptr)
+        || ptr === mons[PM_SHADE]
+        || (ptr.symbol === S_IMP && ptr !== mons[PM_TENGU]);
+}
+
+// C ref: mondata.c mon_hates_silver(mon)
+// Returns true if this monster instance hates silver.
+// Note: C also checks is_vampshifter() (shapeshifter in vampire form); omitted here.
+export function mon_hates_silver(mon) {
+    const ptr = monsdat(mon);
+    return ptr ? hates_silver(ptr) : false;
+}
+
+// C ref: mondata.c hates_blessings(ptr)
+// Returns true if this monster type is especially affected by blessed objects.
+export function hates_blessings(ptr) {
+    return is_undead(ptr) || is_demon(ptr);
+}
+
+// C ref: mondata.c mon_hates_blessings(mon)
+// Returns true if this monster instance hates blessings.
+// Note: C also checks is_vampshifter() (shapeshifter in vampire form); omitted here.
+export function mon_hates_blessings(mon) {
+    const ptr = monsdat(mon);
+    return ptr ? hates_blessings(ptr) : false;
+}
+
+// ========================================================================
+// Body/armor predicates — C ref: mondata.c / mondata.h
+// ========================================================================
+
+// C ref: mondata.c cantvomit(ptr)
+// Returns true if monster type is incapable of vomiting.
+export function cantvomit(ptr) {
+    if (ptr.symbol === S_RODENT && ptr !== mons[PM_ROCK_MOLE] && ptr !== mons[PM_WOODCHUCK])
+        return true;
+    if (ptr === mons[PM_WARHORSE] || ptr === mons[PM_HORSE] || ptr === mons[PM_PONY])
+        return true;
+    return false;
+}
+
+// C ref: mondata.c num_horns(ptr)
+// Returns the number of horns this monster type has.
+export function num_horns(ptr) {
+    if (ptr === mons[PM_HORNED_DEVIL] || ptr === mons[PM_MINOTAUR]
+        || ptr === mons[PM_ASMODEUS] || ptr === mons[PM_BALROG]) return 2;
+    if (ptr === mons[PM_WHITE_UNICORN] || ptr === mons[PM_GRAY_UNICORN]
+        || ptr === mons[PM_BLACK_UNICORN] || ptr === mons[PM_KI_RIN]) return 1;
+    return 0;
+}
+
+// C ref: mondata.c sliparm(ptr)
+// Returns true if creature would slip out of armor (too small, whirly, or noncorporeal).
+// is_whirly: S_VORTEX || PM_AIR_ELEMENTAL; noncorporeal: S_GHOST
+export function sliparm(ptr) {
+    return ptr.symbol === S_VORTEX
+        || ptr === mons[PM_AIR_ELEMENTAL]
+        || (ptr.size || 0) <= MZ_SMALL
+        || ptr.symbol === S_GHOST;
+}
+
+// C ref: mondata.c breakarm(ptr)
+// Returns true if creature would break out of armor (too large or non-humanoid).
+// PM_MARILITH and PM_WINGED_GARGOYLE are special-cased humanoids that can't wear suits.
+export function breakarm(ptr) {
+    if (sliparm(ptr)) return false;
+    const sz = ptr.size || 0;
+    return sz >= MZ_LARGE
+        || (sz > MZ_SMALL && !is_humanoid(ptr))
+        || ptr === mons[PM_MARILITH]
+        || ptr === mons[PM_WINGED_GARGOYLE];
 }

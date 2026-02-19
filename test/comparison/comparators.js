@@ -60,6 +60,135 @@ function extractCallStack(rawEntries, rawIndex, maxDepth = 3) {
     return stack;
 }
 
+// Shift-aware RNG comparison: uses greedy forward matching with bounded
+// lookahead to identify insertions (extra calls on one side) separately
+// from value mismatches at aligned positions.
+export function compareRngShiftAware(jsRng = [], expectedRng = [], options = {}) {
+    const js = normalizeRngEntries(jsRng, options);
+    const session = normalizeRngEntries(expectedRng, options);
+    const jsRaw = Array.isArray(jsRng) ? jsRng : [];
+    const sessionRaw = Array.isArray(expectedRng) ? expectedRng : [];
+    const jsIndexMap = buildIndexMap(jsRng, options);
+    const sessionIndexMap = buildIndexMap(expectedRng, options);
+
+    const K = options.lookahead || 20; // max lookahead for resync
+    const shifts = [];
+    const diffs = [];
+    let matched = 0;
+    let i = 0; // js index
+    let j = 0; // session index
+
+    while (i < js.length && j < session.length) {
+        if (js[i] === session[j]) {
+            matched++;
+            i++;
+            j++;
+            continue;
+        }
+
+        // Try to resync: find smallest skip on either side
+        let bestSkipJs = -1;
+        let bestSkipSession = -1;
+        let bestTotal = K + 1;
+
+        // Try skipping 1..K on JS side (JS has extra calls)
+        for (let skip = 1; skip <= K && i + skip < js.length; skip++) {
+            if (js[i + skip] === session[j]) {
+                if (skip < bestTotal) {
+                    bestSkipJs = skip;
+                    bestSkipSession = 0;
+                    bestTotal = skip;
+                }
+                break;
+            }
+        }
+
+        // Try skipping 1..K on session side (session/C has extra calls)
+        for (let skip = 1; skip <= K && j + skip < session.length; skip++) {
+            if (js[i] === session[j + skip]) {
+                if (skip < bestTotal) {
+                    bestSkipJs = 0;
+                    bestSkipSession = skip;
+                    bestTotal = skip;
+                }
+                break;
+            }
+        }
+
+        if (bestTotal <= K) {
+            // Record shifts for skipped entries
+            if (bestSkipJs > 0) {
+                for (let s = 0; s < bestSkipJs; s++) {
+                    const rawIdx = jsIndexMap[i + s];
+                    shifts.push({
+                        type: 'js_extra',
+                        jsIndex: i + s,
+                        entry: js[i + s],
+                        raw: rawIdx !== undefined ? jsRaw[rawIdx] : undefined,
+                        stack: rawIdx !== undefined ? extractCallStack(jsRaw, rawIdx) : [],
+                    });
+                }
+                i += bestSkipJs;
+            }
+            if (bestSkipSession > 0) {
+                for (let s = 0; s < bestSkipSession; s++) {
+                    const rawIdx = sessionIndexMap[j + s];
+                    shifts.push({
+                        type: 'c_extra',
+                        sessionIndex: j + s,
+                        entry: session[j + s],
+                        raw: rawIdx !== undefined ? sessionRaw[rawIdx] : undefined,
+                        stack: rawIdx !== undefined ? extractCallStack(sessionRaw, rawIdx) : [],
+                    });
+                }
+                j += bestSkipSession;
+            }
+            // Now i,j should be aligned on a match; continue to pick it up
+        } else {
+            // No resync within K: record as a value diff and advance both
+            diffs.push({
+                jsIndex: i,
+                sessionIndex: j,
+                js: js[i],
+                session: session[j],
+                jsRaw: jsIndexMap[i] !== undefined ? jsRaw[jsIndexMap[i]] : undefined,
+                sessionRaw: sessionIndexMap[j] !== undefined ? sessionRaw[sessionIndexMap[j]] : undefined,
+            });
+            i++;
+            j++;
+        }
+    }
+
+    // Remaining entries on JS side are JS extras
+    while (i < js.length) {
+        const rawIdx = jsIndexMap[i];
+        shifts.push({
+            type: 'js_extra',
+            jsIndex: i,
+            entry: js[i],
+            raw: rawIdx !== undefined ? jsRaw[rawIdx] : undefined,
+            stack: rawIdx !== undefined ? extractCallStack(jsRaw, rawIdx) : [],
+        });
+        i++;
+    }
+
+    // Remaining entries on session side are C extras
+    while (j < session.length) {
+        const rawIdx = sessionIndexMap[j];
+        shifts.push({
+            type: 'c_extra',
+            sessionIndex: j,
+            entry: session[j],
+            raw: rawIdx !== undefined ? sessionRaw[rawIdx] : undefined,
+            stack: rawIdx !== undefined ? extractCallStack(sessionRaw, rawIdx) : [],
+        });
+        j++;
+    }
+
+    const total = Math.max(js.length, session.length);
+    return { matched, total, shifts, diffs };
+}
+
 export function compareRng(jsRng = [], expectedRng = [], options = {}) {
     const actual = normalizeRngEntries(jsRng, options);
     const expected = normalizeRngEntries(expectedRng, options);

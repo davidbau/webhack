@@ -377,5 +377,16 @@ export function setRngCallCount(count) {
     rngCallCount = count;
 }
 
+// cf. rnd.c:482 — randomize the given array of numbers in-place (Fisher-Yates)
+export function shuffle_int_array(indices) {
+    for (let i = indices.length - 1; i > 0; i--) {
+        const iswap = rn2(i + 1);
+        if (iswap === i) continue;
+        const temp = indices[i];
+        indices[i] = indices[iswap];
+        indices[iswap] = temp;
+    }
+}
+
 // Initialize with a random seed by default
 initRng(Math.floor(Math.random() * 0xFFFFFFFF));
