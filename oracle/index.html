@@ -33,9 +33,9 @@
         <span class="stat-value">--</span>
         <span class="stat-label">pass rate</span>
       </div>
-      <div class="stat-item" id="stat-lines">
+      <div class="stat-item" id="stat-rng">
         <span class="stat-value">--</span>
-        <span class="stat-label">net lines</span>
+        <span class="stat-label">RNG parity</span>
       </div>
     </section>
 
@@ -45,6 +45,7 @@
         <span class="control-label">View:</span>
         <button class="view-btn" data-view="tests">Tests</button>
         <button class="view-btn active" data-view="categories">Categories</button>
+        <button class="view-btn" data-view="metrics">Metrics</button>
       </div>
       <div class="control-group">
         <span class="control-label">Range:</span>
@@ -63,8 +64,19 @@
           <input type="checkbox" id="show-rate"> Rate %
         </label>
       </div>
+      <div class="control-group" id="metrics-controls" style="display:none;">
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-rng" checked> RNG
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-screens" checked> Screens
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-grids" checked> Grids
+        </label>
+      </div>
       <div class="control-group zoom-controls">
-        <button id="zoom-reset" title="Reset zoom">⟲</button>
+        <button id="zoom-reset" title="Reset zoom">&#x27F2;</button>
         <span class="zoom-hint">Drag to zoom, scroll to pan</span>
       </div>
     </section>
@@ -95,9 +107,9 @@
               <th class="col-message">Message</th>
               <th class="col-pass">Pass</th>
               <th class="col-fail">Fail</th>
-              <th class="col-delta">Δ</th>
-              <th class="col-files">Files</th>
-              <th class="col-lines">Lines</th>
+              <th class="col-delta">&Delta;</th>
+              <th class="col-rng">RNG</th>
+              <th class="col-sessions">Sessions</th>
             </tr>
           </thead>
           <tbody id="commit-tbody"></tbody>
@@ -109,7 +121,7 @@
     <section class="detail-panel" id="detail-panel" style="display: none;">
       <div class="detail-header">
         <span class="detail-title" id="detail-title">Commit Details</span>
-        <button class="detail-close" id="detail-close">×</button>
+        <button class="detail-close" id="detail-close">&times;</button>
       </div>
       <div class="detail-content" id="detail-content"></div>
     </section>
@@ -119,7 +131,7 @@
     <p>
       <span class="footer-quote">"Pay thy consultancy fee and the Oracle shall reveal the truth of thy tests."</span>
       <br>
-      <a href="https://github.com/davidbau/mazesofmenace">Mazes of Menace</a> ·
+      <a href="https://github.com/davidbau/mazesofmenace">Mazes of Menace</a> &middot;
       Data from <code>refs/notes/test-results</code>
     </p>
   </footer>
