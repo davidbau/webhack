@@ -153,7 +153,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[N/A]` | utf8map.c | — | UTF-8 glyph mapping for terminal |
 | `[ ]` | vault.c | — | Vault guard behavior |
 | `[N/A]` | version.c | — | Version info |
-| `[~]` | vision.c | vision.js | Field of view / line of sight |
+| `[a]` | vision.c | vision.js | FOV / LOS. Core algorithm (view_from, right_side, left_side, clear_path, do_clear_area) matches C. block_point/dig_point/rogue_vision TODO |
 | `[ ]` | weapon.c | — | Weapon skills |
 | `[a]` | were.c | were.js | Lycanthropy. 5 of 8 functions aligned, 3 TODO |
 | `[ ]` | wield.c | — | Wielding weapons |
@@ -171,9 +171,9 @@ don't follow the same 1:1 C→JS mapping pattern.
 - **N/A (system/platform)**: 19
 - **Game logic files**: 110
 - **Complete (`[x]`)**: 4
-- **Aligned (`[a]`)**: 13
+- **Aligned (`[a]`)**: 14
 - **Present (`[p]`)**: 1
-- **Needs alignment (`[~]`)**: 17
+- **Needs alignment (`[~]`)**: 16
 - **No JS file yet (`[ ]`)**: 75
 
 ### JS Files Without C Counterparts
@@ -466,4 +466,38 @@ uses static symbol data in symbols.js with no mode switching at runtime.
 | `parsesymbols` | 773 | N/A — no config file option parsing |
 | `match_sym` | 852 | N/A — no config file option parsing |
 | `do_symset` | 909 | N/A — no interactive options menu in JS |
+
+### vision.c → vision.js
+
+Notes:
+- C's global state (viz_array, viz_clear, left_ptrs, right_ptrs) is encapsulated in the JS `FOV` class.
+- Algorithm C quadrant functions (right_side, left_side, view_from, clear_path) match C names.
+- JS-only functions: q1_path..q4_path (Bresenham path checks), is_clear_map, clear_path_map.
+- C macros `m_cansee`, `couldsee` are ported as exported JS functions.
+- `doesBlock` renamed to `does_block` (C: vision.c:153).
+
+| C Function / Concept | C Line | JS Function | JS Line | Status |
+|------------|--------|-------------|---------|--------|
+| `does_block` | 153 | `does_block` | 40 | Match (private — renamed from `doesBlock`) |
+| `vision_init` | 121 | `FOV` constructor | 409 | Encapsulated (FOV class owns vision arrays) |
+| `vision_reset` | 211 | `FOV.visionReset` | 420 | Encapsulated (builds viz_clear, left/right ptrs) |
+| `get_unused_cs` | 274 | (inlined in `FOV.compute`) | — | Inlined (cs_rows/cs_left/cs_right are module-level) |
+| `rogue_vision` | 314 | — | — | TODO (rogue level mode not yet in JS) |
+| `new_angle` | 414 | — | — | Inlined (angle logic inside `view_from` scanner) |
+| `vision_recalc` | 512 | `FOV.compute` | 474 | Encapsulated (renamed; takes px/py instead of control flag) |
+| `block_point` | 854 | — | — | TODO (not yet needed — no dynamic blocking in JS) |
+| `unblock_point` | 888 | — | — | TODO (not yet needed) |
+| `recalc_block_point` | 900 | — | — | TODO (not yet needed) |
+| `dig_point` | 956 | — | — | TODO (digging not yet in JS) |
+| `fill_point` | 1040 | — | — | TODO (fill actions not yet in JS) |
+| `clear_path` | 1602 | `clear_path` | 176 | Match (exported) |
+| `view_init` | 1640 | — | — | Subsumed into `FOV` constructor |
+| `right_side` | 1655 | `right_side` | 191 | Match (private) |
+| `left_side` | 1847 | `left_side` | 280 | Match (private) |
+| `view_from` | 1991 | `view_from` | 362 | Match (private) |
+| `do_clear_area` | 2096 | `do_clear_area` | 695 | Match (exported) |
+| `howmonseen` | 2141 | — | — | TODO (monster perception flags not yet in JS) |
+| `couldsee` (macro) | vision.h | `couldsee` | 665 | Ported as function (exported) |
+| `m_cansee` (macro) | vision.h | `m_cansee` | 658 | Ported as function (exported) |
+
 
