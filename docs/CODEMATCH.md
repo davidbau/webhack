@@ -12,9 +12,11 @@ the same name, and every function in the C file should have a corresponding func
 with the same name in the JS file (where applicable).
 
 **Status legend**:
-- `[ ]` Not started
-- `[~]` Partial match exists (JS file exists but needs renaming/reorganization)
-- `[x]` Complete (JS file matches, functions documented)
+- `[ ]` No JS file yet
+- `[~]` JS file exists but needs alignment (function names/structure don't match C)
+- `[a]` Aligned — JS file matches C naming, but some functions not yet implemented
+- `[p]` Present — all functions exist, some with partial implementations
+- `[x]` Complete — all functions fully implemented at parity
 - `[N/A]` Not applicable (system/platform code with no JS equivalent)
 
 **Note on .h files**: C header files define types, constants, and function prototypes.
@@ -153,7 +155,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[N/A]` | version.c | — | Version info |
 | `[~]` | vision.c | vision.js | Field of view / line of sight |
 | `[ ]` | weapon.c | — | Weapon skills |
-| `[x]` | were.c | were.js | Lycanthropy. 3 of 8 functions implemented, 5 TODO |
+| `[a]` | were.c | were.js | Lycanthropy. 3 of 8 functions aligned, 5 TODO |
 | `[ ]` | wield.c | — | Wielding weapons |
 | `[N/A]` | windows.c | — | Windowing system interface. JS: `display.js`, `browser_input.js` |
 | `[ ]` | wizard.c | — | Wizard of Yendor AI |
@@ -168,9 +170,10 @@ don't follow the same 1:1 C→JS mapping pattern.
 - **Total C files**: 129
 - **N/A (system/platform)**: 18
 - **Game logic files**: 111
-- **Complete (`[x]`)**: 2
-- **Partial JS match exists (`[~]`)**: 25
-- **No JS match yet (`[ ]`)**: 84
+- **Complete (`[x]`)**: 1
+- **Aligned (`[a]`)**: 1
+- **Needs alignment (`[~]`)**: 25
+- **No JS file yet (`[ ]`)**: 84
 
 ### JS Files Without C Counterparts
 
@@ -210,7 +213,7 @@ These JS files don't directly correspond to a single C file:
 
 ---
 
-## Completed File Details
+## Function-Level Details
 
 ### isaac64.c → isaac64.js
 
