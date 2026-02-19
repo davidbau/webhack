@@ -19,9 +19,10 @@ import { initLevelGeneration, makelevel, setGameSeed, isBranchLevelToDnum } from
 import { simulatePostLevelInit, mon_arrive } from './u_init.js';
 import { Player, rankOf, roles } from './player.js';
 import { rhack } from './commands.js';
-import { makemon, setMakemonPlayerContext } from './makemon.js';
+import { makemon, setMakemonPlayerContext, runtimeDecideToShapeshift } from './makemon.js';
 import { M2_WERE } from './monsters.js';
 import { movemon, initrack, settrack } from './monmove.js';
+import { runWereTurnEnd } from './were.js';
 import { FOV } from './vision.js';
 import { getArrivalPosition } from './level_transition.js';
 import { doname, setObjectMoves } from './mkobj.js';
@@ -791,14 +792,17 @@ export class HeadlessGame {
             }
         }
 
-        // C ref: mon.c decide_to_shapeshift() + were.c were_change().
-        // Lycanthropes consume these RNG calls during turn-end bookkeeping
-        // before movement reallocation.
+        // C ref: mon.c m_calcdistress() shapechange + lycanthropy pass.
         for (const mon of this.map.monsters) {
             if (mon.dead) continue;
+            runtimeDecideToShapeshift(mon, this.player.dungeonLevel);
             if (mon.type && (mon.type.flags2 & M2_WERE)) {
-                rn2(6);
-                rn2(50);
+                runWereTurnEnd(mon, {
+                    player: this.player,
+                    map: this.map,
+                    fov: this.fov,
+                    display: this.display,
+                });
             }
         }
 

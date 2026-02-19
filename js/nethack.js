@@ -15,10 +15,11 @@ import { Player, roles, races, validRacesForRole, validAlignsForRoleRace,
 import { GameMap } from './map.js';
 import { initLevelGeneration, makelevel, setGameSeed, isBranchLevelToDnum } from './dungeon.js';
 import { TUTORIAL } from './special_levels.js';
-import { makemon, setMakemonPlayerContext } from './makemon.js';
+import { makemon, setMakemonPlayerContext, runtimeDecideToShapeshift } from './makemon.js';
 import { M2_WERE } from './monsters.js';
 import { FOOD_CLASS } from './objects.js';
 import { setObjectMoves } from './mkobj.js';
+import { runWereTurnEnd } from './were.js';
 import { rhack } from './commands.js';
 import { movemon, settrack } from './monmove.js';
 import { simulatePostLevelInit, mon_arrive } from './u_init.js';
@@ -1622,14 +1623,17 @@ export class NetHackGame {
             }
         }
 
-        // C ref: mon.c decide_to_shapeshift() + were.c were_change().
-        // Lycanthropes consume these RNG calls during turn-end bookkeeping
-        // before movement reallocation.
+        // C ref: mon.c m_calcdistress() shapechange + lycanthropy pass.
         for (const mon of this.map.monsters) {
             if (mon.dead) continue;
+            runtimeDecideToShapeshift(mon, this.player.dungeonLevel);
             if (mon.type && (mon.type.flags2 & M2_WERE)) {
-                rn2(6);
-                rn2(50);
+                runWereTurnEnd(mon, {
+                    player: this.player,
+                    map: this.map,
+                    fov: this.fov,
+                    display: this.display,
+                });
             }
         }
 

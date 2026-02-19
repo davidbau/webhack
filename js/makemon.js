@@ -3,7 +3,7 @@
 // C ref: makemon.c — monster creation, selection, weapon/inventory assignment
 
 import { rn2, rnd, rn1, d, c_d, getRngLog, getRngCallCount } from './rng.js';
-import { mksobj, mkobj, next_ident } from './mkobj.js';
+import { mksobj, mkobj, next_ident, weight } from './mkobj.js';
 import { def_monsyms } from './symbols.js';
 import {
     SHOPBASE, ROOMOFFSET, IS_POOL, IS_LAVA, IS_STWALL, IS_DOOR, ACCESSIBLE,
@@ -31,15 +31,23 @@ import {
     S_HUMAN, S_GHOST, S_GOLEM, S_DEMON, S_EEL, S_LIZARD, S_MIMIC_DEF,
     M2_MERC, M2_LORD, M2_PRINCE, M2_NASTY, M2_FEMALE, M2_MALE, M2_STRONG, M2_ROCKTHROW,
     M2_HOSTILE, M2_PEACEFUL, M2_DOMESTIC, M2_NEUTER, M2_GREEDY,
+    M2_SHAPESHIFTER, M2_WERE, M2_PNAME, M2_HUMAN,
     M2_MINION,
     M1_FLY, M1_NOHANDS, M1_SWIM, M1_AMPHIBIOUS, M1_WALLWALK, M1_AMORPHOUS,
     PM_ORC, PM_GIANT, PM_ELF, PM_HUMAN, PM_ETTIN, PM_MINOTAUR, PM_NAZGUL,
     PM_MASTER_LICH, PM_ARCH_LICH,
+    PM_GRAY_DRAGON,
+    PM_STRAW_GOLEM, PM_PAPER_GOLEM, PM_ROPE_GOLEM, PM_GOLD_GOLEM,
+    PM_LEATHER_GOLEM, PM_WOOD_GOLEM, PM_FLESH_GOLEM, PM_CLAY_GOLEM,
+    PM_STONE_GOLEM, PM_GLASS_GOLEM, PM_IRON_GOLEM,
+    PM_DEATH, PM_FAMINE,
     PM_WUMPUS, PM_LONG_WORM, PM_GIANT_EEL,
     PM_SOLDIER, PM_SERGEANT, PM_LIEUTENANT, PM_CAPTAIN, PM_WATCHMAN, PM_WATCH_CAPTAIN, PM_GUARD,
     PM_SHOPKEEPER, AT_WEAP, AT_EXPL, PM_PESTILENCE,
     PM_GOBLIN, PM_ORC_CAPTAIN, PM_MORDOR_ORC, PM_URUK_HAI, PM_ORC_SHAMAN,
     PM_OGRE_LEADER, PM_OGRE_TYRANT, PM_GHOST, PM_ERINYS,
+    PM_VAMPIRE, PM_VAMPIRE_LEADER, PM_VLAD_THE_IMPALER,
+    PM_CHAMELEON,
     MS_LEADER, MS_NEMESIS, MS_GUARDIAN,
     PM_CROESUS,
 } from './monsters.js';
@@ -552,28 +560,50 @@ export function def_char_to_monclass(ch) {
 // C ref: makemon.c:1013-1055
 // ========================================================================
 
+function golemhp(mndx) {
+    switch (mndx) {
+    case PM_STRAW_GOLEM: return 20;
+    case PM_PAPER_GOLEM: return 20;
+    case PM_ROPE_GOLEM: return 30;
+    case PM_LEATHER_GOLEM: return 40;
+    case PM_GOLD_GOLEM: return 60;
+    case PM_WOOD_GOLEM: return 50;
+    case PM_FLESH_GOLEM: return 40;
+    case PM_CLAY_GOLEM: return 70;
+    case PM_STONE_GOLEM: return 100;
+    case PM_GLASS_GOLEM: return 80;
+    case PM_IRON_GOLEM: return 120;
+    default: return 0;
+    }
+}
+
 export function newmonhp(mndx, depth = 1) {
     const ptr = mons[mndx];
     let m_lev = adj_lev(ptr, depth);
     let hp;
+    let basehp = 0;
 
-    // Golem: fixed HP based on type — no RNG
-    // Rider: d(10, 8) — rare at depth 1
-    // High level (>49): fixed — no RNG
-    // Dragon: d(m_lev, 4) — not at depth 1
-    // Level 0: rnd(4)
-    // Normal: d(m_lev, 8)
-
-    if (m_lev === 0) {
+    if (ptr.symbol === S_GOLEM) {
+        hp = golemhp(mndx);
+    } else if (mndx === PM_DEATH || mndx === PM_PESTILENCE || mndx === PM_FAMINE) {
+        basehp = 10;
+        hp = c_d(basehp, 8);
+    } else if ((ptr.level || 0) > 49) {
+        hp = 2 * ((ptr.level || 0) - 6);
+        m_lev = Math.floor(hp / 4);
+    } else if (ptr.symbol === S_DRAGON && mndx >= PM_GRAY_DRAGON) {
+        basehp = m_lev;
+        // In_endgame() path is not yet modeled in JS runtime.
+        hp = (4 * basehp) + c_d(basehp, 4);
+    } else if (m_lev === 0) {
+        basehp = 1;
         hp = rnd(4);
-    } else if (ptr.symbol === S_DRAGON) {
-        hp = c_d(m_lev, 4);
     } else {
-        hp = c_d(m_lev, 8);
+        basehp = m_lev;
+        hp = c_d(basehp, 8);
     }
 
     // C ref: if mhpmax == basehp, add 1
-    const basehp = m_lev || 1;
     if (hp === basehp) hp++;
 
     return { hp, m_lev };
@@ -997,6 +1027,26 @@ function rnd_misc_item(mon) {
 // Simplified: only port branches that consume RNG
 // ========================================================================
 
+function findgold(minvent) {
+    if (!Array.isArray(minvent)) return false;
+    return minvent.some((obj) => obj && obj.otyp === GOLD_PIECE && Number(obj.quan || 0) > 0);
+}
+
+function addToMinvent(mon, obj) {
+    if (!mon || !obj) return;
+    if (!Array.isArray(mon.minvent)) mon.minvent = [];
+    mon.minvent.push(obj);
+}
+
+function mkmonmoney(mon, amount) {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const gold = mksobj(GOLD_PIECE, false, false);
+    if (!gold) return;
+    gold.quan = Math.trunc(amount);
+    gold.owt = weight(gold);
+    addToMinvent(mon, gold);
+}
+
 function m_initinv(mon, mndx, depth, m_lev) {
     const ptr = mons[mndx];
     const mm = ptr.symbol;
@@ -1073,7 +1123,7 @@ function m_initinv(mon, mndx, depth, m_lev) {
         } else if (ptr.name && (ptr.name === 'priest' || ptr.name === 'priestess')) {
             mksobj(rn2(7) ? ROBE : (rn2(3) ? CLOAK_OF_PROTECTION : CLOAK_OF_MAGIC_RESISTANCE), true, false);
             mksobj(SMALL_SHIELD, true, false);
-            rn1(10, 20); // gold amount
+            mkmonmoney(mon, rn1(10, 20));
         } else if (mndx === PM_SHOPKEEPER) {
             // C ref: makemon.c:703-721 — SKELETON_KEY + fall-through switch
             mksobj(SKELETON_KEY, true, false);
@@ -1146,6 +1196,10 @@ function m_initinv(mon, mndx, depth, m_lev) {
         }
         break;
 
+    case S_LEPRECHAUN:
+        mkmonmoney(mon, c_d(Math.max(depth, 1), 30));
+        break;
+
     default:
         break;
     }
@@ -1166,9 +1220,11 @@ function m_initinv(mon, mndx, depth, m_lev) {
         const otyp = rnd_misc_item(mon);
         if (otyp) mksobj(otyp, true, false);
     }
-    if ((ptr.flags2 & M2_GREEDY) && !rn2(5)) {
-        // mkmonmoney: d(level_difficulty(), minvent ? 5 : 10)
-        c_d(Math.max(depth, 1), 10);
+    if ((ptr.flags2 & M2_GREEDY) && !findgold(mon?.minvent) && !rn2(5)) {
+        // C ref: mkmonmoney(mtmp, d(level_difficulty(), minvent ? 5 : 10))
+        const moneyDie = (Array.isArray(mon?.minvent) && mon.minvent.length > 0) ? 5 : 10;
+        const amount = c_d(Math.max(depth, 1), moneyDie);
+        mkmonmoney(mon, amount);
     }
 }
 
@@ -1190,6 +1246,125 @@ const mimic_syms = [
     AMULET_CLASS, TOOL_CLASS,      ROCK_CLASS,   GEM_CLASS,    SPBOOK_CLASS,
     S_MIMIC_DEF,  S_MIMIC_DEF,
 ];
+
+function is_placeholder_mndx(mndx) {
+    return mndx === PM_ORC || mndx === PM_GIANT
+        || mndx === PM_ELF || mndx === PM_HUMAN;
+}
+
+function polyok_for_newcham(ptr) {
+    if (!ptr) return false;
+    const f2 = ptr.flags2 || 0;
+    if (f2 & M2_PNAME) return false;
+    if (f2 & M2_WERE) return false;
+    if ((f2 & M2_HUMAN) && ptr.symbol !== S_KOP) return false;
+    return true;
+}
+
+function accept_newcham_form(chamMndx, mndx) {
+    if (!Number.isInteger(mndx) || mndx < LOW_PM || mndx >= SPECIAL_PM) return null;
+    if (is_placeholder_mndx(mndx)) return null;
+    const mdat = mons[mndx];
+    if (!mdat) return null;
+    if ((mdat.flags2 & M2_SHAPESHIFTER) && mndx === chamMndx) return mdat;
+    if (!polyok_for_newcham(mdat)) return null;
+    if (mdat.flags2 & M2_SHAPESHIFTER) return null;
+    return mdat;
+}
+
+let _animalList = null;
+function pick_animal_newcham() {
+    if (!_animalList) {
+        _animalList = [];
+        for (let i = LOW_PM; i < SPECIAL_PM; i++) {
+            if (is_animal(mons[i])) _animalList.push(i);
+        }
+    }
+    if (_animalList.length === 0) return -1;
+    return _animalList[rn2(_animalList.length)];
+}
+
+function select_newcham_form(chamMndx) {
+    let mndx = -1;
+    switch (chamMndx) {
+    case PM_CHAMELEON:
+        if (!rn2(3)) mndx = pick_animal_newcham();
+        break;
+    default:
+        break;
+    }
+    // C ref: select_newcham_form() random fallback (non-rogue path).
+    if (mndx === -1) {
+        // C uses LOW_PM=1; JS monster indices are 0-based, so +1 preserves
+        // the same rn2() denominator used by C for this fallback.
+        mndx = rn1((SPECIAL_PM - LOW_PM) + 1, LOW_PM);
+    }
+    return mndx;
+}
+
+function is_vampshifter_mndx(mndx) {
+    return mndx === PM_VAMPIRE || mndx === PM_VAMPIRE_LEADER || mndx === PM_VLAD_THE_IMPALER;
+}
+
+function apply_newcham_from_base(mon, baseMndx, depth) {
+    let target = null;
+    let tryct = 20;
+    do {
+        const picked = select_newcham_form(baseMndx);
+        target = accept_newcham_form(baseMndx, picked);
+        if (target) break;
+    } while (--tryct > 0);
+    if (!target) return false;
+
+    const newMndx = mons.indexOf(target);
+    if (newMndx < 0 || newMndx === baseMndx) return false;
+
+    // C ref: mgender_from_permonst() -- RNG call for ungendered forms.
+    if (!is_male(target) && !is_female(target) && !is_neuter(target)) {
+        if (!rn2(10) && !(target.symbol === S_VAMPIRE || is_vampshifter_mndx(baseMndx))) {
+            // female toggle omitted; RNG parity only.
+        }
+    }
+
+    const { hp: newHp, m_lev: newLev } = newmonhp(newMndx, depth || 1);
+
+    const symEntry = def_monsyms[target.symbol];
+    mon.mndx = newMndx;
+    mon.type = target;
+    mon.name = target.name;
+    mon.displayChar = symEntry ? symEntry.sym : '?';
+    mon.displayColor = target.color;
+    mon.attacks = target.attacks;
+    mon.mhp = newHp;
+    mon.mhpmax = newHp;
+    mon.mlevel = newLev;
+    mon.mac = target.ac;
+    mon.speed = target.speed;
+    return true;
+}
+
+function maybe_apply_newcham(mon, baseMndx, depth) {
+    const basePtr = mons[baseMndx];
+    if (!(basePtr.flags2 & M2_SHAPESHIFTER)) return false;
+    if (baseMndx === PM_VLAD_THE_IMPALER) return false;
+    mon.cham = baseMndx;
+    return apply_newcham_from_base(mon, baseMndx, depth);
+}
+
+// C ref: mon.c m_calcdistress() decide_to_shapeshift() regular branch.
+// Runtime subset: regular shapechangers roll rn2(6) and may newcham.
+export function runtimeDecideToShapeshift(mon, depth = 1) {
+    if (!mon || mon.dead) return false;
+    const chamMndx = Number.isInteger(mon.cham) ? mon.cham : -1;
+    if (chamMndx < LOW_PM || chamMndx >= SPECIAL_PM) return false;
+    if (is_vampshifter_mndx(chamMndx)) {
+        // Keep RNG parity until vampire shapechanger logic is ported.
+        rn2(6);
+        return false;
+    }
+    if (rn2(6) !== 0) return false;
+    return apply_newcham_from_base(mon, chamMndx, depth);
+}
 
 function set_mimic_sym(mndx, x, y, map, depth) {
     // C ref: makemon.c:2386-2540 — determine mimic appearance
@@ -1603,6 +1778,7 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
         dead: false,
         passive: false,
         minvent: [],
+        cham: null,
         mux: 0,
         muy: 0,
         mtrack: [{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}],
@@ -1613,6 +1789,9 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     if (map && x !== undefined && y !== undefined) {
         map.monsters.unshift(mon); // C ref: fmon prepend (LIFO order)
     }
+
+    // C ref: makemon.c shapechanger path (pm_to_cham/newcham).
+    const allowMinvent = !maybe_apply_newcham(mon, mndx, depth || 1);
 
     // Group formation
     // C ref: makemon.c:1427-1435 — only for anymon (random monster)
@@ -1648,15 +1827,16 @@ export function makemon(ptr_or_null, x, y, mmflags, depth, map) {
     }
 
     // Weapon/inventory initialization
-    // C ref: makemon.c:1438-1440
-    if (is_armed(ptr))
-        m_initweap(mon, mndx, depth || 1);
-    m_initinv(mon, mndx, depth || 1, m_lev);
+    // C ref: makemon.c:1438-1448 (guarded by allow_minvent)
+    if (allowMinvent) {
+        if (is_armed(ptr))
+            m_initweap(mon, mndx, depth || 1);
+        m_initinv(mon, mndx, depth || 1, m_lev);
 
-    // C ref: makemon.c:1443-1448 — saddle for domestic monsters
-    // C evaluates !rn2(100) first (always consumed), then is_domestic
-    if (!rn2(100) && is_domestic(ptr)) {
-        mksobj(SADDLE, true, false);
+        // C evaluates !rn2(100) first (always consumed), then is_domestic
+        if (!rn2(100) && is_domestic(ptr)) {
+            mksobj(SADDLE, true, false);
+        }
     }
 
     return mon;
