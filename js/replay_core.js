@@ -1212,7 +1212,13 @@ export async function replaySession(seed, session, opts = {}) {
             );
             continue;
         }
+        // Skip intermediate getlin('#') echo frames (0 RNG, topline starts with '#').
+        // But do NOT skip digit keys — they are count prefix digits that happen
+        // to follow a "#<cmd>: unknown extended command." topline.
+        const stepKeyIsDigit = typeof step.key === 'string'
+            && step.key.length === 1 && step.key >= '0' && step.key <= '9';
         if (!pendingCommand
+            && !stepKeyIsDigit
             && ((step.rng && step.rng.length) || 0) === 0
             && stepMsg.trimStart().startsWith('#')
             && !(typeof step.key === 'string'
@@ -1571,6 +1577,9 @@ export async function replaySession(seed, session, opts = {}) {
             // Prompt-driven commands (read/drop/throw/etc.) usually resolve
             // immediately after input, but can take a few ticks. Poll briefly
             // to avoid shifting subsequent keystrokes across steps.
+            // Use short intervals: commands that will settle do so in microtask
+            // time after input is queued; looping prompts (C getobj re-prompt)
+            // re-block quickly on nhgetch(), so 1-2ms is sufficient to detect.
             let settled = { done: false };
             for (let attempt = 0; attempt < 2 && !settled.done; attempt++) {
                 settled = await Promise.race([

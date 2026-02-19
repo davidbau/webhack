@@ -2123,13 +2123,12 @@ async function handleEat(player, display, game) {
 
         const item = food.find(f => f.invlet === c);
         if (!item) {
+            // C ref: invent.c getobj() — invalid item letter prints a message
+            // then re-prompts (continues the loop), NOT exit the command.
             const anyItem = player.inventory.find((o) => o.invlet === c);
             if (anyItem) {
-                if (typeof display.clearRow === 'function') display.clearRow(0);
-                display.topMessage = null;
-                display.messageNeedsMore = false;
-                display.putstr_message('You cannot eat that!');
-                return { moved: false, tookTime: false };
+                // Item exists but wrong class — "silly thing to eat" → re-prompt
+                continue;
             }
             // C tty parity: invalid selector stays in modal getobj flow with a
             const moreStr = '--More--';
