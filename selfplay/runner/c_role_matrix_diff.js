@@ -21,6 +21,12 @@ const SUMMARY_METRICS = [
     { key: 'avgFailedAdds', label: 'avgFailedAdd', direction: 'lower' },
     { key: 'avgAttackTurns', label: 'avgAttack', direction: 'lower' },
     { key: 'avgFleeTurns', label: 'avgFlee', direction: 'lower' },
+    { key: 'avgFleeHpEmergencyTurns', label: 'avgFleeHpEmergency', direction: 'lower' },
+    { key: 'avgFleeDlvl2RetreatTurns', label: 'avgFleeDlvl2Retreat', direction: 'lower' },
+    { key: 'avgFleeToUpstairsTurns', label: 'avgFleeToUpstairs', direction: 'lower' },
+    { key: 'avgFleeOscillationTurns', label: 'avgFleeOscillation', direction: 'lower' },
+    { key: 'avgFleeDangerTurns', label: 'avgFleeDanger', direction: 'lower' },
+    { key: 'avgFleeOtherTurns', label: 'avgFleeOther', direction: 'lower' },
     { key: 'avgPetSwaps', label: 'avgPetSwap', direction: 'lower' },
 ];
 
@@ -302,6 +308,12 @@ function buildSummaryFromRows(rows) {
         avgFailedAdds: avgOf(rows.map(r => r.failedAdds)),
         avgAttackTurns: avgOf(rows.map(r => r.attackTurns)),
         avgFleeTurns: avgOf(rows.map(r => r.fleeTurns)),
+        avgFleeHpEmergencyTurns: avgOf(rows.map(r => r.fleeHpEmergencyTurns)),
+        avgFleeDlvl2RetreatTurns: avgOf(rows.map(r => r.fleeDlvl2RetreatTurns)),
+        avgFleeToUpstairsTurns: avgOf(rows.map(r => r.fleeToUpstairsTurns)),
+        avgFleeOscillationTurns: avgOf(rows.map(r => r.fleeOscillationTurns)),
+        avgFleeDangerTurns: avgOf(rows.map(r => r.fleeDangerTurns)),
+        avgFleeOtherTurns: avgOf(rows.map(r => r.fleeOtherTurns)),
         avgPetSwaps: avgOf(rows.map(r => r.petSwapCount)),
     };
 }

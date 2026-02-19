@@ -759,3 +759,46 @@
 - Net:
   - Rejected and reverted.
   - Suppressing non-blocking lone-dog attacks at this layer reduced attack volume but shifted behavior into high-flee/low-progression patterns on the triage gate.
+
+## 2026-02-19 - Keep: Flee-Cause Telemetry Through Runner/Matrix/Diff
+
+- Change:
+  - Added flee-cause counters in `selfplay/runner/c_runner.js` and emitted:
+    - `hpEmergency`
+    - `dlvl2Retreat`
+    - `toUpstairs`
+    - `oscillation`
+    - `danger`
+    - `other`
+  - Extended `selfplay/runner/c_role_matrix.js` parsing/output/JSON with per-run and averaged flee-cause fields.
+  - Extended `selfplay/runner/c_role_matrix_diff.js` summary deltas to include flee-cause averages.
+
+- Why:
+  - `avgFlee` alone is not enough to diagnose regressions.
+  - Recent rejected candidates showed major flee spikes; we need to distinguish:
+    - HP-emergency retreat inflation,
+    - upstairs-routing retreat inflation,
+    - tactical danger-flee inflation,
+    - oscillation escape behavior.
+
+- Validation:
+  - `node --check selfplay/runner/c_runner.js`
+  - `node --check selfplay/runner/c_role_matrix.js`
+  - `node --check selfplay/runner/c_role_matrix_diff.js`
+  - `node --test selfplay/test/role_matrix_diff.test.js`
+  - Smoke:
+    - `node selfplay/runner/c_runner.js --seed=41 --turns=120 --role=Tourist --key-delay=0 --quiet`
+    - `node selfplay/runner/c_role_matrix.js --mode=custom --roles=Tourist --seeds=41 --turns=120 --key-delay=0 --quiet --json-out=/tmp/role_matrix_smoke_flee_20260219.json`
+    - `node selfplay/runner/c_role_matrix_diff.js --baseline=/tmp/role_matrix_smoke_flee_20260219.json --candidate=/tmp/role_matrix_smoke_flee_20260219.json --top=2`
+
+- Example (smoke output):
+  - `flee=26` decomposed to:
+    - `hpEmergency=18`
+    - `dlvl2Retreat=0`
+    - `toUpstairs=0`
+    - `oscillation=0`
+    - `danger=8`
+    - `other=0`
+
+- Net:
+  - Keep as behavior-neutral observability infrastructure for #15 triage.
