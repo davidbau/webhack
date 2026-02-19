@@ -626,6 +626,24 @@ Practical rule: keep read command pending across these keys and model `?/*`
 as modal listing acknowledgement flow rather than immediately returning to the
 prompt.
 
+### `dofire` fireassist can consume a turn before direction input resolves
+
+In wizard replay traces, `f` can consume time even when the final frame still
+shows `In what direction?`. C `dofire()` may auto-swap to a matching launcher
+(`uswapwep`) and then re-enter firing flow; that swap is a timed action.
+
+Practical rule: model fireassist launcher auto-swap as a timed step before the
+direction prompt, and preserve the post-turn map frame before leaving the
+prompt pending.
+
+### Inventory action menus should use canonical `xname()` nouns
+
+Building item action prompts from ad-hoc `item.name` strings causes drift like
+`flints` vs C `flint stones`, plus wrong submenu width/offset.
+
+Practical rule: derive prompt noun text from `xname()` (singular/plural as
+needed) so menu wording and right-side offset match C inventory action menus.
+
 ---
 
 ## Phase Chronicles

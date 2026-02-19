@@ -5,7 +5,10 @@ import { rhack } from '../../js/commands.js';
 import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
-import { COIN_CLASS, GOLD_PIECE, TOOL_CLASS, STETHOSCOPE, WEAPON_CLASS, SCALPEL, SPBOOK_CLASS, OIL_LAMP, ARMOR_CLASS, SMALL_SHIELD } from '../../js/objects.js';
+import {
+    COIN_CLASS, GOLD_PIECE, TOOL_CLASS, STETHOSCOPE, WEAPON_CLASS, SCALPEL,
+    SPBOOK_CLASS, OIL_LAMP, ARMOR_CLASS, SMALL_SHIELD, SPE_HEALING, FLINT,
+} from '../../js/objects.js';
 
 function makeGame() {
     const map = new GameMap();
@@ -147,10 +150,11 @@ describe('inventory modal dismissal', () => {
         const { game } = makeGame();
         game.player.inventory = [{
             oclass: SPBOOK_CLASS,
-            otyp: 0,
+            otyp: SPE_HEALING,
             invlet: 'g',
             quan: 1,
-            name: 'healing',
+            known: true,
+            dknown: true,
         }];
         const writes = [];
         game.display.putstr = function putstr(col, row, str, color, attr) {
@@ -166,6 +170,30 @@ describe('inventory modal dismissal', () => {
         assert.ok(writes.some((w) => w.str.includes('r - Study this spellbook')));
     });
 
+    it('uses flint stone naming in stack action prompt', async () => {
+        const { game } = makeGame();
+        game.player.inventory = [{
+            oclass: WEAPON_CLASS,
+            otyp: FLINT,
+            invlet: 'f',
+            quan: 2,
+            known: true,
+            dknown: true,
+        }];
+        const writes = [];
+        game.display.putstr = function putstr(col, row, str, color, attr) {
+            writes.push({ col, row, str, color, attr });
+        };
+        game.display.clearRow = function clearRow() {};
+
+        pushInput('f'.charCodeAt(0));
+        pushInput(' '.charCodeAt(0));
+        const result = await rhack('i'.charCodeAt(0), game);
+        assert.equal(result.tookTime, false);
+        assert.ok(writes.some((w) => w.row === 0 && w.attr === 1 && w.str.includes('Do what with the flint stones?')));
+        assert.ok(writes.some((w) => w.str.includes('c - Name this stack of flint stones')));
+    });
+
     it('shows light and rub actions for oil lamps', async () => {
         const { game } = makeGame();
         game.player.inventory = [{
@@ -173,8 +201,9 @@ describe('inventory modal dismissal', () => {
             otyp: OIL_LAMP,
             invlet: 'e',
             quan: 1,
-            name: 'oil lamp',
             lamplit: false,
+            known: true,
+            dknown: true,
         }];
         const writes = [];
         game.display.putstr = function putstr(col, row, str, color, attr) {

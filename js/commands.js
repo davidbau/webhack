@@ -7,7 +7,7 @@ import { COLNO, ROWNO, DOOR, CORR, SDOOR, SCORR, STAIRS, LADDER, FOUNTAIN, SINK,
          D_ISOPEN, D_NODOOR, D_BROKEN, ACCESSIBLE, IS_WALL, MAXLEVEL, VERSION_STRING, ICE,
          isok, A_STR, A_INT, A_DEX, A_CON, A_WIS, A_CHA, STATUS_ROW_1,
          SHOPBASE, ROOMOFFSET } from './config.js';
-import { SQKY_BOARD, SLP_GAS_TRAP, FIRE_TRAP, PIT, SPIKED_PIT, ANTI_MAGIC } from './symbols.js';
+import { SQKY_BOARD, SLP_GAS_TRAP, FIRE_TRAP, PIT, SPIKED_PIT, ANTI_MAGIC, IS_SOFT } from './symbols.js';
 import { rn2, rnd, rnl, d, c_d } from './rng.js';
 import { exercise } from './attrib_exercise.js';
 import { objectData, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
@@ -15,13 +15,13 @@ import { objectData, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
          WAND_CLASS, COIN_CLASS, GEM_CLASS, ROCK_CLASS, CORPSE, LANCE,
          BULLWHIP, BOW, ELVEN_BOW, ORCISH_BOW, YUMI, SLING, CROSSBOW, STETHOSCOPE,
          QUARTERSTAFF, ROBE, SMALL_SHIELD, DUNCE_CAP, POT_WATER,
-         TALLOW_CANDLE, WAX_CANDLE } from './objects.js';
+         TALLOW_CANDLE, WAX_CANDLE, FLINT, ROCK } from './objects.js';
 import { nhgetch, ynFunction, getlin } from './input.js';
 import { playerAttackMonster } from './combat.js';
 import { makemon, setMakemonPlayerContext } from './makemon.js';
 import { mons, PM_LIZARD, PM_LICHEN, PM_NEWT } from './monsters.js';
 import { monDisplayName, hasGivenName, monNam } from './mondata.js';
-import { doname, next_ident } from './mkobj.js';
+import { doname, next_ident, xname } from './mkobj.js';
 import { observeObject, getDiscoveriesMenuLines, isObjectNameKnown } from './discovery.js';
 import { showPager } from './pager.js';
 import { handleZap } from './zap.js';
@@ -210,6 +210,17 @@ function compactInvletPromptChars(chars) {
         i = j + 1;
     }
     return out.join('');
+}
+
+// C ref: dothrow.c ammo_and_launcher() for dofire fireassist behavior.
+function ammoAndLauncher(ammo, launcher) {
+    if (!ammo || !launcher) return false;
+    const ammoSub = objectData[ammo.otyp]?.sub;
+    const launcherSub = objectData[launcher.otyp]?.sub;
+    return Number.isInteger(ammoSub)
+        && Number.isInteger(launcherSub)
+        && ammoSub < 0
+        && launcherSub === -ammoSub;
 }
 
 // Direction key mappings
@@ -453,7 +464,7 @@ export async function rhack(ch, game) {
     // Fire from quiver/launcher
     // C ref: dothrow() fire command path
     if (c === 'f') {
-        return await handleFire(player, map, display);
+        return await handleFire(player, map, display, game);
     }
 
     // Engrave
@@ -779,6 +790,10 @@ async function handleMovement(dir, player, map, display, game) {
     game.uy0 = oldY;
     const nx = player.x + dir[0];
     const ny = player.y + dir[1];
+    // C ref: cmd.c move-prefix handling is consumed by the attempted move
+    // path, even when that move is blocked.
+    const nopick = game.menuRequested;
+    game.menuRequested = false;
 
     if (!isok(nx, ny)) {
         display.putstr_message("You can't move there.");
@@ -1010,12 +1025,7 @@ async function handleMovement(dir, player, map, display, game) {
     game.lastMoveDir = dir;
     maybeSmudgeEngraving(map, oldX, oldY, player.x, player.y);
 
-    // Save nopick state before clearing prefix flags
-    // C ref: cmd.c sets context.nopick based on iflags.menu_requested
-    const nopick = game.menuRequested;
-
-    // Clear prefix flags after successful movement
-    game.menuRequested = false;
+    // Clear force-fight prefix after successful movement.
     game.forceFight = false;
     maybeHandleShopEntryMessage(game, oldX, oldY);
 
@@ -1891,19 +1901,9 @@ async function handleInventory(player, display, game) {
         }
         const selected = invByLetter.get(c);
         if (selected) {
-            const rawName = String(selected.name || objectData[selected.otyp]?.name || 'item');
-            const baseName = (selected.oclass === SPBOOK_CLASS
-                && !/^spellbook\b/i.test(rawName)
-                && !/^book of the dead$/i.test(rawName))
-                ? `spellbook of ${rawName}`
-                : (selected.oclass === WAND_CLASS
-                    && !/^wand\b/i.test(rawName))
-                    ? `wand of ${rawName}`
-                : rawName;
+            const baseName = xname({ ...selected, quan: 1 });
+            const noun = xname(selected);
             const lowerBaseName = baseName.toLowerCase();
-            const noun = ((selected.quan || 1) > 1 && !baseName.endsWith('s'))
-                ? `${baseName}s`
-                : baseName;
             const isLightSource = (
                 lowerBaseName === 'oil lamp'
                 || lowerBaseName === 'brass lantern'
@@ -1921,27 +1921,56 @@ async function handleInventory(player, display, game) {
                 || selected === player.cloak
             );
             let menuOffx = 34;
+            const displayCols = Number.isInteger(display.cols) ? display.cols : COLNO;
             if (typeof display.setCell === 'function'
-                && Number.isInteger(display.cols)
+                && Number.isInteger(displayCols)
                 && Number.isInteger(display.rows)) {
                 let maxcol = 0;
                 for (const line of lines) {
                     if (line.length > maxcol) maxcol = line.length;
                 }
-                menuOffx = Math.max(10, Math.min(41, display.cols - maxcol - 2));
+                menuOffx = Math.max(10, Math.min(41, displayCols - maxcol - 2));
             }
             const rawActions = ((selected.quan || 1) > 1)
-                ? [
-                    `c - Name this stack of ${noun}`,
-                    'd - Drop this stack',
-                    'e - Eat one of these',
-                    'i - Adjust inventory by assigning new letter',
-                    'I - Adjust inventory by splitting this stack',
-                    't - Throw one of these',
-                    'w - Wield this stack in your hands',
-                    '/ - Look up information about these',
-                    '(end)',
-                ]
+                ? (() => {
+                    const stackUsesThrowMenu = (selected.oclass === WEAPON_CLASS
+                        || selected.otyp === FLINT
+                        || selected.otyp === ROCK);
+                    if (stackUsesThrowMenu) {
+                        const actions = [];
+                        if (selected === player.quiver) {
+                            actions.push("- - Quiver '-' to un-ready these items");
+                        }
+                        actions.push(`c - Name this stack of ${noun}`);
+                        actions.push('d - Drop this stack');
+                        actions.push('E - Write on the ground with one of these items');
+                        actions.push('f - Throw one of these');
+                        actions.push('i - Adjust inventory by assigning new letter');
+                        actions.push('I - Adjust inventory by splitting this stack');
+                        if (selected.otyp === FLINT || selected.otyp === ROCK) {
+                            actions.push('R - Rub something on this stone');
+                        }
+                        actions.push("t - Throw one of these (same as 'f')");
+                        actions.push('w - Wield this stack in your hands');
+                        actions.push('/ - Look up information about these');
+                        actions.push('(end)');
+                        return actions;
+                    }
+                    const actions = [
+                        `c - Name this stack of ${noun}`,
+                        'd - Drop this stack',
+                        'i - Adjust inventory by assigning new letter',
+                        'I - Adjust inventory by splitting this stack',
+                        't - Throw one of these',
+                        'w - Wield this stack in your hands',
+                        '/ - Look up information about these',
+                        '(end)',
+                    ];
+                    if (selected.oclass === FOOD_CLASS) {
+                        actions.splice(2, 0, 'e - Eat one of these');
+                    }
+                    return actions;
+                })()
                 : (selected.oclass === SPBOOK_CLASS
                     ? [
                         `c - Name this specific ${noun}`,
@@ -2007,10 +2036,8 @@ async function handleInventory(player, display, game) {
                     ]))));
 
             const promptText = `Do what with the ${noun}?`;
-            if (Number.isInteger(display.cols)) {
-                const maxAction = rawActions.reduce((m, line) => Math.max(m, line.length), promptText.length);
-                menuOffx = Math.max(10, Math.min(41, display.cols - maxAction - 2));
-            }
+            const maxAction = rawActions.reduce((m, line) => Math.max(m, line.length), promptText.length);
+            menuOffx = Math.max(10, Math.min(41, displayCols - maxAction - 2));
             const pad = ' '.repeat(menuOffx);
             const stackActions = rawActions.map((line) => `${pad}${line}`);
             const actionPrompt = `${pad}${promptText}`;
@@ -2682,9 +2709,11 @@ async function promptDirectionAndThrowItem(player, map, display, item, { fromFir
         // C fire traces probe obj_resists() after stack split/ID assignment.
         obj_resists(thrownItem, 0, 0);
     }
-    const landingLoc = (typeof map.getCell === 'function')
-        ? map.getCell(landingX, landingY)
-        : (map?.cells?.[landingY]?.[landingX] || null);
+    const landingLoc = (typeof map.at === 'function')
+        ? map.at(landingX, landingY)
+        : ((typeof map.getCell === 'function')
+            ? map.getCell(landingX, landingY)
+            : (map?.cells?.[landingY]?.[landingX] || null));
     if (fromFire) {
         landingX = player.x;
         landingY = player.y;
@@ -2697,6 +2726,16 @@ async function promptDirectionAndThrowItem(player, map, display, item, { fromFir
     if (!isok(thrownItem.ox, thrownItem.oy)) {
         thrownItem.ox = player.x;
         thrownItem.oy = player.y;
+    }
+    const finalLoc = (typeof map.at === 'function')
+        ? map.at(thrownItem.ox, thrownItem.oy)
+        : ((typeof map.getCell === 'function')
+            ? map.getCell(thrownItem.ox, thrownItem.oy)
+            : (map?.cells?.[thrownItem.oy]?.[thrownItem.ox] || null));
+    if (!targetMonster && !fromFire && finalLoc && !IS_SOFT(finalLoc.typ)) {
+        // C ref: dothrow.c breaktest() probes obj_resists(nonbreak=1, art=99)
+        // for ordinary throws that strike hard terrain.
+        obj_resists(thrownItem, 1, 99);
     }
     thrownItem._thrownByPlayer = true;
     map.objects.push(thrownItem);
@@ -2722,17 +2761,27 @@ async function handleThrow(player, map, display) {
         display.messageNeedsMore = false;
     };
     const launcherTypes = new Set([BOW, ELVEN_BOW, ORCISH_BOW, YUMI, SLING, CROSSBOW]);
+    const slinging = !!(player.weapon && player.weapon.otyp === SLING);
     const weaponItems = (player.inventory || [])
         .filter((o) => o && o.oclass === WEAPON_CLASS && o !== player.weapon);
+    const slingGemItems = slinging
+        ? (player.inventory || []).filter((o) => o && o.oclass === GEM_CLASS)
+        : [];
     const coinItem = (player.inventory || []).find((o) =>
         o && (o.invlet === '$' || o.oclass === COIN_CLASS));
     const throwLetters = [];
     const preferredThrowItem = weaponItems.find((o) => launcherTypes.has(o.otyp))
         || weaponItems[0]
+        || slingGemItems[0]
         || coinItem
         || null;
     if (coinItem?.invlet) throwLetters.push(String(coinItem.invlet));
-    if (preferredThrowItem?.invlet) throwLetters.push(String(preferredThrowItem.invlet));
+    for (const item of weaponItems) {
+        if (item?.invlet) throwLetters.push(String(item.invlet));
+    }
+    for (const item of slingGemItems) {
+        if (item?.invlet) throwLetters.push(String(item.invlet));
+    }
     const throwChoices = compactInvletPromptChars(throwLetters.join(''));
     const throwPrompt = throwChoices
         ? `What do you want to throw? [${throwChoices} or ?*]`
@@ -2808,7 +2857,7 @@ async function handleThrow(player, map, display) {
     }
 }
 
-async function handleFire(player, map, display) {
+async function handleFire(player, map, display, game) {
     const replacePromptMessage = () => {
         if (typeof display.clearRow === 'function') display.clearRow(0);
         display.topMessage = null;
@@ -2832,8 +2881,36 @@ async function handleFire(player, map, display) {
     const quiverItem = player.quiver && inventory.includes(player.quiver)
         ? player.quiver
         : null;
+    const hasRunTurnHook = typeof game?.advanceRunTurn === 'function';
+    let deferredTimedTurn = false;
+    if (quiverItem && game?.flags?.fireassist !== false) {
+        const weaponMatches = ammoAndLauncher(quiverItem, player.weapon);
+        const swapMatches = ammoAndLauncher(quiverItem, player.swapWeapon);
+        if (!weaponMatches && swapMatches) {
+            const swapResult = await handleSwapWeapon(player, display);
+            if (swapResult?.tookTime) {
+                if (hasRunTurnHook) {
+                    await game.advanceRunTurn();
+                    if (game?.fov && typeof game.fov.compute === 'function'
+                        && typeof display?.renderMap === 'function') {
+                        game.fov.compute(map, player.x, player.y);
+                        display.renderMap(map, player, game.fov);
+                        if (typeof display.renderStatus === 'function') {
+                            display.renderStatus(player);
+                        }
+                    }
+                } else {
+                    deferredTimedTurn = true;
+                }
+            }
+        }
+    }
     if (quiverItem) {
-        return await promptDirectionAndThrowItem(player, map, display, quiverItem, { fromFire: true });
+        const throwResult = await promptDirectionAndThrowItem(player, map, display, quiverItem, { fromFire: true });
+        if (deferredTimedTurn && !throwResult?.tookTime) {
+            return { ...(throwResult || { moved: false, tookTime: false }), tookTime: true };
+        }
+        return throwResult;
     }
     if (quiverItem?.invlet) {
         fireLetters.push(quiverItem.invlet);

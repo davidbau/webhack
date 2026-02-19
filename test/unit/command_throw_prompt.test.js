@@ -5,9 +5,15 @@ import { rhack } from '../../js/commands.js';
 import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
+import { ROOM } from '../../js/config.js';
 
 function makeGame() {
     const map = new GameMap();
+    for (let y = 9; y <= 11; y++) {
+        for (let x = 9; x <= 11; x++) {
+            map.at(x, y).typ = ROOM;
+        }
+    }
     const player = new Player();
     player.initRole(11);
     player.x = 10;

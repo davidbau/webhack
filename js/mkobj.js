@@ -1056,6 +1056,20 @@ function xname_for_doname(obj, dknown = true, known = true, bknown = false) {
     return base;
 }
 
+// C ref: objnam.c xname() -- canonical object name without article.
+export function xname(obj, opts = {}) {
+    const known = (opts && Object.hasOwn(opts, 'known'))
+        ? !!opts.known
+        : !!obj?.known;
+    const dknown = (opts && Object.hasOwn(opts, 'dknown'))
+        ? !!opts.dknown
+        : (!!obj?.dknown || known);
+    const bknown = (opts && Object.hasOwn(opts, 'bknown'))
+        ? !!opts.bknown
+        : !!obj?.bknown;
+    return xname_for_doname(obj, dknown, known, bknown);
+}
+
 // C ref: objnam.c doname() — format an object name for display
 // Produces strings like "a blessed +1 quarterstaff (weapon in hands)"
 export function doname(obj, player) {
