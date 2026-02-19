@@ -105,7 +105,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[N/A]` | nhlsel.c | — | Lua selection bindings (l_selection_*). All ~40 functions wrap selvar.c for Lua; JS port uses the `selection` object exported from sp_lev.js directly |
 | `[N/A]` | nhlua.c | — | Lua interpreter integration |
 | `[N/A]` | nhmd4.c | — | MD4 hash implementation |
-| `[a]` | o_init.c | o_init.js | Object class initialization. Core shuffle functions aligned; discovery functions in `discovery.js` |
+| `[a]` | o_init.c | o_init.js | Object class initialization. Core shuffle functions aligned; setgemprobs, obj_shuffle_range, objdescr_is added; discovery functions in `discovery.js` |
 | `[ ]` | objects.c | — | Object data tables. JS: `objects.js` (data), `objdata.js` (queries) |
 | `[ ]` | objnam.c | — | Object naming (xname, doname). JS: partially in `mkobj.js` |
 | `[ ]` | options.c | — | Game options. JS: `options_menu.js`, `storage.js` |
@@ -294,15 +294,15 @@ Discovery/identification functions split into `discovery.js` (camelCase, noted b
 | C Function | C Line | JS File | JS Function | JS Line | Status |
 |------------|--------|---------|-------------|---------|--------|
 | `shuffle_tiles` | 34 | — | — | — | N/A — tile graphics not in JS port |
-| `setgemprobs` | 53 | — | — | — | TODO — level-depth gem probability init |
+| `setgemprobs` | 53 | o_init.js | `setgemprobs` | — | Match (exported) |
 | `randomize_gem_colors` | 84 | o_init.js | `randomize_gem_colors` | 79 | Match (private) |
 | `shuffle` | 112 | o_init.js | `shuffle` | 107 | Match (private) |
 | `init_objects` | 150 | o_init.js | `init_objects` | 204 | Match (exported) |
 | `init_oclass_probs` | 239 | objects.js | `initObjectData` | 9183 | Split — merged with `bases[]` init; C ref noted |
-| `obj_shuffle_range` | 268 | — | — | — | TODO — needed for wand-direction reveal etc. |
+| `obj_shuffle_range` | 268 | o_init.js | `obj_shuffle_range` | — | Match (exported) |
 | `shuffle_all` | 321 | o_init.js | `shuffle_all` | 154 | Match (private) |
-| `objdescr_is` | 351 | — | — | — | TODO |
-| `oinit` | 368 | — | — | — | Subsumed — `init_objects` covers; `setgemprobs` is TODO |
+| `objdescr_is` | 351 | o_init.js | `objdescr_is` | — | Match (exported) |
+| `oinit` | 368 | — | — | — | Subsumed — `init_objects` + `setgemprobs` cover this |
 | `savenames` | 374 | discovery.js | `getDiscoveryState` | 163 | Renamed — save/restore via JSON |
 | `restnames` | 410 | discovery.js | `setDiscoveryState` | 171 | Renamed — save/restore via JSON |
 | `observe_object` | 441 | discovery.js | `observeObject` | 75 | Renamed (camelCase) |

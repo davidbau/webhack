@@ -11,15 +11,15 @@ import { resetIdentCounter } from './mkobj.js';
 import { initDiscoveryState } from './discovery.js';
 import {
     objectData, initObjectData, bases,
-    AMULET_CLASS, POTION_CLASS, RING_CLASS, SCROLL_CLASS,
-    SPBOOK_CLASS, WAND_CLASS, VENOM_CLASS,
+    ARMOR_CLASS, AMULET_CLASS, POTION_CLASS, RING_CLASS, SCROLL_CLASS,
+    SPBOOK_CLASS, WAND_CLASS, GEM_CLASS, VENOM_CLASS,
     // Gem indices for randomize_gem_colors
     TURQUOISE, AQUAMARINE, FLUORITE,
     SAPPHIRE, DIAMOND, EMERALD,
     // Amulet range
     AMULET_OF_ESP, AMULET_OF_FLYING,
     // Potion range
-    POT_GAIN_ABILITY, POT_OIL,
+    POT_GAIN_ABILITY, POT_OIL, POT_WATER,
     // Scroll range
     SCR_ENCHANT_ARMOR, SC20,
     // Spellbook range
@@ -32,6 +32,8 @@ import {
     CLOAK_OF_PROTECTION, CLOAK_OF_DISPLACEMENT,
     SPEED_BOOTS, LEVITATION_BOOTS,
     // Venom range (entire class via bases)
+    // Gem probability constants
+    LAST_REAL_GEM, oclass_prob_totals,
 } from './objects.js';
 
 // C ref: objclass.h
@@ -224,4 +226,88 @@ export function init_objects() {
     // Randomize WAN_NOTHING direction (1 rn2 call)
     // C ref: o_init.c:233
     objectData[WAN_NOTHING].dir = rn2(2) ? NODIR : IMMEDIATE;
+}
+
+// cf. o_init.c:351 — check if an object's description matches a string
+// Returns true if obj's shuffled/unshuffled description equals descr.
+export function objdescr_is(obj, descr) {
+    if (!obj) return false;
+    const objdescr = objectData[obj.otyp]?.desc;
+    if (!objdescr) return false;
+    return objdescr === descr;
+}
+
+// cf. o_init.c:268 — return the shuffleable range containing otyp
+// Returns { lo, hi } — the range of object indices whose descriptions are
+// shuffled together.  If otyp is not in any shuffled range, lo === hi === otyp.
+export function obj_shuffle_range(otyp) {
+    const ocls = objectData[otyp]?.oc_class;
+    let lo = otyp, hi = otyp;
+
+    switch (ocls) {
+    case ARMOR_CLASS:
+        if (otyp >= HELMET && otyp <= HELM_OF_TELEPATHY)
+            { lo = HELMET; hi = HELM_OF_TELEPATHY; }
+        else if (otyp >= LEATHER_GLOVES && otyp <= GAUNTLETS_OF_DEXTERITY)
+            { lo = LEATHER_GLOVES; hi = GAUNTLETS_OF_DEXTERITY; }
+        else if (otyp >= CLOAK_OF_PROTECTION && otyp <= CLOAK_OF_DISPLACEMENT)
+            { lo = CLOAK_OF_PROTECTION; hi = CLOAK_OF_DISPLACEMENT; }
+        else if (otyp >= SPEED_BOOTS && otyp <= LEVITATION_BOOTS)
+            { lo = SPEED_BOOTS; hi = LEVITATION_BOOTS; }
+        break;
+    case POTION_CLASS:
+        // potion of water has the only fixed description
+        lo = bases[POTION_CLASS];
+        hi = POT_WATER - 1;
+        break;
+    case AMULET_CLASS:
+    case SCROLL_CLASS:
+    case SPBOOK_CLASS:
+        // exclude non-magic types and also unique ones
+        lo = bases[ocls];
+        { let i = lo;
+          while (i < objectData.length && objectData[i].oc_class === ocls) {
+              if (objectData[i].unique || !objectData[i].magic) break;
+              i++;
+          }
+          hi = i - 1; }
+        break;
+    case RING_CLASS:
+    case WAND_CLASS:
+    case VENOM_CLASS:
+        // entire class
+        lo = bases[ocls];
+        hi = bases[ocls + 1] - 1;
+        break;
+    }
+
+    // artifact checking: if otyp fell outside the computed range, reset
+    if (otyp < lo || otyp > hi) lo = hi = otyp;
+    return { lo, hi };
+}
+
+// cf. o_init.c:53 — adjust gem probabilities based on dungeon depth
+// Gems deeper in the list are rarer; deeper levels make more gems available.
+// In C, lev = ledger_no(dlev); in JS, depth is used directly as lev.
+export function setgemprobs(depth) {
+    const lev = depth || 0;
+    let first = bases[GEM_CLASS];
+    let sum = 0;
+
+    // Zero out the first (9 - floor(lev/3)) gems (the rarest, depth-limited ones)
+    let j;
+    for (j = 0; j < 9 - Math.floor(lev / 3); j++)
+        objectData[first + j].prob = 0;
+    first += j; // first now points to the first accessible gem
+
+    // Set probability for accessible gems proportionally
+    // C: (171 + j - first) / (LAST_REAL_GEM + 1 - first) — integer division
+    const denom = LAST_REAL_GEM + 1 - first;
+    for (j = first; j <= LAST_REAL_GEM; j++)
+        objectData[j].prob = denom > 0 ? Math.floor((171 + j - first) / denom) : 0;
+
+    // Recompute GEM_CLASS probability total (including rocks/stones beyond LAST_REAL_GEM)
+    for (j = bases[GEM_CLASS]; j < bases[GEM_CLASS + 1]; j++)
+        sum += (objectData[j].prob || 0);
+    oclass_prob_totals[GEM_CLASS] = sum;
 }

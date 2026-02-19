@@ -1,12 +1,18 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { init_objects } from '../../js/o_init.js';
+import { init_objects, objdescr_is, obj_shuffle_range, setgemprobs } from '../../js/o_init.js';
 import { objectData, bases,
     AMULET_OF_ESP, AMULET_OF_FLYING,
     POT_GAIN_ABILITY, POT_OIL, POT_WATER,
-    RING_CLASS, AMULET_CLASS, POTION_CLASS,
+    RING_CLASS, WAND_CLASS, AMULET_CLASS, POTION_CLASS, SCROLL_CLASS, ARMOR_CLASS, GEM_CLASS,
     TURQUOISE, AQUAMARINE, FLUORITE,
     WAN_NOTHING,
+    HELMET, HELM_OF_TELEPATHY,
+    LEATHER_GLOVES, GAUNTLETS_OF_DEXTERITY,
+    CLOAK_OF_PROTECTION, CLOAK_OF_DISPLACEMENT,
+    SPEED_BOOTS, LEVITATION_BOOTS,
+    SPEAR, LAST_REAL_GEM, oclass_prob_totals,
+    SCR_ENCHANT_ARMOR,
 } from '../../js/objects.js';
 import { initRng as seedRng } from '../../js/rng.js';
 
@@ -119,5 +125,167 @@ describe('o_init', () => {
         // With 20 seeds, should see both NODIR(1) and IMMEDIATE(2)
         assert.ok(dirs.size >= 2,
             'WAN_NOTHING direction should vary across seeds');
+    });
+});
+
+// ========================================================================
+// objdescr_is
+// ========================================================================
+
+describe('objdescr_is', () => {
+    it('returns true when obj description matches (POT_WATER always has desc "clear")', () => {
+        seedRng(42n);
+        init_objects();
+        // POT_WATER is never shuffled and has fixed description "clear"
+        const obj = { otyp: POT_WATER };
+        assert.equal(objdescr_is(obj, 'clear'), true);
+    });
+
+    it('returns false when description does not match', () => {
+        seedRng(42n);
+        init_objects();
+        const obj = { otyp: POT_WATER };
+        assert.equal(objdescr_is(obj, 'murky'), false);
+    });
+
+    it('returns false for null object', () => {
+        assert.equal(objdescr_is(null, 'anything'), false);
+    });
+
+    it('returns false for object whose type has no description (weapon)', () => {
+        // SPEAR has desc: null (weapons don't have a separate description)
+        const obj = { otyp: SPEAR };
+        assert.equal(objdescr_is(obj, 'spear'), false);
+    });
+});
+
+// ========================================================================
+// obj_shuffle_range
+// ========================================================================
+
+describe('obj_shuffle_range', () => {
+    it('returns correct range for helmet (armor sub-range)', () => {
+        seedRng(42n);
+        init_objects();
+        const { lo, hi } = obj_shuffle_range(HELMET);
+        assert.equal(lo, HELMET);
+        assert.equal(hi, HELM_OF_TELEPATHY);
+    });
+
+    it('returns same range for any item in the helmet range', () => {
+        seedRng(42n);
+        init_objects();
+        const { lo: lo1, hi: hi1 } = obj_shuffle_range(HELMET);
+        const { lo: lo2, hi: hi2 } = obj_shuffle_range(HELM_OF_TELEPATHY);
+        assert.equal(lo1, lo2);
+        assert.equal(hi1, hi2);
+    });
+
+    it('returns correct range for gloves (armor sub-range)', () => {
+        seedRng(42n);
+        init_objects();
+        const { lo, hi } = obj_shuffle_range(LEATHER_GLOVES);
+        assert.equal(lo, LEATHER_GLOVES);
+        assert.equal(hi, GAUNTLETS_OF_DEXTERITY);
+    });
+
+    it('returns correct range for cloaks (armor sub-range)', () => {
+        seedRng(42n);
+        init_objects();
+        const { lo, hi } = obj_shuffle_range(CLOAK_OF_PROTECTION);
+        assert.equal(lo, CLOAK_OF_PROTECTION);
+        assert.equal(hi, CLOAK_OF_DISPLACEMENT);
+    });
+
+    it('returns correct range for boots (armor sub-range)', () => {
+        seedRng(42n);
+        init_objects();
+        const { lo, hi } = obj_shuffle_range(SPEED_BOOTS);
+        assert.equal(lo, SPEED_BOOTS);
+        assert.equal(hi, LEVITATION_BOOTS);
+    });
+
+    it('returns correct range for potions (up to POT_WATER - 1)', () => {
+        seedRng(42n);
+        init_objects();
+        const { lo, hi } = obj_shuffle_range(POT_GAIN_ABILITY);
+        assert.equal(lo, bases[POTION_CLASS]);
+        assert.equal(hi, POT_WATER - 1);
+    });
+
+    it('returns correct range for scrolls (up to first unique/non-magic)', () => {
+        seedRng(42n);
+        init_objects();
+        const { lo, hi } = obj_shuffle_range(SCR_ENCHANT_ARMOR);
+        assert.equal(lo, bases[SCROLL_CLASS]);
+        assert.ok(hi >= SCR_ENCHANT_ARMOR, 'hi should be >= SCR_ENCHANT_ARMOR');
+        assert.ok(hi < objectData.length);
+    });
+
+    it('returns correct range for wands (entire class)', () => {
+        seedRng(42n);
+        init_objects();
+        const { lo, hi } = obj_shuffle_range(WAN_NOTHING);
+        assert.equal(lo, bases[WAND_CLASS]);
+        assert.equal(hi, bases[WAND_CLASS + 1] - 1);
+    });
+
+    it('returns {lo: otyp, hi: otyp} for spear (not in any shuffle range)', () => {
+        seedRng(42n);
+        init_objects();
+        const { lo, hi } = obj_shuffle_range(SPEAR);
+        assert.equal(lo, SPEAR);
+        assert.equal(hi, SPEAR);
+    });
+});
+
+// ========================================================================
+// setgemprobs
+// ========================================================================
+
+describe('setgemprobs', () => {
+    it('at depth 1: first 9 gems have prob=0 (inaccessible)', () => {
+        seedRng(42n);
+        init_objects();
+        setgemprobs(1);
+        const first = bases[GEM_CLASS];
+        // floor(1/3) = 0, so 9 - 0 = 9 gems zeroed
+        for (let j = 0; j < 9; j++)
+            assert.equal(objectData[first + j].prob, 0,
+                `gem at first+${j} should have prob=0 at depth 1`);
+    });
+
+    it('at depth 27: no gems are zeroed (all accessible)', () => {
+        seedRng(42n);
+        init_objects();
+        setgemprobs(27);
+        const first = bases[GEM_CLASS];
+        // floor(27/3) = 9, so 9 - 9 = 0 gems zeroed
+        // first gem (first+0) should now have a non-zero prob
+        assert.ok(objectData[first].prob > 0,
+            'at depth 27, first gem should be accessible (prob > 0)');
+    });
+
+    it('updates oclass_prob_totals[GEM_CLASS]', () => {
+        seedRng(42n);
+        init_objects();
+        setgemprobs(10);
+        assert.ok(oclass_prob_totals[GEM_CLASS] > 0,
+            'GEM_CLASS total should be positive after setgemprobs');
+    });
+
+    it('deeper levels have more accessible gems than shallow ones', () => {
+        seedRng(42n);
+        init_objects();
+        setgemprobs(3);
+        const total3 = oclass_prob_totals[GEM_CLASS];
+
+        seedRng(42n);
+        init_objects();
+        setgemprobs(15);
+        const total15 = oclass_prob_totals[GEM_CLASS];
+
+        assert.ok(total15 >= total3,
+            `Deeper level (total=${total15}) should have >= gem prob total vs shallow (${total3})`);
     });
 });
