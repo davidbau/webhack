@@ -396,3 +396,27 @@
       - Caveman failedAdd `195`.
   - Net:
     - Rejected (major exploration churn regression).
+
+## 2026-02-19 - Rejected: Additional Stuck/Loop Mitigation Variants
+
+- Variant F (door-first bias during severe low-XP dog loops):
+  - Policy:
+    - In adjacent-combat handling, when `Dlvl1 + XP=0 + lone dog` loop evidence was high, prefer opening/kicking adjacent doors before attacking.
+  - Triage (`Caveman 33`, `Samurai 40`, `Tourist 41`, `Healer 34`, 600 turns):
+    - Tourist reduced dog-loop churn (`attack 215` vs baseline `272`, `petSwap 71` vs `98`) and attempted door actions (`doorOpen=1`, `doorKick=1`),
+    - but Tourist progression remained stalled (`maxXP=0`, depth `1`),
+    - aggregate progression remained flat on subset (`XL2+ 1/4`, XP avg `6.25` unchanged).
+  - Net:
+    - Rejected (no meaningful progression gain despite local churn reduction).
+
+- Variant G (failed random-move direction memory):
+  - Policy:
+    - Record blocked `random_move` directions per tile and avoid retrying those directions while alternatives exist.
+  - Triage (`Caveman 33`, `Samurai 40`, `Tourist 41`, `Healer 34`, 600 turns):
+    - severe control regressions:
+      - Healer lost XL2 path (`maxXP=2` vs baseline `21`, `XL2=never`),
+      - Caveman/Samurai failed-target churn spiked (`failedAdd 143/103`),
+      - subset XP average collapsed to `2.00` (vs baseline subset `6.25`),
+      - `XL2+` dropped to `0/4` (vs baseline subset `1/4`).
+  - Net:
+    - Rejected (major progression regression).
