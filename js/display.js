@@ -867,7 +867,7 @@ export class Display {
         // C ref: wintty.c offx calculation
         // C ref: wintty.c min(min(82, cols/2), cols - maxcol - 1)
         // If offx == 10 OR menu too tall for terminal OR first menu: offx = 0, full-screen
-        let offx = Math.max(10, Math.min(Math.floor(this.cols / 2), this.cols - maxcol - 2));
+        let offx = Math.max(10, this.cols - maxcol - 2);
 
         if (isFirstMenu || offx === 10 || lines.length >= this.rows) {
             offx = 0;
@@ -911,10 +911,10 @@ export class Display {
         for (const line of lines) {
             if (line.length > maxcol) maxcol = line.length;
         }
-        // C ref: wintty.c cw->offx = min(min(82, cols/2), cols - maxcol - 1).
+        // C ref: wintty.c cw->offx = max(10, cols - maxcol - 1).
         // C's maxcol includes +1 padding beyond the longest line, so for JS
         // (where maxcol is the raw longest line length) we use -2.
-        const offx = Math.max(0, Math.min(Math.floor(this.cols / 2), this.cols - maxcol - 2));
+        const offx = Math.max(10, this.cols - maxcol - 2);
 
         const menuRows = Math.min(lines.length, STATUS_ROW_1);
         // C tty parity: clear only rows occupied by the menu itself.

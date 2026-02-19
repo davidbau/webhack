@@ -1202,9 +1202,8 @@ async function handleMovement(dir, player, map, display, game) {
             }
         } else {
             // C ref: invent.c look_here() — for 2+ objects, C uses a NHW_MENU
-            // popup window ("Things that are here:") that the player dismisses,
-            // leaving the message line blank.  We skip the message line here to
-            // match C's screen behaviour for session comparison.
+            // popup window ("Things that are here:") that the player dismisses.
+            // TODO: implement paginated menu display matching C's tty rendering.
         }
     }
 
@@ -1937,7 +1936,7 @@ async function handleInventory(player, display, game) {
                 for (const line of lines) {
                     if (line.length > maxcol) maxcol = line.length;
                 }
-                menuOffx = Math.max(10, Math.min(41, displayCols - maxcol - 2));
+                menuOffx = Math.max(10, displayCols - maxcol - 2);
             }
             const rawActions = ((selected.quan || 1) > 1)
                 ? (() => {
@@ -2053,7 +2052,7 @@ async function handleInventory(player, display, game) {
 
             const promptText = `Do what with the ${noun}?`;
             const maxAction = rawActions.reduce((m, line) => Math.max(m, line.length), promptText.length);
-            menuOffx = Math.max(10, Math.min(41, displayCols - maxAction - 2));
+            menuOffx = Math.max(10, displayCols - maxAction - 2);
             const pad = ' '.repeat(menuOffx);
             const stackActions = rawActions.map((line) => `${pad}${line}`);
             const actionPrompt = `${pad}${promptText}`;
