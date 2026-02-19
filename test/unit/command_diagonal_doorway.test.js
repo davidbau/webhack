@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { rhack } from '../../js/commands.js';
 import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
-import { DOOR, D_ISOPEN } from '../../js/config.js';
+import { DOOR, D_ISOPEN, ROOM } from '../../js/config.js';
 
 function makeGame() {
     const map = new GameMap();
@@ -62,4 +62,39 @@ test('diagonal move into intact doorway shows message when mention_walls is enab
     assert.equal(result.moved, false);
     assert.equal(result.tookTime, false);
     assert.equal(game.display.topMessage, "You can't move diagonally into an intact doorway.");
+});
+
+test('diagonal move out of intact doorway is blocked without message by default', async () => {
+    const game = makeGame();
+    const from = game.map.at(10, 10);
+    from.typ = DOOR;
+    from.flags = D_ISOPEN;
+    const target = game.map.at(9, 9);
+    target.typ = ROOM;
+    target.flags = 0;
+
+    const result = await rhack('y'.charCodeAt(0), game); // move NW
+
+    assert.equal(result.moved, false);
+    assert.equal(result.tookTime, false);
+    assert.equal(game.player.x, 10);
+    assert.equal(game.player.y, 10);
+    assert.equal(game.display.topMessage, null);
+});
+
+test('diagonal move out of intact doorway shows message when mention_walls is enabled', async () => {
+    const game = makeGame();
+    game.map.flags.mention_walls = true;
+    const from = game.map.at(10, 10);
+    from.typ = DOOR;
+    from.flags = D_ISOPEN;
+    const target = game.map.at(9, 9);
+    target.typ = ROOM;
+    target.flags = 0;
+
+    const result = await rhack('y'.charCodeAt(0), game); // move NW
+
+    assert.equal(result.moved, false);
+    assert.equal(result.tookTime, false);
+    assert.equal(game.display.topMessage, "You can't move diagonally out of an intact doorway.");
 });

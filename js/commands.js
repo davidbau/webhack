@@ -854,6 +854,21 @@ async function handleMovement(dir, player, map, display, game) {
             return { moved: false, tookTime: false };
         }
     }
+    // C ref: hack.c test_move() out-of-door diagonal gate:
+    // moving diagonally out of an intact doorway is also blocked.
+    if (Math.abs(dir[0]) + Math.abs(dir[1]) === 2) {
+        const fromLoc = map.at(oldX, oldY);
+        if (fromLoc && IS_DOOR(fromLoc.typ)) {
+            const fromDoorFlags = fromLoc.flags || 0;
+            const fromDoorless = (fromDoorFlags & ~(D_NODOOR | D_BROKEN)) === 0;
+            if (!fromDoorless) {
+                if (map?.flags?.mention_walls || map?.flags?.is_tutorial) {
+                    display.putstr_message("You can't move diagonally out of an intact doorway.");
+                }
+                return { moved: false, tookTime: false };
+            }
+        }
+    }
 
     // C ref: cmd.c do_fight() + hack.c domove()/do_attack() fallback.
     // Forced-fight into an empty square produces "You attack thin air."
