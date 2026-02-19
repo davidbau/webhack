@@ -2183,7 +2183,8 @@ async function handleEat(player, display, game) {
             game.occupation = {
                 fn: () => {
                     usedtime++;
-                    if (usedtime >= reqtime) {
+                    // C ref: eat.c eatfood(): done when ++usedtime > reqtime.
+                    if (usedtime > reqtime) {
                         return 0; // done
                     }
                     doBite();

@@ -217,5 +217,26 @@ Related issue sessions after this pass:
 
 - `seed103_caveman_selfplay200`: pass
 - `seed112_valkyrie_selfplay200`: pass
-- `seed42_items_gameplay`: still fails (first divergence step 18)
+- `seed42_items_gameplay`: pass
 - `seed5_gnomish_mines_gameplay`: still fails (first screen divergence step 46)
+
+## 2026-02-19 follow-up: C-faithful eatfood turn completion fixed seed42-items
+
+Additional parity fix (outside `monmove` itself, but directly affecting this
+issue's tracked session set):
+
+- in `js/commands.js`, inventory-food occupation completion now follows C
+  `eatfood()` semantics (`done when ++usedtime > reqtime`, not `>= reqtime`).
+- This restores the final timed-turn cycle during eating, including the
+  expected trailing `distfleeck`/monster turn block in replay traces.
+
+Validation:
+
+- `seed42_items_gameplay.session.json`: full pass (`3186/3186` RNG,
+  `23/23` screens, `552/552` colors).
+- `seed103_caveman_selfplay200.session.json`: pass.
+- `seed112_valkyrie_selfplay200.session.json`: pass.
+- `seed212_valkyrie_wizard.session.json`: unchanged current profile
+  (first RNG divergence step 260; first screen divergence step 181).
+- `seed5_gnomish_mines_gameplay.session.json`: unchanged first divergence
+  profile (screen step 46, RNG anchor step 205).

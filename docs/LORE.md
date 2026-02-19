@@ -359,6 +359,17 @@ carryable gold as a valid search target.
 Practical rule: keep `m_search_items` gold retargeting gated by
 `likes_gold` (with leprechaun exception), not by `M2_COLLECT` alone.
 
+### eatfood occupation completes on `++usedtime > reqtime` (not `>=`)
+
+For multi-turn inventory eating, C `eatfood()` ends when the incremented
+counter is strictly greater than `reqtime`. Using `>=` drops one timed turn.
+That missing turn shifts replay RNG at the tail of eating steps (missing the
+final `distfleeck`/monster cycle) and can flip session pass/fail status.
+
+Practical rule: keep food-occupation completion as strict `>` against
+`reqtime`, and verify with a replay step that includes `"You're finally
+finished."` plus trailing monster-turn RNG.
+
 ### Sparse replay frames can shift RNG attribution across later steps
 
 Some C keylog-derived gameplay captures include display-only frames with no RNG
