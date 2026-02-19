@@ -967,20 +967,6 @@ export async function replaySession(seed, session, opts = {}) {
             }
         }
 
-        const effectiveScreen = forceCapturedMoreScreen ? stepScreen : screen;
-        const normalizedScreen = Array.isArray(effectiveScreen)
-            ? effectiveScreen.map((line) => stripAnsiSequences(line))
-            : [];
-        const capturedMoreAnsi = forceCapturedMoreScreen ? getSessionScreenAnsiLines(step || {}) : null;
-        const normalizedScreenAnsi = opts.captureScreens
-            ? (Array.isArray(capturedMoreAnsi) && capturedMoreAnsi.length > 0
-                ? capturedMoreAnsi
-                : (Array.isArray(screenAnsiOverride)
-                ? screenAnsiOverride
-                : ((typeof game.display?.getScreenAnsiLines === 'function')
-                    ? game.display.getScreenAnsiLines()
-                    : null)))
-            : null;
         // Counted-search boundary normalization:
         // Some keylog gameplay captures place the final timed-occupation RNG
         // turn on the following digit step (e.g., "... 9 s" loops). When the
@@ -1036,6 +1022,24 @@ export async function replaySession(seed, session, opts = {}) {
         if (deferredMoreBoundarySource === stepIndex) {
             forceCapturedMoreScreen = true;
         }
+        // Compute the effective screen AFTER both More and non-More boundary
+        // checks are complete, so forceCapturedMoreScreen reflects the final
+        // value.  (Previously this ran before the non-More branch, so deferred
+        // animation-frame boundaries never used the C captured screen.)
+        const effectiveScreen = forceCapturedMoreScreen ? stepScreen : screen;
+        const normalizedScreen = Array.isArray(effectiveScreen)
+            ? effectiveScreen.map((line) => stripAnsiSequences(line))
+            : [];
+        const capturedMoreAnsi = forceCapturedMoreScreen ? getSessionScreenAnsiLines(step || {}) : null;
+        const normalizedScreenAnsi = opts.captureScreens
+            ? (Array.isArray(capturedMoreAnsi) && capturedMoreAnsi.length > 0
+                ? capturedMoreAnsi
+                : (Array.isArray(screenAnsiOverride)
+                ? screenAnsiOverride
+                : ((typeof game.display?.getScreenAnsiLines === 'function')
+                    ? game.display.getScreenAnsiLines()
+                    : null)))
+            : null;
         stepResults.push({
             rngCalls: raw.length,
             rng: compact,

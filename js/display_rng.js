@@ -4,7 +4,7 @@
 import { rn2_on_display_rng } from './rng.js';
 import { mons } from './monsters.js';
 import {
-    objectData, CORPSE,
+    objectData, CORPSE, STATUE,
     POTION_CLASS, FIRST_REAL_GEM, LAST_GLASS_GEM, FIRST_SPELL, LAST_SPELL,
 } from './objects.js';
 import { observeObject } from './discovery.js';
@@ -90,6 +90,17 @@ export function objectMapGlyph(obj, hallucinating = false, options = {}) {
     }
     if (isGenericObject(obj)) {
         return genericObjectGlyph(obj);
+    }
+    // C ref: display.c obj_to_glyph() — statues show the depicted
+    // monster's symbol but use the object's oc_color, not the
+    // monster's color.
+    if (obj?.otyp === STATUE
+        && Number.isInteger(obj?.corpsenm) && obj.corpsenm >= 0
+        && obj.corpsenm < mons.length) {
+        const mon = mons[obj.corpsenm];
+        const symIdx = Number.isInteger(mon?.symbol) ? mon.symbol : 0;
+        const ch = def_monsyms[symIdx]?.sym || '?';
+        return { ch, color: Number.isInteger(obj?.displayColor) ? obj.displayColor : 7 };
     }
     const corpseColor = (obj?.otyp === CORPSE
         && Number.isInteger(obj?.corpsenm)
