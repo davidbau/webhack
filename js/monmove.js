@@ -16,19 +16,22 @@ import { CORPSE, FOOD_CLASS, COIN_CLASS, BOULDER, ROCK, ROCK_CLASS, BALL_CLASS, 
          PICK_AXE, DWARVISH_MATTOCK, SKELETON_KEY, LOCK_PICK, CREDIT_CARD,
          UNICORN_HORN, SCR_SCARE_MONSTER, CLOAK_OF_DISPLACEMENT, MINERAL, GOLD_PIECE,
          objectData } from './objects.js';
-import { doname, mkcorpstat, next_ident } from './mkobj.js';
+import { doname, mkcorpstat, next_ident, weight } from './mkobj.js';
 import { observeObject } from './discovery.js';
 import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT,
          POISON, UNDEF, TABU } from './dog.js';
 import { couldsee, m_cansee, do_clear_area } from './vision.js';
 import { placeFloorObject } from './floor_objects.js';
 import { can_teleport, noeyes, perceives, is_animal, is_mindless, nohands, nonliving,
-         is_displacer, is_hider, monDisplayName, hasGivenName, monNam,
+         is_displacer, is_hider, hides_under, is_mercenary, monDisplayName, hasGivenName, monNam,
+         is_dwarf,
          } from './mondata.js';
 import { PM_GRID_BUG, PM_IRON_GOLEM, PM_SHOPKEEPER, mons,
          PM_LEPRECHAUN, PM_XAN, PM_YELLOW_LIGHT, PM_BLACK_LIGHT,
          PM_PURPLE_WORM, PM_BABY_PURPLE_WORM, PM_SHRIEKER,
+         PM_GHOUL, PM_SKELETON,
          PM_DEATH, PM_PESTILENCE, PM_FAMINE,
+         PM_WHITE_UNICORN, PM_GRAY_UNICORN, PM_BLACK_UNICORN,
          AT_NONE, AT_CLAW, AT_BITE, AT_KICK, AT_BUTT, AT_TUCH, AT_STNG, AT_WEAP,
          AD_PHYS,
          AD_ACID, AD_ENCH,
@@ -36,9 +39,10 @@ import { PM_GRID_BUG, PM_IRON_GOLEM, PM_SHOPKEEPER, mons,
          S_DOG, S_NYMPH, S_LEPRECHAUN, S_HUMAN,
          M1_WALLWALK, M1_TUNNEL, M1_NEEDPICK, M1_SLITHY, M1_UNSOLID,
          M2_COLLECT, M2_STRONG, M2_ROCKTHROW, M2_GREEDY, M2_JEWELS, M2_MAGIC,
-         MZ_TINY, MZ_SMALL, MZ_MEDIUM, MZ_HUMAN, WT_HUMAN, MR_FIRE, MR_SLEEP, G_FREQ, G_NOCORPSE,
+         MZ_TINY, MZ_SMALL, MZ_MEDIUM, MZ_HUMAN, WT_HUMAN, MR_FIRE, MR_SLEEP, G_FREQ, G_NOCORPSE, G_UNIQ,
          PM_DISPLACER_BEAST, PM_FIRE_ELEMENTAL, PM_SALAMANDER,
-         S_EYE, S_LIGHT, S_EEL, S_PIERCER, S_VORTEX, S_ELEMENTAL } from './monsters.js';
+         S_EYE, S_LIGHT, S_EEL, S_PIERCER, S_VORTEX, S_ELEMENTAL,
+         S_ZOMBIE, S_LICH, S_KOBOLD, S_ORC, S_GIANT, S_HUMANOID, S_GNOME, S_KOP } from './monsters.js';
 import { STATUE_TRAP, MAGIC_TRAP, VIBRATING_SQUARE, RUST_TRAP, FIRE_TRAP,
          SLP_GAS_TRAP, BEAR_TRAP, PIT, SPIKED_PIT, HOLE, TRAPDOOR,
          TELEP_TRAP, WEB, ANTI_MAGIC, MAGIC_PORTAL } from './symbols.js';
@@ -177,6 +181,25 @@ function monnear(mon, x, y) {
 function hasGold(inv) {
     return Array.isArray(inv)
         && inv.some(o => o && o.oclass === COIN_CLASS && (o.quan ?? 1) > 0);
+}
+
+function goldQuantity(inv) {
+    if (!Array.isArray(inv)) return 0;
+    let total = 0;
+    for (const obj of inv) {
+        if (!obj || obj.oclass !== COIN_CLASS) continue;
+        total += Number(obj.quan || 0);
+    }
+    return total;
+}
+
+// C ref: monmove.c leppie_avoidance(mtmp)
+function leppie_avoidance(mon, player) {
+    if (!mon || mon.mndx !== PM_LEPRECHAUN) return false;
+    const lepreGold = goldQuantity(mon.minvent || []);
+    if (lepreGold <= 0) return false;
+    const heroGold = goldQuantity(player?.inventory || []);
+    return lepreGold > heroGold;
 }
 
 // C ref: mthrowu.c blocking_terrain() subset used by lined_up().
@@ -577,6 +600,40 @@ function pointInShop(x, y, map) {
     return false;
 }
 
+// C ref: mondata.c mon_knows_traps(mtmp, ttyp)
+function mon_knows_traps(mon, ttyp) {
+    const seen = Number(mon?.mtrapseen || 0) >>> 0;
+    if (ttyp === -1) return seen !== 0; // ALL_TRAPS
+    if (ttyp === 0) return seen === 0;  // NO_TRAP
+    const bit = ttyp - 1;
+    if (bit < 0 || bit >= 31) return false;
+    return (seen & (1 << bit)) !== 0;
+}
+
+// C ref: mondata.c mon_learns_traps(mtmp, ttyp)
+function mon_learns_traps(mon, ttyp) {
+    if (!mon) return;
+    const seen = Number(mon.mtrapseen || 0) >>> 0;
+    if (ttyp === -1) {
+        mon.mtrapseen = 0x7fffffff;
+        return;
+    }
+    if (ttyp === 0) {
+        mon.mtrapseen = 0;
+        return;
+    }
+    const bit = ttyp - 1;
+    if (bit < 0 || bit >= 31) return;
+    mon.mtrapseen = (seen | (1 << bit)) >>> 0;
+}
+
+function cansee_for_hider_avoidance(map, player, fov, x, y) {
+    if (!player) return false;
+    if (player.blind) return false;
+    if (fov && typeof fov.canSee === 'function') return !!fov.canSee(x, y);
+    return !!couldsee(map, player, x, y);
+}
+
 // C ref: in_rooms(x,y,SHOPBASE) check used by monmove.c m_search_items().
 function monsterInShop(mon, map) {
     // C ref: inhishop(shkp) checks shopkeeper's own assigned shop room.
@@ -651,6 +708,39 @@ function mon_would_take_item_search(mon, obj, map) {
     return false;
 }
 
+function canMergeMonsterInventoryObj(dst, src) {
+    if (!dst || !src) return false;
+    if (dst.otyp !== src.otyp) return false;
+    if (!!dst.cursed !== !!src.cursed) return false;
+    if (!!dst.blessed !== !!src.blessed) return false;
+    if (Number(dst.spe || 0) !== Number(src.spe || 0)) return false;
+    if (Number(dst.oeroded || 0) !== Number(src.oeroded || 0)) return false;
+    if (Number(dst.oeroded2 || 0) !== Number(src.oeroded2 || 0)) return false;
+    if (!!dst.oerodeproof !== !!src.oerodeproof) return false;
+    if (!!dst.greased !== !!src.greased) return false;
+    if (!!dst.opoisoned !== !!src.opoisoned) return false;
+    if ((dst.corpsenm ?? -1) !== (src.corpsenm ?? -1)) return false;
+    if ((dst.fromsink ?? null) !== (src.fromsink ?? null)) return false;
+    if ((dst.no_charge ?? null) !== (src.no_charge ?? null)) return false;
+    return true;
+}
+
+function addToMonsterInventory(mon, obj) {
+    if (!mon || !obj) return null;
+    if (!Array.isArray(mon.minvent)) mon.minvent = [];
+    const quan = Number(obj.quan || 1);
+    if (quan <= 0) return null;
+    obj.quan = quan;
+    for (const invObj of mon.minvent) {
+        if (!canMergeMonsterInventoryObj(invObj, obj)) continue;
+        invObj.quan = Number(invObj.quan || 0) + quan;
+        invObj.owt = weight(invObj);
+        return invObj;
+    }
+    mon.minvent.push(obj);
+    return obj;
+}
+
 // C ref: mon.c mpickstuff() early gates.
 function maybeMonsterPickStuff(mon, map) {
     // C ref: mpickstuff() in-shop gates.
@@ -671,12 +761,13 @@ function maybeMonsterPickStuff(mon, map) {
         const quan = Number(obj.quan || 1);
         if (carryAmt < quan) {
             obj.quan = quan - carryAmt;
+            obj.owt = weight(obj);
             picked = { ...obj, quan: carryAmt, o_id: next_ident() };
+            picked.owt = weight(picked);
         } else {
             map.removeObject(obj);
         }
-        if (!mon.minvent) mon.minvent = [];
-        mon.minvent.push(picked);
+        addToMonsterInventory(mon, picked);
         return true;
     }
     return false;
@@ -890,6 +981,21 @@ const Trap_Caught_Mon = 1;
 const Trap_Killed_Mon = 2;
 const Trap_Moved_Mon = 3;
 
+// C ref: trap.c floor_trigger() — traps triggered by touching floor.
+function floor_trigger(ttyp) {
+    return ttyp >= 1 && ttyp <= TRAPDOOR;
+}
+
+// C ref: trap.c check_in_air() subset for monsters.
+function mon_check_in_air(mon) {
+    const mdat = mon?.type || {};
+    const mlet = mdat.symbol ?? -1;
+    const flags1 = mdat.flags1 || 0;
+    const isFloater = (mlet === S_EYE || mlet === S_LIGHT);
+    const isFlyer = !!(flags1 & M1_FLY);
+    return isFloater || isFlyer;
+}
+
 function mintrap_postmove(mon, map, player) {
     const trap = map.trapAt(mon.mx, mon.my);
     if (!trap) {
@@ -897,8 +1003,34 @@ function mintrap_postmove(mon, map, player) {
         return Trap_Effect_Finished;
     }
 
-    // Entering a harmless trap has no effect for this monster.
-    if (!mon.mtrapped && m_harmless_trap(mon, trap)) {
+    if (mon.mtrapped) {
+        // C ref: trap.c mintrap() trapped-mon branch — periodic escape check.
+        // Keep this minimal but preserve RNG cadence.
+        if (!rn2(40)) {
+            mon.mtrapped = 0;
+            return Trap_Effect_Finished;
+        }
+        return Trap_Caught_Mon;
+    }
+
+    const tt = trap.ttyp;
+    const already_seen = mon_knows_traps(mon, tt)
+        || (tt === HOLE && !is_mindless(mon.type || {}));
+
+    // C ref: trap.c:3716-3717
+    if (floor_trigger(tt) && mon_check_in_air(mon)) {
+        return Trap_Effect_Finished;
+    }
+    // C ref: trap.c:3719
+    if (already_seen && rn2(4)) {
+        return Trap_Effect_Finished;
+    }
+
+    // C ref: trap.c:3723 — monster learns this trap type once triggered.
+    mon_learns_traps(mon, tt);
+
+    // Entering a harmless trap has no further effect for this monster.
+    if (m_harmless_trap(mon, trap)) {
         return Trap_Effect_Finished;
     }
 
@@ -936,6 +1068,10 @@ function mintrap_postmove(mon, map, player) {
         // Fallback: exhaustive search not implemented; RNG consumed above.
         return Trap_Moved_Mon;
     }
+    case MAGIC_TRAP:
+        // C ref: trapeffect_magic_trap() starts with rn2(21).
+        rn2(21);
+        return Trap_Effect_Finished;
     default:
         return Trap_Effect_Finished;
     }
@@ -1041,13 +1177,8 @@ function mfndpos(mon, map, player, opts = {}) {
                 if (allowM) {
                     allowMAttack = !monAtPos.tame && !monAtPos.peaceful;
                 } else {
-                    // C ref: mon.c mm_aggression() special cases.
-                    // Keep only implemented combinations here.
-                    const attackerIdx = mon.mndx;
-                    const defenderIdx = monAtPos.mndx;
-                    const isPurpleWorm = attackerIdx === PM_PURPLE_WORM || attackerIdx === PM_BABY_PURPLE_WORM;
-                    const isShrieker = defenderIdx === PM_SHRIEKER;
-                    allowMAttack = isPurpleWorm && isShrieker;
+                    const mmflag = mm_aggression(mon, monAtPos, map);
+                    allowMAttack = mmflag.allowM && (!monAtPos.tame || mmflag.allowTM);
                 }
                 // C ref: mon.c mm_displacement()
                 // Only displacers can barge through, with additional guards.
@@ -1090,11 +1221,13 @@ function mfndpos(mon, map, player, opts = {}) {
             let allowTraps = false;
             const trap = map.trapAt(nx, ny);
             if (trap) {
-                // C ref: line 2347 — if (!m_harmless_trap(mon, ttmp))
-                // Only set ALLOW_TRAPS if trap is NOT harmless
+                // C ref: mon.c:2348-2352
+                // Pets (ALLOW_TRAPS) keep harmful traps in candidate set and
+                // decide in dog_move; non-pets skip harmful traps they know.
                 if (!m_harmless_trap(mon, trap)) {
-                    // C ref: For pets (ALLOW_TRAPS in flags), include position with flag
-                    // Non-pets would skip here if they know the trap type, but pets always include it
+                    if (!mon.tame && mon_knows_traps(mon, trap.ttyp)) {
+                        continue;
+                    }
                     allowTraps = true;
                 }
             }
@@ -1166,6 +1299,63 @@ function cant_squeeze_thru_mon(mon) {
     return load > 600;
 }
 
+function zombie_form_exists(mdat) {
+    const mlet = mdat?.symbol ?? -1;
+    switch (mlet) {
+    case S_KOBOLD:
+    case S_ORC:
+    case S_GIANT:
+    case S_HUMAN:
+    case S_KOP:
+    case S_GNOME:
+        return true;
+    case S_HUMANOID:
+        return is_dwarf(mdat);
+    default:
+        return false;
+    }
+}
+
+function zombie_maker(mon) {
+    if (!mon || mon.mcan) return false;
+    const mlet = mon.type?.symbol ?? -1;
+    if (mlet === S_ZOMBIE) {
+        return mon.mndx !== PM_GHOUL && mon.mndx !== PM_SKELETON;
+    }
+    return mlet === S_LICH;
+}
+
+function unique_corpstat(mdat) {
+    return !!((mdat?.geno || 0) & G_UNIQ);
+}
+
+function mm_2way_aggression(magr, mdef, map) {
+    if (!zombie_maker(magr)) return { allowM: false, allowTM: false };
+    if (!zombie_form_exists(mdef?.type || {})) return { allowM: false, allowTM: false };
+    // C ref: mon.c mm_2way_aggression() excludes stronghold and unique pairs.
+    const inStronghold = map?.flags?.graveyard && map?.flags?.is_maze_lev;
+    if (inStronghold) return { allowM: false, allowTM: false };
+    if (unique_corpstat(magr?.type || {}) || unique_corpstat(mdef?.type || {})) {
+        return { allowM: false, allowTM: false };
+    }
+    return { allowM: true, allowTM: true };
+}
+
+function mm_aggression(magr, mdef, map) {
+    if (magr?.tame && mdef?.tame) return { allowM: false, allowTM: false };
+    const attackerIdx = magr?.mndx;
+    const defenderIdx = mdef?.mndx;
+    const isPurpleWorm = attackerIdx === PM_PURPLE_WORM || attackerIdx === PM_BABY_PURPLE_WORM;
+    if (isPurpleWorm && defenderIdx === PM_SHRIEKER) return { allowM: true, allowTM: true };
+
+    const ab = mm_2way_aggression(magr, mdef, map);
+    const ba = mm_2way_aggression(mdef, magr, map);
+    return {
+        allowM: ab.allowM || ba.allowM,
+        allowTM: ab.allowTM || ba.allowTM,
+    };
+}
+
 // C ref: mondata.c passes_bars() — can this monster pass through iron bars?
 // passes_walls || amorphous || is_whirly || verysmall || (slithy && !bigmonst)
 function passes_bars(mdat) {
@@ -1199,7 +1389,7 @@ function onscary(map, x, y) {
 
 // C ref: monmove.c m_search_items() subset.
 // Search nearby objects and update movement intent fields used by m_move().
-function m_search_items_goal(mon, map, ggx, ggy, appr) {
+function m_search_items_goal(mon, map, player, fov, ggx, ggy, appr) {
     const omx = mon.mx;
     const omy = mon.my;
     let minr = SQSRCHRADIUS;
@@ -1208,6 +1398,10 @@ function m_search_items_goal(mon, map, ggx, ggy, appr) {
     const muy = Number.isInteger(mon.muy) ? mon.muy : ggy;
     if (!mon.peaceful && distmin(mux, muy, omx, omy) < SQSRCHRADIUS) {
         minr--;
+    }
+    // C ref: monmove.c m_search_items() — hostile mercenaries keep item search local.
+    if (!mon.peaceful && is_mercenary(mon.type || {})) {
+        minr = 1;
     }
 
     // C ref: monmove.c m_search_items() — in shop, usually skip.
@@ -1230,24 +1424,54 @@ function m_search_items_goal(mon, map, ggx, ggy, appr) {
 
     for (let xx = lmx; xx <= hmx; xx++) {
         for (let yy = lmy; yy <= hmy; yy++) {
-            if (minr < distmin(omx, omy, xx, yy)) continue;
-            if (!could_reach_item(map, mon, xx, yy)) continue;
-            if (onscary(map, xx, yy)) continue;
-            if (!m_cansee(mon, map, xx, yy)) continue;
-
             const pile = map.objectsAt
                 ? map.objectsAt(xx, yy)
                 : map.objects.filter((o) => !o.buried && o.ox === xx && o.oy === yy);
             if (!pile || pile.length === 0) continue;
+            if (minr < distmin(omx, omy, xx, yy)) continue;
+            if (!could_reach_item(map, mon, xx, yy)) continue;
+            if (hides_under(mon.type || {}) && cansee_for_hider_avoidance(map, player, fov, xx, yy)) continue;
+            // C ref: monmove.c m_search_items() skips object squares occupied
+            // by helpless/hidden/immobile monsters to avoid circling.
+            const occ = map.monsterAt(xx, yy);
+            if (occ && occ !== mon) {
+                const occHelpless = !!occ.sleeping
+                    || (Number(occ.mfrozen || 0) > 0)
+                    || occ.mcanmove === false;
+                const occHidden = !!occ.mundetected;
+                const occMimicDisguise = !!occ.mappearance && !occ.iswiz;
+                const occImmobile = Number(occ.type?.speed || 0) <= 0;
+                if (occHelpless || occHidden || occMimicDisguise || occImmobile) continue;
+            }
+            if (onscary(map, xx, yy)) continue;
+            const trap = map.trapAt(xx, yy);
+            if (trap && mon_knows_traps(mon, trap.ttyp)) {
+                if (ggx === xx && ggy === yy) {
+                    ggx = mux;
+                    ggy = muy;
+                }
+                continue;
+            }
+            if (!m_cansee(mon, map, xx, yy)) continue;
+            const costly = pointInShop(xx, yy, map);
 
             for (const obj of pile) {
                 if (obj?.otyp === ROCK) continue;
+                if (costly && !obj?.no_charge) continue;
                 if (!mon_would_take_item_search(mon, obj, map)) continue;
                 if (can_carry(mon, obj) <= 0) continue;
 
                 minr = distmin(omx, omy, xx, yy);
                 ggx = xx;
                 ggy = yy;
+                monmoveTrace('m_search-pick',
+                    `id=${mon.m_id ?? '?'}`,
+                    `name=${mon.type?.name || mon.name || '?'}`,
+                    `obj=(${obj?.otyp ?? '?'},class=${obj?.oclass ?? '?'},quan=${obj?.quan ?? '?'})`,
+                    `at=(${xx},${yy})`,
+                    `minr=${minr}`,
+                    `mux=(${mux},${muy})`,
+                    `appr=${appr}`);
                 if (ggx === omx && ggy === omy) {
                     return { ggx, ggy, appr, done: true };
                 }
@@ -1289,12 +1513,12 @@ function cursed_object_at(map, x, y) {
 function could_reach_item(map, mon, nx, ny) {
     const loc = map.at(nx, ny);
     if (!loc) return false;
-    const typ = loc.typ;
-    // C ref: is_pool/is_lava terrain checks (rm.h macros).
-    // Use shared terrain helpers so WATER/MOAT squares stay blocked for
-    // non-swimmers when pets consider picking up floor items.
-    const isPool = IS_POOL(typ);
-    const isLava = IS_LAVA(typ);
+    const mdat = mon?.type || {};
+    const isPool = IS_POOL(loc.typ);
+    const isLava = IS_LAVA(loc.typ);
+    const isSwimmer = !!(mdat.flags1 & M1_SWIM);
+    const likesLava = mon?.mndx === PM_FIRE_ELEMENTAL || mon?.mndx === PM_SALAMANDER;
+    const throwsRocks = !!(mdat.flags2 & M2_ROCKTHROW);
     // C: sobj_at(BOULDER, nx, ny) — is there a boulder at this position?
     let hasBoulder = false;
     for (const obj of map.objects) {
@@ -1303,11 +1527,9 @@ function could_reach_item(map, mon, nx, ny) {
             hasBoulder = true; break;
         }
     }
-    // Little dogs can't swim, don't like lava, can't throw rocks
-    if (isPool) return false; // simplified: pets aren't swimmers
-    if (isLava) return false; // simplified: pets don't like lava
-    if (hasBoulder) return false; // simplified: pets can't throw rocks
-    return true;
+    return (!isPool || isSwimmer)
+        && (!isLava || likesLava)
+        && (!hasBoulder || throwsRocks);
 }
 
 // C ref: dogmove.c:1371-1407 — can_reach_location(mon, mx, my, fx, fy)
@@ -1542,14 +1764,15 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player, fov = nul
                         const quan = obj.quan || 1;
                         if (carryamt > 0 && carryamt < quan) {
                             obj.quan = quan - carryamt;
+                            obj.owt = weight(obj);
                             // C ref: splitobj() allocates a new object, consuming
                             // next_ident() via newobj().
                             picked = { ...obj, quan: carryamt, o_id: next_ident() };
+                            picked.owt = weight(picked);
                         } else {
                             map.removeObject(obj);
                         }
-                        if (!mon.minvent) mon.minvent = [];
-                        mon.minvent.push(picked);
+                        addToMonsterInventory(mon, picked);
                         // C ref: dogmove.c "The <pet> picks up <obj>." when observed.
                         const canSeePet = display && player && (
                             fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my)
@@ -1577,7 +1800,9 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player, fov = nul
 // Called from gameLoop after hero action, BEFORE mcalcmove.
 export function movemon(map, player, display, fov, game = null) {
     if (game) game._suppressMonsterHitMessagesThisTurn = false;
+    if (map) map._heardDistantNoiseThisTurn = false;
     const turnCount = (player.turns || 0) + 1;
+    const replayStep = Number.isInteger(map?._replayStepIndex) ? map._replayStepIndex + 1 : '?';
     let anyMoved;
     do {
         anyMoved = false;
@@ -1596,6 +1821,7 @@ export function movemon(map, player, display, fov, game = null) {
                     `mndx=${mon.mndx ?? '?'}`,
                     `name=${mon.type?.name || mon.name || '?'}`,
                     `pos=(${oldx},${oldy})`,
+                    `mv=${mon.movement + NORMAL_SPEED}->${mon.movement}`,
                     `flee=${mon.flee ? 1 : 0}`,
                     `peace=${mon.peaceful ? 1 : 0}`,
                     `conf=${mon.confused ? 1 : 0}`);
@@ -2415,6 +2641,17 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
     // Collect valid positions (column-major order, no stay pos, boulder filter)
     const positions = mfndpos(mon, map, player);
     const cnt = positions.length;
+    monmoveTrace('dog_move-begin',
+        `step=${(Number.isInteger(map?._replayStepIndex) ? map._replayStepIndex + 1 : '?')}`,
+        `id=${mon.m_id ?? '?'}`,
+        `name=${mon.type?.name || mon.name || '?'}`,
+        `pos=(${omx},${omy})`,
+        `goal=(${gx},${gy})`,
+        `appr=${appr}`,
+        `udist=${udist}`,
+        `whappr=${whappr}`,
+        `cnt=${cnt}`,
+        `poss=${positions.map((p) => `(${p.x},${p.y})`).join(' ')}`);
     let nix = omx, niy = omy;
     let nidist = dist2(omx, omy, gx, gy);
     let chcnt = 0;
@@ -2707,6 +2944,15 @@ function dog_move(mon, map, player, display, fov, after = false, game = null) {
     // Move the dog
     // C ref: dogmove.c:1282-1327 — newdogpos label
     if (nix !== omx || niy !== omy) {
+        monmoveTrace('dog_move-pick',
+            `step=${(Number.isInteger(map?._replayStepIndex) ? map._replayStepIndex + 1 : '?')}`,
+            `id=${mon.m_id ?? '?'}`,
+            `name=${mon.type?.name || mon.name || '?'}`,
+            `from=(${omx},${omy})`,
+            `to=(${nix},${niy})`,
+            `chi=${chi}`,
+            `nidist=${nidist}`,
+            `do_eat=${do_eat ? 1 : 0}`);
         // Update track history (shift old positions, add current)
         // C ref: dogmove.c:1319 — mon_track_add(mtmp, omx, omy)
         if (mon.mtrack) {
@@ -2868,6 +3114,112 @@ function shk_move(mon, map, player) {
     return move_special(mon, map, player, inHisShop, appr, uondoor, avoid, gtx, gty);
 }
 
+// C ref: monmove.c m_move_aggress() — non-pet monster-vs-monster attack path.
+function m_move_aggress(mon, map, player, nx, ny, display = null, fov = null) {
+    const target = map.monsterAt(nx, ny);
+    if (!target || target === mon || target.dead) return false;
+
+    // C ref: defender is no longer asleep once combat begins.
+    if (target.sleeping) {
+        target.sleeping = false;
+        target.msleeping = false;
+    }
+
+    const attackerVisible = canSpotMonsterForMap(mon, map, player, fov);
+    const defenderVisible = canSpotMonsterForMap(target, map, player, fov);
+    const replayStep = Number.isInteger(map?._replayStepIndex) ? map._replayStepIndex + 1 : '?';
+    monmoveTrace('m_move_aggress',
+        `step=${replayStep}`,
+        `attacker=${mon.m_id ?? '?'}(${mon.type?.name || mon.name || '?'})`,
+        `defender=${target.m_id ?? '?'}(${target.type?.name || target.name || '?'})`,
+        `at=(${mon.mx},${mon.my})->(${target.mx},${target.my})`,
+        `vis=${attackerVisible || defenderVisible ? 1 : 0}`);
+    if (!attackerVisible && !defenderVisible && !player?.deaf) {
+        if (display?.putstr_message && !map?._heardDistantNoiseThisTurn) {
+            display.putstr_message('You hear some noises in the distance.');
+        }
+        if (map) map._heardDistantNoiseThisTurn = true;
+    }
+
+    const turnCount = (player.turns || 0) + 1;
+
+    const attk = (Array.isArray(mon.attacks) && mon.attacks.length > 0)
+        ? (mon.attacks.find((a) => a && a.type !== AT_NONE) || { type: AT_CLAW, dice: 1, sides: 1 })
+        : { type: AT_CLAW, dice: 1, sides: 1 };
+
+    const roll = rnd(20); // C ref: mhitm.c mattackm() to-hit roll.
+    const toHit = (target.mac ?? 10) + (mon.mlevel || 1);
+    const hit = toHit > roll;
+    let defenderDied = false;
+    if (hit) {
+        const dice = (attk && attk.dice) ? attk.dice : 1;
+        const sides = (attk && attk.sides) ? attk.sides : 1;
+        const dmg = c_d(Math.max(1, dice), Math.max(1, sides));
+        // C ref: mdamagem() knockback probes.
+        rn2(3);
+        rn2(6);
+        target.mhp -= Math.max(1, dmg);
+        if (target.mhp <= 0) {
+            target.dead = true;
+            if (typeof map.removeMonster === 'function') map.removeMonster(target);
+            defenderDied = true;
+        }
+        consumePassivemmRng(mon, target, true, defenderDied);
+    } else {
+        consumePassivemmRng(mon, target, false, false);
+    }
+
+    // C ref: monmove.c:2102-2111 — retaliation gate is based on hit+survival,
+    // rn2(4), and defender movement budget, without mlstmv/adjacency checks.
+    const retaliationRoll = (hit && !defenderDied) ? rn2(4) : 0;
+    const targetMove = Number(target.movement || 0);
+    const retaliationSpeedRoll = (hit && !defenderDied && retaliationRoll)
+        ? rn2(NORMAL_SPEED)
+        : 0;
+    monmoveTrace('m_move_aggress-retal-gate',
+        `step=${replayStep}`,
+        `attacker=${mon.m_id ?? '?'}`,
+        `defender=${target.m_id ?? '?'}`,
+        `hit=${hit ? 1 : 0}`,
+        `defenderDied=${defenderDied ? 1 : 0}`,
+        `retRoll=${retaliationRoll}`,
+        `targetMove=${targetMove}`,
+        `speedRoll=${retaliationSpeedRoll}`);
+    if (hit && !defenderDied
+        && retaliationRoll
+        && targetMove > retaliationSpeedRoll) {
+        monmoveTrace('m_move_aggress-retal',
+            `step=${replayStep}`,
+            `attacker=${mon.m_id ?? '?'}`,
+            `defender=${target.m_id ?? '?'}`,
+            `targetMove=${targetMove}`,
+            `turnCount=${turnCount}`);
+        if (targetMove > NORMAL_SPEED) target.movement = targetMove - NORMAL_SPEED;
+        else target.movement = 0;
+        const rattk = (Array.isArray(target.attacks) && target.attacks.length > 0)
+            ? (target.attacks.find((a) => a && a.type !== AT_NONE) || { type: AT_CLAW, dice: 1, sides: 1 })
+            : { type: AT_CLAW, dice: 1, sides: 1 };
+        const rroll = rnd(20);
+        const rtoHit = (mon.mac ?? 10) + (target.mlevel || 1);
+        const rhit = rtoHit > rroll;
+        if (rhit) {
+            const rdice = (rattk && rattk.dice) ? rattk.dice : 1;
+            const rsides = (rattk && rattk.sides) ? rattk.sides : 1;
+            const rdmg = c_d(Math.max(1, rdice), Math.max(1, rsides));
+            rn2(3);
+            rn2(6);
+            mon.mhp -= Math.max(1, rdmg);
+            const attackerDied = mon.mhp <= 0;
+            if (attackerDied) mon.dead = true;
+            consumePassivemmRng(target, mon, true, attackerDied);
+        } else {
+            consumePassivemmRng(target, mon, false, false);
+        }
+    }
+
+    return true;
+}
+
 // C ref: monmove.c m_move() — uses mfndpos + C-faithful position evaluation
 // Key differences from dog_move:
 //   - Position eval: first valid pos accepted (mmoved), then only strictly nearer
@@ -2925,6 +3277,10 @@ function m_move(mon, map, player, display = null, fov = null) {
     if (mon.peaceful) {
         appr = 0;
     }
+    // C ref: monmove.c leppie_avoidance() — rich leprechauns avoid hero.
+    if (appr === 1 && leppie_avoidance(mon, player)) {
+        appr = -1;
+    }
 
     // C ref: monmove.c:1880-1886 — when monster can't currently see where it
     // thinks the hero is, tracking monsters follow recent player trail.
@@ -2947,10 +3303,22 @@ function m_move(mon, map, player, display = null, fov = null) {
         if (appr !== 1 || !inLine) getitems = true;
     }
     if (getitems) {
-        const searchState = m_search_items_goal(mon, map, ggx, ggy, appr);
+        const replayStep = Number.isInteger(map?._replayStepIndex) ? map._replayStepIndex + 1 : '?';
+        const apprBeforeSearch = appr;
+        const ggxBeforeSearch = ggx;
+        const ggyBeforeSearch = ggy;
+        const searchState = m_search_items_goal(mon, map, player, fov, ggx, ggy, appr);
         ggx = searchState.ggx;
         ggy = searchState.ggy;
         appr = searchState.appr;
+        monmoveTrace('m_move-search',
+            `step=${replayStep}`,
+            `id=${mon.m_id ?? '?'}`,
+            `name=${mon.type?.name || mon.name || '?'}`,
+            `mux=(${mon.mux ?? '?'},${mon.muy ?? '?'})`,
+            `from=(${ggxBeforeSearch},${ggyBeforeSearch})`,
+            `to=(${ggx},${ggy})`,
+            `appr=${apprBeforeSearch}->${appr}`);
         if (searchState.done) {
             mon._mMoveDone = true;
             return false;
@@ -2960,6 +3328,7 @@ function m_move(mon, map, player, display = null, fov = null) {
     // Collect valid positions via mfndpos (column-major, NODIAG, boulder filter)
     const positions = mfndpos(mon, map, player, { allowDoorOpen: can_open, allowDoorUnlock: can_unlock });
     const cnt = positions.length;
+    const replayStep = Number.isInteger(map?._replayStepIndex) ? map._replayStepIndex + 1 : '?';
     const posSummary = positions.map((p) => `(${p.x},${p.y})`).join(' ');
     const trackSummary = Array.isArray(mon.mtrack)
         ? mon.mtrack.map((t) => `(${t?.x ?? '?'},${t?.y ?? '?'})`).join(' ')
@@ -2971,6 +3340,7 @@ function m_move(mon, map, player, display = null, fov = null) {
         `name=${mon.type?.name || mon.name || '?'}`,
         `pos=(${omx},${omy})`,
         `target=(${ggx},${ggy})`,
+        `mux=(${mon.mux ?? '?'},${mon.muy ?? '?'})`,
         `mcansee=${mon.mcansee === false ? 0 : 1}`,
         `blind=${mon.blind ? 1 : 0}`,
         `shouldSee=${should_see ? 1 : 0}`,
@@ -2979,9 +3349,12 @@ function m_move(mon, map, player, display = null, fov = null) {
         `cnt=${cnt}`,
         `poss=${posSummary}`,
         `track=${trackSummary}`);
-    const maybeTeleportAfterFailedMove = () => {
-        // C ref: monmove.c fallback path can call rloc() for teleporting monsters.
-        if (!can_teleport(ptr) || (map.flags && map.flags.noteleport)) return false;
+    const tryUnicornFallbackTeleport = () => {
+        const isUnicorn = mon.mndx === PM_WHITE_UNICORN
+            || mon.mndx === PM_GRAY_UNICORN
+            || mon.mndx === PM_BLACK_UNICORN;
+        // C ref: monmove.c no-move fallback only teleports unicorns, 50% chance.
+        if (!isUnicorn || rn2(2) || (map.flags && map.flags.noteleport)) return false;
         for (let tries = 0; tries < 200; tries++) {
             const nx = rnd(COLNO - 1);
             const ny = rn2(ROWNO);
@@ -2995,7 +3368,7 @@ function m_move(mon, map, player, display = null, fov = null) {
         }
         return false;
     };
-    if (cnt === 0) return maybeTeleportAfterFailedMove(); // no valid positions
+    if (cnt === 0) return tryUnicornFallbackTeleport();
 
     // ========================================================================
     // Position evaluation — C-faithful m_move logic
@@ -3007,6 +3380,7 @@ function m_move(mon, map, player, display = null, fov = null) {
     let nix = omx, niy = omy;
     let nidist = dist2(omx, omy, ggx, ggy);
     let chcnt = 0;
+    let chosenIdx = -1;
     let mmoved = false; // C: mmoved = MMOVE_NOTHING
     const jcnt = Math.min(MTSZ, cnt - 1);
     // C ref: monmove.c:1938-1941 — shortsighted levels make distant hostiles
@@ -3031,13 +3405,6 @@ function m_move(mon, map, player, display = null, fov = null) {
         // C ref: monmove.c:1959-1961 — ALLOW_MDISP squares may be skipped
         // before mtrack checks, but they still contribute to cnt.
         if (positions[i].allowMDisp && !positions[i].allowM && !betterWithDisplacing) continue;
-
-        // C ref: monmove.c undesirable_disp()/trap avoidance —
-        // monsters usually avoid harmful known traps (39/40 chance).
-        if (positions[i].allowTraps) {
-            const trap = map.trapAt(nx, ny);
-            if (trap && trap.tseen && rn2(40)) continue;
-        }
 
         // Track backtracking avoidance
         // C ref: monmove.c — only check when appr != 0
@@ -3084,10 +3451,21 @@ function m_move(mon, map, player, display = null, fov = null) {
             nix = nx;
             niy = ny;
             nidist = ndist;
+            chosenIdx = i;
             mmoved = true;
         }
     }
-    if (!mmoved && maybeTeleportAfterFailedMove()) return true;
+    if (!mmoved && tryUnicornFallbackTeleport()) return true;
+
+    if (mmoved && chosenIdx >= 0) {
+        const chosen = positions[chosenIdx];
+        const attacksMonster = !!chosen.allowM
+            || (nix === (mon.mux ?? -1) && niy === (mon.muy ?? -1));
+        if (attacksMonster && m_move_aggress(mon, map, player, nix, niy, display, fov)) {
+            mon._mMoveDone = true; // C MMOVE_DONE path: acted without relocating.
+            return false;
+        }
+    }
 
     // Move the monster
     if (nix !== omx || niy !== omy) {
