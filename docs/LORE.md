@@ -543,6 +543,16 @@ invalid keys:
 Practical rule: keep this split in command handling and tests; collapsing both
 cases to `Never mind.` regresses non-wizard tourist session parity.
 
+### Sparse move key + Enter can imply run-style south in replay captures
+
+Some keylog-derived gameplay captures include a zero-RNG `move-*` byte with an
+empty topline immediately before an Enter step whose RNG starts with
+`distfleeck`. In these cases, replay alignment can require treating that Enter
+as run-style south movement for parity with C turn consumption.
+
+Practical rule: in replay, detect this exact sparse-move/Enter pattern and set
+a narrow replay flag so Enter follows run-style handling only for that step.
+
 ---
 
 ## Phase Chronicles

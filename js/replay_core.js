@@ -1070,6 +1070,20 @@ export async function replaySession(seed, session, opts = {}) {
         const stepFirstRng = ((step.rng || []).find((e) =>
             typeof e === 'string' && !e.startsWith('>') && !e.startsWith('<')
         ) || '');
+        const prevStep = stepIndex > 0 ? allSteps[stepIndex - 1] : null;
+        const prevStepScreen = prevStep ? getSessionScreenLines(prevStep) : [];
+        const prevStepSparseMove = !!(prevStep
+            && typeof prevStep.action === 'string'
+            && prevStep.action.startsWith('move-')
+            && ((prevStep.rng && prevStep.rng.length) || 0) === 0
+            && String(prevStepScreen[0] || '').trim() === ''
+            && typeof prevStep.key === 'string'
+            && prevStep.key.length === 1);
+        const forceReplayEnterRun = !pendingCommand
+            && (step.key === '\n' || step.key === '\r')
+            && stepFirstRng.includes('distfleeck(')
+            && prevStepSparseMove;
+        game._replayForceEnterRun = forceReplayEnterRun;
 
         // Some sparse keylog captures defer a movement turn's RNG to the next
         // keypress (typically SPACE used as acknowledgement). Re-run the
@@ -1552,7 +1566,6 @@ export async function replaySession(seed, session, opts = {}) {
             game.multi = 0;
             return true;
         };
-
         if (pendingCommand) {
             const priorPendingKind = pendingKind;
             const pendingScreenBeforeInput = (opts.captureScreens && game?.display?.getScreenLines)

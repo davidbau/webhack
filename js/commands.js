@@ -262,7 +262,8 @@ export async function rhack(ch, game) {
         const southMon = map.monsterAt(southX, southY);
         const noExplicitCount = (game.commandCount || 0) === 0 && (game.multi || 0) === 0;
         const runDisplaceFlow = noExplicitCount && !!southMon && (southMon.tame || southMon.peaceful);
-        if (runDisplaceFlow) {
+        const replayForcedRun = noExplicitCount && !!game._replayForceEnterRun;
+        if (runDisplaceFlow || replayForcedRun) {
             return await handleRun(DIRECTION_KEYS.j, player, map, display, fov, game);
         }
         return await handleMovement(DIRECTION_KEYS.j, player, map, display, game);
