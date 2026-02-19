@@ -116,44 +116,9 @@ function canSpotMonsterForMap(mon, map, player, fov) {
 }
 
 
-// ========================================================================
-// Player track — C ref: track.c
-// Circular buffer recording player positions for pet pathfinding.
-// ========================================================================
-const UTSZ = 100;         // C ref: track.c — track buffer size
-let _utrack = new Array(UTSZ).fill(null).map(() => ({ x: 0, y: 0 }));
-let _utcnt = 0;
-let _utpnt = 0;
-
-export function initrack() {
-    _utrack = new Array(UTSZ).fill(null).map(() => ({ x: 0, y: 0 }));
-    _utcnt = 0;
-    _utpnt = 0;
-}
-
-// C ref: track.c settrack() — record player position (called after movemon, before moves++)
-export function settrack(player) {
-    if (_utcnt < UTSZ) _utcnt++;
-    if (_utpnt === UTSZ) _utpnt = 0;
-    _utrack[_utpnt].x = player.x;
-    _utrack[_utpnt].y = player.y;
-    _utpnt++;
-}
-
-// C ref: track.c gettrack() — find most recent track entry adjacent to (x,y)
-// Returns the track entry if distmin=1 (adjacent), null if distmin=0 (same pos) or not found.
-function gettrack(x, y) {
-    let cnt = _utcnt;
-    let idx = _utpnt;
-    while (cnt-- > 0) {
-        if (idx === 0) idx = UTSZ - 1;
-        else idx--;
-        const tc = _utrack[idx];
-        const ndist = Math.max(Math.abs(x - tc.x), Math.abs(y - tc.y)); // distmin
-        if (ndist <= 1) return ndist ? tc : null;
-    }
-    return null;
-}
+// Player track — imported from track.js (C ref: track.c)
+import { initrack, settrack, gettrack } from './track.js';
+export { initrack, settrack };
 
 // C direction tables (C ref: monmove.c)
 const xdir = [0, 1, 1, 1, 0, -1, -1, -1];

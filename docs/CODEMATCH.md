@@ -146,7 +146,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | teleport.c | — | Teleportation |
 | `[ ]` | timeout.c | — | Timer-based effects |
 | `[~]` | topten.c | topten.js | High score table |
-| `[ ]` | track.c | — | Player tracking for pets. JS: in `monmove.js` |
+| `[p]` | track.c | track.js | Player tracking for pets. save/rest not yet implemented |
 | `[ ]` | trap.c | — | Trap mechanics |
 | `[~]` | u_init.c | u_init.js | Player initialization |
 | `[ ]` | uhitm.c | — | Player-vs-monster combat. JS: partially in `combat.js` |
