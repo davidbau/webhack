@@ -1572,10 +1572,10 @@ export async function replaySession(seed, session, opts = {}) {
             // immediately after input, but can take a few ticks. Poll briefly
             // to avoid shifting subsequent keystrokes across steps.
             let settled = { done: false };
-            for (let attempt = 0; attempt < 6 && !settled.done; attempt++) {
+            for (let attempt = 0; attempt < 2 && !settled.done; attempt++) {
                 settled = await Promise.race([
                     pendingCommand.then(v => ({ done: true, value: v })),
-                    new Promise(resolve => setTimeout(() => resolve({ done: false }), 5)),
+                    new Promise(resolve => setTimeout(() => resolve({ done: false }), 1)),
                 ]);
             }
             if (!settled.done) {
@@ -1651,7 +1651,7 @@ export async function replaySession(seed, session, opts = {}) {
                         const passthroughPromise = rhack(passthroughCh, game);
                         const settledPassthrough = await Promise.race([
                             passthroughPromise.then(v => ({ done: true, value: v })),
-                            new Promise(resolve => setTimeout(() => resolve({ done: false }), 5)),
+                            new Promise(resolve => setTimeout(() => resolve({ done: false }), 1)),
                         ]);
                         if (!settledPassthrough.done) {
                             if (opts.captureScreens) {
@@ -1738,7 +1738,7 @@ export async function replaySession(seed, session, opts = {}) {
             const commandPromise = rhack(execCh, game);
             const settled = await Promise.race([
                 commandPromise.then(v => ({ done: true, value: v })),
-                new Promise(resolve => setTimeout(() => resolve({ done: false }), 5)),
+                new Promise(resolve => setTimeout(() => resolve({ done: false }), 1)),
             ]);
             if (!settled.done) {
                 // Inventory display: keep menu pending so the next real key

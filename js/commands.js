@@ -2131,10 +2131,30 @@ async function handleEat(player, display, game) {
                 display.putstr_message('You cannot eat that!');
                 return { moved: false, tookTime: false };
             }
-            if (typeof display.clearRow === 'function') display.clearRow(0);
-            display.topMessage = null;
-            display.messageNeedsMore = false;
-            display.putstr_message("You don't have that object.");
+            // C tty parity: invalid selector stays in modal getobj flow with a
+            const moreStr = '--More--';
+            const renderNoObjectMore = () => {
+                if (typeof display.clearRow === 'function') display.clearRow(0);
+                display.topMessage = null;
+                display.messageNeedsMore = false;
+                display.putstr_message("You don't have that object.");
+                if (typeof display.putstr === 'function' && Number.isInteger(display.cols)) {
+                    const msg = String(display.topMessage || "You don't have that object.");
+                    const col = Math.min(msg.length, Math.max(0, display.cols - moreStr.length));
+                    display.putstr(col, 0, moreStr);
+                }
+            };
+            renderNoObjectMore();
+            while (true) {
+                const ackCh = await nhgetch();
+                if (ackCh === 32 || ackCh === 10 || ackCh === 13 || ackCh === 27) {
+                    if (typeof display.clearRow === 'function') display.clearRow(0);
+                    display.topMessage = null;
+                    display.messageNeedsMore = false;
+                    break;
+                }
+                renderNoObjectMore();
+            }
             continue;
         }
         // C ref: eat.c doesplit() path for stacked comestibles:

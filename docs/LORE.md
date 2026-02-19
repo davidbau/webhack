@@ -480,6 +480,16 @@ one column and creates fake diffs.
 Practical rule: for mixed rows, apply col-0 compensation only to the left map
 segment and preserve right-side overlay text alignment.
 
+### `doeat` invalid object selection can stay in a sticky `--More--` loop
+
+In tourist non-wizard traces, invalid eat-object selection can present repeated
+`You don't have that object.--More--` frames across multiple non-space keys
+before returning to the `What do you want to eat?` prompt.
+
+Practical rule: model this as a modal no-object `--More--` loop in command
+logic (non-space keys keep the same `--More--` frame; space/enter/esc resume
+the eat prompt) rather than immediately reprompting.
+
 ---
 
 ## Phase Chronicles
