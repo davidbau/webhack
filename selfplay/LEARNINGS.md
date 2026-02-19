@@ -272,3 +272,26 @@
 
 - Net:
   - Rejected due train-set survival/depth regression despite holdout-side pet-churn and XP improvements.
+
+## 2026-02-19 - Rejected: Additional Pet-Loop Breakers (No Reliable Gain)
+
+- Variant A (Dlvl1 stair-stagnation escape):
+  - Policy:
+    - In `_shouldDescendStairs()`, force descent on Dlvl1 when XP remained very low and `petDisplacements` was high while HP stayed moderate.
+  - Quick triage (`Caveman 33`, `Healer 34`, `Tourist 41`, 600 turns):
+    - No meaningful behavior change vs baseline on these seeds (Tourist remained `maxXP=0`, `petSwap=98`).
+  - Net:
+    - Rejected (insufficient impact).
+
+- Variant B (short post-displacement flee cooldown):
+  - Policy:
+    - After confirmed pet displacement, temporarily bias lone Dlvl1 `d/f/C` encounters to flee for a few turns.
+  - Quick triage (`Caveman 33`, `Healer 34`, `Tourist 41`, 600 turns):
+    - Survived `3/3` (flat),
+    - Avg depth `1.000` (flat),
+    - XL2+ `0/3` (regression vs baseline `1/3`),
+    - XP avg `t600=5.67` (regression),
+    - petSwap `42.67` (improved vs `53.67` baseline subset),
+    - failedAdd `50.67` (regression vs subset baseline `38.33`).
+  - Net:
+    - Rejected (progression and churn regressions despite lower pet-swap count).
