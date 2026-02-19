@@ -9,8 +9,8 @@ checkpoints.
 This note began as a step-37 `m_move` denominator mismatch investigation.
 After the landed fixes below, that blocker is cleared. Current state:
 
-- first screen divergence now appears later at gameplay `step 181`
-  (post-turn glyph placement mismatch)
+- first screen divergence now appears later at gameplay `step 243`
+  (`Never mind.` vs `You don't find anything here to loot.`)
 - first RNG divergence now appears at gameplay `step 260`, RNG index `1157`:
   - JS: `rn2(3)=1 @ fill_ordinary_room(...)`
   - C: `rn2(5)=1 @ pick_room(mkroom.c:238)`
@@ -236,7 +236,37 @@ Validation:
   `23/23` screens, `552/552` colors).
 - `seed103_caveman_selfplay200.session.json`: pass.
 - `seed112_valkyrie_selfplay200.session.json`: pass.
-- `seed212_valkyrie_wizard.session.json`: unchanged current profile
-  (first RNG divergence step 260; first screen divergence step 181).
+- `seed212_valkyrie_wizard.session.json`: improved current profile
+  (first RNG divergence step 260; first screen divergence step 243).
 - `seed5_gnomish_mines_gameplay.session.json`: unchanged first divergence
   profile (screen step 46, RNG anchor step 205).
+
+## 2026-02-19 follow-up: replay prompt/menu parity pass
+
+Additional C-faithful replay/prompt fixes landed in `commands`/headless input:
+
+- `js/headless_runtime.js`: headless input now exposes the active display to
+  `nhgetch()`, so keypresses clear topline concatenation state (same as tty).
+- `js/commands.js` `handleFire()`:
+  - removed non-weapon wielded item from fire prompt candidates
+  - added C-style wielded-item confirmation prompt:
+    `You are wielding that.  Ready it instead? [ynq] (q)`
+- `js/commands.js` inventory submenu:
+  - added worn-armor action set with `T - Take off this armor`
+  - narrowed submenu row clearing and redraw order to preserve underlying map
+    rows while replacing inventory list rows.
+
+Observed effect on `seed212_valkyrie_wizard`:
+
+- screens matched: `248/407` -> `257/407`
+- colors matched: `7475/9768` -> `7494/9768`
+- first screen divergence: step `181` -> step `243`
+- first RNG divergence: unchanged at step `260`
+
+Regression anchors after this pass:
+
+- `seed42_items_gameplay.session.json`: pass (`3186/3186`, `23/23`, `552/552`)
+- `seed103_caveman_selfplay200.session.json`: pass
+- `seed112_valkyrie_selfplay200.session.json`: pass
+- `seed5_gnomish_mines_gameplay.session.json`: unchanged first-divergence
+  profile (`screen step 46`, `RNG step 205`)

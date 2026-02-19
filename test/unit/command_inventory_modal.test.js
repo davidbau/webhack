@@ -5,7 +5,7 @@ import { rhack } from '../../js/commands.js';
 import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
-import { COIN_CLASS, GOLD_PIECE, TOOL_CLASS, STETHOSCOPE, WEAPON_CLASS, SCALPEL, SPBOOK_CLASS, OIL_LAMP } from '../../js/objects.js';
+import { COIN_CLASS, GOLD_PIECE, TOOL_CLASS, STETHOSCOPE, WEAPON_CLASS, SCALPEL, SPBOOK_CLASS, OIL_LAMP, ARMOR_CLASS, SMALL_SHIELD } from '../../js/objects.js';
 
 function makeGame() {
     const map = new GameMap();
@@ -189,5 +189,33 @@ describe('inventory modal dismissal', () => {
         assert.ok(writes.some((w) => w.str.includes('Do what with the oil lamp?')));
         assert.ok(writes.some((w) => w.str.includes('a - Light this light source')));
         assert.ok(writes.some((w) => w.str.includes('R - Rub this oil lamp')));
+    });
+
+    it('shows take-off action for worn armor item submenu', async () => {
+        const { game } = makeGame();
+        const shield = {
+            oclass: ARMOR_CLASS,
+            otyp: SMALL_SHIELD,
+            invlet: 'c',
+            quan: 1,
+            name: 'small shield',
+        };
+        game.player.inventory = [shield];
+        game.player.shield = shield;
+        const writes = [];
+        game.display.putstr = function putstr(col, row, str, color, attr) {
+            writes.push({ col, row, str, color, attr });
+        };
+        game.display.clearRow = function clearRow() {};
+
+        pushInput('c'.charCodeAt(0));
+        pushInput(' '.charCodeAt(0));
+        const result = await rhack('i'.charCodeAt(0), game);
+        assert.equal(result.tookTime, false);
+        assert.ok(writes.some((w) => w.str.includes('Do what with the small shield?')));
+        assert.ok(writes.some((w) => w.str.includes('i - Adjust inventory by assigning new letter')));
+        assert.ok(writes.some((w) => w.str.includes('T - Take off this armor')));
+        assert.ok(writes.some((w) => w.str.includes('/ - Look up information about this')));
+        assert.ok(!writes.some((w) => w.str.includes('d - Drop this item')));
     });
 });

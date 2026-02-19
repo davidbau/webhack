@@ -348,6 +348,27 @@ movement are aligned.
 Practical rule: when screen divergence appears on an item-action frame, diff
 the exact action list and row-clearing behavior before touching turn logic.
 
+### Headless `nhgetch()` must see display state to avoid fake prompt concatenation
+
+`nhgetch()` clears topline concatenation state (`messageNeedsMore`) on keypress.
+If headless input returns `getDisplay() = null`, prompt loops can concatenate
+identical prompts (`X  X`) in replay even when command logic is otherwise
+correct.
+
+Practical rule: always bind headless input runtime to the active display so
+keypress acknowledgment semantics match tty behavior.
+
+### `f`ire prompt parity depends on wielded-item flow
+
+`dofire()` is not equivalent to "accept any inventory letter then ask
+direction." Wielded-item selection can require a confirmation prompt (`Ready it
+instead?`) and some held items should not appear in the initial fire-choice
+list.
+
+Practical rule: treat fire-prompt candidate filtering and wielded-item prompts
+as behavioral parity, not UI polish; they gate subsequent input parsing and can
+shift replay screens long before RNG divergence.
+
 ### M2_COLLECT does not imply gold-targeting in monster item search
 
 In C `mon_would_take_item`, monsters only path toward `GOLD_PIECE` when their

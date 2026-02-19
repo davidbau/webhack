@@ -1559,6 +1559,14 @@ async function handleInventory(player, display, game) {
                 || lowerBaseName === 'tallow candle'
             );
             const isRubbableLamp = (lowerBaseName === 'oil lamp' || lowerBaseName === 'magic lamp');
+            const isWornArmor = (
+                selected === player.armor
+                || selected === player.shield
+                || selected === player.helmet
+                || selected === player.gloves
+                || selected === player.boots
+                || selected === player.cloak
+            );
             let menuOffx = 34;
             if (typeof display.setCell === 'function'
                 && Number.isInteger(display.cols)
@@ -1568,12 +1576,6 @@ async function handleInventory(player, display, game) {
                     if (line.length > maxcol) maxcol = line.length;
                 }
                 menuOffx = Math.max(10, Math.min(41, display.cols - maxcol - 2));
-                const menuRows = Math.min(lines.length, STATUS_ROW_1);
-                for (let r = 0; r < menuRows; r++) {
-                    for (let col = menuOffx; col < display.cols; col++) {
-                        display.setCell(col, r, ' ', 7, 0);
-                    }
-                }
             }
             const rawActions = ((selected.quan || 1) > 1)
                 ? [
@@ -1611,7 +1613,15 @@ async function handleInventory(player, display, game) {
                         '/ - Look up information about this',
                         '(end)',
                     ]
-                    : (selected.oclass === WAND_CLASS
+                    : (isWornArmor
+                        ? [
+                            `c - Name this specific ${noun}`,
+                            'i - Adjust inventory by assigning new letter',
+                            'T - Take off this armor',
+                            '/ - Look up information about this',
+                            '(end)',
+                        ]
+                        : (selected.oclass === WAND_CLASS
                         ? [
                             'a - Break this wand',
                             `c - Name this specific ${noun}`,
@@ -1641,7 +1651,7 @@ async function handleInventory(player, display, game) {
                         'w - Wield this item in your hands',
                         '/ - Look up information about this',
                         '(end)',
-                    ])));
+                    ]))));
 
             const promptText = `Do what with the ${noun}?`;
             if (Number.isInteger(display.cols)) {
@@ -1649,7 +1659,23 @@ async function handleInventory(player, display, game) {
                 menuOffx = Math.max(10, Math.min(41, display.cols - maxAction - 2));
             }
             const pad = ' '.repeat(menuOffx);
+            const stackActions = rawActions.map((line) => `${pad}${line}`);
             const actionPrompt = `${pad}${promptText}`;
+            if (game && typeof game.renderCurrentScreen === 'function') {
+                game.renderCurrentScreen();
+            }
+            if (typeof display.setCell === 'function'
+                && Number.isInteger(display.cols)
+                && Number.isInteger(display.rows)) {
+                // Clear only the rows we will repaint for this submenu so
+                // underlying map glyphs below remain visible, matching tty flow.
+                const maxActionRow = Math.min(STATUS_ROW_1 - 1, stackActions.length + 1);
+                for (let r = 0; r <= maxActionRow; r++) {
+                    for (let col = menuOffx; col < display.cols; col++) {
+                        display.setCell(col, r, ' ', 7, 0);
+                    }
+                }
+            }
             if (typeof display.putstr === 'function' && typeof display.clearRow === 'function') {
                 display.clearRow(0);
                 display.putstr(0, 0, pad, 7, 0);
@@ -1659,7 +1685,6 @@ async function handleInventory(player, display, game) {
             } else {
                 display.putstr_message(actionPrompt);
             }
-            const stackActions = rawActions.map((line) => `${pad}${line}`);
             if (typeof display.putstr === 'function') {
                 for (let i = 0; i < stackActions.length; i++) {
                     if (typeof display.clearRow === 'function') display.clearRow(i + 2);
@@ -2370,12 +2395,6 @@ async function handleFire(player, display) {
             fireLetters.push(item.invlet);
         }
     }
-    if (player.weapon
-        && player.weapon.oclass !== WEAPON_CLASS
-        && inventory.includes(player.weapon)
-        && player.weapon.invlet) {
-        fireLetters.push(player.weapon.invlet);
-    }
     if (fireLetters.length === 0) {
         const coinItem = inventory.find((item) => item?.invlet === '$' || item?.oclass === COIN_CLASS);
         if (coinItem?.invlet) {
@@ -2410,6 +2429,22 @@ async function handleFire(player, display) {
         if (c === '?' || c === '*') continue;
         const selected = inventory.find((item) => item?.invlet === c);
         if (selected) {
+            // C ref: dothrow.c dofire() asks before reusing the currently wielded
+            // item as ready ammo.
+            if (selected === player.weapon) {
+                replacePromptMessage();
+                display.putstr_message('You are wielding that.  Ready it instead? [ynq] (q)');
+                while (true) {
+                    const ans = await nhgetch();
+                    const a = String.fromCharCode(ans).toLowerCase();
+                    if (ans === 27 || ans === 10 || ans === 13 || a === ' ' || a === 'q' || a === 'n') {
+                        replacePromptMessage();
+                        display.putstr_message(`Your ${selected.name} remains wielded.`);
+                        return { moved: false, tookTime: false };
+                    }
+                    if (a === 'y') break;
+                }
+            }
             // C ref: selecting an item to fire updates the readied quiver item
             // even if the subsequent direction prompt is canceled.
             player.quiver = selected;

@@ -160,6 +160,7 @@ export function createHeadlessInput({ throwOnEmpty = false } = {}) {
     const queue = [];
     let resolver = null;
     return {
+        display: null,
         pushInput(ch) {
             if (resolver) {
                 const resolve = resolver;
@@ -172,8 +173,11 @@ export function createHeadlessInput({ throwOnEmpty = false } = {}) {
         clearInputQueue() {
             queue.length = 0;
         },
+        setDisplay(display) {
+            this.display = display || null;
+        },
         getDisplay() {
-            return null;
+            return this.display;
         },
         pushKey(ch) {
             this.pushInput(ch);
@@ -369,6 +373,9 @@ export class HeadlessGame {
         initExerciseState(this.player);
         this.map = map;
         this.display = new HeadlessDisplay();
+        if (typeof this.input.setDisplay === 'function') {
+            this.input.setDisplay(this.display);
+        }
         this.fov = new FOV();
         const depth = this.player?.dungeonLevel || 1;
         this.levels = { [depth]: map };
