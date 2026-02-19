@@ -385,3 +385,36 @@ Date: 2026-02-19 (runmode-delay sparse-boundary deferral)
   conditionals were added.
 - The remaining frontier is now the dog-goal sequencing mismatch at step `465`
   (`rn2(4)` value path), downstream of the corrected sparse boundary.
+
+---
+
+Date: 2026-02-19 (stacked sparse-boundary carry fix)
+
+## Additional Progress
+
+- Replay sparse-boundary carry logic now preserves multiple carried RNG chunks
+  that target the same future step (append-in-order instead of overwrite).
+- This fixes a concrete seed5 failure mode where:
+  - step `462` deferred 32 comparable RNG calls to step `464`,
+  - step `463` deferred another 28 calls to step `464`,
+  - and the second deferral previously replaced the first.
+
+## Validation Snapshot
+
+- `node --test test/unit/replay_sparse_boundary_seed110.test.js` pass.
+  - Added seed5 assertion for full comparable parity at step `464`.
+- Seed5 strict profile improved:
+  - RNG matched `17563 -> 17622`,
+  - first comparable RNG drift moved from step `465` to step `539`.
+- Guard sessions remain stable:
+  - `seed103_caveman_selfplay200` pass,
+  - `seed112_valkyrie_selfplay200` pass,
+  - `seed42_items_gameplay` pass,
+  - `seed110_samurai_selfplay200` pass.
+
+## Current Read
+
+- This removes a replay bookkeeping error (carry overwrite) rather than adding
+  behavioral branch exceptions.
+- Remaining drift is now later and appears to be a distinct gameplay-state
+  mismatch beyond sparse boundary attribution.

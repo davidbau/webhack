@@ -909,6 +909,21 @@ export async function replaySession(seed, session, opts = {}) {
     let deferredMoreBoundaryRng = [];
     let deferredMoreBoundaryTarget = null;
     let deferredMoreBoundarySource = null;
+    const deferMoreBoundaryRng = (remainderRaw, targetIdx, sourceIdx) => {
+        if (!Array.isArray(remainderRaw) || remainderRaw.length === 0) return;
+        // Multiple sparse boundary carries can target the same future step.
+        // Preserve source order by appending rather than replacing.
+        if (deferredMoreBoundaryTarget === targetIdx) {
+            deferredMoreBoundaryRng = deferredMoreBoundaryRng.concat(remainderRaw);
+            if (deferredMoreBoundarySource == null || sourceIdx < deferredMoreBoundarySource) {
+                deferredMoreBoundarySource = sourceIdx;
+            }
+            return;
+        }
+        deferredMoreBoundaryRng = remainderRaw;
+        deferredMoreBoundaryTarget = targetIdx;
+        deferredMoreBoundarySource = sourceIdx;
+    };
     const startTutorialLevel = () => {
         const tutorialAlign = Number.isInteger(opts.tutorialDungeonAlign)
             ? opts.tutorialDungeonAlign
@@ -989,9 +1004,7 @@ export async function replaySession(seed, session, opts = {}) {
                 // with the next step's first expected comparable RNG call.
                 if (firstRemainder && firstNextExpected
                     && rngCallPart(firstRemainder) === rngCallPart(firstNextExpected)) {
-                    deferredMoreBoundaryRng = remainderRaw;
-                    deferredMoreBoundaryTarget = targetIdx;
-                    deferredMoreBoundarySource = stepIndex;
+                    deferMoreBoundaryRng(remainderRaw, targetIdx, stepIndex);
                     raw = raw.slice(0, splitAt);
                     compact = compact.slice(0, splitAt);
                 } else if (firstRemainder && !firstNextExpected) {
@@ -1026,9 +1039,7 @@ export async function replaySession(seed, session, opts = {}) {
                     prefixLen++;
                 }
                 if (remCalls.length > 0 && prefixLen === remCalls.length) {
-                    deferredMoreBoundaryRng = remainderRaw;
-                    deferredMoreBoundaryTarget = stepIndex + 1;
-                    deferredMoreBoundarySource = stepIndex;
+                    deferMoreBoundaryRng(remainderRaw, stepIndex + 1, stepIndex);
                     raw = raw.slice(0, splitAt);
                     compact = compact.slice(0, splitAt);
                 } else if (remCalls.length > 0) {
@@ -1049,9 +1060,7 @@ export async function replaySession(seed, session, opts = {}) {
                     }
                     if (firstNextExpected
                         && remCalls[0] === rngCallPart(firstNextExpected)) {
-                        deferredMoreBoundaryRng = remainderRaw;
-                        deferredMoreBoundaryTarget = targetIdx;
-                        deferredMoreBoundarySource = stepIndex;
+                        deferMoreBoundaryRng(remainderRaw, targetIdx, stepIndex);
                         raw = raw.slice(0, splitAt);
                         compact = compact.slice(0, splitAt);
                     }
@@ -1215,7 +1224,6 @@ export async function replaySession(seed, session, opts = {}) {
             );
             continue;
         }
-
         // When deferred "--More--" boundary RNG is targeted at this step,
         // some logs use a raw space key solely as acknowledgement. Treat that
         // as an ack-only frame to avoid injecting an extra command side-effect.
