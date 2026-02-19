@@ -185,6 +185,9 @@ try {
     const attackPetClassLowXpDlvl1Turns = stats.attackPetClassLowXpDlvl1Turns ?? 0;
     const attackDogTurns = stats.attackDogTurns ?? 0;
     const attackDogLowXpDlvl1Turns = stats.attackDogLowXpDlvl1Turns ?? 0;
+    const lowXpDogLoopTurns = stats.lowXpDogLoopTurns ?? 0;
+    const lowXpDogLoopDoorAdjTurns = stats.lowXpDogLoopDoorAdjTurns ?? 0;
+    const attackLowXpDogLoopDoorAdjTurns = stats.attackLowXpDogLoopDoorAdjTurns ?? 0;
 
     runnerLog('');
     runnerLog(`Game ended after ${stats.turns} turns:`);
@@ -194,6 +197,7 @@ try {
     runnerLog(`  XP checkpoints: t100=${xpAt100} t200=${xpAt200} t400=${xpAt400} t600=${xpAt600}`);
     runnerLog(`  Action telemetry: attack=${attackTurns} flee=${fleeTurns} explore=${exploreTurns} navigate=${navigateTurns} search=${searchTurns} rest=${restTurnsTaken} wait=${waitTurns} pickup=${pickupTurns} xl1Attack=${progression.xl1AttackTurns} reallyAttack=${reallyAttackPrompts} petSwap=${petDisplacements} unknown=${unknownTurns}`);
     runnerLog(`  Attack target telemetry: petClass=${attackPetClassTurns} petClassLowXpDlvl1=${attackPetClassLowXpDlvl1Turns} dog=${attackDogTurns} dogLowXpDlvl1=${attackDogLowXpDlvl1Turns}`);
+    runnerLog(`  Dog loop telemetry: lowXpDogLoop=${lowXpDogLoopTurns} doorAdj=${lowXpDogLoopDoorAdjTurns} attackDoorAdj=${attackLowXpDogLoopDoorAdjTurns}`);
     runnerLog(`  Explore telemetry: assign=${stats.targetAssignments ?? 0} reassign=${stats.targetReassignments ?? 0} complete=${stats.targetCompletions ?? 0} abandonInvalid=${stats.targetAbandonsInvalid ?? 0} abandonNoPath=${stats.targetAbandonsNoPath ?? 0} abandonNoProgress=${stats.targetAbandonsNoProgress ?? 0} failedAdd=${stats.failedTargetAdds ?? 0} failedClear=${stats.failedTargetClears ?? 0} frontierResets=${stats.systematicFrontierResets ?? 0} doorOpen=${stats.doorOpenAttempts ?? 0} doorKick=${stats.doorKickAttempts ?? 0}`);
     if (finalStatus) {
         const hunger = finalStatus.fainting ? 'fainting'

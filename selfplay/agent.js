@@ -127,6 +127,9 @@ export class Agent {
             attackPetClassLowXpDlvl1Turns: 0,
             attackDogTurns: 0,
             attackDogLowXpDlvl1Turns: 0,
+            lowXpDogLoopTurns: 0,
+            lowXpDogLoopDoorAdjTurns: 0,
+            attackLowXpDogLoopDoorAdjTurns: 0,
             died: false,
             deathCause: '',
             targetAssignments: 0,
@@ -236,6 +239,21 @@ export class Agent {
         }
         if (walkable.length === 0) return null;
         return walkable[Math.floor(this._rng() * walkable.length)];
+    }
+
+    _countAdjacentClosedOrLockedDoors(level, px, py) {
+        const adjacent = [
+            { x: px, y: py - 1 },
+            { x: px, y: py + 1 },
+            { x: px - 1, y: py },
+            { x: px + 1, y: py },
+        ];
+        let count = 0;
+        for (const p of adjacent) {
+            const cell = level.at(p.x, p.y);
+            if (cell && (cell.type === 'door_closed' || cell.type === 'door_locked')) count++;
+        }
+        return count;
     }
 
     /**
@@ -1283,10 +1301,23 @@ export class Agent {
             // Assess danger and decide whether to engage
             const playerLevel = this.status?.experienceLevel || 1;
             const dungeonLevel = this.status?.dungeonLevel || 1;
+            const xpPoints = this.status?.xpPoints || 0;
 
             // Count nearby monsters (excluding the adjacent one)
             const nearbyMonsters = findMonsters(this.screen);
             const nearbyCount = countNearbyMonsters(nearbyMonsters, px, py, 3) - 1; // -1 to exclude adjacent monster
+            const lowXpDogLoopContext =
+                adjacentMonster.ch === 'd' &&
+                dungeonLevel === 1 &&
+                playerLevel <= 1 &&
+                xpPoints === 0 &&
+                nearbyCount === 0;
+            let adjacentBlockedDoorCount = 0;
+            if (lowXpDogLoopContext) {
+                this.stats.lowXpDogLoopTurns++;
+                adjacentBlockedDoorCount = this._countAdjacentClosedOrLockedDoors(level, px, py);
+                if (adjacentBlockedDoorCount > 0) this.stats.lowXpDogLoopDoorAdjTurns++;
+            }
 
             // Check if we're in a corridor (tactical advantage)
             const inCorridor = false; // Corridor following removed due to exploration regression
@@ -1324,6 +1355,9 @@ export class Agent {
                     const key = DIR_KEYS[`${dx},${dy}`];
                     if (key) {
                         this._recordAttackTarget(adjacentMonster.ch);
+                        if (lowXpDogLoopContext && adjacentBlockedDoorCount > 0) {
+                            this.stats.attackLowXpDogLoopDoorAdjTurns++;
+                        }
                         this.fleeLoopCounter = 0; // Reset counter
                         this.lastFleePosition = null;
                         return { type: 'attack', key, reason: `breaking flee loop by fighting ${adjacentMonster.ch}` };
@@ -1343,6 +1377,9 @@ export class Agent {
                 const key = DIR_KEYS[`${dx},${dy}`];
                 if (key) {
                     this._recordAttackTarget(adjacentMonster.ch);
+                    if (lowXpDogLoopContext && adjacentBlockedDoorCount > 0) {
+                        this.stats.attackLowXpDogLoopDoorAdjTurns++;
+                    }
                     return { type: 'attack', key, reason: `forced to fight ${adjacentMonster.ch} (cornered)` };
                 }
             } else if (engagement.shouldEngage) {
@@ -1352,6 +1389,9 @@ export class Agent {
                 const key = DIR_KEYS[`${dx},${dy}`];
                 if (key) {
                     this._recordAttackTarget(adjacentMonster.ch);
+                    if (lowXpDogLoopContext && adjacentBlockedDoorCount > 0) {
+                        this.stats.attackLowXpDogLoopDoorAdjTurns++;
+                    }
                     return { type: 'attack', key, reason: engagement.reason };
                 }
             }

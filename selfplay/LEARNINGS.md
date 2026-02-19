@@ -420,3 +420,38 @@
       - `XL2+` dropped to `0/4` (vs baseline subset `1/4`).
   - Net:
     - Rejected (major progression regression).
+
+## 2026-02-19 - Keep: Dog-Loop Door-Opportunity Telemetry
+
+- Change:
+  - `selfplay/agent.js` now tracks three additional counters:
+    - `lowXpDogLoopTurns`: turns with lone adjacent `d` while `Dlvl1`, `XL1`, `XP=0`.
+    - `lowXpDogLoopDoorAdjTurns`: subset of those turns with adjacent cardinal `door_closed/door_locked`.
+    - `attackLowXpDogLoopDoorAdjTurns`: subset where the chosen action was `attack`.
+  - `selfplay/runner/c_runner.js` emits:
+    - `Dog loop telemetry: lowXpDogLoop=... doorAdj=... attackDoorAdj=...`.
+  - `selfplay/runner/c_role_matrix.js` parses and summarizes these fields.
+
+- Why:
+  - We tested door-prioritization variants for low-XP dog loops, but lacked direct evidence of how often door opportunities actually co-occurred with loop turns.
+  - This telemetry separates:
+    - loop prevalence,
+    - door-opportunity prevalence,
+    - attack decisions made despite such opportunities.
+
+- Evidence (holdout `31..43`, 600 turns):
+  - Core metrics unchanged vs baseline:
+    - survived `13/13`, avg depth `1.462`, XL2+ `1/13`, XP t600 avg `8.23`.
+  - New dog-loop telemetry:
+    - avg `lowXpDogLoop=41.62`,
+    - avg `doorAdj=0.15`,
+    - avg `attackDoorAdj=0.15`.
+  - Key seeds:
+    - Tourist 41: `lowXpDogLoop=272`, `doorAdj=2`, `attackDoorAdj=2`, `maxXP=0`.
+    - Samurai 40: `142/0/0`, `maxXP=2`.
+    - Valkyrie 42: `88/0/0`, `maxXP=5`.
+
+- Learning:
+  - Severe low-XP dog loops are common, but they almost never coincide with adjacent closed/locked doors.
+  - This suggests door-first dog-loop interventions have limited headroom in current failure cases.
+  - Next policy work should target non-door loop escape/progression mechanisms.
