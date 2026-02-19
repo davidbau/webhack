@@ -78,6 +78,9 @@ comparison orchestration.
 - Replay/comparison harness owns input driving, capture, normalization, and diff reporting.
 - If replay needs a special case, prefer a generic capture policy (for example,
   display-only acknowledgement frames) over per-command behavior forks.
+- For gameplay screen text diffs, prefer ANSI-cell-derived plain rows when ANSI
+  capture is available; keep DECgraphics decoding scoped to map segments so
+  overlay/menu text is not rewritten by harness normalization.
 
 ### Session Tests In Detail
 

@@ -31,7 +31,7 @@ import {
     findFirstGridDiff,
 } from './comparators.js';
 import { loadAllSessions, stripAnsiSequences, getSessionScreenAnsiLines } from './session_loader.js';
-import { decodeDecSpecialChar, normalizeSymsetLine } from './symset_normalization.js';
+import { decodeDecSpecialChar } from './symset_normalization.js';
 import {
     createSessionResult,
     recordRng,
@@ -179,8 +179,7 @@ function prependAnsiMapSegmentOnly(line) {
     });
 }
 
-function normalizeGameplayScreenLines(lines, session, { captured = false, prependCol0 = true } = {}) {
-    const decgraphics = session?.meta?.options?.symset === 'DECgraphics';
+function normalizeGameplayScreenLines(lines, { captured = false, prependCol0 = true } = {}) {
     return (Array.isArray(lines) ? lines : []).map((line, row) => {
         let out = String(line || '').replace(/\r$/, '').replace(/[\x0e\x0f]/g, '');
         if (captured && prependCol0 && row >= 1 && row <= 21) {
@@ -197,24 +196,63 @@ function normalizeGameplayScreenLines(lines, session, { captured = false, prepen
                 out = ` ${out}`;
             }
         }
-        if (decgraphics && row >= 1 && row <= 21) {
-            out = normalizeSymsetLine(out, { decGraphics: true });
-        }
         return out;
     });
 }
 
-function compareGameplayScreens(actualLines, expectedLines, session) {
-    const normalizedActual = normalizeGameplayScreenLines(actualLines, session, {
-        captured: false,
-        prependCol0: false,
+function ansiCellsToPlainLine(line) {
+    return ansiLineToCells(line).map((cell) => cell?.ch || ' ').join('');
+}
+
+function decodeDecMapSegment(line, row, overlaySource = line) {
+    const out = String(line || '');
+    if (row < 1 || row > 21) return out;
+    const textCol = detectOverlayTextColumn(overlaySource);
+    if (Number.isInteger(textCol)) {
+        const left = [...out.slice(0, textCol)].map((ch) => decodeDecSpecialChar(ch)).join('');
+        const right = out.slice(textCol);
+        return `${left}${right}`;
+    }
+    if (looksLikeOverlayTextLine(out)) return out;
+    return [...out].map((ch) => decodeDecSpecialChar(ch)).join('');
+}
+
+function resolveGameplayComparableLines(plainLines, ansiLines, session) {
+    const ansi = Array.isArray(ansiLines) ? ansiLines : [];
+    const decgraphics = session?.meta?.options?.symset === 'DECgraphics';
+    if (ansi.length > 0) {
+        return ansi.map((line, row) => {
+            const plain = ansiCellsToPlainLine(line);
+            if (!decgraphics) return plain;
+            return decodeDecMapSegment(plain, row, line);
+        });
+    }
+    const plain = Array.isArray(plainLines) ? plainLines : [];
+    if (!decgraphics) {
+        return plain.map((line) => String(line || '').replace(/\r$/, '').replace(/[\x0e\x0f]/g, ''));
+    }
+    return plain.map((line, row) => {
+        const out = String(line || '').replace(/\r$/, '').replace(/[\x0e\x0f]/g, '');
+        return decodeDecMapSegment(out, row, out);
     });
-    const normalizedExpectedWithPad = normalizeGameplayScreenLines(expectedLines, session, {
+}
+
+function compareGameplayScreens(actualLines, expectedLines, session, {
+    actualAnsi = null,
+    expectedAnsi = null,
+} = {}) {
+    const comparableActual = resolveGameplayComparableLines(actualLines, actualAnsi, session);
+    const comparableExpected = resolveGameplayComparableLines(expectedLines, expectedAnsi, session);
+    const normalizedExpectedWithPad = normalizeGameplayScreenLines(comparableExpected, {
         captured: true,
         prependCol0: true,
     });
-    const normalizedExpectedNoPad = normalizeGameplayScreenLines(expectedLines, session, {
+    const normalizedExpectedNoPad = normalizeGameplayScreenLines(comparableExpected, {
         captured: true,
+        prependCol0: false,
+    });
+    const normalizedActual = normalizeGameplayScreenLines(comparableActual, {
+        captured: false,
         prependCol0: false,
     });
     const withPad = compareScreenLines(normalizedActual, normalizedExpectedWithPad);
@@ -558,6 +596,7 @@ async function runGameplayResult(session) {
         for (let i = 0; i < count; i++) {
             const expected = session.steps[i];
             const actual = replay.steps[i] || {};
+            const expectedAnsi = getExpectedScreenAnsiLines(expected);
 
             if (expected.rng.length > 0) {
                 const rngCmp = compareRng(actual.rng || [], expected.rng);
@@ -585,13 +624,15 @@ async function runGameplayResult(session) {
 
             if (expected.screen.length > 0) {
                 screensTotal++;
-                const screenCmp = compareGameplayScreens(actual.screen || [], expected.screen, session);
+                const screenCmp = compareGameplayScreens(actual.screen || [], expected.screen, session, {
+                    actualAnsi: actual.screenAnsi,
+                    expectedAnsi,
+                });
                 if (screenCmp.match) screensMatched++;
                 if (!screenCmp.match && screenCmp.firstDiff) {
                     setFirstDivergence(result, 'screen', { step: i + 1, ...screenCmp.firstDiff });
                 }
             }
-            const expectedAnsi = getExpectedScreenAnsiLines(expected);
             if (expectedAnsi.length > 0 && Array.isArray(actual.screenAnsi)) {
                 const colorCmp = compareGameplayColors(actual.screenAnsi, expectedAnsi);
                 if (!result._colorStats) result._colorStats = { matched: 0, total: 0 };
