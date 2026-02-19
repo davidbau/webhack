@@ -395,4 +395,106 @@ describe('Selection API', () => {
                 `larger maxd (${large.coords.length}) should have >= points than small (${small.coords.length})`);
         });
     });
+
+    describe('sel.xor()', () => {
+        it('returns symmetric difference of two overlapping selections', () => {
+            // A = {1,1} {2,2}; B = {2,2} {3,3}; XOR = {1,1} {3,3}
+            const a = selection.new(); a.set(1, 1, true); a.set(2, 2, true);
+            const b = selection.new(); b.set(2, 2, true); b.set(3, 3, true);
+            const result = a.xor(b);
+            const hasPoint = (x, y) => result.coords.some(c => c.x === x && c.y === y);
+            assert.ok(hasPoint(1, 1), '{1,1} in A only should be in XOR');
+            assert.ok(!hasPoint(2, 2), '{2,2} in both should not be in XOR');
+            assert.ok(hasPoint(3, 3), '{3,3} in B only should be in XOR');
+            assert.equal(result.numpoints(), 2);
+        });
+
+        it('xor with disjoint selections equals union', () => {
+            const a = selection.new(); a.set(1, 1, true); a.set(2, 2, true);
+            const b = selection.new(); b.set(5, 5, true); b.set(6, 6, true);
+            const xorResult = a.xor(b);
+            const unionResult = a.union(b);
+            assert.equal(xorResult.numpoints(), unionResult.numpoints());
+        });
+
+        it('xor with identical selections is empty', () => {
+            const a = selection.new(); a.set(3, 4, true); a.set(5, 6, true);
+            const b = selection.new(); b.set(3, 4, true); b.set(5, 6, true);
+            assert.equal(a.xor(b).numpoints(), 0);
+        });
+
+        it('xor with empty selection returns copy', () => {
+            const a = selection.new(); a.set(7, 8, true);
+            const b = selection.new();
+            assert.equal(a.xor(b).numpoints(), 1);
+        });
+    });
+
+    describe('sel.sub()', () => {
+        it('returns A minus B (points in A not in B)', () => {
+            // A = {1,1} {2,2} {3,3}; B = {2,2}; A-B = {1,1} {3,3}
+            const a = selection.new(); a.set(1, 1, true); a.set(2, 2, true); a.set(3, 3, true);
+            const b = selection.new(); b.set(2, 2, true);
+            const result = a.sub(b);
+            const hasPoint = (x, y) => result.coords.some(c => c.x === x && c.y === y);
+            assert.ok(hasPoint(1, 1), '{1,1} not in B, should be in A-B');
+            assert.ok(!hasPoint(2, 2), '{2,2} in B, should not be in A-B');
+            assert.ok(hasPoint(3, 3), '{3,3} not in B, should be in A-B');
+            assert.equal(result.numpoints(), 2);
+        });
+
+        it('sub with empty B returns copy of A', () => {
+            const a = selection.new(); a.set(1, 2, true); a.set(3, 4, true);
+            const b = selection.new();
+            assert.equal(a.sub(b).numpoints(), 2);
+        });
+
+        it('sub with superset B returns empty', () => {
+            const a = selection.new(); a.set(1, 1, true);
+            const b = selection.new(); b.set(1, 1, true); b.set(2, 2, true);
+            assert.equal(a.sub(b).numpoints(), 0);
+        });
+
+        it('sub is not symmetric: A-B != B-A for overlapping sets', () => {
+            const a = selection.new(); a.set(1, 1, true); a.set(2, 2, true);
+            const b = selection.new(); b.set(2, 2, true); b.set(3, 3, true);
+            const aMinusB = a.sub(b);
+            const bMinusA = b.sub(a);
+            assert.equal(aMinusB.numpoints(), 1); // {1,1}
+            assert.equal(bMinusA.numpoints(), 1); // {3,3}
+            assert.ok(aMinusB.coords.some(c => c.x === 1 && c.y === 1));
+            assert.ok(bMinusA.coords.some(c => c.x === 3 && c.y === 3));
+        });
+    });
+
+    describe('selection.circle()', () => {
+        it('creates a circle outline (same as ellipse with equal radii)', () => {
+            const circle = selection.circle(10, 10, 4, false);
+            const ellipse = selection.ellipse(10, 10, 4, 4, false);
+            assert.equal(circle.numpoints(), ellipse.numpoints(),
+                'circle should produce same points as ellipse with equal radii');
+        });
+
+        it('filled circle has more points than outline circle', () => {
+            const outline = selection.circle(10, 10, 5, false);
+            const filled = selection.circle(10, 10, 5, true);
+            assert.ok(filled.numpoints() > outline.numpoints(),
+                `filled (${filled.numpoints()}) should have more points than outline (${outline.numpoints()})`);
+        });
+
+        it('circle bounds are symmetric around center', () => {
+            const sel = selection.circle(15, 12, 3, false);
+            const b = sel.bounds();
+            assert.equal(b.lx, 15 - 3, 'left bound should be center - radius');
+            assert.equal(b.hx, 15 + 3, 'right bound should be center + radius');
+            assert.equal(b.ly, 12 - 3, 'top bound should be center - radius');
+            assert.equal(b.hy, 12 + 3, 'bottom bound should be center + radius');
+        });
+
+        it('filled=false is the default', () => {
+            const explicit = selection.circle(10, 10, 3, false);
+            const defaulted = selection.circle(10, 10, 3);
+            assert.equal(explicit.numpoints(), defaulted.numpoints());
+        });
+    });
 });

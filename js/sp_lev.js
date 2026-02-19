@@ -7228,6 +7228,42 @@ export const selection = {
                 return result;
             },
             /**
+             * xor(other)
+             * Return a new selection with coords in this selection OR other but not both.
+             * C ref: nhlsel.c l_selection_xor (Lua __bxor operator)
+             */
+            xor: (other) => {
+                const aSet = new Set(coords.map(c => `${c.x},${c.y}`));
+                const bSet = new Set(other && other.coords ? other.coords.map(c => `${c.x},${c.y}`) : []);
+                const result = selection.new();
+                aSet.forEach(key => {
+                    if (!bSet.has(key)) {
+                        const [x, y] = key.split(',').map(Number);
+                        result.set(x, y, true);
+                    }
+                });
+                bSet.forEach(key => {
+                    if (!aSet.has(key)) {
+                        const [x, y] = key.split(',').map(Number);
+                        result.set(x, y, true);
+                    }
+                });
+                return result;
+            },
+            /**
+             * sub(other)
+             * Return a new selection with coords in this selection but NOT in other.
+             * C ref: nhlsel.c l_selection_sub (Lua __sub operator)
+             */
+            sub: (other) => {
+                const bSet = new Set(other && other.coords ? other.coords.map(c => `${c.x},${c.y}`) : []);
+                const result = selection.new();
+                coords.forEach(c => {
+                    if (!bSet.has(`${c.x},${c.y}`)) result.set(c.x, c.y, true);
+                });
+                return result;
+            },
+            /**
              * is_irregular()
              * Returns true if selection has holes or is non-rectangular.
              * C ref: selvar.c selection_is_irregular()
@@ -7313,6 +7349,16 @@ export const selection = {
             }
         }
         return sel;
+    },
+
+    /**
+     * selection.circle(xc, yc, r, filled)
+     * Create a circle selection. filled=true fills the interior.
+     * A circle is an ellipse with equal axes.
+     * C ref: nhlsel.c l_selection_circle() — calls selection_do_ellipse(sel, x, y, r, r, !filled)
+     */
+    circle: (xc, yc, r, filled = false) => {
+        return selection.ellipse(xc, yc, r, r, filled);
     },
 
     /**

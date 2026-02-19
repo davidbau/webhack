@@ -745,8 +745,8 @@ directly. See selvar.c section below for the geometry function mapping.
 | `l_selection_not` | `sel.negate()` |
 | `l_selection_and` | `sel.intersect(other)` |
 | `l_selection_or` | `sel.union(other)` |
-| `l_selection_xor` | N/A (not yet in JS) |
-| `l_selection_sub` | N/A (not yet in JS) |
+| `l_selection_xor` | `sel.xor(other)` — symmetric difference |
+| `l_selection_sub` | `sel.sub(other)` — set difference A-B |
 | `l_selection_filter_percent` | `sel.percentage(pct)` |
 | `l_selection_rndcoord` | `sel.rndcoord()` |
 | `l_selection_room` | `selection.room()` |
@@ -760,11 +760,11 @@ directly. See selvar.c section below for the geometry function mapping.
 | `l_selection_filter_mapchar` | `sel.filter_mapchar(ch)` |
 | `l_selection_match` | `selection.match(pattern)` |
 | `l_selection_flood` | `selection.floodfill(x, y, matchFn)` |
-| `l_selection_circle` | N/A (not yet in JS) |
-| `l_selection_ellipse` | N/A (not yet in JS) |
-| `l_selection_gradient` | N/A (not yet in JS) |
+| `l_selection_circle` | `selection.circle(xc, yc, r, filled)` — ellipse with equal axes |
+| `l_selection_ellipse` | `selection.ellipse(xc, yc, a, b, filled)` |
+| `l_selection_gradient` | `selection.gradient(x, y, x2, y2, gtyp, mind, maxd)` |
 | `l_selection_iterate` | `sel.iterate(func)` |
-| `l_selection_size_description` | N/A (not yet in JS) |
+| `l_selection_size_description` | `sel.size_description()` |
 | `l_selection_ipairs` | Lua ipairs protocol — N/A |
 | `l_selection_register` | Lua metatable registration — N/A |
 
