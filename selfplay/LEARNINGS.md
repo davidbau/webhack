@@ -455,3 +455,51 @@
   - Severe low-XP dog loops are common, but they almost never coincide with adjacent closed/locked doors.
   - This suggests door-first dog-loop interventions have limited headroom in current failure cases.
   - Next policy work should target non-door loop escape/progression mechanisms.
+
+## 2026-02-19 - Keep: Dog-Loop Blocking vs Non-Blocking Telemetry
+
+- Change:
+  - Expanded dog-loop telemetry to split low-XP Dlvl1 lone-dog loop turns by path context:
+    - `lowXpDogLoopBlockingTurns`
+    - `lowXpDogLoopNonBlockingTurns`
+    - `attackLowXpDogLoopBlockingTurns`
+    - `attackLowXpDogLoopNonBlockingTurns`
+  - `selfplay/runner/c_runner.js` now emits these in `Dog loop telemetry`.
+  - `selfplay/runner/c_role_matrix.js` parses and summarizes these fields.
+
+- Why:
+  - Door-opportunity telemetry showed door-adjacent interventions have little headroom.
+  - We needed to know whether loop attacks happen mostly when dogs are truly path-blocking or also in discretionary (non-blocking) states.
+
+- Evidence (holdout `31..43`, 600 turns):
+  - Survived `13/13`, avg depth `1.538`, XL2+ `1/13`, XP t600 avg `8.92`.
+  - Dog-loop split:
+    - `lowXpDogLoop=41.62`,
+    - `blocking=21.15`,
+    - `nonBlocking=20.46`,
+    - `attackBlocking=21.15`,
+    - `attackNonBlocking=20.46`.
+  - Key seeds:
+    - Tourist 41: `dogLoop 272`, `blocking 121`, `nonBlocking 151` (attacks in both contexts).
+    - Samurai 40: `142 = 75 blocking + 67 nonBlocking`.
+
+- Learning:
+  - Low-XP dog-loop attacks are not only forced/path-blocking; a substantial share occur in non-blocking contexts.
+  - This creates a plausible policy lever, but any suppression must pass train and holdout gates.
+
+## 2026-02-19 - Rejected: Non-Blocking Dog-Loop Attack Suppression
+
+- Candidate policy:
+  - In `selfplay/agent.js`, when in low-XP Dlvl1 lone-dog loop context and **not** path-blocked, skip attacks after loop evidence accumulates (`turn>=80` and displacement/attack thresholds).
+
+- Holdout (`31..43`, 600 turns):
+  - Candidate showed local churn reductions in target seeds (for example Tourist/Samurai attack-turn drops), with held-out aggregate survival unchanged.
+  - However, train gate did not hold robustly.
+
+- Train gate (`21..33`, 600 turns):
+  - Baseline (same telemetry stack, no policy): survived `11/13`, avg depth `2.000`.
+  - Candidate: survived `10/13`, avg depth `1.846`.
+  - Notable train failures under candidate included additional deaths and weaker progression consistency.
+
+- Net:
+  - Rejected due train-set regression despite some holdout-side churn improvements.

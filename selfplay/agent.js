@@ -130,6 +130,10 @@ export class Agent {
             lowXpDogLoopTurns: 0,
             lowXpDogLoopDoorAdjTurns: 0,
             attackLowXpDogLoopDoorAdjTurns: 0,
+            lowXpDogLoopBlockingTurns: 0,
+            lowXpDogLoopNonBlockingTurns: 0,
+            attackLowXpDogLoopBlockingTurns: 0,
+            attackLowXpDogLoopNonBlockingTurns: 0,
             died: false,
             deathCause: '',
             targetAssignments: 0,
@@ -1317,6 +1321,8 @@ export class Agent {
                 this.stats.lowXpDogLoopTurns++;
                 adjacentBlockedDoorCount = this._countAdjacentClosedOrLockedDoors(level, px, py);
                 if (adjacentBlockedDoorCount > 0) this.stats.lowXpDogLoopDoorAdjTurns++;
+                if (isBlocking) this.stats.lowXpDogLoopBlockingTurns++;
+                else this.stats.lowXpDogLoopNonBlockingTurns++;
             }
 
             // Check if we're in a corridor (tactical advantage)
@@ -1355,6 +1361,10 @@ export class Agent {
                     const key = DIR_KEYS[`${dx},${dy}`];
                     if (key) {
                         this._recordAttackTarget(adjacentMonster.ch);
+                        if (lowXpDogLoopContext) {
+                            if (isBlocking) this.stats.attackLowXpDogLoopBlockingTurns++;
+                            else this.stats.attackLowXpDogLoopNonBlockingTurns++;
+                        }
                         if (lowXpDogLoopContext && adjacentBlockedDoorCount > 0) {
                             this.stats.attackLowXpDogLoopDoorAdjTurns++;
                         }
@@ -1377,6 +1387,10 @@ export class Agent {
                 const key = DIR_KEYS[`${dx},${dy}`];
                 if (key) {
                     this._recordAttackTarget(adjacentMonster.ch);
+                    if (lowXpDogLoopContext) {
+                        if (isBlocking) this.stats.attackLowXpDogLoopBlockingTurns++;
+                        else this.stats.attackLowXpDogLoopNonBlockingTurns++;
+                    }
                     if (lowXpDogLoopContext && adjacentBlockedDoorCount > 0) {
                         this.stats.attackLowXpDogLoopDoorAdjTurns++;
                     }
@@ -1389,6 +1403,10 @@ export class Agent {
                 const key = DIR_KEYS[`${dx},${dy}`];
                 if (key) {
                     this._recordAttackTarget(adjacentMonster.ch);
+                    if (lowXpDogLoopContext) {
+                        if (isBlocking) this.stats.attackLowXpDogLoopBlockingTurns++;
+                        else this.stats.attackLowXpDogLoopNonBlockingTurns++;
+                    }
                     if (lowXpDogLoopContext && adjacentBlockedDoorCount > 0) {
                         this.stats.attackLowXpDogLoopDoorAdjTurns++;
                     }
