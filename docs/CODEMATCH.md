@@ -303,11 +303,11 @@ Discovery/identification functions split into `discovery.js` (camelCase, noted b
 | `shuffle_all` | 321 | o_init.js | `shuffle_all` | 154 | Match (private) |
 | `objdescr_is` | 351 | o_init.js | `objdescr_is` | — | Match (exported) |
 | `oinit` | 368 | — | — | — | Subsumed — `init_objects` + `setgemprobs` cover this |
-| `savenames` | 374 | discovery.js | `getDiscoveryState` | 163 | Renamed — save/restore via JSON |
-| `restnames` | 410 | discovery.js | `setDiscoveryState` | 171 | Renamed — save/restore via JSON |
-| `observe_object` | 441 | discovery.js | `observeObject` | 75 | Renamed (camelCase) |
+| `savenames` | 374 | discovery.js | `getDiscoveryState` | 178 | Renamed — save/restore via JSON; now also serializes extra disco entries |
+| `restnames` | 410 | discovery.js | `setDiscoveryState` | 188 | Renamed — save/restore via JSON; restores extra disco entries (oc_uname path) |
+| `observe_object` | 441 | discovery.js | `observeObject` | 105 | Renamed (camelCase) |
 | `discover_object` | 448 | discovery.js | `discoverObject` | 64 | Renamed (camelCase) |
-| `undiscover_object` | 492 | — | — | — | TODO |
+| `undiscover_object` | 492 | discovery.js | `undiscoverObject` | 75 | Renamed (camelCase); gem_learned TODO |
 | `interesting_to_discover` | 520 | discovery.js | `interestingToDiscover` | 82 | Renamed (private, camelCase) |
 | `discovered_cmp` | 543 | — | — | — | N/A — JS sort uses closures |
 | `sortloot_descr` | 557 | — | — | — | N/A — merged into menu output |
@@ -568,9 +568,9 @@ Notes:
 | `hates_blessings` | 540 | `hates_blessings` | 489 | Match (exported) |
 | `mon_hates_light` | 547 | `mon_hates_light` | — | Match (exported) |
 | `passes_bars` | 554 | `passes_bars` | 399 | Match (exported; predates this section) |
-| `can_blow` | 566 | — | — | TODO (needs player Strangled state) |
-| `can_chant` | 579 | — | — | TODO (needs player Strangled state) |
-| `can_be_strangled` | 590 | — | — | TODO (needs player state) |
+| `can_blow` | 566 | `can_blow` | — | Match (exported; isStrangled=false default for player case) |
+| `can_chant` | 579 | `can_chant` | — | Match (exported; isStrangled=false default for player case) |
+| `can_be_strangled` | 590 | `can_be_strangled` | — | Match (exported; worn amulet check omitted — no worn item tracking) |
 | `can_track` | 622 | `can_track` | — | Match (Excalibur check via optional wieldsExcalibur param) |
 | `sliparm` | 632 | `sliparm` | 528 | Match (exported) |
 | `breakarm` | 640 | `breakarm` | 538 | Match (exported) |
@@ -580,7 +580,11 @@ Notes:
 | `dmgtype_fromattack` | 700 | `dmgtype_fromattack` | 418 | Match (see attacktype_fordmg above) |
 | `dmgtype` | 712 | `dmgtype` | 429 | Match (exported) |
 | `max_passive_dmg` | 720 | — | — | TODO (needs resistance checks) |
-| `same_race` | 771 | — | — | TODO (complex species matching; dog.js has simplified version) |
+| `same_race` | 771 | `same_race` | — | Match (exported; full species matching including grow-up chains) |
+| `little_to_big` | 1303 | `little_to_big` | — | Match (exported; uses grownups table) |
+| `big_to_little` | 1316 | `big_to_little` | — | Match (exported; uses grownups table) |
+| `big_little_match` | 1331 | `big_little_match` | — | Match (exported; checks grow-up chain membership) |
+| `levl_follower` | 1211 | — | — | TODO (needs player steed/tame/wiz state) |
 | `mon_knows_traps` | — | `mon_knows_traps` | 367 | Match (exported; predates this section) |
 | `mon_learns_traps` | — | `mon_learns_traps` | 377 | Match (exported; predates this section) |
 
@@ -741,8 +745,8 @@ directly. See selvar.c section below for the geometry function mapping.
 | `l_selection_not` | `sel.negate()` |
 | `l_selection_and` | `sel.intersect(other)` |
 | `l_selection_or` | `sel.union(other)` |
-| `l_selection_xor` | N/A (not yet in JS) |
-| `l_selection_sub` | N/A (not yet in JS) |
+| `l_selection_xor` | `sel.xor(other)` — symmetric difference |
+| `l_selection_sub` | `sel.sub(other)` — set difference A-B |
 | `l_selection_filter_percent` | `sel.percentage(pct)` |
 | `l_selection_rndcoord` | `sel.rndcoord()` |
 | `l_selection_room` | `selection.room()` |
@@ -756,11 +760,11 @@ directly. See selvar.c section below for the geometry function mapping.
 | `l_selection_filter_mapchar` | `sel.filter_mapchar(ch)` |
 | `l_selection_match` | `selection.match(pattern)` |
 | `l_selection_flood` | `selection.floodfill(x, y, matchFn)` |
-| `l_selection_circle` | N/A (not yet in JS) |
-| `l_selection_ellipse` | N/A (not yet in JS) |
-| `l_selection_gradient` | N/A (not yet in JS) |
+| `l_selection_circle` | `selection.circle(xc, yc, r, filled)` — ellipse with equal axes |
+| `l_selection_ellipse` | `selection.ellipse(xc, yc, a, b, filled)` |
+| `l_selection_gradient` | `selection.gradient(x, y, x2, y2, gtyp, mind, maxd)` |
 | `l_selection_iterate` | `sel.iterate(func)` |
-| `l_selection_size_description` | N/A (not yet in JS) |
+| `l_selection_size_description` | `sel.size_description()` |
 | `l_selection_ipairs` | Lua ipairs protocol — N/A |
 | `l_selection_register` | Lua metatable registration — N/A |
 

@@ -27,6 +27,8 @@ import {
     S_DOG, S_FELINE, S_GOLEM,
     S_GHOST, S_IMP, S_RODENT, S_VAMPIRE,
     S_VORTEX, S_ELEMENTAL,
+    S_KOBOLD, S_OGRE, S_NYMPH, S_CENTAUR, S_DRAGON, S_NAGA,
+    S_ZOMBIE, S_MUMMY, S_LICH, S_WRAITH, S_UNICORN,
     MZ_TINY, MZ_SMALL, MZ_MEDIUM, MZ_LARGE,
     AT_ANY, AT_NONE, AT_BOOM, AT_SPIT, AT_GAZE, AT_MAGC,
     AT_ENGL, AT_HUGS, AT_BREA,
@@ -38,6 +40,59 @@ import {
     PM_HORNED_DEVIL, PM_MINOTAUR, PM_ASMODEUS, PM_BALROG,
     PM_MARILITH, PM_WINGED_GARGOYLE, PM_AIR_ELEMENTAL,
     PM_GREMLIN, PM_STONE_GOLEM,
+    MS_SILENT, MS_BUZZ, MS_BURBLE,
+    S_EEL,
+    // For grownups table (little_to_big / big_to_little / same_race)
+    PM_CHICKATRICE, PM_COCKATRICE,
+    PM_LITTLE_DOG, PM_DOG, PM_LARGE_DOG,
+    PM_HELL_HOUND_PUP, PM_HELL_HOUND,
+    PM_WINTER_WOLF_CUB, PM_WINTER_WOLF,
+    PM_KITTEN, PM_HOUSECAT, PM_LARGE_CAT,
+    PM_KOBOLD, PM_LARGE_KOBOLD, PM_KOBOLD_LEADER,
+    PM_GNOME, PM_GNOME_LEADER, PM_GNOME_RULER,
+    PM_DWARF, PM_DWARF_LEADER, PM_DWARF_RULER,
+    PM_MIND_FLAYER, PM_MASTER_MIND_FLAYER,
+    PM_ORC, PM_HILL_ORC, PM_MORDOR_ORC, PM_URUK_HAI, PM_ORC_CAPTAIN,
+    PM_SEWER_RAT, PM_GIANT_RAT,
+    PM_CAVE_SPIDER, PM_GIANT_SPIDER,
+    PM_OGRE, PM_OGRE_LEADER, PM_OGRE_TYRANT,
+    PM_ELF, PM_WOODLAND_ELF, PM_GREEN_ELF, PM_GREY_ELF,
+    PM_ELF_NOBLE, PM_ELVEN_MONARCH,
+    PM_LICH, PM_DEMILICH, PM_MASTER_LICH, PM_ARCH_LICH,
+    PM_VAMPIRE, PM_VAMPIRE_LEADER,
+    PM_BAT, PM_GIANT_BAT,
+    PM_BABY_GRAY_DRAGON, PM_GRAY_DRAGON,
+    PM_BABY_GOLD_DRAGON, PM_GOLD_DRAGON,
+    PM_BABY_SILVER_DRAGON, PM_SILVER_DRAGON,
+    PM_BABY_RED_DRAGON, PM_RED_DRAGON,
+    PM_BABY_WHITE_DRAGON, PM_WHITE_DRAGON,
+    PM_BABY_ORANGE_DRAGON, PM_ORANGE_DRAGON,
+    PM_BABY_BLACK_DRAGON, PM_BLACK_DRAGON,
+    PM_BABY_BLUE_DRAGON, PM_BLUE_DRAGON,
+    PM_BABY_GREEN_DRAGON, PM_GREEN_DRAGON,
+    PM_BABY_YELLOW_DRAGON, PM_YELLOW_DRAGON,
+    PM_RED_NAGA_HATCHLING, PM_RED_NAGA,
+    PM_BLACK_NAGA_HATCHLING, PM_BLACK_NAGA,
+    PM_GOLDEN_NAGA_HATCHLING, PM_GOLDEN_NAGA,
+    PM_GUARDIAN_NAGA_HATCHLING, PM_GUARDIAN_NAGA,
+    PM_SMALL_MIMIC, PM_LARGE_MIMIC, PM_GIANT_MIMIC,
+    PM_BABY_LONG_WORM, PM_LONG_WORM, PM_LONG_WORM_TAIL,
+    PM_BABY_PURPLE_WORM, PM_PURPLE_WORM,
+    PM_BABY_CROCODILE, PM_CROCODILE,
+    PM_SOLDIER, PM_SERGEANT, PM_LIEUTENANT, PM_CAPTAIN,
+    PM_WATCHMAN, PM_WATCH_CAPTAIN,
+    PM_ALIGNED_CLERIC, PM_HIGH_CLERIC,
+    PM_STUDENT, PM_ARCHEOLOGIST,
+    PM_ATTENDANT, PM_HEALER,
+    PM_PAGE, PM_KNIGHT,
+    PM_ACOLYTE, PM_CLERIC,
+    PM_APPRENTICE, PM_WIZARD,
+    PM_MANES, PM_LEMURE,
+    PM_KEYSTONE_KOP, PM_KOP_SERGEANT, PM_KOP_LIEUTENANT, PM_KOP_KAPTAIN,
+    PM_GARGOYLE,
+    PM_KILLER_BEE, PM_QUEEN_BEE,
+    PM_DEATH, PM_FAMINE, PM_PESTILENCE,
+    PM_KOBOLD_ZOMBIE, PM_KOBOLD_MUMMY,
 } from './monsters.js';
 
 // ========================================================================
@@ -186,6 +241,9 @@ export function is_demon(ptr) { return !!(ptr.flags2 & M2_DEMON); }
 
 // C ref: #define is_mercenary(ptr)  ((ptr)->mflags2 & M2_MERC)
 export function is_mercenary(ptr) { return !!(ptr.flags2 & M2_MERC); }
+
+// C ref: #define is_minion(ptr)     ((ptr)->mflags2 & M2_MINION)
+export function is_minion(ptr) { return !!(ptr.flags2 & M2_MINION); }
 
 // C ref: #define is_giant(ptr)      ((ptr)->mflags2 & M2_GIANT)
 export function is_giant(ptr) { return !!(ptr.flags2 & M2_GIANT); }
@@ -571,4 +629,224 @@ export function poly_when_stoned(ptr) {
 export function can_track(ptr, wieldsExcalibur = false) {
     if (wieldsExcalibur) return true;
     return haseyes(ptr);
+}
+
+// C ref: mondata.c:567 — can_blow(mtmp)
+// Returns true if monster can blow a horn.
+// Note: C also checks Strangled for the hero; pass isStrangled=true for that case.
+// C ref: is_silent(ptr) = msound == MS_SILENT; has_head(ptr) = !(M1_NOHEAD)
+// C ref: verysmall(ptr) = msize < MZ_SMALL
+export function can_blow(ptr, isStrangled = false) {
+    if ((ptr.sound === MS_SILENT || ptr.sound === MS_BUZZ)
+        && (breathless(ptr) || ptr.size < MZ_SMALL || nohead(ptr) || ptr.symbol === S_EEL))
+        return false;
+    if (isStrangled) return false;
+    return true;
+}
+
+// C ref: mondata.c:580 — can_chant(mtmp)
+// Returns true if monster can chant (cast spells verbally or read scrolls).
+// Note: C also checks Strangled for the hero; pass isStrangled=true for that case.
+export function can_chant(ptr, isStrangled = false) {
+    if (isStrangled || ptr.sound === MS_SILENT || nohead(ptr)
+        || ptr.sound === MS_BUZZ || ptr.sound === MS_BURBLE)
+        return false;
+    return true;
+}
+
+// C ref: mondata.c:591 — can_be_strangled(mon)
+// Returns true if monster is vulnerable to strangulation.
+// Note: C checks worn amulet of magical breathing for monsters; JS omits (no worn item tracking).
+// nobrainer = mindless(ptr); nonbreathing = breathless(ptr)
+export function can_be_strangled(ptr) {
+    if (nohead(ptr)) return false;
+    const nobrainer = is_mindless(ptr);
+    const nonbreathing = breathless(ptr);
+    return !nobrainer || !nonbreathing;
+}
+
+// ========================================================================
+// Monster growth/species predicates — C ref: mondata.c:1228-1360
+// ========================================================================
+
+// C ref: mondata.c:1228 — grownups table (pairs of [little, big])
+// Encodes which monster types can grow into which.
+const grownups = [
+    [PM_CHICKATRICE,          PM_COCKATRICE],
+    [PM_LITTLE_DOG,           PM_DOG],
+    [PM_DOG,                  PM_LARGE_DOG],
+    [PM_HELL_HOUND_PUP,       PM_HELL_HOUND],
+    [PM_WINTER_WOLF_CUB,      PM_WINTER_WOLF],
+    [PM_KITTEN,               PM_HOUSECAT],
+    [PM_HOUSECAT,             PM_LARGE_CAT],
+    [PM_PONY,                 PM_HORSE],
+    [PM_HORSE,                PM_WARHORSE],
+    [PM_KOBOLD,               PM_LARGE_KOBOLD],
+    [PM_LARGE_KOBOLD,         PM_KOBOLD_LEADER],
+    [PM_GNOME,                PM_GNOME_LEADER],
+    [PM_GNOME_LEADER,         PM_GNOME_RULER],
+    [PM_DWARF,                PM_DWARF_LEADER],
+    [PM_DWARF_LEADER,         PM_DWARF_RULER],
+    [PM_MIND_FLAYER,          PM_MASTER_MIND_FLAYER],
+    [PM_ORC,                  PM_ORC_CAPTAIN],
+    [PM_HILL_ORC,             PM_ORC_CAPTAIN],
+    [PM_MORDOR_ORC,           PM_ORC_CAPTAIN],
+    [PM_URUK_HAI,             PM_ORC_CAPTAIN],
+    [PM_SEWER_RAT,            PM_GIANT_RAT],
+    [PM_CAVE_SPIDER,          PM_GIANT_SPIDER],
+    [PM_OGRE,                 PM_OGRE_LEADER],
+    [PM_OGRE_LEADER,          PM_OGRE_TYRANT],
+    [PM_ELF,                  PM_ELF_NOBLE],
+    [PM_WOODLAND_ELF,         PM_ELF_NOBLE],
+    [PM_GREEN_ELF,            PM_ELF_NOBLE],
+    [PM_GREY_ELF,             PM_ELF_NOBLE],
+    [PM_ELF_NOBLE,            PM_ELVEN_MONARCH],
+    [PM_LICH,                 PM_DEMILICH],
+    [PM_DEMILICH,             PM_MASTER_LICH],
+    [PM_MASTER_LICH,          PM_ARCH_LICH],
+    [PM_VAMPIRE,              PM_VAMPIRE_LEADER],
+    [PM_BAT,                  PM_GIANT_BAT],
+    [PM_BABY_GRAY_DRAGON,     PM_GRAY_DRAGON],
+    [PM_BABY_GOLD_DRAGON,     PM_GOLD_DRAGON],
+    [PM_BABY_SILVER_DRAGON,   PM_SILVER_DRAGON],
+    [PM_BABY_RED_DRAGON,      PM_RED_DRAGON],
+    [PM_BABY_WHITE_DRAGON,    PM_WHITE_DRAGON],
+    [PM_BABY_ORANGE_DRAGON,   PM_ORANGE_DRAGON],
+    [PM_BABY_BLACK_DRAGON,    PM_BLACK_DRAGON],
+    [PM_BABY_BLUE_DRAGON,     PM_BLUE_DRAGON],
+    [PM_BABY_GREEN_DRAGON,    PM_GREEN_DRAGON],
+    [PM_BABY_YELLOW_DRAGON,   PM_YELLOW_DRAGON],
+    [PM_RED_NAGA_HATCHLING,   PM_RED_NAGA],
+    [PM_BLACK_NAGA_HATCHLING, PM_BLACK_NAGA],
+    [PM_GOLDEN_NAGA_HATCHLING,PM_GOLDEN_NAGA],
+    [PM_GUARDIAN_NAGA_HATCHLING, PM_GUARDIAN_NAGA],
+    [PM_SMALL_MIMIC,          PM_LARGE_MIMIC],
+    [PM_LARGE_MIMIC,          PM_GIANT_MIMIC],
+    [PM_BABY_LONG_WORM,       PM_LONG_WORM],
+    [PM_BABY_PURPLE_WORM,     PM_PURPLE_WORM],
+    [PM_BABY_CROCODILE,       PM_CROCODILE],
+    [PM_SOLDIER,              PM_SERGEANT],
+    [PM_SERGEANT,             PM_LIEUTENANT],
+    [PM_LIEUTENANT,           PM_CAPTAIN],
+    [PM_WATCHMAN,             PM_WATCH_CAPTAIN],
+    [PM_ALIGNED_CLERIC,       PM_HIGH_CLERIC],
+    [PM_STUDENT,              PM_ARCHEOLOGIST],
+    [PM_ATTENDANT,            PM_HEALER],
+    [PM_PAGE,                 PM_KNIGHT],
+    [PM_ACOLYTE,              PM_CLERIC],
+    [PM_APPRENTICE,           PM_WIZARD],
+    [PM_MANES,                PM_LEMURE],
+    [PM_KEYSTONE_KOP,         PM_KOP_SERGEANT],
+    [PM_KOP_SERGEANT,         PM_KOP_LIEUTENANT],
+    [PM_KOP_LIEUTENANT,       PM_KOP_KAPTAIN],
+];
+
+// C ref: mondata.c:1303 — little_to_big(montype)
+// Returns the grown-up form of a monster index, or the index itself if none.
+export function little_to_big(montype) {
+    for (const [little, big] of grownups)
+        if (montype === little) return big;
+    return montype;
+}
+
+// C ref: mondata.c:1316 — big_to_little(montype)
+// Returns the juvenile form of a monster index, or the index itself if none.
+export function big_to_little(montype) {
+    for (const [little, big] of grownups)
+        if (montype === big) return little;
+    return montype;
+}
+
+// C ref: mondata.c:1331 — big_little_match(montyp1, montyp2)
+// Returns true if the two monster indices are part of the same growth chain.
+export function big_little_match(montyp1, montyp2) {
+    if (montyp1 === montyp2) return true;
+    if (mons[montyp1]?.symbol !== mons[montyp2]?.symbol) return false;
+    // Check whether montyp1 can grow up into montyp2
+    for (let l = montyp1, b; (b = little_to_big(l)) !== l; l = b)
+        if (b === montyp2) return true;
+    // Check whether montyp2 can grow up into montyp1
+    for (let l = montyp2, b; (b = little_to_big(l)) !== l; l = b)
+        if (b === montyp1) return true;
+    return false;
+}
+
+// C ref: mondata.h macros used by same_race
+// is_mind_flayer: PM_MIND_FLAYER or PM_MASTER_MIND_FLAYER
+export function is_mind_flayer(ptr) {
+    return ptr === mons[PM_MIND_FLAYER] || ptr === mons[PM_MASTER_MIND_FLAYER];
+}
+// is_unicorn: S_UNICORN symbol && likes_gems
+export function is_unicorn(ptr) {
+    return ptr.symbol === S_UNICORN && likes_gems(ptr);
+}
+// is_rider: Death, Famine, or Pestilence
+export function is_rider(ptr) {
+    return ptr === mons[PM_DEATH] || ptr === mons[PM_FAMINE] || ptr === mons[PM_PESTILENCE];
+}
+// is_longworm: baby long worm, long worm, or long worm tail
+export function is_longworm(ptr) {
+    return ptr === mons[PM_BABY_LONG_WORM] || ptr === mons[PM_LONG_WORM]
+        || ptr === mons[PM_LONG_WORM_TAIL];
+}
+
+// C ref: mondata.c:771 — same_race(pm1, pm2)
+// Returns true if two monster types are from the same species.
+// Note: C's grow-up chain uses monsndx; JS uses mons.indexOf(ptr).
+export function same_race(pm1, pm2) {
+    if (pm1 === pm2) return true;
+    // Player races
+    if (is_human(pm1)) return is_human(pm2);
+    if (is_elf(pm1)) return is_elf(pm2);
+    if (is_dwarf(pm1)) return is_dwarf(pm2);
+    if (is_gnome(pm1)) return is_gnome(pm2);
+    if (is_orc(pm1)) return is_orc(pm2);
+    // Other creature groupings
+    if (is_giant(pm1)) return is_giant(pm2);
+    if (is_golem(pm1)) return is_golem(pm2);
+    if (is_mind_flayer(pm1)) return is_mind_flayer(pm2);
+    // Kobolds (including zombie/mummy forms)
+    const lkob = pm1.symbol === S_KOBOLD || pm1 === mons[PM_KOBOLD_ZOMBIE]
+               || pm1 === mons[PM_KOBOLD_MUMMY];
+    if (lkob) {
+        return pm2.symbol === S_KOBOLD || pm2 === mons[PM_KOBOLD_ZOMBIE]
+            || pm2 === mons[PM_KOBOLD_MUMMY];
+    }
+    if (pm1.symbol === S_OGRE) return pm2.symbol === S_OGRE;
+    if (pm1.symbol === S_NYMPH) return pm2.symbol === S_NYMPH;
+    if (pm1.symbol === S_CENTAUR) return pm2.symbol === S_CENTAUR;
+    if (is_unicorn(pm1)) return is_unicorn(pm2);
+    if (pm1.symbol === S_DRAGON) return pm2.symbol === S_DRAGON;
+    if (pm1.symbol === S_NAGA) return pm2.symbol === S_NAGA;
+    // Riders and minions
+    if (is_rider(pm1)) return is_rider(pm2);
+    if (is_minion(pm1)) return is_minion(pm2);
+    // Tengu don't match imps
+    const m1idx = mons.indexOf(pm1), m2idx = mons.indexOf(pm2);
+    if (pm1 === mons[PM_TENGU] || pm2 === mons[PM_TENGU]) return false;
+    if (pm1.symbol === S_IMP) return pm2.symbol === S_IMP;
+    else if (pm2.symbol === S_IMP) return false;
+    if (is_demon(pm1)) return is_demon(pm2);
+    // Undead by sub-type
+    if (is_undead(pm1)) {
+        if (pm1.symbol === S_ZOMBIE) return pm2.symbol === S_ZOMBIE;
+        if (pm1.symbol === S_MUMMY) return pm2.symbol === S_MUMMY;
+        if (pm1.symbol === S_VAMPIRE) return pm2.symbol === S_VAMPIRE;
+        if (pm1.symbol === S_LICH) return pm2.symbol === S_LICH;
+        if (pm1.symbol === S_WRAITH) return pm2.symbol === S_WRAITH;
+        if (pm1.symbol === S_GHOST) return pm2.symbol === S_GHOST;
+    } else if (is_undead(pm2)) return false;
+    // Check grow-up chains (same symbol class)
+    if (pm1.symbol === pm2.symbol && m1idx >= 0 && m2idx >= 0) {
+        if (big_little_match(m1idx, m2idx)) return true;
+    }
+    // Gargoyle family
+    if (pm1 === mons[PM_GARGOYLE] || pm1 === mons[PM_WINGED_GARGOYLE])
+        return pm2 === mons[PM_GARGOYLE] || pm2 === mons[PM_WINGED_GARGOYLE];
+    // Bee family
+    if (pm1 === mons[PM_KILLER_BEE] || pm1 === mons[PM_QUEEN_BEE])
+        return pm2 === mons[PM_KILLER_BEE] || pm2 === mons[PM_QUEEN_BEE];
+    // Longworm family
+    if (is_longworm(pm1)) return is_longworm(pm2);
+    return false;
 }

@@ -1,9 +1,13 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { init_objects, objdescr_is, obj_shuffle_range, setgemprobs } from '../../js/o_init.js';
+import {
+    initDiscoveryState, discoverObject, undiscoverObject,
+    getDiscoveriesMenuLines, getDiscoveryState,
+} from '../../js/discovery.js';
 import { objectData, bases,
     AMULET_OF_ESP, AMULET_OF_FLYING,
-    POT_GAIN_ABILITY, POT_OIL, POT_WATER,
+    POT_GAIN_ABILITY, POT_OIL, POT_WATER, POT_HEALING,
     RING_CLASS, WAND_CLASS, AMULET_CLASS, POTION_CLASS, SCROLL_CLASS, ARMOR_CLASS, GEM_CLASS,
     TURQUOISE, AQUAMARINE, FLUORITE,
     WAN_NOTHING,
@@ -287,5 +291,60 @@ describe('setgemprobs', () => {
 
         assert.ok(total15 >= total3,
             `Deeper level (total=${total15}) should have >= gem prob total vs shallow (${total3})`);
+    });
+});
+
+// ========================================================================
+// undiscoverObject (C ref: o_init.c undiscover_object c:492)
+// ========================================================================
+
+describe('undiscoverObject', () => {
+    it('no-op and no crash when object not in disco list (both flags false)', () => {
+        initDiscoveryState();
+        // POT_HEALING has not been discovered yet: both flags false, not in disco
+        assert.doesNotThrow(() => undiscoverObject(POT_HEALING));
+        // State should be unchanged — not in discoveries
+        const lines = getDiscoveriesMenuLines();
+        const found = lines.some(l => l.includes('healing'));
+        assert.ok(!found, 'POT_HEALING should not appear in discoveries');
+    });
+
+    it('no-op when oc_name_known is true (guard condition prevents removal)', () => {
+        initDiscoveryState();
+        discoverObject(POT_HEALING, true, false);
+        // name_known=true: undiscoverObject guard condition (!name_known && !encountered) is false
+        undiscoverObject(POT_HEALING);
+        // Flag should be untouched — undiscoverObject only removes from disco list, not flags
+        const state = getDiscoveryState();
+        assert.equal(state.ocNameKnown[POT_HEALING], true,
+            'ocNameKnown should still be true after no-op undiscoverObject');
+        assert.equal(state.ocEncountered[POT_HEALING], false,
+            'ocEncountered should be unchanged (false) after undiscoverObject');
+    });
+
+    it('no-op when oc_encountered is true (guard condition prevents removal)', () => {
+        initDiscoveryState();
+        discoverObject(POT_HEALING, false, true);
+        // encountered=true: undiscoverObject guard condition (!name_known && !encountered) is false
+        undiscoverObject(POT_HEALING);
+        // Flag should be untouched — undiscoverObject only removes from disco list, not flags
+        const state = getDiscoveryState();
+        assert.equal(state.ocEncountered[POT_HEALING], true,
+            'ocEncountered should still be true after no-op undiscoverObject');
+        assert.equal(state.ocNameKnown[POT_HEALING], false,
+            'ocNameKnown should be unchanged (false) after undiscoverObject');
+    });
+
+    it('no crash on invalid or out-of-range index', () => {
+        initDiscoveryState();
+        assert.doesNotThrow(() => undiscoverObject(-1));
+        assert.doesNotThrow(() => undiscoverObject(99999));
+        assert.doesNotThrow(() => undiscoverObject(undefined));
+    });
+
+    it('idempotent: calling twice on absent object does not throw', () => {
+        initDiscoveryState();
+        assert.doesNotThrow(() => undiscoverObject(POT_HEALING));
+        assert.doesNotThrow(() => undiscoverObject(POT_HEALING));
     });
 });

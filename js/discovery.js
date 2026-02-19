@@ -71,6 +71,23 @@ export function discoverObject(otyp, markAsKnown, markAsEncountered) {
     }
 }
 
+// C ref: o_init.c undiscover_object() — purge an object from the discovered list
+// when its class name has been cleared and both name_known and encountered are false.
+// Called when a player removes a user-assigned class name (docallcmd in do_name.c).
+export function undiscoverObject(oindx) {
+    if (ocNameKnown.length === 0) initDiscoveryState();
+    if (!Number.isInteger(oindx) || oindx < FIRST_OBJECT || oindx >= objectData.length) return;
+    const od = objectData[oindx];
+    if (!od) return;
+    if (!ocNameKnown[oindx] && !ocEncountered[oindx]) {
+        const arr = discoByClass.get(od.oc_class);
+        if (!arr) return;
+        const idx = arr.indexOf(oindx);
+        if (idx >= 0) arr.splice(idx, 1);
+        // TODO: gem_learned(oindx) when GEM_CLASS (C ref: o_init.c:514)
+    }
+}
+
 // C ref: o_init.c observe_object()
 export function observeObject(obj) {
     if (!obj) return;
@@ -160,11 +177,17 @@ export function getDiscoveriesMenuLines() {
 }
 
 // C ref: savenames/restnames persists discovery-relevant object-class state.
+// Also serializes extra disco entries (e.g., from oc_uname) that have no flags set.
 export function getDiscoveryState() {
     if (ocNameKnown.length === 0) initDiscoveryState();
+    const disco = [];
+    for (const arr of discoByClass.values()) {
+        for (const otyp of arr) disco.push(otyp);
+    }
     return {
         ocNameKnown: [...ocNameKnown],
         ocEncountered: [...ocEncountered],
+        disco,
     };
 }
 
@@ -178,5 +201,9 @@ export function setDiscoveryState(state) {
         ocNameKnown[i] = !!state.ocNameKnown[i];
         ocEncountered[i] = !!state.ocEncountered[i];
         if (ocNameKnown[i] || ocEncountered[i]) pushDisco(i);
+    }
+    // Restore extra disco entries (e.g., oc_uname items with both flags false).
+    if (Array.isArray(state.disco)) {
+        for (const otyp of state.disco) pushDisco(otyp);
     }
 }
