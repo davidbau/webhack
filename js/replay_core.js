@@ -1707,7 +1707,18 @@ export async function replaySession(seed, session, opts = {}) {
                 const explicitEnterNext = nextKey === '\n' || nextKey === '\r';
                 const firstExpected = String(stepScreen[0] || '').replace(/[\x00-\x1f\x7f]/g, '').trimStart();
                 const stillTypingExtended = firstExpected.startsWith('#');
-                if (!continuesWord && !explicitEnterNext && !stillTypingExtended) {
+                // C auto-completes extended commands: if the captured screen
+                // no longer shows a '#' prompt, C has already resolved the
+                // command (e.g. #w → #wield → dowield prompt). Inject Enter
+                // so JS resolves it too, even if the next key is a letter
+                // (which would be consumed by the resolved command's prompt,
+                // not by the extended command getlin).
+                if (!stillTypingExtended && stepScreen.length > 0) {
+                    if (!explicitEnterNext) {
+                        pushInput(13);
+                    }
+                    pendingKind = null;
+                } else if (!continuesWord && !explicitEnterNext && !stillTypingExtended) {
                     pushInput(13);
                     // Only inject shorthand Enter once; extended commands can
                     // continue into nested prompts (getlin/menus) afterward.

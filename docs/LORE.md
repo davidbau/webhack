@@ -270,6 +270,101 @@ channel with call-stack context. The `--verbose` flag shows every session
 result. The `--type=chargen` flag isolates one category. The `--fail-fast`
 flag stops at the first failure for focused debugging.
 
+### Interpreting first-divergence reports
+
+The test runner's `firstDivergences.rng` tells you `step` and `index`:
+
+- **`index=0` with JS empty**: JS produced zero RNG for that step. The turn
+  itself didn't execute. Common causes: unimplemented command (e.g. JS
+  `handleRead` says "Sorry" instead of reading the scroll), or missing
+  turn-end cycle because the command returned `tookTime: false`.
+- **`index=0` with both non-empty**: The very first RNG call within the step
+  differs. Look at function names: `exercise` vs `distfleeck` means the
+  turn-end ordering is wrong; `rnd(20)` vs `rn2(20)` means JS used the wrong
+  RNG function.
+- **`index>0` with same count**: Both sides ran the same turn shape, but one
+  call inside differs. This is usually a wrong argument (`rn2(40)` vs
+  `rn2(32)` means a parameter like monster level or AC differs), indicating
+  hidden state drift from an earlier step.
+- **Same values, different counts**: One side has extra or missing calls at the
+  end. Suspect missing sub-operations (e.g. JS doesn't call `dmgval` for
+  weapon damage after base attack dice).
+
+### Diagnostic script pattern for investigating specific seeds
+
+Use this template to investigate a failing seed. It replays the session in JS
+and compares per-step RNG against the C reference:
+
+```javascript
+import { replaySession, loadAllSessions }
+  from './test/comparison/session_helpers.js';
+
+function normalizeWithSource(entries) {
+  return (entries || [])
+    .map(e => (e || '').replace(/^\d+\s+/, ''))
+    .filter(e => e
+      && !(e[0] === '>' || e[0] === '<')
+      && !e.startsWith('rne(')
+      && !e.startsWith('rnz(')
+      && !e.startsWith('d('));
+}
+
+const sessions = loadAllSessions({
+  sessionPath: 'test/comparison/sessions/SEED_FILE.session.json'
+});
+const session = sessions[0];
+const replay = await replaySession(session.meta.seed, session.raw, {
+  captureScreens: false,
+  startupBurstInFirstStep: false,
+});
+
+// Compare specific step (0-indexed)
+const stepIdx = 98; // step 99
+const jsStep = replay.steps[stepIdx];
+const cStep = session.steps[stepIdx];
+const jsNorm = normalizeWithSource(jsStep?.rng || []);
+const cNorm = normalizeWithSource(cStep?.rng || []);
+
+console.log(`Step ${stepIdx+1}: JS=${jsNorm.length} C=${cNorm.length}`);
+for (let j = 0; j < Math.max(jsNorm.length, cNorm.length); j++) {
+  const js = (jsNorm[j] || '(missing)').split(' @ ')[0];
+  const c = (cNorm[j] || '(missing)').split(' @ ')[0];
+  console.log(`  [${j}] ${js === c ? '✓' : '✗'} JS:${js}  C:${c}`);
+}
+```
+
+The `normalizeWithSource` function strips midlog markers (`>func`/`<func`),
+composite dice (`d(...)`, `rne(...)`, `rnz(...)`), and source locations
+(`@ file.c:line`), leaving only the leaf RNG calls that the comparator checks.
+
+### Categories of divergence and what to fix
+
+| Pattern | Root cause | Fix approach |
+|---------|-----------|--------------|
+| JS has 0 RNG, C has full turn | Unimplemented command or `tookTime:false` | Implement the command or fix time-taking |
+| Same functions, different args | Hidden state drift (HP, AC, monster data) | Trace back to earlier state divergence |
+| Wrong function name (`rnd` vs `rn2`) | JS uses different RNG wrapper than C | Change to matching function (e.g. `d(1,3)` vs `rnd(3)`) |
+| Extra/missing calls in turn-end | Missing sub-system (exercise, dosounds, etc.) | Implement the missing turn-end hook |
+| Shift by N calls from a certain step | One-time extra/missing operation cascading | Find the first divergence step and fix it |
+
+### Replay engine pending-command architecture
+
+Multi-keystroke commands (read, wield, throw, etc.) use a promise-based
+pending-command pattern in `replay_core.js`:
+
+1. First key (e.g. `r` for read) → `rhack()` called → command blocks on
+   `await nhgetch()` → doesn't settle in 1ms → stored as `pendingCommand`
+2. Next key (e.g. `i` to select item) → pushed into input queue →
+   `pendingCommand` receives it → may settle (command completes) or stay
+   pending (more input needed)
+3. `pendingKind` tracks special handling: `'extended-command'` for `#`,
+   `'inventory-menu'` for `i`/`I`, `null` for everything else
+
+When investigating "missing turn" bugs in multi-key commands, check whether
+the pending command actually settles and returns `tookTime: true`. If JS
+says "Sorry, I don't know how to do that yet" and returns `tookTime: false`,
+the turn won't run and the full movemon/exercise/dosounds cycle is skipped.
+
 ### Replay startup topline state matters for count-prefix parity
 
 In replay mode, first-digit count prefix handling intentionally preserves the

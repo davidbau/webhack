@@ -4785,7 +4785,7 @@ async function handleSet(game) {
 // Handle extended command (#)
 // C ref: cmd.c doextcmd()
 async function handleExtendedCommand(game) {
-    const { display } = game;
+    const { player, display } = game;
     const input = await getlin('# ', display);
     if (input === null || input.trim() === '') {
         return { moved: false, tookTime: false };
@@ -4837,6 +4837,20 @@ async function handleExtendedCommand(game) {
             }
             return { moved: false, tookTime: false };
         }
+        // C ref: cmd.c extcmdlist[] — extended command aliases that map
+        // to regular key commands. These appear in wizard-mode sessions
+        // when players type #<cmd> instead of the single-key shortcut.
+        case 'w':
+        case 'wield':
+            return await handleWield(player, display);
+        case 'wear':
+            return await handleWear(player, display);
+        case 'e':
+        case 'eat':
+            return await handleEat(player, display, game);
+        case 'r':
+        case 'read':
+            return await handleRead(player, display);
         default:
             // C-style unknown extended command feedback
             display.putstr_message(`#${rawCmd}: unknown extended command.`);
