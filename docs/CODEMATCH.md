@@ -170,10 +170,11 @@ don't follow the same 1:1 C→JS mapping pattern.
 - **Total C files**: 129
 - **N/A (system/platform)**: 18
 - **Game logic files**: 111
-- **Complete (`[x]`)**: 1
-- **Aligned (`[a]`)**: 3
-- **Needs alignment (`[~]`)**: 24
-- **No JS file yet (`[ ]`)**: 83
+- **Complete (`[x]`)**: 4
+- **Aligned (`[a]`)**: 9
+- **Present (`[p]`)**: 1
+- **Needs alignment (`[~]`)**: 21
+- **No JS file yet (`[ ]`)**: 76
 
 ### JS Files Without C Counterparts
 
