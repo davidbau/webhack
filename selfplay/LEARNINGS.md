@@ -673,6 +673,11 @@
     - top per-assignment regressions/improvements.
   - Added comparability enforcement:
     - fails when baseline/candidate assignment sets differ (e.g., comparing a 13-run matrix to a 7-run triage).
+  - Added `--overlap-only` mode for subset triage:
+    - compares only overlapping role/seed assignments,
+    - recomputes summary/guardrails on overlap scope,
+    - still fails if overlap is empty or scoped run counts are misaligned.
+  - Refined top-row scoring so the same assignment is not listed as both regression and improvement.
 
 - Why:
   - We already generate machine-readable matrix artifacts, but candidate acceptance was still mostly manual.
@@ -685,8 +690,11 @@
   - Real-data smoke:
     - `node selfplay/runner/c_role_matrix_diff.js --baseline=/tmp/holdout_baseline_20260219b.json --candidate=/tmp/holdout_candidate_swapmsg_20260219.json --top=3` (PASS)
     - `node selfplay/runner/c_role_matrix_diff.js --baseline=/tmp/holdout_baseline_20260219b.json --candidate=/tmp/candidate_dogswap_gate2_triage_20260219.json --top=3` (FAIL with assignment mismatch details)
+    - `node selfplay/runner/c_role_matrix_diff.js --baseline=/tmp/holdout_baseline_20260219b.json --candidate=/tmp/candidate_dog_bypass_triage_20260219.json --overlap-only --top=5` (subset guardrail evaluation on overlap scope)
 
 - Usage:
   - `node selfplay/runner/c_role_matrix_diff.js --baseline=<baseline.json> --candidate=<candidate.json> --top=8`
+  - For subset triage comparisons:
+    - `node selfplay/runner/c_role_matrix_diff.js --baseline=<baseline.json> --candidate=<subset-candidate.json> --overlap-only --top=8`
   - Optional machine-readable diff export:
     - `--json-out=/tmp/role_matrix_diff.json`

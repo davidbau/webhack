@@ -145,4 +145,35 @@ describe('compareRoleMatrix', () => {
         assert.ok(comparableGuard);
         assert.equal(comparableGuard.pass, false);
     });
+
+    it('supports overlap-only comparisons for subset triage', () => {
+        const baseline = makeData();
+        const candidate = makeData({
+            groupedAssignments: [
+                {
+                    role: 'Samurai', seed: 40, runs: 1, survived: 1,
+                    avgDepth: 1, avgXP600: 3, avgFailedAdds: 35,
+                },
+            ],
+            results: [
+                {
+                    role: 'Samurai', seed: 40, repeat: 1,
+                    depth: 1, cause: 'survived', maxXP: 3, xp600: 3,
+                    attackTurns: 180, fleeTurns: 10, failedAdds: 35,
+                },
+            ],
+        });
+
+        const out = compareRoleMatrix(baseline, candidate, { overlapOnly: true });
+        assert.equal(out.passed, true);
+        assert.equal(out.comparability.overlapAssignmentCount, 1);
+        assert.equal(out.comparability.baselineAssignmentCount, 1);
+        assert.equal(out.comparability.candidateAssignmentCount, 1);
+        const comparableGuard = out.guardrails.find(g => g.key === '__comparable');
+        assert.ok(comparableGuard);
+        assert.equal(comparableGuard.pass, true);
+        const xpGuard = out.guardrails.find(g => g.key === 'avgXP600');
+        assert.ok(xpGuard);
+        assert.equal(xpGuard.pass, true);
+    });
 });

@@ -37,9 +37,31 @@ const DEFAULT_GUARDRAILS = [
 export function compareRoleMatrix(baselineData, candidateData, options = {}) {
     const eps = Number.isFinite(options.epsilon) ? options.epsilon : 1e-9;
     const top = Number.isFinite(options.top) ? Math.max(1, options.top) : 8;
+    const overlapOnly = options.overlapOnly === true;
 
-    const baselineSummary = baselineData?.summary || {};
-    const candidateSummary = candidateData?.summary || {};
+    const fullBaselineRows = baselineData?.results || [];
+    const fullCandidateRows = candidateData?.results || [];
+    const fullBaselineAssignments = indexAssignments(resolveGroupedAssignments(baselineData));
+    const fullCandidateAssignments = indexAssignments(resolveGroupedAssignments(candidateData));
+    const baselineOnly = [...fullBaselineAssignments.keys()].filter(k => !fullCandidateAssignments.has(k));
+    const candidateOnly = [...fullCandidateAssignments.keys()].filter(k => !fullBaselineAssignments.has(k));
+    const overlapKeys = new Set([...fullBaselineAssignments.keys()].filter(k => fullCandidateAssignments.has(k)));
+
+    const scopedBaselineRows = overlapOnly
+        ? filterRowsByAssignmentKeys(fullBaselineRows, overlapKeys)
+        : fullBaselineRows;
+    const scopedCandidateRows = overlapOnly
+        ? filterRowsByAssignmentKeys(fullCandidateRows, overlapKeys)
+        : fullCandidateRows;
+
+    const baselineAssignments = indexAssignments(groupByAssignment(scopedBaselineRows));
+    const candidateAssignments = indexAssignments(groupByAssignment(scopedCandidateRows));
+    const baselineSummary = overlapOnly
+        ? buildSummaryFromRows(scopedBaselineRows)
+        : (baselineData?.summary || buildSummaryFromRows(scopedBaselineRows));
+    const candidateSummary = overlapOnly
+        ? buildSummaryFromRows(scopedCandidateRows)
+        : (candidateData?.summary || buildSummaryFromRows(scopedCandidateRows));
 
     const summaryDeltas = SUMMARY_METRICS
         .map(m => {
@@ -58,22 +80,22 @@ export function compareRoleMatrix(baselineData, candidateData, options = {}) {
             };
         });
 
-    const baselineAssignments = indexAssignments(resolveGroupedAssignments(baselineData));
-    const candidateAssignments = indexAssignments(resolveGroupedAssignments(candidateData));
-    const baselineOnly = [...baselineAssignments.keys()].filter(k => !candidateAssignments.has(k));
-    const candidateOnly = [...candidateAssignments.keys()].filter(k => !baselineAssignments.has(k));
     const baselineRuns = toNumberOrNaN(baselineSummary.totalRuns);
     const candidateRuns = toNumberOrNaN(candidateSummary.totalRuns);
     const runCountsComparable = (!Number.isFinite(baselineRuns) || !Number.isFinite(candidateRuns))
         ? true
         : baselineRuns === candidateRuns;
-    const assignmentsComparable = baselineOnly.length === 0 && candidateOnly.length === 0;
+    const assignmentsComparable = overlapOnly
+        ? overlapKeys.size > 0
+        : (baselineOnly.length === 0 && candidateOnly.length === 0);
     const comparable = assignmentsComparable && runCountsComparable;
 
     const guardrails = [];
     guardrails.push({
         key: '__comparable',
-        label: 'baseline/candidate assignment sets must match',
+        label: overlapOnly
+            ? 'baseline/candidate overlap scope must be non-empty and run-count aligned'
+            : 'baseline/candidate assignment sets must match',
         direction: 'equal',
         baseline: baselineAssignments.size,
         candidate: candidateAssignments.size,
@@ -120,21 +142,25 @@ export function compareRoleMatrix(baselineData, candidateData, options = {}) {
         });
     }
 
-    const regressions = [...assignmentDeltas]
+    const scoredAssignments = assignmentDeltas
         .filter(a => Number.isFinite(a.xp600Delta) || Number.isFinite(a.depthDelta) || Number.isFinite(a.failedAddDelta))
-        .map(a => ({ ...a, score: regressionScore(a) }))
-        .filter(a => a.score > eps)
-        .sort((a, b) => b.score - a.score)
+        .map(a => {
+            const regression = regressionScore(a);
+            const improvement = improvementScore(a);
+            return { ...a, regressionScore: regression, improvementScore: improvement };
+        });
+
+    const regressions = [...scoredAssignments]
+        .filter(a => a.regressionScore > eps && a.regressionScore > a.improvementScore)
+        .sort((a, b) => b.regressionScore - a.regressionScore)
         .slice(0, top);
 
-    const improvements = [...assignmentDeltas]
-        .filter(a => Number.isFinite(a.xp600Delta) || Number.isFinite(a.depthDelta) || Number.isFinite(a.failedAddDelta))
-        .map(a => ({ ...a, score: improvementScore(a) }))
-        .filter(a => a.score > eps)
-        .sort((a, b) => b.score - a.score)
+    const improvements = [...scoredAssignments]
+        .filter(a => a.improvementScore > eps && a.improvementScore > a.regressionScore)
+        .sort((a, b) => b.improvementScore - a.improvementScore)
         .slice(0, top);
 
-    const runDiff = diffRuns(baselineData?.results || [], candidateData?.results || []);
+    const runDiff = diffRuns(scopedBaselineRows, scopedCandidateRows);
 
     return {
         passed,
@@ -142,10 +168,12 @@ export function compareRoleMatrix(baselineData, candidateData, options = {}) {
         guardrails,
         comparable,
         comparability: {
+            overlapOnly,
             assignmentsComparable,
             runCountsComparable,
             baselineAssignmentCount: baselineAssignments.size,
             candidateAssignmentCount: candidateAssignments.size,
+            overlapAssignmentCount: overlapKeys.size,
             baselineOnly,
             candidateOnly,
             baselineRuns,
@@ -235,12 +263,37 @@ function avgOf(values) {
     return nums.reduce((a, b) => a + b, 0) / nums.length;
 }
 
+function filterRowsByAssignmentKeys(rows, keySet) {
+    if (!(keySet instanceof Set) || keySet.size === 0) return [];
+    return rows.filter(r => keySet.has(`${r.role}|${r.seed}`));
+}
+
 function indexAssignments(rows) {
     const idx = new Map();
     for (const r of rows) {
         idx.set(`${r.role}|${r.seed}`, r);
     }
     return idx;
+}
+
+function buildSummaryFromRows(rows) {
+    const survived = rows.filter(r => r.cause === 'survived').length;
+    const totalRuns = rows.length;
+    return {
+        survived,
+        totalRuns,
+        avgDepth: avgOf(rows.map(r => r.depth)),
+        reachedDepthGte3: rows.filter(r => (r.depth || 0) >= 3).length,
+        reachedXL2: rows.filter(r => (r.maxXL || 0) >= 2).length,
+        reachedXL3: rows.filter(r => (r.maxXL || 0) >= 3).length,
+        avgXP600: avgOf(rows.map(r => r.xp600)),
+        reachedXP10By600: rows.filter(r => (r.xp600 || 0) >= 10).length,
+        reachedXP20By600: rows.filter(r => (r.xp600 || 0) >= 20).length,
+        avgFailedAdds: avgOf(rows.map(r => r.failedAdds)),
+        avgAttackTurns: avgOf(rows.map(r => r.attackTurns)),
+        avgFleeTurns: avgOf(rows.map(r => r.fleeTurns)),
+        avgPetSwaps: avgOf(rows.map(r => r.petSwapCount)),
+    };
 }
 
 function deltaNum(a, b) {
@@ -269,6 +322,7 @@ function parseArgs(argv) {
         candidate: null,
         top: 8,
         jsonOut: null,
+        overlapOnly: false,
     };
     const args = argv.slice(2);
     for (let i = 0; i < args.length; i++) {
@@ -277,10 +331,12 @@ function parseArgs(argv) {
         else if (arg === '--candidate' && args[i + 1]) opts.candidate = args[++i];
         else if (arg === '--top' && args[i + 1]) opts.top = parseInt(args[++i], 10);
         else if (arg === '--json-out' && args[i + 1]) opts.jsonOut = args[++i];
+        else if (arg === '--overlap-only') opts.overlapOnly = true;
         else if (arg.startsWith('--baseline=')) opts.baseline = arg.slice('--baseline='.length);
         else if (arg.startsWith('--candidate=')) opts.candidate = arg.slice('--candidate='.length);
         else if (arg.startsWith('--top=')) opts.top = parseInt(arg.slice('--top='.length), 10);
         else if (arg.startsWith('--json-out=')) opts.jsonOut = arg.slice('--json-out='.length);
+        else if (arg === '--no-overlap-only') opts.overlapOnly = false;
         else if (arg === '--help' || arg === '-h') {
             printHelp();
             process.exit(0);
@@ -309,11 +365,12 @@ export function runCli(argv = process.argv) {
     const opts = parseArgs(argv);
     const baseline = loadJson(opts.baseline);
     const candidate = loadJson(opts.candidate);
-    const result = compareRoleMatrix(baseline, candidate, { top: opts.top });
+    const result = compareRoleMatrix(baseline, candidate, { top: opts.top, overlapOnly: opts.overlapOnly });
 
     console.log('C Role Matrix JSON Diff');
     console.log(`  baseline:  ${path.resolve(opts.baseline)}`);
     console.log(`  candidate: ${path.resolve(opts.candidate)}`);
+    console.log(`  overlap-only: ${opts.overlapOnly ? 'on' : 'off'}`);
     console.log('');
 
     console.log('Summary deltas (candidate - baseline)');
@@ -330,6 +387,7 @@ export function runCli(argv = process.argv) {
         console.log('  [!!] assignment/run mismatch details:');
         console.log(`       baseline assignments=${result.comparability.baselineAssignmentCount}, candidate assignments=${result.comparability.candidateAssignmentCount}`);
         console.log(`       baseline runs=${fmtNum(result.comparability.baselineRuns, 0)}, candidate runs=${fmtNum(result.comparability.candidateRuns, 0)}`);
+        console.log(`       overlap assignments=${result.comparability.overlapAssignmentCount}`);
         if (result.comparability.baselineOnly.length > 0) {
             console.log(`       baseline-only keys: ${result.comparability.baselineOnly.slice(0, 10).join(', ')}`);
         }
@@ -377,6 +435,7 @@ function printHelp() {
     console.log('  --candidate=FILE     Candidate JSON artifact from c_role_matrix --json-out');
     console.log('  --top=N              Number of top regression/improvement rows (default: 8)');
     console.log('  --json-out=FILE      Optional path to write machine-readable diff output');
+    console.log('  --overlap-only       Compare only assignment overlap (useful for triage subsets)');
     console.log('Exit codes:');
     console.log('  0 = guardrails pass');
     console.log('  2 = guardrails fail');
