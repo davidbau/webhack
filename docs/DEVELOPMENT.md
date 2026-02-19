@@ -211,6 +211,12 @@ established these practical replay/parity rules:
 - `--More--`-split steps and extended-command (`#...`) typing frames in this
   session are best handled as capture-authoritative replay frames (screen parity
   first) when they carry no gameplay state progression.
+- `session_test_runner` gameplay divergence `step` values are 1-based (same
+  indexing used by `rng_step_diff --step N`), so step numbers can be copied
+  directly between tools without adding/subtracting 1.
+- Extended-command shorthand Enter synthesis should only apply to letter keys;
+  treating control keys (for example `Esc`) as shorthand can leak a stray
+  `Enter` into the input queue and misalign subsequent command prompts.
 
 Measured progress in this pass:
 - First divergence moved from step `274` to step `346`.

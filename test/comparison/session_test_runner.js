@@ -456,7 +456,7 @@ async function runGameplayResult(session) {
                 const rngCmp = compareRng(actual.rng || [], expected.rng);
                 rngMatched += rngCmp.matched;
                 rngTotal += rngCmp.total;
-                setFirstDivergence(result, 'rng', rngCmp.firstDivergence ? { ...rngCmp.firstDivergence, step: i } : null);
+                setFirstDivergence(result, 'rng', rngCmp.firstDivergence ? { ...rngCmp.firstDivergence, step: i + 1 } : null);
             } else if (Number.isInteger(expected.rngCalls)) {
                 const actualCalls = (actual.rng || []).length;
                 rngTotal += 1;
@@ -464,7 +464,7 @@ async function runGameplayResult(session) {
                     rngMatched += 1;
                 } else {
                     setFirstDivergence(result, 'rng', {
-                        step: i,
+                        step: i + 1,
                         expected: String(expected.rngCalls),
                         actual: String(actualCalls),
                     });
@@ -473,7 +473,7 @@ async function runGameplayResult(session) {
                 const rngCmp = compareRng(actual.rng || [], []);
                 rngMatched += rngCmp.matched;
                 rngTotal += rngCmp.total;
-                setFirstDivergence(result, 'rng', rngCmp.firstDivergence ? { ...rngCmp.firstDivergence, step: i } : null);
+                setFirstDivergence(result, 'rng', rngCmp.firstDivergence ? { ...rngCmp.firstDivergence, step: i + 1 } : null);
             }
 
             if (expected.screen.length > 0) {
@@ -481,7 +481,7 @@ async function runGameplayResult(session) {
                 const screenCmp = compareGameplayScreens(actual.screen || [], expected.screen, session);
                 if (screenCmp.match) screensMatched++;
                 if (!screenCmp.match && screenCmp.firstDiff) {
-                    setFirstDivergence(result, 'screen', { step: i, ...screenCmp.firstDiff });
+                    setFirstDivergence(result, 'screen', { step: i + 1, ...screenCmp.firstDiff });
                 }
             }
             const expectedAnsi = getExpectedScreenAnsiLines(expected);
@@ -491,7 +491,7 @@ async function runGameplayResult(session) {
                 result._colorStats.matched += colorCmp.matched;
                 result._colorStats.total += colorCmp.total;
                 if (!colorCmp.match && colorCmp.firstDiff) {
-                    setFirstDivergence(result, 'color', { step: i, ...colorCmp.firstDiff });
+                    setFirstDivergence(result, 'color', { step: i + 1, ...colorCmp.firstDiff });
                 }
             }
         }

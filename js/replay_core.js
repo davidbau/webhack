@@ -1548,7 +1548,8 @@ export async function replaySession(seed, session, opts = {}) {
             // Legacy traces sometimes omit Enter after a one-key "#<cmd>"
             // shorthand. Only synthesize Enter when the next captured key
             // does not look like continued typing for a multi-char command.
-            if (pendingKind === 'extended-command' && step.key.length === 1) {
+            const maybeShorthandExtendedKey = /^[A-Za-z]$/.test(step.key);
+            if (pendingKind === 'extended-command' && maybeShorthandExtendedKey) {
                 const nextKey = allSteps[stepIndex + 1]?.key;
                 const continuesWord = typeof nextKey === 'string'
                     && nextKey.length === 1
@@ -1722,7 +1723,6 @@ export async function replaySession(seed, session, opts = {}) {
                 commandPromise.then(v => ({ done: true, value: v })),
                 new Promise(resolve => setTimeout(() => resolve({ done: false }), 5)),
             ]);
-
             if (!settled.done) {
                 // Inventory display: keep menu pending so the next real key
                 // dismisses it (and may become a passthrough command), matching
