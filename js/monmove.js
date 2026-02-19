@@ -330,8 +330,17 @@ function m_throw(mon, startX, startY, dx, dy, range, weapon, map, player, displa
             if (dam < 1) dam = 1;
             const hitv = 3 - distmin(player.x, player.y, mon.mx, mon.my) + 8 + (weapon.spe || 0);
             const dieRoll = rnd(20);
+            // C ref: mthrowu.c:764 — stop_occupation() on ANY projectile
+            // passing through player position, regardless of hit/miss.
+            if (game && game.occupation) {
+                if (game.occupation.occtxt === 'waiting' || game.occupation.occtxt === 'searching') {
+                    if (display) display.putstr_message(`You stop ${game.occupation.occtxt}.`);
+                }
+                game.occupation = null;
+                game.multi = 0;
+            }
             if (player.ac + hitv <= dieRoll) {
-                // Miss
+                // Miss — C ref: mthrowu.c:766 — projectile continues flight
                 if (display) {
                     let missMsg = 'It misses.';
                     const verbose = game?.flags?.verbose !== false;
@@ -356,8 +365,9 @@ function m_throw(mon, startX, startY, dx, dy, range, weapon, map, player, displa
                     }
                     display.putstr_message(missMsg);
                 }
+                // Do NOT break — missile continues past player on miss
             } else {
-                // Hit
+                // Hit — projectile stops here
                 if (display) {
                     display.putstr_message(`You are hit by ${thrownObjectName(weapon, player)}!`);
                 }
@@ -366,16 +376,8 @@ function m_throw(mon, startX, startY, dx, dy, range, weapon, map, player, displa
                 } else {
                     player.hp -= dam;
                 }
-                // C ref: allmain.c stop_occupation()
-                if (game && game.occupation) {
-                    if (game.occupation.occtxt === 'waiting' || game.occupation.occtxt === 'searching') {
-                        display.putstr_message(`You stop ${game.occupation.occtxt}.`);
-                    }
-                    game.occupation = null;
-                    game.multi = 0;
-                }
+                break; // C ref: mthrowu.c — only a hit stops the projectile
             }
-            break; // projectile stops at player position
         }
 
         // Check for wall/blocked terrain
@@ -1555,23 +1557,15 @@ function dochug(mon, map, player, display, fov, game = null) {
         return;
     }
 
-    set_apparxy(mon, map, player);
-
     // C ref: monmove.c phase-1 timeout checks.
     // Confused monsters may recover with 1/50 chance each turn.
     if (mon.confused && !rn2(50)) mon.confused = false;
     // Stunned monsters may recover with 1/10 chance each turn.
     if (mon.stunned && !rn2(10)) mon.stunned = false;
 
-    // C ref: monmove.c:759-761 — fleeing monster may regain courage.
-    if (mon.flee && !(mon.fleetim > 0)
-        && (mon.mhp ?? 0) >= (mon.mhpmax ?? 0)
-        && !rn2(25)) {
-        mon.flee = false;
-    }
-
     // C ref: monmove.c:745-750 — fleeing teleport-capable monsters
     // check !rn2(40) and may spend their turn teleporting away.
+    // NOTE: In C, flee teleport is checked BEFORE flee recovery (rn2(25)).
     if (mon.flee && !rn2(40) && can_teleport(mon.type || {})
         && !mon.iswiz && !(map.flags && map.flags.noteleport)) {
             // Simplified rloc() equivalent: random accessible unoccupied square.
@@ -1589,8 +1583,19 @@ function dochug(mon, map, player, display, fov, game = null) {
             return;
     }
 
+    // C ref: monmove.c:759-761 — fleeing monster may regain courage.
+    // NOTE: In C, flee recovery is checked AFTER flee teleport and m_respond.
+    if (mon.flee && !(mon.fleetim > 0)
+        && (mon.mhp ?? 0) >= (mon.mhpmax ?? 0)
+        && !rn2(25)) {
+        mon.flee = false;
+    }
+
+    // C ref: monmove.c:779 — set_apparxy after flee checks, before distfleeck.
+    set_apparxy(mon, map, player);
+
     // distfleeck: always rn2(5) for every non-sleeping monster
-    // C ref: monmove.c:538 — bravegremlin = (rn2(5) == 0)
+    // C ref: monmove.c:792 — distfleeck(mtmp, &inrange, &nearby, &scared)
     rn2(5);
 
     // Phase 3: Evaluate condition block for ALL monsters (including tame)
