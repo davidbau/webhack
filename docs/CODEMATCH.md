@@ -41,7 +41,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | ball.c | — | Ball & chain handling |
 | `[~]` | bones.c | bones.js | Bones file save/load |
 | `[ ]` | botl.c | — | Bottom status line |
-| `[N/A]` | calendar.c | — | Real-world calendar events (Friday 13th, etc.) |
+| `[ ]` | calendar.c | — | Time, moon phase, Friday 13th, night/midnight. Affects gameplay |
 | `[N/A]` | cfgfiles.c | — | Config file parsing. JS: `storage.js` handles config differently |
 | `[ ]` | cmd.c | — | Command dispatch. JS: `commands.js`, `input.js` |
 | `[N/A]` | coloratt.c | — | Terminal color attribute mapping |
@@ -99,8 +99,8 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | mthrowu.c | — | Monster ranged attacks. JS: partially in `monmove.js` |
 | `[ ]` | muse.c | — | Monster item usage AI |
 | `[ ]` | music.c | — | Musical instruments |
-| `[N/A]` | nhlobj.c | — | Lua object bindings |
-| `[N/A]` | nhlsel.c | — | Lua selection bindings |
+| `[~]` | nhlobj.c | — | Lua object utilities (place, container ops). JS: in `sp_lev.js` |
+| `[~]` | nhlsel.c | — | Lua selection bindings (wrap selvar.c). JS: in `sp_lev.js` |
 | `[N/A]` | nhlua.c | — | Lua interpreter integration |
 | `[N/A]` | nhmd4.c | — | MD4 hash implementation |
 | `[~]` | o_init.c | o_init.js | Object class initialization |
@@ -126,7 +126,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | role.c | — | Role/race/gender selection. JS: `player.js` |
 | `[ ]` | rumors.c | — | Rumor system. JS: `rumor_data.js` (data only) |
 | `[ ]` | save.c | — | Game save. JS: `storage.js` |
-| `[N/A]` | selvar.c | — | Lua selection variables |
+| `[~]` | selvar.c | — | Selection geometry (flood, ellipse, gradient, line). JS: in `sp_lev.js` |
 | `[N/A]` | sfbase.c | — | Save file base I/O routines |
 | `[N/A]` | sfstruct.c | — | Save file structure definitions |
 | `[~]` | shk.c | — | Shopkeeper behavior. JS: partially in `shknam.js` |
@@ -166,9 +166,10 @@ don't follow the same 1:1 C→JS mapping pattern.
 ### Summary
 
 - **Total C files**: 129
-- **N/A (system/platform)**: 22
-- **Game logic files**: 107
-- **Partial JS match exists (`[~]`)**: 23
+- **N/A (system/platform)**: 18
+- **Game logic files**: 111
+- **Complete (`[x]`)**: 1
+- **Partial JS match exists (`[~]`)**: 26
 - **No JS match yet (`[ ]`)**: 84
 
 ### JS Files Without C Counterparts
