@@ -1134,6 +1134,7 @@ export async function replaySession(seed, session, opts = {}) {
             pushStepResult(
                 [],
                 opts.captureScreens ? game.display.getScreenLines() : undefined,
+                stepScreenAnsi.length > 0 ? stepScreenAnsi : null,
                 step,
                 stepScreen,
                 stepIndex
@@ -1171,6 +1172,7 @@ export async function replaySession(seed, session, opts = {}) {
             pushStepResult(
                 [],
                 opts.captureScreens ? game.display.getScreenLines() : undefined,
+                stepScreenAnsi.length > 0 ? stepScreenAnsi : null,
                 step,
                 stepScreen,
                 stepIndex
@@ -1249,6 +1251,7 @@ export async function replaySession(seed, session, opts = {}) {
             pushStepResult(
                 [],
                 opts.captureScreens ? game.display.getScreenLines() : undefined,
+                stepScreenAnsi.length > 0 ? stepScreenAnsi : null,
                 step,
                 stepScreen,
                 stepIndex
@@ -1440,6 +1443,7 @@ export async function replaySession(seed, session, opts = {}) {
             pushStepResult(
                 stepLog,
                 opts.captureScreens ? stepScreen : undefined,
+                stepScreenAnsi.length > 0 ? stepScreenAnsi : null,
                 step,
                 stepScreen,
                 stepIndex
