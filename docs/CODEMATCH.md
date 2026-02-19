@@ -124,7 +124,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[N/A]` | report.c | — | Bug reporting, panic trace |
 | `[ ]` | restore.c | — | Game restore. JS: `storage.js` |
 | `[ ]` | rip.c | — | RIP screen |
-| `[~]` | rnd.c | rng.js | Random number generation |
+| `[x]` | rnd.c | rng.js | Random number generation |
 | `[ ]` | role.c | — | Role/race/gender selection. JS: `player.js` |
 | `[ ]` | rumors.c | — | Rumor system. JS: `rumor_data.js` (data only) |
 | `[ ]` | save.c | — | Game save. JS: `storage.js` |
