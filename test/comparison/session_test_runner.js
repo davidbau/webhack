@@ -27,6 +27,7 @@ import {
     compareGrids,
     compareScreenLines,
     compareScreenAnsi,
+    ansiLineToCells,
     findFirstGridDiff,
 } from './comparators.js';
 import { loadAllSessions, stripAnsiSequences, getSessionScreenAnsiLines } from './session_loader.js';
@@ -134,22 +135,45 @@ function compareInterfaceScreens(actualLines, expectedLines) {
     return best;
 }
 
-function normalizeGameplayScreenLines(lines, session, { captured = false, prependCol0 = true } = {}) {
-    const isLikelyOverlayText = (line) => {
-        const text = String(line || '').trimStart();
-        if (!text) return false;
-        if (text.includes(' - ') || text.startsWith('(end)')) return true;
-        if (/^(Weapons|Armor|Rings|Amulets|Tools|Comestibles|Potions|Scrolls|Spellbooks|Wands|Coins|Gems\/Stones|Other)\b/.test(text)) {
-            return true;
-        }
-        return false;
+function findGameplayOverlayStart(line) {
+    const text = String(line || '');
+    const candidates = [];
+    const push = (idx) => {
+        if (Number.isInteger(idx) && idx >= 10) candidates.push(idx);
     };
 
+    const itemEntry = text.match(/\b[a-z] - /);
+    if (itemEntry && Number.isInteger(itemEntry.index)) push(itemEntry.index);
+    push(text.indexOf('(end)'));
+    push(text.indexOf('Currently known spells'));
+    const spellHeaderIdx = text.search(/Name\s+Level\s+Category\s+Fail\s+Retention/);
+    if (spellHeaderIdx >= 0) push(spellHeaderIdx);
+    for (const category of [
+        'Weapons', 'Armor', 'Rings', 'Amulets', 'Tools', 'Comestibles',
+        'Potions', 'Scrolls', 'Spellbooks', 'Wands', 'Coins', 'Gems/Stones', 'Other',
+    ]) {
+        push(text.indexOf(category));
+    }
+    if (candidates.length <= 0) return -1;
+    return Math.min(...candidates);
+}
+
+function shiftPrefixRightOne(line, splitCol) {
+    const text = String(line || '');
+    const split = Math.max(0, Math.min(Number(splitCol) || 0, text.length));
+    if (split <= 0) return ` ${text}`;
+    return ` ${text.slice(0, split - 1)}${text.slice(split)}`;
+}
+
+function normalizeGameplayScreenLines(lines, session, { captured = false, prependCol0 = true } = {}) {
     const decgraphics = session?.meta?.options?.symset === 'DECgraphics';
     return (Array.isArray(lines) ? lines : []).map((line, row) => {
         let out = String(line || '').replace(/\r$/, '').replace(/[\x0e\x0f]/g, '');
-        if (captured && prependCol0 && row >= 1 && row <= 21 && !isLikelyOverlayText(out)) {
-            out = ` ${out}`;
+        if (captured && prependCol0 && row >= 1 && row <= 21) {
+            const overlayStart = findGameplayOverlayStart(out);
+            out = overlayStart >= 1
+                ? shiftPrefixRightOne(out, overlayStart)
+                : ` ${out}`;
         }
         if (decgraphics && row >= 1 && row <= 21) {
             out = normalizeSymsetLine(out, { decGraphics: true });
@@ -178,28 +202,92 @@ function compareGameplayScreens(actualLines, expectedLines, session) {
     return (withPad.matched >= noPad.matched) ? withPad : noPad;
 }
 
-function prependGameplayMapCol0(lines) {
-    const isLikelyOverlayText = (line) => {
-        const text = stripAnsiSequences(String(line || '')).trimStart();
-        if (!text) return false;
-        if (text.includes(' - ') || text.startsWith('(end)')) return true;
-        if (/^(Weapons|Armor|Rings|Amulets|Tools|Comestibles|Potions|Scrolls|Spellbooks|Wands|Coins|Gems\/Stones|Other)\b/.test(text)) {
-            return true;
+function blankAnsiCell() {
+    return { ch: ' ', fg: 7, bg: 0, attr: 0 };
+}
+
+function shiftAnsiPrefixRightOne(cells, splitCol, width = 80) {
+    const out = Array.isArray(cells)
+        ? cells.slice(0, width).map((cell) => ({ ...cell }))
+        : [];
+    while (out.length < width) out.push(blankAnsiCell());
+
+    const split = Math.max(0, Math.min(Number(splitCol) || 0, width));
+    if (split <= 0) {
+        for (let col = width - 1; col >= 1; col--) {
+            out[col] = out[col - 1];
         }
-        return false;
+        out[0] = blankAnsiCell();
+        return out;
+    }
+
+    for (let col = split - 1; col >= 1; col--) {
+        out[col] = out[col - 1];
+    }
+    out[0] = blankAnsiCell();
+    return out;
+}
+
+function compareAnsiCellRows(actualRows, expectedRows, width = 80) {
+    const total = Math.max(actualRows.length, expectedRows.length);
+    let matched = 0;
+    const diffs = [];
+    for (let row = 0; row < total; row++) {
+        const aCells = Array.isArray(actualRows[row]) ? actualRows[row] : [];
+        const eCells = Array.isArray(expectedRows[row]) ? expectedRows[row] : [];
+        let rowMatch = true;
+        let firstCol = -1;
+        for (let col = 0; col < width; col++) {
+            const a = aCells[col] || blankAnsiCell();
+            const e = eCells[col] || blankAnsiCell();
+            if (a.ch !== e.ch || a.fg !== e.fg || a.bg !== e.bg || a.attr !== e.attr) {
+                rowMatch = false;
+                firstCol = col;
+                break;
+            }
+        }
+        if (rowMatch) {
+            matched++;
+        } else {
+            const a = aCells[firstCol] || blankAnsiCell();
+            const e = eCells[firstCol] || blankAnsiCell();
+            diffs.push({
+                row,
+                col: firstCol,
+                js: { ch: a.ch, fg: a.fg, bg: a.bg, attr: a.attr },
+                session: { ch: e.ch, fg: e.fg, bg: e.bg, attr: e.attr },
+            });
+        }
+    }
+    return {
+        matched,
+        total,
+        match: matched === total,
+        diffs,
+        firstDiff: diffs.length > 0 ? diffs[0] : null,
     };
-    return (Array.isArray(lines) ? lines : []).map((line, row) => {
-        if (row >= 1 && row <= 21 && !isLikelyOverlayText(line)) return ` ${String(line || '')}`;
-        return String(line || '');
-    });
 }
 
 function compareGameplayColors(actualAnsi, expectedAnsi) {
-    const withPad = compareScreenAnsi(actualAnsi, prependGameplayMapCol0(expectedAnsi));
-    if (withPad.match) return withPad;
-    const noPad = compareScreenAnsi(actualAnsi, expectedAnsi);
+    const actualRows = (Array.isArray(actualAnsi) ? actualAnsi : [])
+        .map((line) => ansiLineToCells(line || ''));
+    const expectedRowsNoPad = (Array.isArray(expectedAnsi) ? expectedAnsi : [])
+        .map((line) => ansiLineToCells(line || ''));
+    const expectedRowsShifted = expectedRowsNoPad.map((cells, row) => {
+        if (row < 1 || row > 21) return cells;
+        const plain = stripAnsiSequences(expectedAnsi[row] || '').replace(/[\x0e\x0f]/g, '');
+        const overlayStart = findGameplayOverlayStart(plain);
+        if (overlayStart >= 1) {
+            return shiftAnsiPrefixRightOne(cells, overlayStart);
+        }
+        return shiftAnsiPrefixRightOne(cells, 0);
+    });
+
+    const shifted = compareAnsiCellRows(actualRows, expectedRowsShifted);
+    if (shifted.match) return shifted;
+    const noPad = compareAnsiCellRows(actualRows, expectedRowsNoPad);
     if (noPad.match) return noPad;
-    return (withPad.matched >= noPad.matched) ? withPad : noPad;
+    return (shifted.matched >= noPad.matched) ? shifted : noPad;
 }
 
 function sleep(ms) {

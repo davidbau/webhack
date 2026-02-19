@@ -210,6 +210,10 @@ function normalizeAnsiCells(cells, width = 80) {
     return out;
 }
 
+export function ansiLineToCells(line, width = 80) {
+    return normalizeAnsiCells(parseAnsiLineToCells(line), width);
+}
+
 export function compareScreenAnsi(actualAnsi = [], expectedAnsi = []) {
     const actual = Array.isArray(actualAnsi) ? actualAnsi : [];
     const expected = Array.isArray(expectedAnsi) ? expectedAnsi : [];
@@ -218,8 +222,8 @@ export function compareScreenAnsi(actualAnsi = [], expectedAnsi = []) {
     const diffs = [];
 
     for (let row = 0; row < total; row++) {
-        const aCells = normalizeAnsiCells(parseAnsiLineToCells(actual[row] || ''));
-        const eCells = normalizeAnsiCells(parseAnsiLineToCells(expected[row] || ''));
+        const aCells = ansiLineToCells(actual[row] || '');
+        const eCells = ansiLineToCells(expected[row] || '');
         let rowMatch = true;
         let firstCol = -1;
         for (let col = 0; col < 80; col++) {
