@@ -270,3 +270,43 @@ Regression anchors after this pass:
 - `seed112_valkyrie_selfplay200.session.json`: pass
 - `seed5_gnomish_mines_gameplay.session.json`: unchanged first-divergence
   profile (`screen step 46`, `RNG step 205`)
+
+## 2026-02-19 follow-up: wizard level-teleport prompt/arrival parity
+
+Additional C-faithful wizard-levelchange fixes landed:
+
+- `js/commands.js` `wizLevelChange()`:
+  - prompt text now matches C:
+    `To what level do you want to teleport?`
+  - uses teleport arrival semantics:
+    `changeLevel(level, 'teleport')` (instead of default stair-style placement)
+  - removed JS-only confirmation line
+    (`You are now on dungeon level X.`), which C does not emit here.
+- `js/input.js` `getlin()` now clears row 0 on Enter/ESC to match C prompt
+  cleanup and avoid stale typed prompts persisting into post-command frames.
+- `js/headless_runtime.js` and `js/nethack.js`:
+  - add quest-locate hint handling for first reach of quest-locate depth,
+    emitting:
+    `You couldn't quite make out that last message.`
+  - this matches C replay behavior for the seed212 wizard level-teleport path.
+
+Verification detail:
+
+- recaptured C replay slice via harness (`run_session.py`) confirms the
+  step-261 top line is exactly:
+  `You couldn't quite make out that last message.`
+  (not a stale fixture artifact).
+
+Observed effect on `seed212_valkyrie_wizard`:
+
+- first top-line mismatch at step 260 is resolved
+- first screen divergence now occurs lower in the frame (map content), still
+  at step `260`
+- colors matched improved from `7498/9768` to `8131/9768`
+- RNG first divergence remains at step `260` (`rn2(3)` vs C `rn2(5)` in levelgen)
+
+Regression anchors rechecked:
+
+- `seed42_items_gameplay.session.json`: pass
+- `seed103_caveman_selfplay200.session.json`: pass
+- `seed112_valkyrie_selfplay200.session.json`: pass

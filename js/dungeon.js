@@ -1164,6 +1164,19 @@ export function resolveBranchPlacementForLevel(dnum, dlevel) {
     return { placement: 'none' };
 }
 
+// True if the specified level has a branch connection whose opposite end
+// belongs to targetDnum.
+export function isBranchLevelToDnum(dnum, dlevel, targetDnum) {
+    const cdnum = Number.isInteger(dnum) ? dnum : DUNGEONS_OF_DOOM;
+    if (!Number.isInteger(dlevel) || !Number.isInteger(targetDnum)) {
+        return false;
+    }
+    const info = getBranchAtLevel(cdnum, dlevel);
+    if (!info) return false;
+    const otherEnd = info.onEnd1 ? info.branch.end2 : info.branch.end1;
+    return otherEnd?.dnum === targetDnum;
+}
+
 // Track Lua MT RNG initialization (shared with sp_lev.js via export)
 // Lazy initialization happens on first Lua RNG use (des.object/des.monster)
 // Use getter function to avoid stale import copies (primitives are copied, not referenced)

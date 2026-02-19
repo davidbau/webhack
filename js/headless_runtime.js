@@ -15,7 +15,7 @@ import {
     setRngCallCount,
 } from './rng.js';
 import { exercise, exerchk, initExerciseState } from './attrib_exercise.js';
-import { initLevelGeneration, makelevel, setGameSeed } from './dungeon.js';
+import { initLevelGeneration, makelevel, setGameSeed, isBranchLevelToDnum } from './dungeon.js';
 import { simulatePostLevelInit, mon_arrive } from './u_init.js';
 import { Player, rankOf, roles } from './player.js';
 import { rhack } from './commands.js';
@@ -1028,9 +1028,21 @@ export class HeadlessGame {
             this.resolveArrivalCollision();
         }
         this.renderCurrentScreen();
+        this.maybeShowQuestLocateHint(depth);
         if (typeof this.hooks.onLevelChange === 'function') {
             this.hooks.onLevelChange({ game: this, depth });
         }
+    }
+
+    maybeShowQuestLocateHint(depth) {
+        if (!this.display || !this.player || this.player.questLocateHintShown) return;
+        const currentDnum = Number.isInteger(this.dnum) ? this.dnum : 0;
+        // C quest locate prompt: appears when reaching quest-locate depth in
+        // the main dungeon (typically depth 14), before full quest state exists.
+        const questLocateDepth = (currentDnum === 0 && depth === 14);
+        if (!questLocateDepth && !isBranchLevelToDnum(currentDnum, depth, 3)) return;
+        this.display.putstr_message("You couldn't quite make out that last message.");
+        this.player.questLocateHintShown = true;
     }
 
     placePlayerOnLevel(transitionDir = null) {

@@ -131,12 +131,21 @@ export async function getlin(prompt, display) {
     while (true) {
         const ch = await nhgetch();
         if (ch === 13 || ch === 10) { // Enter
-            // Clear topMessage to prevent message concatenation issues
-            if (disp) disp.topMessage = null;
+            // C-style prompt cleanup after accepting typed input.
+            if (disp) {
+                disp.topMessage = null;
+                if (typeof disp.clearRow === 'function') {
+                    disp.clearRow(0);
+                }
+            }
             return line;
         } else if (ch === 27) { // ESC
-            // Clear topMessage to prevent message concatenation issues
-            if (disp) disp.topMessage = null;
+            if (disp) {
+                disp.topMessage = null;
+                if (typeof disp.clearRow === 'function') {
+                    disp.clearRow(0);
+                }
+            }
             return null; // cancelled
         } else if (ch === 8 || ch === 127) { // Backspace
             if (line.length > 0) {

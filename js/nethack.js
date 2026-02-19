@@ -13,7 +13,7 @@ import { Player, roles, races, validRacesForRole, validAlignsForRoleRace,
          needsGenderMenu, rankOf, godForRoleAlign, isGoddess, greetingForRole,
          roleNameForGender, alignName, formatLoreText } from './player.js';
 import { GameMap } from './map.js';
-import { initLevelGeneration, makelevel, setGameSeed } from './dungeon.js';
+import { initLevelGeneration, makelevel, setGameSeed, isBranchLevelToDnum } from './dungeon.js';
 import { TUTORIAL } from './special_levels.js';
 import { makemon, setMakemonPlayerContext } from './makemon.js';
 import { FOOD_CLASS } from './objects.js';
@@ -257,6 +257,15 @@ export class NetHackGame {
         this.fov.compute(this.map, this.player.x, this.player.y);
         this.display.renderMap(this.map, this.player, this.fov, this.flags);
         this.display.renderStatus(this.player);
+        this.maybeShowQuestLocateHint(depth);
+    }
+
+    maybeShowQuestLocateHint(depth) {
+        if (!this.display || !this.player || this.player.questLocateHintShown) return;
+        const questLocateDepth = (depth === 14);
+        if (!questLocateDepth && !isBranchLevelToDnum(0, depth, 3)) return;
+        this.display.putstr_message("You couldn't quite make out that last message.");
+        this.player.questLocateHintShown = true;
     }
 
     _emitGameplayStart() {

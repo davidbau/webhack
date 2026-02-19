@@ -467,6 +467,7 @@ export class Player {
         this.wizard = false;
         this.displacedPetThisTurn = false;
         this.kickedloc = null;
+        this.questLocateHintShown = false;
 
         // Death cause -- C ref: killer.name from end.c
         this.deathCause = '';

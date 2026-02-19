@@ -1382,9 +1382,21 @@ async function handleOpen(player, map, display, game) {
     // Prompt should not concatenate with outcome message.
     display.topMessage = null;
     const c = String.fromCharCode(dirCh);
-    const dir = DIRECTION_KEYS[c];
+    let dir = DIRECTION_KEYS[c];
+    // C ref: getdir() accepts self-direction ('.' and 's').
+    if (!dir && (c === '.' || c === 's')) {
+        dir = [0, 0];
+    }
     if (!dir) {
         display.putstr_message("Never mind.");
+        return { moved: false, tookTime: false };
+    }
+
+    // C ref: doopen() with self-direction routes through loot handling.
+    // Full container/saddle loot is not yet implemented; preserve canonical
+    // no-target message for this path.
+    if (dir[0] === 0 && dir[1] === 0) {
+        display.putstr_message("You don't find anything here to loot.");
         return { moved: false, tookTime: false };
     }
 
@@ -4102,7 +4114,7 @@ async function wizLevelChange(game) {
         display.putstr_message('Unavailable command.');
         return { moved: false, tookTime: false };
     }
-    const input = await getlin('To what level do you want to change? ', display);
+    const input = await getlin('To what level do you want to teleport? ', display);
     if (input === null || input.trim() === '') {
         return { moved: false, tookTime: false };
     }
@@ -4115,8 +4127,7 @@ async function wizLevelChange(game) {
         display.putstr_message('You are already on that level.');
         return { moved: false, tookTime: false };
     }
-    display.putstr_message(`You are now on dungeon level ${level}.`);
-    game.changeLevel(level);
+    game.changeLevel(level, 'teleport');
     return { moved: false, tookTime: true };
 }
 
