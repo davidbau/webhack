@@ -5,7 +5,7 @@
 import { COLNO, ROWNO, STONE, IS_WALL, IS_DOOR, IS_ROOM,
          ACCESSIBLE, IS_OBSTRUCTED, CORR, DOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN,
          POOL, LAVAPOOL, WATER, LAVAWALL, IRONBARS,
-         SHOPBASE, ROOMOFFSET, IS_POOL, IS_LAVA,
+         SHOPBASE, ROOM, ROOMOFFSET, IS_POOL, IS_LAVA,
          NORMAL_SPEED, isok } from './config.js';
 import { rn2, rnd, c_d } from './rng.js';
 import { monsterAttackPlayer, checkLevelUp } from './combat.js';
@@ -21,7 +21,7 @@ import { dogfood, dog_eat, can_carry, DOGFOOD, CADAVER, ACCFOOD, MANFOOD, APPORT
          POISON, UNDEF, TABU } from './dog.js';
 import { couldsee, m_cansee, do_clear_area } from './vision.js';
 import { can_teleport, noeyes, perceives, is_animal, is_mindless, nohands, nonliving,
-         is_displacer, monDisplayName, hasGivenName, monNam,
+         is_displacer, is_hider, monDisplayName, hasGivenName, monNam,
          } from './mondata.js';
 import { PM_GRID_BUG, PM_IRON_GOLEM, PM_SHOPKEEPER, mons,
          PM_LEPRECHAUN, PM_XAN, PM_YELLOW_LIGHT, PM_BLACK_LIGHT,
@@ -36,7 +36,7 @@ import { PM_GRID_BUG, PM_IRON_GOLEM, PM_SHOPKEEPER, mons,
          M2_COLLECT, M2_STRONG, M2_ROCKTHROW, M2_GREEDY, M2_JEWELS, M2_MAGIC,
          MZ_TINY, MZ_SMALL, MZ_MEDIUM, MZ_HUMAN, WT_HUMAN, MR_FIRE, MR_SLEEP, G_FREQ, G_NOCORPSE,
          PM_DISPLACER_BEAST, PM_FIRE_ELEMENTAL, PM_SALAMANDER,
-         S_EYE, S_LIGHT, S_EEL, S_VORTEX, S_ELEMENTAL } from './monsters.js';
+         S_EYE, S_LIGHT, S_EEL, S_PIERCER, S_VORTEX, S_ELEMENTAL } from './monsters.js';
 import { STATUE_TRAP, MAGIC_TRAP, VIBRATING_SQUARE, RUST_TRAP, FIRE_TRAP,
          SLP_GAS_TRAP, BEAR_TRAP, PIT, SPIKED_PIT, HOLE, TRAPDOOR,
          WEB, ANTI_MAGIC, MAGIC_PORTAL } from './symbols.js';
@@ -1341,6 +1341,51 @@ function placeFloorObject(map, obj) {
     return obj;
 }
 
+function canSeeForRestrap(mon, map, player, fov) {
+    if (!mon || !map || !player) return false;
+    const canSeeSquare = fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my);
+    return !!canSeeSquare && !player.blind;
+}
+
+// C ref: mon.c restrap() and movemon_singlemon() hider gate.
+// Returns true when the monster should spend the turn hiding/inert.
+function handleHiderPremove(mon, map, player, fov) {
+    const ptr = mon.type || {};
+    if (!is_hider(ptr)) return false;
+
+    const trap = mon.mtrapped ? map.trapAt(mon.mx, mon.my) : null;
+    const trappedOutsidePit = !!(mon.mtrapped && trap && trap.ttyp !== PIT && trap.ttyp !== SPIKED_PIT);
+    const isCeilingHider = ptr.symbol === S_PIERCER;
+    // We do not currently model no-ceiling levels in runtime flags.
+    const hasCeiling = !(map?.flags?.is_airlevel || map?.flags?.is_waterlevel);
+    const sensedAndAdjacent = canSpotMonsterForMap(mon, map, player, fov) && monnear(mon, player.x, player.y);
+
+    const blocked =
+        mon.mcan
+        || mon.m_ap_type
+        || mon.appear_as_type
+        || canSeeForRestrap(mon, map, player, fov)
+        || rn2(3)
+        || trappedOutsidePit
+        || (isCeilingHider && !hasCeiling)
+        || sensedAndAdjacent;
+
+    if (!blocked) {
+        if (ptr.symbol === S_MIMIC) {
+            if (!(mon.sleeping || (mon.mfrozen > 0))) {
+                mon.m_ap_type = mon.m_ap_type || 'object';
+                return true;
+            }
+        } else if (map.at(mon.mx, mon.my)?.typ === ROOM) {
+            mon.mundetected = true;
+            return true;
+        }
+    }
+
+    // C ref: movemon_singlemon() skips dochugw for hidden/disguised hiders.
+    return !!(mon.m_ap_type || mon.appear_as_type || mon.mundetected);
+}
+
 // ========================================================================
 // dog_invent — pet inventory management (pickup/drop at current position)
 // C ref: dogmove.c:392-471
@@ -1460,6 +1505,9 @@ export function movemon(map, player, display, fov, game = null) {
                     && ((fov?.canSee ? fov.canSee(oldx, oldy) : couldsee(map, player, oldx, oldy))));
                 mon.movement -= NORMAL_SPEED;
                 anyMoved = true;
+                if (handleHiderPremove(mon, map, player, fov)) {
+                    continue;
+                }
                 dochug(mon, map, player, display, fov, game);
                 // C ref: monmove.c dochugw() threat-notice interruption gate.
                 // If an occupied hero newly notices a hostile, attack-capable

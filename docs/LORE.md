@@ -426,6 +426,16 @@ after zero-RNG frames, defer the tail to that later step for comparison.
 Treat zero-RNG frames between source and deferred target as display-only
 acknowledgement frames (do not execute a new command turn there).
 
+### Hider `restrap()` runs before `dochug` and can consume `rn2(3)` even on sleeping monsters
+
+In C, `movemon_singlemon()` calls `restrap()` for `is_hider` monsters before
+`dochugw()`. That `restrap()` path can consume `rn2(3)` and may set
+`mundetected`, causing the monster to skip `dochug` for that turn.
+
+Practical rule: for parity around piercers/mimics, model the pre-`dochug`
+hider gate in the movement loop (not inside `m_move`/`dog_move`), or RNG
+alignment will drift by one monster-cycle (`distfleeck`) call.
+
 ---
 
 ## Phase Chronicles
