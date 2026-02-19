@@ -25,6 +25,10 @@ const COLORS = {
   rateFill: 'rgba(44, 74, 107, 0.15)',
 };
 
+// Category display order: gameplay first (most interesting), chargen last (always passes)
+const CAT_SORT = { gameplay: 0, special: 1, map: 2, interface: 3, other: 4, chargen: 99 };
+function catSortOrder(name) { return CAT_SORT[name] ?? 50; }
+
 const CAT_COLORS = {
   gameplay: 'rgba(139, 44, 44, 0.9)',
   unit: 'rgba(44, 74, 107, 0.9)',
@@ -86,8 +90,17 @@ function passFailColor(passed) {
 }
 
 function getCellColor(session, metric) {
-  if (metric === 'rng') return rngColor(session.rm, session.rt);
-  if (metric === 'screen') return screenColor(session.sm, session.st);
+  if (metric === 'rng') {
+    // Fall back to screen metric if no RNG data (e.g. chargen sessions)
+    if (session.rt > 0) return rngColor(session.rm, session.rt);
+    if (session.st > 0) return screenColor(session.sm, session.st);
+    return passFailColor(session.p);
+  }
+  if (metric === 'screen') {
+    if (session.st > 0) return screenColor(session.sm, session.st);
+    if (session.rt > 0) return rngColor(session.rm, session.rt);
+    return passFailColor(session.p);
+  }
   return passFailColor(session.p);
 }
 
@@ -270,7 +283,7 @@ function updateChart() {
     filteredData.forEach(d => {
       if (d.categories) Object.keys(d.categories).forEach(k => allCats[k] = true);
     });
-    const categories = Object.keys(allCats).sort();
+    const categories = Object.keys(allCats).sort((a, b) => catSortOrder(a) - catSortOrder(b));
 
     scales.y = {
       title: { display: true, text: 'Failing Tests', color: '#6b5b4b' },
@@ -495,7 +508,7 @@ function showDetailPanel(d) {
       <h3>Sessions</h3>
       <div class="session-list">`;
 
-    for (const [type, sessions] of Object.entries(byType).sort((a, b) => a[0].localeCompare(b[0]))) {
+    for (const [type, sessions] of Object.entries(byType).sort((a, b) => catSortOrder(a[0]) - catSortOrder(b[0]))) {
       const passCount = sessions.filter(s => s.p).length;
       const totalCount = sessions.length;
       const expanded = sessions.some(s => !s.p); // expand groups with failures
@@ -603,7 +616,7 @@ function updateCategoryBreakdown() {
   }
 
   let html = '';
-  for (const [cat, stats] of Object.entries(latest.categories)) {
+  for (const [cat, stats] of Object.entries(latest.categories).sort((a, b) => catSortOrder(a[0]) - catSortOrder(b[0]))) {
     const pct = stats.total > 0 ? Math.round(stats.pass / stats.total * 100) : 0;
     html += `<div class="category-card" data-category="${cat}">
       <span class="category-name">${cat}</span>
@@ -657,9 +670,9 @@ function updateSessionGrid() {
       return true;
     })
     .sort((a, b) => {
-      // Sort by type, then by name
-      const typeCmp = a[1].type.localeCompare(b[1].type);
-      if (typeCmp !== 0) return typeCmp;
+      // Sort by category priority, then by name
+      const orderCmp = catSortOrder(a[1].type) - catSortOrder(b[1].type);
+      if (orderCmp !== 0) return orderCmp;
       return a[0].localeCompare(b[0]);
     });
 
@@ -678,49 +691,84 @@ function updateSessionGrid() {
     commitSessionLookup.set(d.commit, map);
   }
 
-  // Build table HTML
-  let html = '<table class="session-grid-table">';
-
-  // Header row: corner + commit columns
-  html += '<thead><tr>';
-  html += '<th class="corner"></th>';
-  for (const d of commitsWithSessions) {
-    html += `<th class="commit-col" data-commit="${d.commit}" title="${d.commit} - ${fmtDate(d.date)}\n${d.message?.slice(0, 60) || ''}">${d.commit.slice(0, 6)}</th>`;
-  }
-  html += '</tr></thead>';
-
-  // Body: one row per session, grouped by type
-  html += '<tbody>';
-  let lastType = null;
+  // Group sessions by type for incremental rendering
+  const typeGroups = [];
+  let currentType = null;
+  let currentGroup = null;
   for (const [sessionName, info] of sessionNames) {
-    // Type separator row
-    if (info.type !== lastType) {
-      lastType = info.type;
-      html += `<tr><th class="type-separator" colspan="${commitsWithSessions.length + 1}">${info.type}</th></tr>`;
+    if (info.type !== currentType) {
+      currentType = info.type;
+      currentGroup = { type: info.type, sessions: [] };
+      typeGroups.push(currentGroup);
     }
-
-    const shortName = sessionName.replace('.session.json', '');
-    html += `<tr data-session="${sessionName}">`;
-    html += `<th class="row-header" title="${sessionName}">${shortName}</th>`;
-
-    for (const d of commitsWithSessions) {
-      const sessionData = commitSessionLookup.get(d.commit)?.get(sessionName);
-      if (!sessionData) {
-        html += '<td class="no-data"></td>';
-      } else {
-        const color = getCellColor(sessionData, colorMetric);
-        html += `<td data-commit="${d.commit}" data-session="${sessionName}" style="background:${color}"><span class="grid-cell"></span></td>`;
-      }
-    }
-
-    html += '</tr>';
+    currentGroup.sessions.push([sessionName, info]);
   }
-  html += '</tbody></table>';
 
-  wrapper.innerHTML = html;
+  // Build table shell with header immediately
+  const table = document.createElement('table');
+  table.className = 'session-grid-table';
 
-  // Add event listeners for tooltips and clicks
-  setupGridInteractions(wrapper, commitsWithSessions, commitSessionLookup);
+  const thead = document.createElement('thead');
+  let headerHtml = '<tr><th class="corner"></th>';
+  for (const d of commitsWithSessions) {
+    headerHtml += `<th class="commit-col" data-commit="${d.commit}" title="${d.commit} - ${fmtDate(d.date)}\n${d.message?.slice(0, 60) || ''}">${d.commit.slice(0, 6)}</th>`;
+  }
+  headerHtml += '</tr>';
+  thead.innerHTML = headerHtml;
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  table.appendChild(tbody);
+
+  wrapper.innerHTML = '';
+  wrapper.appendChild(table);
+
+  // Render one type group per animation frame for responsiveness
+  let groupIdx = 0;
+  function renderNextGroup() {
+    if (groupIdx >= typeGroups.length) {
+      // All groups rendered, set up interactions
+      setupGridInteractions(wrapper, commitsWithSessions, commitSessionLookup);
+      return;
+    }
+
+    const group = typeGroups[groupIdx++];
+    const fragment = document.createDocumentFragment();
+
+    // Type separator row
+    const sepRow = document.createElement('tr');
+    const sepTh = document.createElement('th');
+    sepTh.className = 'type-separator';
+    sepTh.colSpan = commitsWithSessions.length + 1;
+    sepTh.textContent = group.type;
+    sepRow.appendChild(sepTh);
+    fragment.appendChild(sepRow);
+
+    // Session rows
+    for (const [sessionName] of group.sessions) {
+      const shortName = sessionName.replace('.session.json', '');
+      const row = document.createElement('tr');
+      row.dataset.session = sessionName;
+
+      let rowHtml = `<th class="row-header" title="${sessionName}">${shortName}</th>`;
+      for (const d of commitsWithSessions) {
+        const sessionData = commitSessionLookup.get(d.commit)?.get(sessionName);
+        if (!sessionData) {
+          rowHtml += '<td class="no-data"></td>';
+        } else {
+          const color = getCellColor(sessionData, colorMetric);
+          rowHtml += `<td data-commit="${d.commit}" data-session="${sessionName}" style="background:${color}"><span class="grid-cell"></span></td>`;
+        }
+      }
+      row.innerHTML = rowHtml;
+      fragment.appendChild(row);
+    }
+
+    tbody.appendChild(fragment);
+    requestAnimationFrame(renderNextGroup);
+  }
+
+  requestAnimationFrame(renderNextGroup);
 }
 
 function setupGridInteractions(wrapper, commitsWithSessions, commitSessionLookup) {
