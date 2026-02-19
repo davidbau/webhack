@@ -3485,9 +3485,11 @@ function isApplyCandidate(obj) {
         || obj.otyp === LUMP_OF_ROYAL_JELLY) {
         return true;
     }
-    // C ref: apply.c apply_ok() — suggest graystones (touchstone rubbing).
+    // C ref: apply.c apply_ok() — suggest touchstone/luckstone/loadstone.
+    // FLINT is throwable ammo but should not appear as apply-eligible in
+    // C prompt flows for normal play sessions.
     if (obj.otyp === TOUCHSTONE || obj.otyp === LUCKSTONE
-        || obj.otyp === LOADSTONE || obj.otyp === FLINT) {
+        || obj.otyp === LOADSTONE) {
         return true;
     }
     // C ref: apply.c apply_ok() — suggest POT_OIL if discovered.
@@ -3577,9 +3579,7 @@ async function handleApply(player, display) {
             const dir = DIRECTION_KEYS[dch];
             if (!dir) {
                 replacePromptMessage();
-                if (player?.wizard) {
-                    display.putstr_message('Never mind.');
-                } else {
+                if (!player?.wizard) {
                     display.putstr_message('What a strange direction!  Never mind.');
                 }
                 return { moved: false, tookTime: false };

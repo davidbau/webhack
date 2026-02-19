@@ -225,9 +225,13 @@ established these practical replay/parity rules:
 - Outside that `?/*` list mode, apply prompt letter selection is broader than
   the suggestion list; selecting non-suggested inventory letters can still hit
   C-style fallback text (`Sorry, I don't know how to use that.`).
+- `FLINT` should not be treated as apply-eligible in normal prompt candidate
+  filtering; this was causing false-positive apply prompts in wizard sessions.
 - Tourist credit-card apply path is direction-driven (`In what direction?`);
   invalid non-wizard direction input must report
   `What a strange direction!  Never mind.`.
+- In wizard mode, invalid direction input for that apply-direction path is
+  silent (no `Never mind.` topline).
 - `$` must route to C-style wallet reporting (`Your wallet contains N zorkmid(s).`).
 - `:` on an empty square should report `You see no objects here.` in this trace.
 - Throw prompt suggestion letters follow C's class-filtered set (coins always;

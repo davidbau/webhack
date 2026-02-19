@@ -5,7 +5,7 @@ import { rhack } from '../../js/commands.js';
 import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
-import { BATTLE_AXE, CREDIT_CARD, LANCE, SPE_HEALING, STETHOSCOPE } from '../../js/objects.js';
+import { BATTLE_AXE, CREDIT_CARD, FLINT, GEM_CLASS, LANCE, SPE_HEALING, STETHOSCOPE } from '../../js/objects.js';
 
 function makeBaseGame() {
     const map = new GameMap();
@@ -56,6 +56,14 @@ describe('apply prompt behavior', () => {
     it('reports nothing to apply when inventory has no applicable items', async () => {
         const game = makeBaseGame();
         game.player.inventory = [{ invlet: 'a', oclass: 1, otyp: 1, name: 'long sword' }];
+        const result = await rhack('a'.charCodeAt(0), game);
+        assert.equal(result.tookTime, false);
+        assert.equal(game.display.topMessage, "You don't have anything to use or apply.");
+    });
+
+    it('does not treat flint as an apply-eligible item', async () => {
+        const game = makeBaseGame();
+        game.player.inventory = [{ invlet: 'f', oclass: GEM_CLASS, otyp: FLINT, name: 'flint stone' }];
         const result = await rhack('a'.charCodeAt(0), game);
         assert.equal(result.tookTime, false);
         assert.equal(game.display.topMessage, "You don't have anything to use or apply.");
@@ -115,5 +123,16 @@ describe('apply prompt behavior', () => {
         const result = await rhack('a'.charCodeAt(0), game);
         assert.equal(result.tookTime, false);
         assert.equal(game.display.topMessage, 'What a strange direction!  Never mind.');
+    });
+
+    it('wizard apply direction cancel is silent on invalid direction', async () => {
+        const game = makeBaseGame();
+        game.player.wizard = true;
+        game.player.inventory = [{ invlet: 'c', oclass: 5, otyp: CREDIT_CARD, name: 'credit card' }];
+        pushInput('c'.charCodeAt(0));
+        pushInput('t'.charCodeAt(0)); // invalid direction key
+        const result = await rhack('a'.charCodeAt(0), game);
+        assert.equal(result.tookTime, false);
+        assert.equal(game.display.topMessage, null);
     });
 });
