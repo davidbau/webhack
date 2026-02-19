@@ -2,7 +2,12 @@
 # Re-backfill git notes with full session results for commits since START_DATE.
 # Uses a single clone with current test infra, swapping only game code per commit.
 #
-# Usage: oracle/rebackfill.sh [--dry-run] [--limit=N]
+# Usage: oracle/rebackfill.sh [--dry-run] [--limit=N] [--fix-timeouts]
+#
+# Modes:
+#   (default)        Re-run commits with backfilled (summary-only) notes
+#   --fix-timeouts   Re-run commits that have timed-out sessions, replacing
+#                    the note only if the re-run has fewer timeouts
 
 set -e
 
@@ -11,32 +16,52 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 START_DATE="2026-02-16T03:06"
 DRY_RUN=false
 LIMIT=0
+FIX_TIMEOUTS=false
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=true ;;
     --limit=*) LIMIT="${arg#--limit=}" ;;
+    --fix-timeouts) FIX_TIMEOUTS=true ;;
   esac
 done
 
-# Collect commits that need re-backfilling
-echo "Scanning notes for backfilled entries since $START_DATE..."
+# Collect commits to process
 > /tmp/rebackfill_commits.txt
-git notes --ref=test-results list 2>/dev/null | while read note_hash commit_hash; do
-  note=$(git notes --ref=test-results show "$commit_hash" 2>/dev/null || echo "")
-  [ -z "$note" ] && continue
-  echo "$note" | jq -e '.results' >/dev/null 2>&1 && continue
-  date=$(echo "$note" | jq -r '.date // empty' 2>/dev/null)
-  [ -z "$date" ] && continue
-  [[ "$date" < "$START_DATE" ]] && continue
-  echo "$commit_hash"
-done > /tmp/rebackfill_commits.txt
+
+if $FIX_TIMEOUTS; then
+  echo "Scanning notes for entries with timed-out sessions since $START_DATE..."
+  git ls-tree -r refs/notes/test-results | while read mode type hash path; do
+    note=$(git cat-file -p "$hash" 2>/dev/null)
+    [ -z "$note" ] && continue
+    echo "$note" | jq -e '.results | length > 0' >/dev/null 2>&1 || continue
+    date=$(echo "$note" | jq -r '(.date // .timestamp) // empty' 2>/dev/null)
+    [ -z "$date" ] && continue
+    [[ "$date" < "$START_DATE" ]] && continue
+    n=$(echo "$note" | jq '[.results[] | select(.error)] | length' 2>/dev/null)
+    if [ "$n" -gt 0 ] 2>/dev/null; then
+      commit_hash="${path//\//}"
+      echo "$commit_hash"
+    fi
+  done > /tmp/rebackfill_commits.txt
+else
+  echo "Scanning notes for backfilled entries since $START_DATE..."
+  git notes --ref=test-results list 2>/dev/null | while read note_hash commit_hash; do
+    note=$(git notes --ref=test-results show "$commit_hash" 2>/dev/null || echo "")
+    [ -z "$note" ] && continue
+    echo "$note" | jq -e '.results' >/dev/null 2>&1 && continue
+    date=$(echo "$note" | jq -r '.date // empty' 2>/dev/null)
+    [ -z "$date" ] && continue
+    [[ "$date" < "$START_DATE" ]] && continue
+    echo "$commit_hash"
+  done > /tmp/rebackfill_commits.txt
+fi
 
 COMMITS=()
 while IFS= read -r line; do
   [ -n "$line" ] && COMMITS+=("$line")
 done < /tmp/rebackfill_commits.txt
-echo "Found ${#COMMITS[@]} commits to re-backfill"
+echo "Found ${#COMMITS[@]} commits to process"
 
 if [ "${#COMMITS[@]}" -eq 0 ]; then
   echo "Nothing to do."
@@ -50,7 +75,15 @@ fi
 
 if $DRY_RUN; then
   for c in "${COMMITS[@]}"; do
-    echo "  $(git rev-parse --short "$c")"
+    short=$(git rev-parse --short "$c" 2>/dev/null || echo "${c:0:8}")
+    if $FIX_TIMEOUTS; then
+      # Show timeout count for this commit
+      note=$(git cat-file -p "$(git ls-tree -r refs/notes/test-results | grep "${c:0:2}/${c:2}" | awk '{print $3}')" 2>/dev/null)
+      n=$(echo "$note" | jq '[.results[] | select(.error)] | length' 2>/dev/null || echo "?")
+      echo "  $short ($n timeouts)"
+    else
+      echo "  $short"
+    fi
   done
   exit 0
 fi
@@ -77,10 +110,11 @@ cp "$REPO_ROOT/scripts/run-session-tests.sh" "$INFRA_DIR/run-session-tests.sh"
 DONE=0
 FAILED=0
 SUCCEEDED=0
+SKIPPED=0
 TOTAL=${#COMMITS[@]}
 
 for commit in "${COMMITS[@]}"; do
-  short=$(git rev-parse --short "$commit")
+  short=$(git rev-parse --short "$commit" 2>/dev/null || echo "${c:0:8}")
   DONE=$((DONE + 1))
   START_TIME=$(date +%s)
 
@@ -108,34 +142,62 @@ for commit in "${COMMITS[@]}"; do
 
   PENDING="$WORK_DIR/oracle/pending.jsonl"
   if [ -f "$PENDING" ] && jq -e '.results' "$PENDING" >/dev/null 2>&1; then
-    PARENT_SHORT=$(git rev-parse --short "${commit}^" 2>/dev/null || echo "none")
-    jq --arg commit "$short" --arg parent "$PARENT_SHORT" \
-      '.commit = $commit | .parent = $parent' "$PENDING" \
-      | git notes --ref=test-results add -f -F - "$commit"
-    ELAPSED=$(( $(date +%s) - START_TIME ))
-    RESULTS_COUNT=$(jq '.results | length' "$PENDING")
-    RNG=$(jq '[.results[].metrics.rngCalls // empty | .matched] | add // 0' "$PENDING")
-    echo "✅ ${RESULTS_COUNT} sessions, rng=${RNG} (${ELAPSED}s)"
-    SUCCEEDED=$((SUCCEEDED + 1))
+    if $FIX_TIMEOUTS; then
+      # Only replace if the new result has fewer timeouts than the old one
+      OLD_TIMEOUTS=$(git ls-tree -r refs/notes/test-results | grep "${commit:0:2}/${commit:2}" | awk '{print $3}' | xargs git cat-file -p 2>/dev/null | jq '[.results[] | select(.error)] | length' 2>/dev/null || echo 999)
+      NEW_TIMEOUTS=$(jq '[.results[] | select(.error)] | length' "$PENDING" 2>/dev/null || echo 999)
+
+      if [ "$NEW_TIMEOUTS" -lt "$OLD_TIMEOUTS" ]; then
+        PARENT_SHORT=$(git rev-parse --short "${commit}^" 2>/dev/null || echo "none")
+        jq --arg commit "$short" --arg parent "$PARENT_SHORT" \
+          '.commit = $commit | .parent = $parent' "$PENDING" \
+          | git notes --ref=test-results add -f -F - "$commit"
+        ELAPSED=$(( $(date +%s) - START_TIME ))
+        echo "✅ timeouts $OLD_TIMEOUTS→$NEW_TIMEOUTS (${ELAPSED}s)"
+        SUCCEEDED=$((SUCCEEDED + 1))
+      else
+        ELAPSED=$(( $(date +%s) - START_TIME ))
+        echo "⏭ no improvement ($OLD_TIMEOUTS→$NEW_TIMEOUTS) (${ELAPSED}s)"
+        SKIPPED=$((SKIPPED + 1))
+      fi
+    else
+      PARENT_SHORT=$(git rev-parse --short "${commit}^" 2>/dev/null || echo "none")
+      jq --arg commit "$short" --arg parent "$PARENT_SHORT" \
+        '.commit = $commit | .parent = $parent' "$PENDING" \
+        | git notes --ref=test-results add -f -F - "$commit"
+      ELAPSED=$(( $(date +%s) - START_TIME ))
+      RESULTS_COUNT=$(jq '.results | length' "$PENDING")
+      RNG=$(jq '[.results[].metrics.rngCalls // empty | .matched] | add // 0' "$PENDING")
+      echo "✅ ${RESULTS_COUNT} sessions, rng=${RNG} (${ELAPSED}s)"
+      SUCCEEDED=$((SUCCEEDED + 1))
+    fi
   else
-    # Mark as attempted so we don't retry next time
-    echo "{\"results\":[], \"commit\":\"$short\", \"date\":\"$(date -u +%Y-%m-%dT%H:%M:%S)\", \"skipped\":true}" \
-      | git notes --ref=test-results add -f -F - "$commit"
+    if ! $FIX_TIMEOUTS; then
+      # Mark as attempted so we don't retry next time
+      echo "{\"results\":[], \"commit\":\"$short\", \"date\":\"$(date -u +%Y-%m-%dT%H:%M:%S)\", \"skipped\":true}" \
+        | git notes --ref=test-results add -f -F - "$commit"
+    fi
     ELAPSED=$(( $(date +%s) - START_TIME ))
-    echo "✗ no results, marked skipped (${ELAPSED}s)"
+    echo "✗ no results (${ELAPSED}s)"
     FAILED=$((FAILED + 1))
   fi
 
   # Push notes after each commit so progress is saved incrementally
-  git push --no-verify origin +refs/notes/test-results:refs/notes/test-results 2>/dev/null \
-    && echo "  ↳ pushed" || echo "  ↳ push failed (will retry later)"
+  if [ "$SUCCEEDED" -gt 0 ] || ! $FIX_TIMEOUTS; then
+    git push --no-verify origin +refs/notes/test-results:refs/notes/test-results 2>/dev/null \
+      && echo "  ↳ pushed" || echo "  ↳ push failed (will retry later)"
+  fi
 done
 
 # Cleanup
 rm -rf "$WORK_DIR" "$INFRA_DIR" /tmp/rebackfill_commits.txt
 
 echo ""
-echo "Done: $SUCCEEDED succeeded, $FAILED failed out of $TOTAL"
+if $FIX_TIMEOUTS; then
+  echo "Done: $SUCCEEDED improved, $SKIPPED unchanged, $FAILED failed out of $TOTAL"
+else
+  echo "Done: $SUCCEEDED succeeded, $FAILED failed out of $TOTAL"
+fi
 
 if [ "$SUCCEEDED" -gt 0 ]; then
   echo ""

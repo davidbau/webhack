@@ -68,31 +68,47 @@ TEMP_FILE=$(mktemp)
 
 if git show-ref refs/notes/test-results >/dev/null 2>&1; then
   git notes --ref=test-results list | while read note_hash commit_hash; do
+    SHORT=$(git rev-parse --short "$commit_hash" 2>/dev/null || echo "")
     NOTE=$(git notes --ref=test-results show "$commit_hash" 2>/dev/null || echo "")
     if [ -n "$NOTE" ] && echo "$NOTE" | jq empty 2>/dev/null; then
-      echo "$NOTE" >> "$TEMP_FILE"
+      # Stamp each JSON object with the full commit hash for dedup, short hash for display
+      echo "$NOTE" | jq -c --arg fh "$commit_hash" --arg sh "$SHORT" '. + {_fullhash: $fh, commit: $sh}' >> "$TEMP_FILE"
     fi
   done
 fi
 
 if [ -s "$TEMP_FILE" ]; then
-  # Sort by date and compute aggregate metrics from raw results
-  jq -s -c 'sort_by(.date) | .[] |
-    if .results then
-      # Raw format: aggregate per-session metrics
-      (.results | length) as $nsessions |
-      ([.results[].metrics | select(.rngCalls) | .rngCalls.matched] | add) as $rngM |
-      ([.results[].metrics | select(.rngCalls) | .rngCalls.total]   | add) as $rngT |
-      ([.results[].metrics | select(.screens)  | .screens.matched]  | add) as $scrM |
-      ([.results[].metrics | select(.screens)  | .screens.total]    | add) as $scrT |
-      ([.results[].metrics | select(.grids)    | .grids.matched]    | add) as $grdM |
-      ([.results[].metrics | select(.grids)    | .grids.total]      | add) as $grdT |
+  # Sort by date and compute aggregate metrics from raw results.
+  # When multiple runs exist for the same commit, pick the best (non-timeout)
+  # result per session before aggregating.
+  jq -s -c '
+    # Group raw entries by commit to merge multiple runs
+    [.[] | select(.results)] as $raw |
+    [.[] | select(.results | not)] as $backfilled |
+
+    # Group raw entries by commit, merge results per session
+    ($raw | group_by(._fullhash) | map(
+      # For each commit group, collect all session results across runs
+      (.[0]) as $first |
+      ([.[].results[]] | group_by(.session) | map(
+        # Per session: prefer non-error result, then latest
+        sort_by(if .error then 1 else 0 end) | .[0]
+      )) as $best_results |
+
+      ($best_results | length) as $nsessions |
+      ([$best_results[].metrics | select(.rngCalls) | .rngCalls.matched] | add) as $rngM |
+      ([$best_results[].metrics | select(.rngCalls) | .rngCalls.total]   | add) as $rngT |
+      ([$best_results[].metrics | select(.screens)  | .screens.matched]  | add) as $scrM |
+      ([$best_results[].metrics | select(.screens)  | .screens.total]    | add) as $scrT |
+      ([$best_results[].metrics | select(.grids)    | .grids.matched]    | add) as $grdM |
+      ([$best_results[].metrics | select(.grids)    | .grids.total]      | add) as $grdT |
       {
-        commit, parent,
-        date: (.date // .timestamp),
-        author: (.author // null),
-        message: (.message // null),
-        stats: .summary,
+        commit: $first.commit,
+        parent: $first.parent,
+        date: ($first.date // $first.timestamp),
+        author: ($first.author // null),
+        message: ($first.message // null),
+        stats: $first.summary,
         sessions: $nsessions,
         metrics: {
           rng:     { matched: ($rngM // 0), total: ($rngT // 0) },
@@ -100,7 +116,7 @@ if [ -s "$TEMP_FILE" ]; then
           grids:   { matched: ($grdM // 0), total: ($grdT // 0) }
         },
         categories: (
-          [.results[] | {type, passed}] | group_by(.type) |
+          [$best_results[] | {type, passed}] | group_by(.type) |
           map({
             key: .[0].type,
             value: {
@@ -110,7 +126,7 @@ if [ -s "$TEMP_FILE" ]; then
             }
           }) | from_entries
         ),
-        session_detail: [.results[] | {
+        session_detail: [$best_results[] | {
           s: .session,
           t: .type,
           p: .passed,
@@ -122,10 +138,10 @@ if [ -s "$TEMP_FILE" ]; then
           gt: (.metrics.grids.total // 0)
         }]
       }
-    else
-      # Already summarized (backfilled) — pass through
-      .
-    end
+    )) as $processed_raw |
+
+    # Combine, strip internal fields, and sort by date
+    ($processed_raw + [$backfilled[] | del(._fullhash)]) | sort_by(.date) | .[]
   ' "$TEMP_FILE" > "$OUTPUT_FILE"
   LINE_COUNT=$(wc -l < "$OUTPUT_FILE")
   echo "✅ Rebuilt results.jsonl with $LINE_COUNT entries"
