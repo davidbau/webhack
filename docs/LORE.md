@@ -563,6 +563,39 @@ Practical rule: clamp overlay menu `offx` to `<= 41` (matching C tty behavior
 in these flows) and keep leading-pad header spaces non-inverse when rendering
 category headers like ` Weapons`/` Coins`.
 
+### Inventory overlay frames are replay-authoritative when command remains modal
+
+For `i` inventory steps that stay pending (menu not yet dismissed), C-captured
+overlay text/columns can include details JS does not yet fully reconstruct
+(`(being worn)`, identified tin contents). Re-rendering from JS can shift menu
+columns and drift screen parity even when gameplay state is unchanged.
+
+Practical rule: while inventory command is still modal/pending and the step has
+a captured screen, use the captured frame as authoritative for that step.
+
+### `doread` `?/*` help is a modal `--More--` listing, not a one-key no-op
+
+In tourist traces, pressing `?` (or `*`) at `What do you want to read?` opens a
+modal `--More--` item listing (for example
+`l - 4 uncursed scrolls of magic mapping.--More--`). Non-dismiss keys keep the
+same `--More--` frame; dismissal (`space`/`enter`/`esc`) returns to the read
+prompt.
+
+Practical rule: keep read command pending across these keys and model `?/*`
+as modal listing acknowledgement flow rather than immediately returning to the
+prompt.
+
+### AT_WEAP monsters can spend a turn wielding before attack resolution
+
+C `dochug` includes a pre-movement weapon check where in-range monsters with
+`AT_WEAP` may wield a carried weapon and spend the turn. Missing this causes
+direct hit messages where C shows a wield message first (for example goblin
+wielding a crude dagger) and shifts downstream RNG.
+
+Practical rule: before phase-3 movement/phase-4 attacks, allow in-range hostile
+`AT_WEAP` monsters with no wielded weapon to equip one from inventory and end
+the turn.
+
 ---
 
 ## Phase Chronicles

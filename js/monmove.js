@@ -455,6 +455,27 @@ function hasWeaponAttack(mon) {
     return attacks.some(a => a && a.type === AT_WEAP);
 }
 
+function chooseMonsterWieldWeapon(mon) {
+    if (!Array.isArray(mon?.minvent)) return null;
+    for (const obj of mon.minvent) {
+        if (!obj || obj.oclass !== WEAPON_CLASS) continue;
+        return obj;
+    }
+    return null;
+}
+
+function articleFor(noun) {
+    const text = String(noun || '').trim();
+    if (!text) return 'a';
+    return /^[aeiou]/i.test(text) ? 'an' : 'a';
+}
+
+function monsterWieldObjectName(obj) {
+    const od = objectData[obj?.otyp] || {};
+    const base = String(od.desc || od.name || obj?.name || 'weapon').trim();
+    return `${articleFor(base)} ${base}`;
+}
+
 function playerHasGold(player) {
     return (player?.gold || 0) > 0 || hasGold(player?.inventory);
 }
@@ -1684,6 +1705,23 @@ function dochug(mon, map, player, display, fov, game = null) {
     const M2_WANDER = 0x800000;
     const isWanderer = !!(mon.type && mon.type.flags2 & M2_WANDER);
     const monCanSee = (mon.mcansee !== false) && !mon.blind;
+
+    // C ref: monmove.c:841-859 — in-range AT_WEAP monsters may spend a turn
+    // wielding an appropriate weapon before movement/attacks.
+    if (!mon.peaceful
+        && inrange
+        && dist2(mon.mx, mon.my, targetX, targetY) <= 8
+        && hasWeaponAttack(mon)
+        && !mon.weapon) {
+        const wieldObj = chooseMonsterWieldWeapon(mon);
+        if (wieldObj) {
+            mon.weapon = wieldObj;
+            if (display) {
+                display.putstr_message(`The ${monDisplayName(mon)} wields ${monsterWieldObjectName(wieldObj)}!`);
+            }
+            return;
+        }
+    }
 
     // Short-circuit OR matching C's evaluation order
     // Each rn2() is only consumed if earlier conditions didn't short-circuit

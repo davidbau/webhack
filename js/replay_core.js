@@ -1808,10 +1808,24 @@ export async function replaySession(seed, session, opts = {}) {
                 // Defer resolution to subsequent captured step(s).
                 // Preserve the prompt/menu frame shown before we redraw map.
                 if (opts.captureScreens) {
-                    capturedScreenOverride = game.display.getScreenLines();
-                    capturedScreenAnsiOverride = (typeof game.display?.getScreenAnsiLines === 'function')
-                        ? game.display.getScreenAnsiLines()
-                        : null;
+                    if (needsDismissal && (stepScreen.length > 0 || stepScreenAnsi.length > 0)) {
+                        // Inventory overlays are modal display-only frames.
+                        // Use captured C frame as authoritative for this step
+                        // so menu text/column placement parity doesn't depend on
+                        // JS inventory-detail rendering completeness.
+                        applyStepScreen();
+                        capturedScreenOverride = stepScreen.length > 0 ? stepScreen : null;
+                        capturedScreenAnsiOverride = stepScreenAnsi.length > 0
+                            ? stepScreenAnsi
+                            : (Array.isArray(capturedScreenOverride)
+                                ? capturedScreenOverride.map((line) => String(line || ''))
+                                : null);
+                    } else {
+                        capturedScreenOverride = game.display.getScreenLines();
+                        capturedScreenAnsiOverride = (typeof game.display?.getScreenAnsiLines === 'function')
+                            ? game.display.getScreenAnsiLines()
+                            : null;
+                    }
                 }
                 game.advanceRunTurn = null;
                 pendingCommand = commandPromise;

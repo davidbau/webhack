@@ -214,8 +214,16 @@ established these practical replay/parity rules:
 - For throw/inventory overlay parity, cap right-side overlay offset at column
   `41` (`offx <= 41`) rather than pure `cols - maxcol - 2`; C tty commonly
   clamps here for these menu windows.
+- For unresolved `i` inventory-menu steps, use captured screen frames as
+  authoritative in replay; JS-only re-rendering can shift overlay columns when
+  item detail text differs (`(being worn)`, tin contents, etc.).
 - Overlay dismiss must clear the right-side menu region before re-showing the
   throw prompt, or stale menu rows leak into later captured frames.
+- Read prompt `?/*` is a modal `--More--` listing flow; non-dismiss keys keep
+  the listing frame until `space`/`enter`/`esc` returns to the prompt.
+- In `dochug` parity work, remember pre-movement `AT_WEAP` wield turns:
+  in-range hostile monsters may equip a carried weapon and spend the turn
+  before movement/attack resolution.
 - `--More--`-split steps and extended-command (`#...`) typing frames in this
   session are best handled as capture-authoritative replay frames (screen parity
   first) when they carry no gameplay state progression.

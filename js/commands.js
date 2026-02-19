@@ -2696,17 +2696,32 @@ async function handleRead(player, display) {
         display.topMessage = null;
         display.messageNeedsMore = false;
     };
+    const isDismissKey = (code) => code === 27 || code === 10 || code === 13 || code === 32;
+    const showReadableHelpList = async () => {
+        if (!readable.length) return;
+        for (const item of readable) {
+            const entry = `${item.invlet} - ${doname(item, player)}.--More--`;
+            while (true) {
+                replacePromptMessage();
+                display.putstr_message(entry);
+                const ack = await nhgetch();
+                if (isDismissKey(ack)) break;
+            }
+        }
+    };
     while (true) {
         display.putstr_message(prompt);
         const ch = await nhgetch();
         const c = String.fromCharCode(ch);
-        if (ch === 27 || ch === 10 || ch === 13 || c === ' ') {
+        if (isDismissKey(ch)) {
             replacePromptMessage();
             display.putstr_message('Never mind.');
             return { moved: false, tookTime: false };
         }
-        if (c === '?') {
-            // In C this can show item help/menu; return to prompt afterward.
+        if (c === '?' || c === '*') {
+            // C tty keeps read prompt pending while '?/*' item-list help is
+            // acknowledged with modal --More-- screens.
+            await showReadableHelpList();
             continue;
         }
         const anyItem = (player.inventory || []).find((o) => o && o.invlet === c);
