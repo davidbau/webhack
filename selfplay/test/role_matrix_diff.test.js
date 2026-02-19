@@ -176,4 +176,25 @@ describe('compareRoleMatrix', () => {
         assert.ok(xpGuard);
         assert.equal(xpGuard.pass, true);
     });
+
+    it('optionally fails on action-mix regression guardrails', () => {
+        const baseline = makeData({
+            summary: {
+                avgAttackTurns: 100,
+                avgFleeTurns: 20,
+            },
+        });
+        const candidate = makeData({
+            summary: {
+                avgAttackTurns: 95,
+                avgFleeTurns: 35, // regression
+            },
+        });
+
+        const out = compareRoleMatrix(baseline, candidate, { includeActionGuardrails: true });
+        assert.equal(out.passed, false);
+        const fleeGuard = out.guardrails.find(g => g.key === 'avgFleeTurns');
+        assert.ok(fleeGuard);
+        assert.equal(fleeGuard.pass, false);
+    });
 });

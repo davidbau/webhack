@@ -677,6 +677,9 @@
     - compares only overlapping role/seed assignments,
     - recomputes summary/guardrails on overlap scope,
     - still fails if overlap is empty or scoped run counts are misaligned.
+  - Added optional action-mix guardrails via `--include-action-guardrails`:
+    - `avgAttack` must not increase,
+    - `avgFlee` must not increase.
   - Refined top-row scoring so the same assignment is not listed as both regression and improvement.
 
 - Why:
@@ -691,10 +694,29 @@
     - `node selfplay/runner/c_role_matrix_diff.js --baseline=/tmp/holdout_baseline_20260219b.json --candidate=/tmp/holdout_candidate_swapmsg_20260219.json --top=3` (PASS)
     - `node selfplay/runner/c_role_matrix_diff.js --baseline=/tmp/holdout_baseline_20260219b.json --candidate=/tmp/candidate_dogswap_gate2_triage_20260219.json --top=3` (FAIL with assignment mismatch details)
     - `node selfplay/runner/c_role_matrix_diff.js --baseline=/tmp/holdout_baseline_20260219b.json --candidate=/tmp/candidate_dog_bypass_triage_20260219.json --overlap-only --top=5` (subset guardrail evaluation on overlap scope)
+    - `node selfplay/runner/c_role_matrix_diff.js --baseline=/tmp/baseline_triage_7seed_20260219c.json --candidate=/tmp/candidate_triage_7seed_20260219c.json --include-action-guardrails --top=7` (fails on flee regression)
 
 - Usage:
   - `node selfplay/runner/c_role_matrix_diff.js --baseline=<baseline.json> --candidate=<candidate.json> --top=8`
   - For subset triage comparisons:
     - `node selfplay/runner/c_role_matrix_diff.js --baseline=<baseline.json> --candidate=<subset-candidate.json> --overlap-only --top=8`
+  - To also gate action-mix regressions:
+    - append `--include-action-guardrails`
   - Optional machine-readable diff export:
     - `--json-out=/tmp/role_matrix_diff.json`
+
+## 2026-02-19 - Rejected: Late Non-Blocking Lone-Dog Loop Escape (Strict Gate)
+
+- Candidate policy:
+  - In low-XP Dlvl1 lone-dog context, when non-blocking and after strong late-loop evidence (`turn>=180`, high loop/non-blocking attack counters, high `petSwap`), force movement/exploration instead of attacking.
+
+- 7-seed triage A/B (`roles/seeds=Samurai40,Tourist41,Valkyrie42,Caveman33,Ranger28,Rogue29,Healer34`, `turns=600`):
+  - Baseline: survived `7/7`, avg depth `1.143`, XL2+ `1/7`, XP t600 `5.57`, failedAdd `34.29`, attack `186.57`, flee `35.71`.
+  - Candidate: survived `7/7`, avg depth `1.143`, XL2+ `1/7`, XP t600 `5.57`, failedAdd `33.43`, attack `168.57`, flee `69.86`.
+  - Seed-level shifts:
+    - Samurai 40: `maxXP 0 -> 1` but `failedAdd 38 -> 44`.
+    - Rogue 29: `failedAdd 38 -> 26` but `maxXP 5 -> 4` and `flee 11 -> 246`.
+
+- Net:
+  - Rejected and reverted.
+  - No progression gain on the triage gate; action mix destabilized (large flee spike).
