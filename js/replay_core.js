@@ -828,6 +828,7 @@ export async function replaySession(seed, session, opts = {}) {
     const sessionSymset = session?.options?.symset || session?.meta?.options?.symset;
     const decgraphicsMode = session.screenMode === 'decgraphics' || sessionSymset === 'DECgraphics';
     game.display.flags.DECgraphics = !!decgraphicsMode;
+    game.flags.DECgraphics = !!decgraphicsMode;
     let inTutorialPrompt = tutorialPromptStartup;
     let pendingTutorialStart = false;
     if (inTutorialPrompt && firstStepScreen.length > 0) {

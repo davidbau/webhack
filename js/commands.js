@@ -688,9 +688,8 @@ export async function rhack(ch, game) {
             game.menuRequested = false;
         } else {
             game.menuRequested = true;
-            if (game.flags.verbose) {
-                display.putstr_message('Next command will request menu or move without autopickup/attack.');
-            }
+            // C ref: cmd.c do_reqmenu() — sets iflags.menu_requested
+            // silently; no screen message in C's TTY implementation.
         }
         return { moved: false, tookTime: false };
     }
@@ -1402,13 +1401,10 @@ async function handleOpen(player, map, display, game) {
         dir = [0, 0];
     }
     if (!dir) {
-        // C getdir parity: non-direction keys report a strange direction before
-        // aborting; cancel keys return plain "Never mind."
-        if (dirCh === 27 || dirCh === 10 || dirCh === 13 || dirCh === 32) {
-            display.putstr_message('Never mind.');
-        } else {
-            display.putstr_message('What a strange direction!  Never mind.');
-        }
+        // C ref: cmd.c getdir() — when iflags.cmdassist is true (default),
+        // help_dir() is shown instead of "What a strange direction!".
+        // The caller then prints "Never mind."
+        display.putstr_message('Never mind.');
         return { moved: false, tookTime: false };
     }
 

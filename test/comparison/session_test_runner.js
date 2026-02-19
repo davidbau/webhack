@@ -474,7 +474,7 @@ async function replayInterfaceSession(session) {
         if (subtype === 'options') replayFlags.color = true;
         if (session.meta.options?.autopickup === false) replayFlags.pickup = false;
         const wantsDec = session.meta.options?.symset === 'DECgraphics';
-        if (wantsDec) replayFlags.DECgraphics = true;
+        replayFlags.DECgraphics = !!wantsDec;
         replayFlags.bgcolors = true;
         replayFlags.customcolors = true;
         if (wantsDec) {
@@ -597,7 +597,7 @@ async function runGameplayResult(session) {
         replayFlags.verbose = (session.meta.options?.verbose === true);
         if (session.meta.options?.autopickup === false) replayFlags.pickup = false;
         if (session.meta.options?.rest_on_space) replayFlags.rest_on_space = true;
-        if (session.meta.options?.symset === 'DECgraphics') replayFlags.DECgraphics = true;
+        replayFlags.DECgraphics = session.meta.options?.symset === 'DECgraphics';
         replayFlags.bgcolors = true;
         replayFlags.customcolors = true;
         replayFlags.customsymbols = true;
