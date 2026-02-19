@@ -148,7 +148,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[a]` | topten.c | topten.js | High score table. observable_depth implemented; I/O funcs N/A; encode/format funcs TODO |
 | `[p]` | track.c | track.js | Player tracking for pets. save/rest not yet implemented |
 | `[a]` | trap.c | trap.js | Trap mechanics: m_harmless_trap, floor_trigger, mintrap_postmove, mon_check_in_air |
-| `[~]` | u_init.c | u_init.js | Player initialization |
+| `[a]` | u_init.c | u_init.js | Player initialization. u_init_role, u_init_race, u_init_carry_attr_boost, trquan, ini_inv, ini_inv_mkobj_filter, restricted_spell_discipline aligned. JS-only wrappers: simulatePostLevelInit, initAttributes |
 | `[ ]` | uhitm.c | — | Player-vs-monster combat. JS: partially in `combat.js` |
 | `[N/A]` | utf8map.c | — | UTF-8 glyph mapping for terminal |
 | `[ ]` | vault.c | — | Vault guard behavior |
@@ -171,9 +171,9 @@ don't follow the same 1:1 C→JS mapping pattern.
 - **N/A (system/platform)**: 21
 - **Game logic files**: 108
 - **Complete (`[x]`)**: 4
-- **Aligned (`[a]`)**: 19
+- **Aligned (`[a]`)**: 20
 - **Present (`[p]`)**: 1
-- **Needs alignment (`[~]`)**: 9
+- **Needs alignment (`[~]`)**: 8
 - **No JS file yet (`[ ]`)**: 75
 
 ### JS Files Without C Counterparts
@@ -727,4 +727,33 @@ Selection geometry functions are implemented as methods of the `selection` objec
 | `selection_size_description` | 764 | N/A | — | Not yet in JS |
 | `selection_from_mkroom` | 781 | `selection.room()` | 6824 | Match (C ref comment present in JS) |
 | `selection_force_newsyms` | 802 | N/A | — | Display concern — not needed in JS |
+
+### u_init.c → u_init.js
+
+Notes:
+- C's Lua integration (`com_pager()` calls) replaced by direct JS function calls.
+- `u_init_inventory_attrs()` + `u_init_misc()` combined into `simulatePostLevelInit()`.
+- `init_attr()` + `vary_init_attr()` combined into `initAttributes()`.
+- `knows_object()` / `knows_class()` → split across `applyRolePreknowledge()` + `applyStartupDiscoveries()`.
+- Functions from dog.c (`makedog`, `mon_arrive`, `adj_lev`) are also in u_init.js.
+
+| C Function | C Line | JS Function | JS Line | Notes |
+|---|---|---|---|---|
+| `knows_object` | 575 | `applyStartupDiscoveries` (part) | 1460 | Combined with knows_class logic |
+| `knows_class` | 586 | `applyRolePreknowledge` (part) | 1519 | Split with discoverClassByRule |
+| `u_init_role` | 635 | `u_init_role` | 1073 | Match |
+| `u_init_race` | 790 | `u_init_race` | 1149 | Match |
+| `pauper_reinit` | 868 | N/A | — | Pauper mode not yet in JS |
+| `u_init_carry_attr_boost` | 927 | `u_init_carry_attr_boost` | 1351 | Match |
+| `u_init_misc` | 942 | (in `simulatePostLevelInit`) | 1596 | Combined into wrapper |
+| `skills_for_role` | 1038 | `spellDisciplineForRole` | 885 | Internal helper; no C name match |
+| `restricted_spell_discipline` | 1092 | `restricted_spell_discipline` | 894 | Match (renamed from camelCase) |
+| `trquan` | 1107 | `trquan` | 1067 | Match |
+| `ini_inv_mkobj_filter` | 1116 | `ini_inv_mkobj_filter` | 904 | Match (renamed from camelCase) |
+| `ini_inv_obj_substitution` | 1180 | (inlined in `ini_inv`) | — | Merged into ini_inv logic |
+| `ini_inv_adjust_obj` | 1206 | (inlined in `ini_inv`) | — | Merged into ini_inv logic |
+| `ini_inv_use_obj` | 1252 | `initialSpell` (partial) | 935 | Spell learning only; equipment handled elsewhere |
+| `ini_inv` | 1299 | `ini_inv` | 944 | Match (renamed from camelCase) |
+| `u_init_inventory_attrs` | 1371 | (in `simulatePostLevelInit`) | 1596 | Combined into wrapper |
+| `u_init_skills_discoveries` | 1396 | `applyStartupDiscoveries` | 1460 | Renamed (JS-style) |
 
