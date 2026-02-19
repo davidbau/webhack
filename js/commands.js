@@ -3303,12 +3303,11 @@ function isApplyChopWeapon(obj) {
 // Handle apply/use command
 // C ref: apply.c doapply()
 async function handleApply(player, display) {
-    const inventory = player.inventory || [];
-    if (inventory.length === 0) {
+    const candidates = (player.inventory || []).filter(isApplyCandidate);
+    if (candidates.length === 0) {
         display.putstr_message("You don't have anything to use or apply.");
         return { moved: false, tookTime: false };
     }
-    const candidates = (player.inventory || []).filter(isApplyCandidate);
 
     const letters = candidates.map((item) => item.invlet).join('');
     display.putstr_message(`What do you want to use or apply? [${letters} or ?*]`);

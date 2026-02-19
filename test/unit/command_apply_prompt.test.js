@@ -52,13 +52,12 @@ describe('apply prompt behavior', () => {
         assert.equal(game.display.topMessage, "Sorry, I don't know how to use that.");
     });
 
-    it('still prompts and handles selection when no explicit apply candidates exist', async () => {
+    it('reports nothing to apply when no explicit apply candidates exist', async () => {
         const game = makeBaseGame();
         game.player.inventory = [{ invlet: 'a', oclass: 1, otyp: 1, name: 'long sword' }];
-        pushInput('a'.charCodeAt(0));
         const result = await rhack('a'.charCodeAt(0), game);
         assert.equal(result.tookTime, false);
-        assert.equal(game.display.topMessage, "Sorry, I don't know how to use that.");
+        assert.equal(game.display.topMessage, "You don't have anything to use or apply.");
     });
 
     it('keeps apply prompt open for invalid letters when a battle-axe is applicable', async () => {
