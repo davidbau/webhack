@@ -720,3 +720,42 @@
 - Net:
   - Rejected and reverted.
   - No progression gain on the triage gate; action mix destabilized (large flee spike).
+
+## 2026-02-19 - Rejected: Lone-Dog Non-Blocking Ignore (Danger-Layer) + Retreat-Gate Follow-Up
+
+- Baseline reference (`7-seed triage`, 600 turns):
+  - Command:
+    - `node selfplay/runner/c_role_matrix.js --mode=custom --roles=Samurai,Tourist,Valkyrie,Caveman,Ranger,Rogue,Healer --seeds=40,41,42,33,28,29,34 --turns=600 --key-delay=0 --quiet --json-out=/tmp/baseline_triage_7seed_20260219d.json`
+  - Summary:
+    - survived `7/7`, avg depth `1.143`, XL2+ `1/7`, XP t600 `5.57`,
+    - failedAdd `34.29`, attack `186.57`, flee `35.71`.
+
+- Candidate A (reverted):
+  - Change:
+    - In `selfplay/brain/danger.js`, lone Dlvl1 dog handling was changed so non-blocking encounters are ignored rather than engaged.
+    - Blocking-dog behavior remained engage-when-healthy / flee-when-weak.
+  - Triage artifact:
+    - `/tmp/candidate_triage_7seed_20260219e.json`
+
+- Candidate B follow-up (reverted):
+  - Additional change on top of Candidate A:
+    - In `selfplay/agent.js`, added a lone-non-blocking-dog exception in early retreat hostiles calculation (plus shared blocking helper), to prevent retreat preemption from overriding tactical ignore behavior.
+  - Triage artifact:
+    - `/tmp/candidate_triage_7seed_20260219f.json`
+
+- Result:
+  - Candidate B was identical to Candidate A on this triage set (no measurable behavioral change from the retreat-gate tweak).
+  - Baseline vs candidate (diff command):
+    - `node selfplay/runner/c_role_matrix_diff.js --baseline=/tmp/baseline_triage_7seed_20260219d.json --candidate=/tmp/candidate_triage_7seed_20260219f.json --include-action-guardrails --top=7 --json-out=/tmp/triage_diff_7seed_20260219f.json`
+  - Candidate summary:
+    - survived `7/7`, avg depth `1.286`, XL2+ `0/7`, XP t600 `4.71`,
+    - failedAdd `38.71`, attack `97.14`, flee `95.86`.
+  - Guardrails failed on:
+    - XL2+ (`1 -> 0`),
+    - XP t600 (`5.57 -> 4.71`),
+    - failedAdd (`34.29 -> 38.71`),
+    - avgFlee (`35.71 -> 95.86`).
+
+- Net:
+  - Rejected and reverted.
+  - Suppressing non-blocking lone-dog attacks at this layer reduced attack volume but shifted behavior into high-flee/low-progression patterns on the triage gate.
