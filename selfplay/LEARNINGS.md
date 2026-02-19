@@ -295,3 +295,14 @@
     - failedAdd `50.67` (regression vs subset baseline `38.33`).
   - Net:
     - Rejected (progression and churn regressions despite lower pet-swap count).
+
+- Variant C (pending-door follow-through broadening):
+  - Policy:
+    - In pending-door handling, treated both `door_closed` and `door_locked` as active targets and always attempted continued approach/open/kick until resolved.
+  - Focus check (`Tourist 41`, 600 turns):
+    - No observable change vs baseline:
+      - `maxXP=0`, `petSwap=98`,
+      - `doorOpen=0`, `doorKick=0`,
+      - depth remained `1`.
+  - Net:
+    - Rejected (no measurable effect on target failure case).
