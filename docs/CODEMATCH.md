@@ -119,7 +119,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | quest.c | — | Quest mechanics |
 | `[ ]` | questpgr.c | — | Quest text/pager |
 | `[ ]` | read.c | — | Reading scrolls/spellbooks |
-| `[ ]` | rect.c | — | Rectangle allocation for room placement |
+| `[x]` | rect.c | rect.js | Rectangle allocation for room placement |
 | `[ ]` | region.c | — | Region effects (gas clouds, etc.) |
 | `[N/A]` | report.c | — | Bug reporting, panic trace |
 | `[ ]` | restore.c | — | Game restore. JS: `storage.js` |
