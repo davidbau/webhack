@@ -105,7 +105,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[~]` | nhlsel.c | — | Lua selection bindings (wrap selvar.c). JS: in `sp_lev.js` |
 | `[N/A]` | nhlua.c | — | Lua interpreter integration |
 | `[N/A]` | nhmd4.c | — | MD4 hash implementation |
-| `[~]` | o_init.c | o_init.js | Object class initialization |
+| `[a]` | o_init.c | o_init.js | Object class initialization. Core shuffle functions aligned; discovery functions in `discovery.js` |
 | `[ ]` | objects.c | — | Object data tables. JS: `objects.js` (data), `objdata.js` (queries) |
 | `[ ]` | objnam.c | — | Object naming (xname, doname). JS: partially in `mkobj.js` |
 | `[ ]` | options.c | — | Game options. JS: `options_menu.js`, `storage.js` |
@@ -162,7 +162,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | wizcmds.c | — | Wizard-mode debug commands |
 | `[ ]` | worm.c | — | Long worm mechanics |
 | `[ ]` | worn.c | — | Equipment slot management |
-| `[ ]` | write.c | — | Writing on scrolls |
+| `[a]` | write.c | write.js | Writing on scrolls. cost, write_ok, new_book_description implemented; dowrite TODO |
 | `[~]` | zap.c | zap.js | Wand/spell zapping |
 
 ### Summary
@@ -171,9 +171,9 @@ don't follow the same 1:1 C→JS mapping pattern.
 - **N/A (system/platform)**: 18
 - **Game logic files**: 111
 - **Complete (`[x]`)**: 1
-- **Aligned (`[a]`)**: 2
+- **Aligned (`[a]`)**: 3
 - **Needs alignment (`[~]`)**: 24
-- **No JS file yet (`[ ]`)**: 84
+- **No JS file yet (`[ ]`)**: 83
 
 ### JS Files Without C Counterparts
 
@@ -228,6 +228,40 @@ These JS files don't directly correspond to a single C file:
 | `isaac64_next_uint64` | 161 | `isaac64_next_uint64` | 178 | Match (exported) |
 | `isaac64_next_uint` | 166 | `isaac64_next_uint` | 184 | Match (exported, added) |
 
+### o_init.c → o_init.js (and discovery.js)
+
+The core object-shuffle functions live in `o_init.js` under C-matching names.
+Discovery/identification functions split into `discovery.js` (camelCase, noted below).
+
+| C Function | C Line | JS File | JS Function | JS Line | Status |
+|------------|--------|---------|-------------|---------|--------|
+| `shuffle_tiles` | 34 | — | — | — | N/A — tile graphics not in JS port |
+| `setgemprobs` | 53 | — | — | — | TODO — level-depth gem probability init |
+| `randomize_gem_colors` | 84 | o_init.js | `randomize_gem_colors` | 79 | Match (private) |
+| `shuffle` | 112 | o_init.js | `shuffle` | 107 | Match (private) |
+| `init_objects` | 150 | o_init.js | `init_objects` | 204 | Match (exported) |
+| `init_oclass_probs` | 239 | objects.js | `initObjectData` | 9183 | Split — merged with `bases[]` init; C ref noted |
+| `obj_shuffle_range` | 268 | — | — | — | TODO — needed for wand-direction reveal etc. |
+| `shuffle_all` | 321 | o_init.js | `shuffle_all` | 154 | Match (private) |
+| `objdescr_is` | 351 | — | — | — | TODO |
+| `oinit` | 368 | — | — | — | Subsumed — `init_objects` covers; `setgemprobs` is TODO |
+| `savenames` | 374 | discovery.js | `getDiscoveryState` | 163 | Renamed — save/restore via JSON |
+| `restnames` | 410 | discovery.js | `setDiscoveryState` | 171 | Renamed — save/restore via JSON |
+| `observe_object` | 441 | discovery.js | `observeObject` | 75 | Renamed (camelCase) |
+| `discover_object` | 448 | discovery.js | `discoverObject` | 64 | Renamed (camelCase) |
+| `undiscover_object` | 492 | — | — | — | TODO |
+| `interesting_to_discover` | 520 | discovery.js | `interestingToDiscover` | 82 | Renamed (private, camelCase) |
+| `discovered_cmp` | 543 | — | — | — | N/A — JS sort uses closures |
+| `sortloot_descr` | 557 | — | — | — | N/A — merged into menu output |
+| `choose_disco_sort` | 602 | — | — | — | TODO — sort-order menu not yet implemented |
+| `disco_typename` | 652 | discovery.js | `discoveryTypeName` | 88 | Renamed (private) |
+| `disco_append_typename` | 684 | — | — | — | Subsumed into `discoveryTypeName` |
+| `disco_output_sorted` | 708 | — | — | — | Subsumed into `getDiscoveriesMenuLines` |
+| `dodiscovered` | 731 | discovery.js | `getDiscoveriesMenuLines` | 123 | Renamed |
+| `oclass_to_name` | 833 | — | — | — | Subsumed into `getDiscoveriesMenuLines` |
+| `doclassdisco` | 845 | — | — | — | TODO — class-filtered discoveries command |
+| `rename_disco` | 1062 | — | — | — | TODO — rename identified objects |
+
 ### were.c → were.js
 
 | C Function | C Line | JS Function | JS Line | Status |
@@ -267,3 +301,12 @@ These JS files don't directly correspond to a single C file:
 | `max_mon_load` | 1908 | `max_mon_load` | 151 | Match (internal, moved from dog.js) |
 | `curr_mon_load` | 1894 | `curr_mon_load` | 173 | Match (internal, moved from dog.js) |
 | `can_carry` | 1971 | `can_carry` | 186 | Match (exported, moved from dog.js) |
+
+### write.c → write.js
+
+| C Function | C Line | JS Function | JS Line | Status |
+|------------|--------|-------------|---------|--------|
+| `cost` | 14 | `cost` | 30 | Match (private — returns base charge cost for scroll/spellbook) |
+| `write_ok` | 61 | `write_ok` | 46 | Match (private — getobj callback) |
+| `dowrite` | 74 | `dowrite` | 62 | TODO (needs getobj, getlin, mksobj, useup, and full message system) |
+| `new_book_description` | 395 | `new_book_description` | 71 | Match (private — JS returns string directly; no output-buffer argument) |
