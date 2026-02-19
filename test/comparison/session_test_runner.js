@@ -128,6 +128,22 @@ function ansiCellsToPlainLine(line) {
     return ansiLineToCells(line).map((cell) => cell?.ch || ' ').join('');
 }
 
+function decodeSOSILine(line) {
+    // Decode DEC special graphics characters inside SO/SI regions,
+    // then strip the control characters. This converts e.g.
+    // "\x0elqqqqk\x0f" → "┌────┐" (Unicode box-drawing).
+    const src = String(line || '').replace(/\r$/, '');
+    let result = '';
+    let inDec = false;
+    for (let i = 0; i < src.length; i++) {
+        const ch = src[i];
+        if (ch === '\x0e') { inDec = true; continue; }
+        if (ch === '\x0f') { inDec = false; continue; }
+        result += inDec ? decodeDecSpecialChar(ch) : ch;
+    }
+    return result;
+}
+
 function resolveGameplayComparableLines(plainLines, ansiLines, session) {
     const ansi = Array.isArray(ansiLines) ? ansiLines : [];
     const decgraphics = session?.meta?.options?.symset === 'DECgraphics';
@@ -139,7 +155,10 @@ function resolveGameplayComparableLines(plainLines, ansiLines, session) {
     }
     const plain = Array.isArray(plainLines) ? plainLines : [];
     if (!decgraphics) {
-        return plain.map((line) => String(line || '').replace(/\r$/, '').replace(/[\x0e\x0f]/g, ''));
+        // Decode DEC characters inside SO/SI regions to Unicode, then strip
+        // the control characters. This ensures C session data using SO/SI
+        // line-drawing mode matches JS's direct Unicode box-drawing output.
+        return plain.map(decodeSOSILine);
     }
     // Legacy plain-only DECgraphics sessions cannot preserve SO/SI mode
     // boundaries, so decode the stripped line consistently as a fallback.
