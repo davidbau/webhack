@@ -133,7 +133,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[N/A]` | sfstruct.c | — | Save file structure definitions |
 | `[~]` | shk.c | — | Shopkeeper behavior. JS: partially in `shknam.js` |
 | `[a]` | shknam.c | shknam.js | Shop naming and stocking. All C functions aligned; hallucination in shkname/is_izchak and in_town() in is_izchak deferred |
-| `[ ]` | sit.c | — | Sitting on things |
+| `[~]` | sit.c | sit.js | Sitting effects. All 7 functions (dosit, rndcurse, attrcurse, take_gold, throne_sit_effect, special_throne_effect, lay_an_egg) are TODO stubs |
 | `[ ]` | sounds.c | — | Monster sounds |
 | `[~]` | sp_lev.c | sp_lev.js | Special level interpreter |
 | `[ ]` | spell.c | — | Spell casting |
