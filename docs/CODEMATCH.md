@@ -143,7 +143,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[N/A]` | strutil.c | — | String utilities (strbuf, pmatch). JS: native string ops |
 | `[N/A]` | symbols.c | — | Terminal graphics mode management (ASCII/IBM/curses/UTF-8 symbol-set switching). Browser port uses static data in symbols.js; no runtime mode switching |
 | `[N/A]` | sys.c | — | System-level interface |
-| `[ ]` | teleport.c | — | Teleportation |
+| `[~]` | teleport.c | teleport.js | Teleportation. goodpos/collect_coords/enexto PARTIAL in dungeon.js; all runtime tele functions TODO |
 | `[ ]` | timeout.c | — | Timer-based effects |
 | `[a]` | topten.c | topten.js | High score table. observable_depth implemented; I/O funcs N/A; encode/format funcs TODO |
 | `[p]` | track.c | track.js | Player tracking for pets. save/rest not yet implemented |
