@@ -272,9 +272,12 @@ export async function rhack(ch, game) {
     }
 
     // Meta command keys (M-x / Alt+x).
-    // C ref: command set includes M('l') for loot.
+    // C ref: command set includes M('l') for loot, M('f') for #force.
     if (metaBaseChar === 'l') {
         return await handleLoot(game);
+    }
+    if (metaBaseChar === 'f') {
+        return await handleForce(game);
     }
 
     // Movement keys
@@ -1769,6 +1772,76 @@ function setContainerContents(container, items) {
     if (!Array.isArray(container?.contents) && !Array.isArray(container?.cobj)) {
         container.contents = out;
     }
+}
+
+// cf. lock.c doforce() / forcelock() — #force command: bash open a locked chest
+// C ref: ARM_BONUS for weapons uses oc_wldam (JS: objectData[otyp].ldam) * 2 as chance.
+async function handleForce(game) {
+    const { player, map, display } = game;
+
+    // C ref: lock.c doforce() checks u_have_forceable_weapon()
+    const wep = player.weapon;
+    if (!wep || wep.oclass !== WEAPON_CLASS) {
+        const msg = !wep
+            ? "You can't force anything when not wielding a weapon."
+            : "You can't force anything with that weapon.";
+        display.putstr_message(msg);
+        return { moved: false, tookTime: false };
+    }
+
+    // Find a locked box on the floor at the player's position.
+    // C ref: lock.c doforce() scans level.objects[u.ux][u.uy] for Is_box().
+    const floorObjs = map.objectsAt(player.x, player.y) || [];
+    const box = floorObjs.find((o) => !!objectData[o?.otyp]?.container
+        && o.olocked && !o.obroken);
+    if (!box) {
+        const anyBox = floorObjs.find((o) => !!objectData[o?.otyp]?.container);
+        if (anyBox) {
+            display.putstr_message(`There is ${doname(anyBox)} here, but its lock is already ${anyBox.obroken ? 'broken' : 'unlocked'}.`);
+        } else {
+            display.putstr_message("You decide not to force the issue.");
+        }
+        return { moved: false, tookTime: false };
+    }
+
+    // Prompt player.
+    // C ref: lock.c doforce() ynq() prompt
+    const ans = await ynFunction(`There is ${doname(box)} here; force its lock?`, 'ynq', 'n'.charCodeAt(0), display);
+    const ansC = String.fromCharCode(ans);
+    if (ansC === 'q' || ansC === 'n') {
+        return { moved: false, tookTime: false };
+    }
+
+    // C ref: picktyp = is_blade(uwep) && !is_pick(uwep); simplified: always bash
+    display.putstr_message(`You start bashing it with ${doname(wep)}.`);
+
+    // C ref: chance = objects[uwep->otyp].oc_wldam * 2 (JS: ldam field)
+    const ldam = Number(objectData[wep.otyp]?.ldam || 4);
+    const chance = Math.max(2, ldam * 2);
+    let usedtime = 0;
+
+    // Set occupation: one rn2(100) check per turn.
+    // C ref: lock.c forcelock() returns 1 (continue) or 0 (done).
+    game.occupation = {
+        occtxt: 'forcing the lock',
+        fn(g) {
+            if (usedtime++ >= 50) {
+                display.putstr_message("You give up trying to force the lock.");
+                return false;
+            }
+            if (rn2(100) < chance) {
+                // C ref: box is destroyed after repeated successful hits
+                box.olocked = false;
+                box.obroken = true;
+                display.putstr_message("You destroy the lock!");
+                return false;
+            }
+            display.putstr_message("WHAM!");
+            if (g.multi > 0) g.multi--;
+            return true;
+        },
+    };
+    return { moved: false, tookTime: true };
 }
 
 async function handleLoot(game) {
@@ -3382,6 +3455,9 @@ const keyHelpText = [
 const extendedCommandsText = [
     '         Extended Commands',
     '',
+    ' #force   M-f   force a locked chest with your weapon',
+    ' #loot    M-l   loot a container',
+    ' #name          name an object or level',
     ' #quit          quit the game without saving',
     ' #levelchange   change dungeon level (debug mode)',
     ' #map           reveal entire map (debug mode)',
@@ -4167,6 +4243,8 @@ async function handleExtendedCommand(game) {
                 // Keep waiting for a supported selection.
             }
         }
+        case 'force':
+            return await handleForce(game);
         case 'loot':
             return await handleLoot(game);
         case 'levelchange':

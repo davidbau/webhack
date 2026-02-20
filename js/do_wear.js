@@ -2,7 +2,7 @@
 // cf. do_wear.c — dowear, doputon, dotakeoff, doremring, doddoremarm, find_ac
 
 import { nhgetch } from './input.js';
-import { ARMOR_CLASS, RING_CLASS } from './objects.js';
+import { ARMOR_CLASS, RING_CLASS, objectData } from './objects.js';
 import { doname } from './mkobj.js';
 
 
@@ -147,7 +147,30 @@ import { doname } from './mkobj.js';
 // 18. AC and slippery
 // ============================================================
 
-// TODO: cf. do_wear.c find_ac() — recalculate player AC from all worn equipment
+// cf. do_wear.c find_ac() — recalculate player AC from all worn equipment
+// C ref: ARM_BONUS(obj) = objects[otyp].a_ac + obj->spe - min(greatest_erosion, a_ac)
+// Rings contribute only spe (enchantment), not base AC.
+function find_ac(player) {
+    let uac = 10; // base AC for human player form (mons[PM_HUMAN].ac = 10)
+    const arm_bonus = (obj) => {
+        if (!obj) return 0;
+        const baseAc = Number(objectData[obj.otyp]?.oc1 || 0);
+        const spe = Number(obj.spe || 0);
+        const erosion = Math.max(Number(obj.oeroded || 0), Number(obj.oeroded2 || 0));
+        return baseAc + spe - Math.min(erosion, baseAc);
+    };
+    uac -= arm_bonus(player.armor);   // uarm: body armor
+    uac -= arm_bonus(player.cloak);   // uarmc
+    uac -= arm_bonus(player.helmet);  // uarmh
+    uac -= arm_bonus(player.boots);   // uarmf
+    uac -= arm_bonus(player.shield);  // uarms
+    uac -= arm_bonus(player.gloves);  // uarmg
+    uac -= arm_bonus(player.shirt);   // uarmu
+    if (player.leftRing)  uac -= Number(player.leftRing.spe  || 0);
+    if (player.rightRing) uac -= Number(player.rightRing.spe || 0);
+    player.ac = uac;
+}
+
 // TODO: cf. do_wear.c glibr() — slippery fingers: drop weapon/rings
 
 // ============================================================
@@ -230,7 +253,7 @@ async function handleWear(player, display) {
     const item = armor.find(a => a.invlet === c);
     if (item) {
         player.armor = item;
-        player.ac = item.ac + (item.enchantment || 0);
+        find_ac(player);
         display.putstr_message(`You are now wearing ${item.name}.`);
         return { moved: false, tookTime: true };
     }
@@ -272,8 +295,8 @@ async function handleTakeOff(player, display) {
 
     display.putstr_message(`You take off ${player.armor.name}.`);
     player.armor = null;
-    player.ac = 10;
+    find_ac(player);
     return { moved: false, tookTime: true };
 }
 
-export { handleWear, handlePutOn, handleTakeOff };
+export { handleWear, handlePutOn, handleTakeOff, find_ac };

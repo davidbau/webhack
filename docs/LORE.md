@@ -910,6 +910,55 @@ steps near 593-594), then cascades into later RNG divergence.
 
 ---
 
+### Armor AC comes from `objectData[otyp].oc1`, not `item.ac`
+
+Items created by `newobj()` do not carry an `ac` property — the armor class
+protection for a piece of armor lives in `objectData[item.otyp].oc1` (which
+mirrors C's `objects[otyp].a_ac`, a union alias of `oc_oc1`). Enchantment
+is `item.spe`, not `item.enchantment`.
+
+The correct `find_ac()` formula (from `do_wear.c`):
+```
+uac = 10  (base for human player)
+for each armor slot: uac -= oc1 + spe - min(max(oeroded, oeroded2), oc1)
+for each ring: uac -= ring.spe  (rings have no base oc1 protection)
+```
+
+Assigning `item.ac` directly produces `NaN` and breaks the status line. Always
+call `find_ac(player)` after any equipment change.
+
+---
+
+### Counted-command occupations and step boundary attribution
+
+When a counted command (e.g. `9s` search) is in progress during replay, C's
+`runmode_delay_output` creates step boundaries by consuming buffered input keys.
+The replay system must handle three distinct cases:
+
+1. **Deferred boundary pass-through**: The command key itself (`s` after `9`)
+   appears as a step but was consumed by `runmode_delay_output`, not `parse()`.
+   Emit an empty pass-through frame; do not execute the command again.
+
+2. **OCC-HANDLER** (non-zero comp step with `game.occupation`): Loop
+   `occ.fn → movemon → simulateTurnEnd` until `ownComp >= stepTarget`.
+   When the occupation ends mid-step (NONOCC), consume subsequent 0-comp buffer
+   steps as new commands.
+
+3. **Eager block** (digit step with deferred boundary RNG): The digit step has
+   non-zero comp because in C the next command ran within the same step boundary.
+   Eagerly execute that command then loop occupation iters to cover the target.
+
+Critical: `simulateTurnEnd()` only calls `dosounds/gethungry/exercise` when
+`game.occupation === null`. The "free cycle" turn where the occupation ends
+therefore generates more comparable RNG than mid-occupation turns.
+
+The `multi` count left by the eager block is correct for the OCC-HANDLER's
+subsequent iterations. For seed5's `9s...9l` sequence: `multi=4` maps to 3
+occupation iters (fn returns true) + 1 free cycle (fn returns false, dosounds
+fires).
+
+---
+
 ## Phase Chronicles
 
 The full narratives of the porting campaign, rich with war stories and
