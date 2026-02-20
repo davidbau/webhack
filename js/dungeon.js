@@ -105,7 +105,7 @@ function themerooms_generate(map, depth) {
 }
 
 import { parseEncryptedDataFile } from './hacklib.js';
-import { get_rnd_line_index, getrumor, RUMOR_PAD_LENGTH } from './rumors.js';
+import { get_rnd_line_index, getrumor, random_epitaph_text, RUMOR_PAD_LENGTH } from './rumors.js';
 
 // Branch type constants (C ref: include/dungeon.h)
 const BR_STAIR = 0;
@@ -177,7 +177,6 @@ export function clearBranchTopology() {
     _dungeonLedgerStartByDnum = new Map([[DUNGEONS_OF_DOOM, 0]]);
     _dungeonLevelCounts = new Map();
 }
-import { EPITAPH_FILE_TEXT } from './epitaph_data.js';
 import { ENGRAVE_FILE_TEXT } from './engrave_data.js';
 import { shtypes, stock_room } from './shknam.js';
 import { obj_resists } from './objdata.js';
@@ -2485,15 +2484,6 @@ function wipeout_text(text, cnt) {
 const { texts: ENGRAVE_TEXTS, lineBytes: ENGRAVE_LINE_BYTES, chunksize: ENGRAVE_FILE_CHUNKSIZE } =
     parseEncryptedDataFile(ENGRAVE_FILE_TEXT);
 
-// Epitaph data — parsed at module load from encrypted string constant.
-// C ref: engrave.c make_grave() → get_rnd_text(EPITAPHFILE, ...)
-const { texts: epitaphTexts, lineBytes: epitaphLineBytes, chunksize: epitaphChunksize } =
-    parseEncryptedDataFile(EPITAPH_FILE_TEXT);
-
-export function random_epitaph_text() {
-    const idx = get_rnd_line_index(epitaphLineBytes, epitaphChunksize, RUMOR_PAD_LENGTH);
-    return epitaphTexts[idx] || epitaphTexts[0] || '';
-}
 
 // C ref: engrave.c random_engraving() — simulate full RNG consumption.
 // C: if (!rn2(4) || !(rumor = getrumor(0, buf, TRUE)) || !*rumor)
@@ -3157,10 +3147,8 @@ function mkgrave(map, croom, depth) {
     // This only happens when dobell is false (str=NULL); when dobell is true,
     // a fixed "Saved by the bell!" string is used (no RNG).
     if (!dobell) {
-        const idx = get_rnd_line_index(
-            epitaphLineBytes, epitaphChunksize, RUMOR_PAD_LENGTH);
         // TODO: use epitaph text for grave rendering
-        void (epitaphTexts[idx] || epitaphTexts[0]);
+        void random_epitaph_text();
     }
     // C ref: possibly fill with gold
     if (!rn2(3)) {

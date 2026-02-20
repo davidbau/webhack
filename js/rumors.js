@@ -16,17 +16,30 @@
 //    to decide whether to prepend "the".
 
 import { rn2 } from './rng.js';
-import { parseRumorsFile } from './hacklib.js';
+import { parseRumorsFile, parseEncryptedDataFile } from './hacklib.js';
 import { RUMORS_FILE_TEXT } from './rumor_data.js';
+import { EPITAPH_FILE_TEXT } from './epitaph_data.js';
 
 // Padded line size for rumor/engrave/epitaph files (makedefs MD_PAD_RUMORS = 60).
-// Exported so dungeon.js can use it for engrave/epitaph get_rnd_line_index calls.
+// Exported so dungeon.js can use it for engrave get_rnd_line_index calls.
 export const RUMOR_PAD_LENGTH = 60;
 
 // Rumor data — parsed at module load from the compiled-in encrypted constant.
 // cf. rumors.c init_rumors() + global gt/gf structs (true_rumor_size etc.)
 const { trueTexts, trueLineBytes, trueSize,
         falseTexts, falseLineBytes, falseSize } = parseRumorsFile(RUMORS_FILE_TEXT);
+
+// Epitaph data — parsed at module load from encrypted compiled constant.
+// cf. rumors.c get_rnd_text(EPITAPHFILE, ...) — used by make_grave() when str=NULL.
+const { texts: epitaphTexts, lineBytes: epitaphLineBytes, chunksize: epitaphChunksize } =
+    parseEncryptedDataFile(EPITAPH_FILE_TEXT);
+
+// cf. engrave.c make_grave() / rumors.c get_rnd_text(EPITAPHFILE, ...)
+// Returns a random epitaph string, decrypted and unpadded.
+export function random_epitaph_text() {
+    const idx = get_rnd_line_index(epitaphLineBytes, epitaphChunksize, RUMOR_PAD_LENGTH);
+    return epitaphTexts[idx] || epitaphTexts[0] || '';
+}
 
 // cf. rumors.c:67 [static] — unpadline(line): strip trailing underscore padding
 // makedefs pads short rumors, epitaphs, engravings, and hallucinatory monster
