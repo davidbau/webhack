@@ -83,20 +83,20 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | lock.c | — | Lock picking and door opening |
 | `[N/A]` | mail.c | — | In-game mail system (uses real mail on Unix) |
 | `[a]` | makemon.c | makemon.js | Monster creation. Core functions aligned; clone_mon/propagate TODO |
-| `[ ]` | mcastu.c | — | Monster spellcasting |
+| `[~]` | mcastu.c | mcastu.js | Monster spellcasting. castmu/buzzmu and all 11 spell functions TODO (runtime gameplay) |
 | `[N/A]` | mdlib.c | — | Metadata library utilities |
-| `[ ]` | mhitm.c | — | Monster-vs-monster combat |
+| `[~]` | mhitm.c | mhitm.js | Monster-vs-monster combat. mattackm/mdamagem RNG parity PARTIAL in dogmove.js; full implementation TODO |
 | `[a]` | mhitu.c | mhitu.js | Monster-vs-hero combat. monsterAttackPlayer implemented; 22 functions TODO |
-| `[ ]` | minion.c | — | Minion summoning (angels, demons) |
-| `[ ]` | mklev.c | — | Level generation. JS: partially in `sp_lev.js`, `map.js` |
+| `[~]` | minion.c | minion.js | Minion summoning: msummon, summon_minion, demon_talk, bribe, guardian angels. All 14 functions TODO (runtime gameplay) |
+| `[~]` | mklev.c | mklev.js | Level generation. makelevel/makerooms/makecorridors/mineralize PARTIAL in dungeon.js; topologize/mkinvokearea/place_branch TODO |
 | `[ ]` | mkmap.c | — | Map generation algorithms. JS: in `sp_lev.js` |
-| `[ ]` | mkmaze.c | — | Maze generation |
+| `[~]` | mkmaze.c | mkmaze.js | Maze generation. wallification/create_maze/makemaz PARTIAL in dungeon.js; water plane (movebubbles etc.) TODO; save/restore N/A |
 | `[~]` | mkobj.c | mkobj.js | Object creation |
-| `[ ]` | mkroom.c | — | Room generation. JS: partially in `sp_lev.js` |
+| `[~]` | mkroom.c | mkroom.js | Room generation. somex/somey/inside_room/somexy/somexyspace ALIGNED in dungeon.js; mkshop/mktemple/fill_zoo PARTIAL; save/restore N/A |
 | `[a]` | mon.c | mon.js | Monster lifecycle: movemon, mfndpos, mm_aggression, corpse_chance, passivemm, hider premove, zombie_maker, zombie_form, undead_to_corpse, genus, pm_to_cham |
 | `[a]` | mondata.c | mondata.js | Monster data queries: predicates, mon_knows_traps, passes_bars, dmgtype, hates_silver, sticks, etc. |
 | `[a]` | monmove.c | monmove.js | Monster movement: dochug, m_move, m_move_aggress, set_apparxy, m_search_items |
-| `[ ]` | monst.c | — | Monster data tables. JS: `monsters.js` |
+| `[~]` | monst.c | monst.js | Monster data tables. mons[] array PARTIAL in monsters.js (JS-native structure); monst_globals_init implicit in module load |
 | `[~]` | mplayer.c | mplayer.js | Player-character rival monsters (endgame + ghost-level). is_mplayer() in mondata.js; rnd_offensive/defensive/misc_item in makemon.js; mk_mplayer/create_mplayers/mplayer_talk TODO (endgame not yet modeled) |
 | `[a]` | mthrowu.c | mthrowu.js | Monster ranged attacks: m_throw, thrwmu, lined_up, select_rwep, monmulti |
 | `[ ]` | muse.c | — | Monster item usage AI |
@@ -106,12 +106,12 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[N/A]` | nhlua.c | — | Lua interpreter integration |
 | `[N/A]` | nhmd4.c | — | MD4 hash implementation |
 | `[a]` | o_init.c | o_init.js | Object class initialization. Core shuffle functions aligned; setgemprobs, obj_shuffle_range, objdescr_is added; discovery functions in `discovery.js` |
-| `[ ]` | objects.c | — | Object data tables. JS: `objects.js` (data), `objdata.js` (queries) |
-| `[ ]` | objnam.c | — | Object naming (xname, doname). JS: partially in `mkobj.js` |
+| `[a]` | objects.c | objects.js | Object data tables. objects.js is auto-generated from objects.h (same source as C); objects_globals_init implicit in module load |
+| `[~]` | objnam.c | objnam.js | Object naming (xname, doname, makeplural, readobjnam/wishing). All functions TODO; no JS object naming yet |
 | `[ ]` | options.c | — | Game options. JS: `options_menu.js`, `storage.js` |
 | `[~]` | pager.c | pager.js | Text pager and look/describe commands. pager.js has text pager only; help commands in commands.js; game look functions (do_look, lookat, waterbody_name) not yet in JS |
 | `[ ]` | pickup.c | — | Picking up items |
-| `[ ]` | pline.c | — | Message output (pline, You, etc.) |
+| `[~]` | pline.c | pline.js | Message output. pline/putmesg PARTIAL via display.putstr_message(); impossible PARTIAL via console.error; livelog/gamelog TODO |
 | `[ ]` | polyself.c | — | Polymorphing |
 | `[a]` | potion.c | potion.js | Potion effects. handleQuaff (dodrink) with healing; ~60 functions TODO |
 | `[~]` | pray.c | pray.js | Prayer mechanics, sacrifice, turning undead, deity interaction. All 45 functions TODO (runtime gameplay) |
