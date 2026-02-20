@@ -19,12 +19,12 @@ import { objectData, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
          TOUCHSTONE, LUCKSTONE, LOADSTONE, MAGIC_MARKER,
          CREAM_PIE, EUCALYPTUS_LEAF, LUMP_OF_ROYAL_JELLY,
          POT_OIL, PICK_AXE, DWARVISH_MATTOCK,
-         CREDIT_CARD, EXPENSIVE_CAMERA, MIRROR, FIGURINE,
-         SPE_BLANK_PAPER, SPE_NOVEL, SPE_BOOK_OF_THE_DEAD } from './objects.js';
+         CREDIT_CARD, EXPENSIVE_CAMERA, MIRROR, FIGURINE } from './objects.js';
 import { nhgetch, ynFunction, getlin } from './input.js';
 import { playerAttackMonster } from './uhitm.js';
 import { handleEat } from './eat.js';
 import { handleQuaff } from './potion.js';
+import { handleRead } from './read.js';
 import { makemon, setMakemonPlayerContext } from './makemon.js';
 import { mons } from './monsters.js';
 import { monDisplayName, hasGivenName, monNam } from './mondata.js';
@@ -68,8 +68,7 @@ const STATUS_CONDITION_DEFAULT_ON = new Set([
 ]);
 
 const SPELL_KEEN_TURNS = 20000;
-const SPELL_KEEN = 20000; // C ref: spell.c KEEN
-const MAX_SPELL_STUDY = 3; // C ref: spell.h MAX_SPELL_STUDY
+const SPELL_KEEN = 20000; // C ref: spell.c KEEN (also in read.js)
 const SPELL_SKILL_UNSKILLED = 1;
 const SPELL_SKILL_BASIC = 2;
 const SPELL_CATEGORY_ATTACK = 'attack';
@@ -2992,173 +2991,6 @@ async function handleEngrave(player, display) {
             return { moved: false, tookTime: false };
         }
         // Keep prompt active for unsupported letters.
-    }
-}
-
-// Handle reading
-// C ref: read.c doread()
-async function handleRead(player, display, game) {
-    const readableClasses = new Set([SCROLL_CLASS, SPBOOK_CLASS]);
-    const readable = (player.inventory || []).filter((o) => o && readableClasses.has(o.oclass));
-    const letters = readable.map((o) => o.invlet).join('');
-    const prompt = letters
-        ? `What do you want to read? [${letters} or ?*]`
-        : 'What do you want to read? [*]';
-
-    // Keep prompt active until explicit cancel, matching tty flow.
-    const replacePromptMessage = () => {
-        if (typeof display.clearRow === 'function') display.clearRow(0);
-        display.topMessage = null;
-        display.messageNeedsMore = false;
-    };
-    const isDismissKey = (code) => code === 27 || code === 10 || code === 13 || code === 32;
-    const showReadableHelpList = async () => {
-        if (!readable.length) return;
-        for (const item of readable) {
-            const entry = `${item.invlet} - ${doname(item, player)}.--More--`;
-            while (true) {
-                replacePromptMessage();
-                display.putstr_message(entry);
-                const ack = await nhgetch();
-                if (isDismissKey(ack)) break;
-            }
-        }
-    };
-    while (true) {
-        display.putstr_message(prompt);
-        const ch = await nhgetch();
-        const c = String.fromCharCode(ch);
-        if (isDismissKey(ch)) {
-            replacePromptMessage();
-            display.putstr_message('Never mind.');
-            return { moved: false, tookTime: false };
-        }
-        if (c === '?' || c === '*') {
-            // C tty keeps read prompt pending while '?/*' item-list help is
-            // acknowledged with modal --More-- screens.
-            await showReadableHelpList();
-            continue;
-        }
-        const anyItem = (player.inventory || []).find((o) => o && o.invlet === c);
-        if (anyItem) {
-            if (anyItem.oclass === SPBOOK_CLASS) {
-                replacePromptMessage();
-                // C ref: spell.c study_book()
-                const od = objectData[anyItem.otyp] || {};
-                // Blank paper check
-                if (anyItem.otyp === SPE_BLANK_PAPER) {
-                    display.putstr_message('This spellbook is all blank.');
-                    return { moved: false, tookTime: true };
-                }
-                // Novel check (not implemented further)
-                if (anyItem.otyp === SPE_NOVEL) {
-                    display.putstr_message('You read the novel for a while.');
-                    return { moved: false, tookTime: true };
-                }
-                // Calculate study delay (C ref: spell.c:537-558)
-                const ocLevel = od.oc2 || 1;
-                const ocDelay = od.delay || 1;
-                let delayTurns;
-                if (ocLevel <= 2) delayTurns = ocDelay;
-                else if (ocLevel <= 4) delayTurns = (ocLevel - 1) * ocDelay;
-                else if (ocLevel <= 6) delayTurns = ocLevel * ocDelay;
-                else delayTurns = 8 * ocDelay; // level 7
-
-                // C ref: spell.c:561-572 — check if spell already known and well-retained
-                const spells = player.spells || (player.spells = []);
-                const knownEntry = spells.find(s => s.otyp === anyItem.otyp);
-                if (knownEntry && knownEntry.sp_know > SPELL_KEEN / 10) {
-                    const spellName = String(od.name || 'this spell').toLowerCase();
-                    display.putstr_message(`You know "${spellName}" quite well already.`);
-                    display.putstr_message('Refresh your memory anyway? [yn] (n)');
-                    const ans = await nhgetch();
-                    replacePromptMessage();
-                    if (String.fromCharCode(ans) !== 'y') {
-                        return { moved: false, tookTime: false };
-                    }
-                }
-
-                // C ref: spell.c:577-602 — difficulty check (uncursed, non-BOTD books)
-                if (!anyItem.blessed && anyItem.otyp !== SPE_BOOK_OF_THE_DEAD) {
-                    if (anyItem.cursed) {
-                        // Cursed: too hard (C: cursed_book() + nomul for delay)
-                        display.putstr_message("This book is beyond your comprehension.");
-                        return { moved: false, tookTime: true };
-                    }
-                    // Uncursed: roll difficulty
-                    const intel = (player.attributes ? player.attributes[A_INT] : 12) || 12;
-                    const readAbility = intel + 4 + Math.floor((player.level || 1) / 2) - 2 * ocLevel;
-                    if (rnd(20) > readAbility) {
-                        display.putstr_message("You can't make heads or tails of this.");
-                        return { moved: false, tookTime: true };
-                    }
-                }
-
-                // Start studying (C ref: "You begin to memorize the runes.")
-                display.putstr_message('You begin to memorize the runes.');
-                const bookRef = anyItem;
-                const bookOd = od;
-                const bookOcLevel = ocLevel;
-                game.occupation = {
-                    occtxt: 'studying',
-                    delayLeft: delayTurns,
-                    fn(g) {
-                        if (this.delayLeft > 0) {
-                            this.delayLeft--;
-                            return true; // still studying
-                        }
-                        // C ref: spell.c learn() — study complete
-                        // exercise(A_WIS, TRUE) — no RNG
-                        const spellsArr = g.player.spells || (g.player.spells = []);
-                        const ent = spellsArr.find(s => s.otyp === bookRef.otyp);
-                        const spellName = String(bookOd.name || 'unknown spell').toLowerCase();
-                        const studyCount = bookRef.spestudied || 0;
-                        if (ent) {
-                            // Already known — refresh
-                            if (studyCount >= MAX_SPELL_STUDY) {
-                                g.display.putstr_message('This spellbook is too faint to be read any more.');
-                                bookRef.otyp = SPE_BLANK_PAPER;
-                            } else {
-                                g.display.putstr_message(
-                                    `Your knowledge of "${spellName}" is ${ent.sp_know ? 'keener' : 'restored'}.`);
-                                ent.sp_know = SPELL_KEEN + 1; // incrnknow(i, 1)
-                                bookRef.spestudied = studyCount + 1;
-                            }
-                        } else {
-                            // New spell
-                            if (studyCount >= MAX_SPELL_STUDY) {
-                                g.display.putstr_message('This spellbook is too faint to read even once.');
-                                bookRef.otyp = SPE_BLANK_PAPER;
-                            } else {
-                                const spellIdx = spellsArr.length;
-                                spellsArr.push({ otyp: bookRef.otyp, sp_lev: bookOcLevel, sp_know: SPELL_KEEN + 1 });
-                                bookRef.spestudied = studyCount + 1;
-                                if (spellIdx === 0) {
-                                    g.display.putstr_message(`You learn "${spellName}".`);
-                                } else {
-                                    const spellet = spellIdx < 26
-                                        ? String.fromCharCode('a'.charCodeAt(0) + spellIdx)
-                                        : String.fromCharCode('A'.charCodeAt(0) + spellIdx - 26);
-                                    g.display.putstr_message(
-                                        `You add "${spellName}" to your repertoire, as '${spellet}'.`);
-                                }
-                            }
-                        }
-                        return false; // occupation done
-                    },
-                };
-                return { moved: false, tookTime: true };
-            }
-            if (anyItem.oclass === SCROLL_CLASS) {
-                replacePromptMessage();
-                display.putstr_message("Sorry, I don't know how to read that yet.");
-                return { moved: false, tookTime: false };
-            }
-            replacePromptMessage();
-            display.putstr_message('That is a silly thing to read.');
-            return { moved: false, tookTime: false };
-        }
-        // Keep waiting for a supported selection.
     }
 }
 
