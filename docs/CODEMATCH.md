@@ -158,7 +158,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[a]` | were.c | were.js | Lycanthropy. 6 of 8 functions aligned; you_were/you_unwere TODO (need polymon/rehumanize) |
 | `[~]` | wield.c | `wield.js` | Wielding weapons. dowield→handleWield(commands.js:2371), doswapweapon→handleSwapWeapon(commands.js:3477) partial. |
 | `[N/A]` | windows.c | — | Windowing system interface. JS: `display.js`, `browser_input.js` |
-| `[ ]` | wizard.c | — | Wizard of Yendor AI |
+| `[~]` | wizard.c | wizard.js | Wizard of Yendor AI. All 21 functions are runtime gameplay AI; none implemented in JS |
 | `[ ]` | wizcmds.c | — | Wizard-mode debug commands |
 | `[~]` | worm.c | worm.js | Long worm mechanics. save/rest_worm are N/A (no save file). All 24 other functions are TODO stubs |
 | `[~]` | worn.c | `worn.js` | Equipment slot management |
