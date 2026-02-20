@@ -95,7 +95,22 @@ if [ -s "$TEMP_FILE" ]; then
       ([.[].results[]] | group_by(.session) | map(
         # Per session: prefer non-error result, then latest
         sort_by(if .error then 1 else 0 end) | .[0]
-      )) as $best_results |
+      )) as $all_results |
+
+      # Deduplicate: when both "foo.session.json" and "foo_gameplay.session.json"
+      # exist, drop the non-_gameplay duplicate (these were parallel recordings of
+      # the same scenario from create_wizard_sessions.py / create_selfplay_sessions.py).
+      ([$all_results[].session | select(test("_gameplay\\.session\\.json$"))
+        | gsub("_gameplay\\.session\\.json$"; ".session.json")] ) as $gp_bases |
+      [$all_results[] | select(
+        (.session | test("_gameplay\\.session\\.json$"))
+        or ((.session | IN($gp_bases[])) | not)
+      )] |
+
+      # Normalize session names: strip "_gameplay" suffix so old and new names
+      # map to the same canonical name in the grid display.
+      [.[] | .session |= gsub("_gameplay\\.session\\.json$"; ".session.json")]
+      as $best_results |
 
       ($best_results | length) as $nsessions |
       ([$best_results[].metrics | select(.rngCalls) | .rngCalls.matched] | add) as $rngM |
@@ -110,7 +125,11 @@ if [ -s "$TEMP_FILE" ]; then
         date: ($first.date // $first.timestamp),
         author: ($first.author // null),
         message: ($first.message // null),
-        stats: $first.summary,
+        stats: {
+          total: ($best_results | length),
+          pass: ([$best_results[] | select(.passed)] | length),
+          fail: ([$best_results[] | select(.passed | not)] | length)
+        },
         sessions: $nsessions,
         metrics: {
           rng:     { matched: ($rngM // 0), total: ($rngT // 0) },
