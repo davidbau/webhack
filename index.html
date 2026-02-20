@@ -1006,89 +1006,100 @@
 
         if (!docsOverlay || !docsFrame || !docsClose || !nav) return;
 
-        // Track original href for restoration
-        const originalHref = window.location.href;
-
-        // Map of route keys to iframe sources
+        // Map of hash keys to iframe sources
         const docsRoutes = {
             'guidebook': 'guidebook/',
             'spoilers': 'spoilers/'
         };
 
-        function openDocs(src, path) {
-            // Resolve src to absolute URL before pushState changes the base
-            docsFrame.src = new URL(src, window.location.href).href;
-            // Phase 1: fix position at current scale
-            document.body.classList.add('docs-fixed');
-            // Phase 2: next frame, scale down + show overlay
-            requestAnimationFrame(function() {
+        var ignoreHashChange = false;
+
+        function openDocs(src, hash, animate) {
+            docsFrame.src = src;
+            if (animate) {
+                // Phase 1: fix position at current scale
+                document.body.classList.add('docs-fixed');
+                // Phase 2: next frame, scale down + show overlay
                 requestAnimationFrame(function() {
-                    document.body.classList.add('docs-mode');
+                    requestAnimationFrame(function() {
+                        document.body.classList.add('docs-mode');
+                    });
                 });
-            });
-            try { history.pushState({ docs: true, path: path }, '', path); } catch(e) {}
+            } else {
+                // Instant: suppress transitions
+                page.style.transition = 'none';
+                document.body.classList.add('docs-fixed');
+                document.body.classList.add('docs-mode');
+                page.offsetHeight; // force layout with no transition
+                page.style.transition = '';
+            }
+            if (window.location.hash !== '#' + hash) {
+                ignoreHashChange = true;
+                window.location.hash = '#' + hash;
+            }
         }
 
-        function closeDocs() {
-            // FLIP animation: zoom game back to its normal position
-            // First: record miniaturized position
-            var first = page.getBoundingClientRect();
+        function closeDocs(animate) {
+            if (animate) {
+                // FLIP animation: zoom game back to its normal position
+                var first = page.getBoundingClientRect();
 
-            // Last: remove classes to get final layout position
-            document.body.classList.remove('docs-mode');
-            document.body.classList.remove('docs-fixed');
-            var last = page.getBoundingClientRect();
+                document.body.classList.remove('docs-mode');
+                document.body.classList.remove('docs-fixed');
+                var last = page.getBoundingClientRect();
 
-            // Hide surrounding UI during zoom — they'll fade in after
-            var extras = page.querySelectorAll('#nav, #controls, .side-panel');
-            extras.forEach(function(el) {
-                el.style.opacity = '0';
-                el.style.transition = 'none';
-            });
-
-            // Invert: apply transform so it still looks miniaturized
-            var dx = first.left - last.left;
-            var dy = first.top - last.top;
-            var sx = first.width / last.width;
-            var sy = first.height / last.height;
-            page.style.transformOrigin = '0 0';
-            page.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')';
-
-            // Force reflow so the inverted state renders before animating
-            page.offsetHeight;
-
-            // Play: animate to identity transform
-            page.style.transition = 'transform 0.4s ease';
-            page.style.transform = '';
-
-            function cleanup() {
-                page.removeEventListener('transitionend', cleanup);
-                page.style.transition = '';
-                page.style.transformOrigin = '';
-                page.style.transform = '';
-                // Fade in surrounding UI
+                // Hide surrounding UI during zoom — they'll fade in after
+                var extras = page.querySelectorAll('#nav, #controls, .side-panel');
                 extras.forEach(function(el) {
-                    el.style.transition = 'opacity 0.3s ease';
-                    el.style.opacity = '';
+                    el.style.opacity = '0';
+                    el.style.transition = 'none';
                 });
-                // Clean up inline styles after fade completes
-                setTimeout(function() {
+
+                // Invert: apply transform so it still looks miniaturized
+                var dx = first.left - last.left;
+                var dy = first.top - last.top;
+                var sx = first.width / last.width;
+                var sy = first.height / last.height;
+                page.style.transformOrigin = '0 0';
+                page.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')';
+
+                page.offsetHeight; // force reflow
+
+                page.style.transition = 'transform 0.4s ease';
+                page.style.transform = '';
+
+                function cleanup() {
+                    page.removeEventListener('transitionend', cleanup);
+                    page.style.transition = '';
+                    page.style.transformOrigin = '';
+                    page.style.transform = '';
                     extras.forEach(function(el) {
-                        el.style.transition = '';
+                        el.style.transition = 'opacity 0.3s ease';
                         el.style.opacity = '';
                     });
-                }, 350);
+                    setTimeout(function() {
+                        extras.forEach(function(el) {
+                            el.style.transition = '';
+                            el.style.opacity = '';
+                        });
+                    }, 350);
+                }
+                page.addEventListener('transitionend', cleanup);
+                setTimeout(cleanup, 500);
+            } else {
+                document.body.classList.remove('docs-mode');
+                document.body.classList.remove('docs-fixed');
             }
-            page.addEventListener('transitionend', cleanup);
-            setTimeout(cleanup, 500); // fallback
 
             docsFrame.src = 'about:blank';
-            // Restore original URL
-            try { history.pushState({ docs: false }, '', originalHref); } catch(e) {}
+            if (window.location.hash) {
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
         }
 
-        // Intercept nav link clicks
+        // Intercept nav link clicks (let modified clicks open in new tab)
         nav.addEventListener('click', function(e) {
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
             const link = e.target.closest('a');
             if (!link) return;
 
@@ -1096,18 +1107,17 @@
             if (href.startsWith('guidebook')) {
                 e.preventDefault();
                 e.stopPropagation();
-                openDocs('guidebook/', 'guidebook/');
+                openDocs('guidebook/', 'guidebook', true);
             } else if (href.startsWith('spoilers')) {
                 e.preventDefault();
                 e.stopPropagation();
-                openDocs('spoilers/', 'spoilers/');
+                openDocs('spoilers/', 'spoilers', true);
             }
-            // Let other links (like GitHub) work normally
         });
 
         // Close button
         docsClose.addEventListener('click', function() {
-            closeDocs();
+            closeDocs(true);
             this.blur();
         });
 
@@ -1116,43 +1126,41 @@
             if (document.body.classList.contains('docs-mode')) {
                 e.preventDefault();
                 e.stopPropagation();
-                closeDocs();
+                closeDocs(true);
             }
         });
 
         // Escape key to close docs
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && document.body.classList.contains('docs-mode')) {
-                closeDocs();
+                closeDocs(true);
             }
         });
 
-        // Handle browser back/forward (instant, no animation)
-        window.addEventListener('popstate', function(e) {
-            if (e.state && e.state.docs) {
-                const src = docsRoutes[e.state.path];
-                if (src) {
+        // Handle browser back/forward via hash changes
+        window.addEventListener('hashchange', function() {
+            if (ignoreHashChange) { ignoreHashChange = false; return; }
+            var hash = window.location.hash.replace('#', '');
+            var src = docsRoutes[hash];
+            if (src) {
+                // Open or switch docs content
+                if (!document.body.classList.contains('docs-mode')) {
+                    openDocs(src, hash, false);
+                } else {
                     docsFrame.src = src;
-                    document.body.classList.add('docs-fixed');
-                    document.body.classList.add('docs-mode');
                 }
             } else {
-                document.body.classList.remove('docs-mode');
-                document.body.classList.remove('docs-fixed');
-                docsFrame.src = 'about:blank';
+                if (document.body.classList.contains('docs-mode')) {
+                    closeDocs(false);
+                }
             }
         });
 
-        // Check if we should open docs based on initial URL (instant, no animation)
-        const initialPath = window.location.pathname;
-        for (const [key, src] of Object.entries(docsRoutes)) {
-            if (initialPath.includes(key)) {
-                try { history.replaceState({ docs: true, path: key }, '', key + '/'); } catch(e) {}
-                docsFrame.src = src;
-                document.body.classList.add('docs-fixed');
-                document.body.classList.add('docs-mode');
-                break;
-            }
+        // Check if we should open docs based on initial hash
+        var initialHash = window.location.hash.replace('#', '');
+        var initialSrc = docsRoutes[initialHash];
+        if (initialSrc) {
+            openDocs(initialSrc, initialHash, false);
         }
     })();
     </script>
