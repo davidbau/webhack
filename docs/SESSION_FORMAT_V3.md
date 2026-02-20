@@ -257,6 +257,91 @@ rn2(3)=1 @ makemon.c:200
 
 These help identify which code path generated each RNG call.
 
+### Event Entries
+
+Event entries use `^` prefix with compact bracket notation, interleaved with RNG
+calls to record game-state changes for C-vs-JS divergence diagnosis:
+
+```
+^place[otyp,x,y]          — object placed on floor
+^remove[otyp,x,y]         — object removed from floor
+^pickup[mndx@x,y,otyp]    — monster picks up object
+^drop[mndx@x,y,otyp]      — monster drops object
+^eat[mndx@x,y,otyp]       — pet eats object
+^die[mndx@x,y]            — monster dies
+^corpse[mndx,x,y]         — corpse created
+^engr[type,x,y]           — engraving created
+^dengr[x,y]               — engraving deleted
+^wipe[x,y]                — engraving wiped (erosion attempted)
+^trap[type,x,y]           — trap created
+^dtrap[type,x,y]          — trap deleted
+```
+
+Example from a gameplay step:
+```
+>dog_move @ monmove.c:912
+rn2(12)=3 @ dogmove.c:587
+^eat[38@15,7,472]
+rn2(100)=42 @ dogmove.c:300
+<dog_move=1 #3017-3021 @ monmove.c:912
+```
+
+Event entries are treated as midlog entries by the RNG comparator (filtered out
+of RNG matching) but are compared separately via `compareEvents()` in
+`comparators.js`. Tools that don't understand events simply ignore them.
+
+#### Identifier References
+
+| Field | Meaning | C source | JS equivalent |
+|-------|---------|----------|---------------|
+| `otyp` | Object type index | `otmp->otyp` | `obj.otyp` |
+| `mndx` | Monster type index | `monsndx(mtmp->data)` | `mon.mndx` |
+| `x,y` | Map coordinates | `otmp->ox,otmp->oy` or `mtmp->mx,mtmp->my` | same |
+| `type` (engr) | Engraving type | `ep->engr_type` (1=DUST..6=HEADSTONE) | mapped from string via `engrTypeNum()` |
+| `type` (trap) | Trap type index | `trap->ttyp` | `trap.ttyp` |
+
+#### C Instrumentation
+
+C patch: `test/comparison/c-harness/patches/012-event-logging.patch`
+
+The `event_log()` helper in `src/rnd.c` writes to the same `rng_logfile` used by
+the RNG logging infrastructure. Instrumented functions:
+
+| C File | Function | Event |
+|--------|----------|-------|
+| `src/mkobj.c` | `place_object()` | `^place` |
+| `src/mkobj.c` | `obj_extract_self()` | `^remove` |
+| `src/mkobj.c` | `mkcorpstat()` | `^corpse` |
+| `src/steal.c` | `mpickobj()` | `^pickup` |
+| `src/steal.c` | `mdrop_obj()` | `^drop` |
+| `src/dogmove.c` | `dog_eat()` | `^eat` |
+| `src/mon.c` | `mondead()` | `^die` |
+| `src/engrave.c` | `make_engr_at()` | `^engr` |
+| `src/engrave.c` | `del_engr()` | `^dengr` |
+| `src/engrave.c` | `wipe_engr_at()` | `^wipe` |
+| `src/trap.c` | `maketrap()` | `^trap` |
+| `src/trap.c` | `deltrap()` | `^dtrap` |
+
+#### JS Instrumentation
+
+Uses `pushRngLogEntry()` from `js/rng.js`. Instrumented functions:
+
+| JS File | Function | Event |
+|---------|----------|-------|
+| `js/floor_objects.js` | `placeFloorObject()` | `^place` |
+| `js/map.js` | `removeObject()` | `^remove` |
+| `js/mkobj.js` | `mkcorpstat()` | `^corpse` |
+| `js/dogmove.js` | `dog_eat()` | `^eat` |
+| `js/dogmove.js` | `dog_invent()` pickup/drop | `^pickup`, `^drop` |
+| `js/uhitm.js` | `handleMonsterKilled()` | `^die` |
+| `js/engrave.js` | `make_engr_at()`, `del_engr()` | `^engr`, `^dengr` |
+| `js/engrave.js` | `logWipeEvent()` | `^wipe` |
+| `js/dungeon.js` | `mktrap()`, `deltrap()` | `^trap`, `^dtrap` |
+
+**JS coverage gap:** ~25 direct `map.objects.push(obj)` calls bypass
+`placeFloorObject()` and emit no `^place` event. Tracked in
+[issue #150](https://github.com/davidbau/menace/issues/150).
+
 ### Traced Functions
 
 The C harness instruments these key functions:

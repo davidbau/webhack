@@ -18,19 +18,25 @@ ARGS="$@"
 
 echo "Running session tests..."
 
-# Run the session runner and capture output.
+# Use a temp file to avoid shell variable size limits on large JSON output.
+TMPOUT=$(mktemp /tmp/session-tests-XXXXXX)
+trap 'rm -f "$TMPOUT"' EXIT
+
+# Run the session runner and capture output to temp file.
 # Session failures are expected in parity work; we still want JSON output.
 set +e
-OUTPUT=$(node "$RUNNER" $ARGS 2>&1)
+node "$RUNNER" $ARGS >"$TMPOUT" 2>&1
 RUNNER_STATUS=$?
 set -e
 
 # Extract the JSON from the output (after __RESULTS_JSON__ marker)
-JSON=$(echo "$OUTPUT" | sed -n '/__RESULTS_JSON__/{n;p;}')
+JSON_FILE=$(mktemp /tmp/session-json-XXXXXX)
+trap 'rm -f "$TMPOUT" "$JSON_FILE"' EXIT
+sed -n '/__RESULTS_JSON__/{n;p;}' "$TMPOUT" > "$JSON_FILE"
 
-if [ -z "$JSON" ]; then
+if [ ! -s "$JSON_FILE" ]; then
     echo "Error: No JSON results found in output"
-    echo "$OUTPUT"
+    cat "$TMPOUT"
     exit 1
 fi
 
@@ -38,12 +44,12 @@ fi
 mkdir -p "$REPO_ROOT/oracle"
 
 # Write results with commit set to HEAD
-echo "$JSON" | jq '.commit = "HEAD"' > "$PENDING_FILE"
+jq '.commit = "HEAD"' "$JSON_FILE" > "$PENDING_FILE"
 
 # Show summary
-PASSED=$(echo "$JSON" | jq -r '.summary.passed')
-TOTAL=$(echo "$JSON" | jq -r '.summary.total')
-FAILED=$(echo "$JSON" | jq -r '.summary.failed')
+PASSED=$(jq -r '.summary.passed' "$JSON_FILE")
+TOTAL=$(jq -r '.summary.total' "$JSON_FILE")
+FAILED=$(jq -r '.summary.failed' "$JSON_FILE")
 
 echo ""
 echo "Session tests complete: $PASSED/$TOTAL passed ($FAILED failed)"

@@ -13,6 +13,7 @@ import { COLNO, ROWNO, ACCESSIBLE, isok } from './config.js';
 import { rn2, rnd } from './rng.js';
 import { is_mindless } from './mondata.js';
 import { mon_knows_traps, mon_learns_traps } from './mondata.js';
+import { mondead } from './monutil.js';
 import { mons,
          PM_IRON_GOLEM,
          M1_FLY, M1_AMORPHOUS, M1_CLING,
@@ -119,7 +120,7 @@ export function mintrap_postmove(mon, map, player) {
         const dmg = rnd(trap.ttyp === PIT ? 6 : 10);
         mon.mhp -= Math.max(0, dmg);
         if (mon.mhp <= 0) {
-            mon.dead = true;
+            mondead(mon, map);
             map.removeMonster(mon);
             return Trap_Killed_Mon;
         }

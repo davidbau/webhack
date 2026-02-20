@@ -29,6 +29,7 @@ import {
     compareScreenAnsi,
     ansiLineToCells,
     findFirstGridDiff,
+    compareEvents,
 } from './comparators.js';
 import { loadAllSessions, stripAnsiSequences, getSessionScreenAnsiLines } from './session_loader.js';
 import { decodeDecSpecialChar } from './symset_normalization.js';
@@ -480,6 +481,26 @@ async function runGameplayResult(session) {
         if (result._colorStats?.total > 0) {
             recordColors(result, result._colorStats.matched, result._colorStats.total);
             delete result._colorStats;
+        }
+
+        // Event log comparison (^place, ^die, etc.)
+        const allJsRng = [
+            ...(replay.startup?.rng || []),
+            ...(replay.steps || []).flatMap(s => s.rng || []),
+        ];
+        const allSessionRng = [
+            ...(session.startup?.rng || []),
+            ...session.steps.flatMap(s => s.rng || []),
+        ];
+        const eventCmp = compareEvents(allJsRng, allSessionRng);
+        if (eventCmp.total > 0) {
+            result.events = {
+                matched: eventCmp.matched,
+                total: eventCmp.total,
+            };
+            if (eventCmp.firstDivergence) {
+                setFirstDivergence(result, 'event', eventCmp.firstDivergence);
+            }
         }
     } catch (error) {
         markFailed(result, error);

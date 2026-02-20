@@ -5,7 +5,7 @@
 import { COLNO, ROWNO, IS_ROOM, IS_DOOR, IS_POOL, IS_LAVA,
          D_CLOSED, D_LOCKED,
          POOL, STAIRS, LADDER, isok } from './config.js';
-import { rn2, rnd, c_d } from './rng.js';
+import { rn2, rnd, c_d, pushRngLogEntry } from './rng.js';
 import { monsterAttackPlayer } from './mhitu.js';
 import { CORPSE, BALL_CLASS, CHAIN_CLASS, ROCK_CLASS, FOOD_CLASS,
          COIN_CLASS, GEM_CLASS,
@@ -49,7 +49,8 @@ import { dist2, distmin, monnear, mfndpos,
          monmoveTrace, monmoveStepLabel,
          canSpotMonsterForMap, rememberInvisibleAt,
          attackVerb, monAttackName,
-         addToMonsterInventory, petCorpseChanceRoll, consumePassivemmRng,
+         mondead, mpickobj, mdrop_obj,
+         petCorpseChanceRoll, consumePassivemmRng,
          MTSZ, SQSRCHRADIUS, FARAWAY,
          mon_track_add } from './monmove.js';
 
@@ -240,6 +241,7 @@ export function dog_eat(mon, obj, map, turnCount, ctx = null) {
         edog.hungrytime = turnCount;
 
     let nutrit = dog_nutrition(mon, obj);
+    pushRngLogEntry(`^eat[${mon.mndx}@${mon.mx},${mon.my},${obj.otyp}]`);
     edog.hungrytime += nutrit;
 
     mon.confused = 0;
@@ -293,7 +295,7 @@ export function dog_eat(mon, obj, map, turnCount, ctx = null) {
 // and experience. JS simplified to mon.dead = true. C also checks usteed.
 // C uses cansee() for visibility; JS uses fov?.canSee which may differ in edge cases.
 // C has Hallucination check ("bummed" vs "sad"); JS always uses "sad".
-function dog_starve(mon, display, player, fov) {
+function dog_starve(mon, map, display, player, fov) {
     if (mon.mleashed) {
         if (display) display.putstr_message('Your leash goes slack.');
     } else {
@@ -306,7 +308,7 @@ function dog_starve(mon, display, player, fov) {
             display.putstr_message('You feel sad for a moment.');
         }
     }
-    mon.dead = true;
+    mondead(mon, map);
 }
 
 // ========================================================================
@@ -316,7 +318,7 @@ function dog_starve(mon, display, player, fov) {
 // calls beg(mtmp) when not visible but couldsee. JS skips beg() and
 // uses "worried" message for the else branch. C also calls stop_occupation().
 // ========================================================================
-function dog_hunger(mon, edog, turnCount, display, player, fov) {
+function dog_hunger(mon, edog, turnCount, map, display, player, fov) {
     if (turnCount > edog.hungrytime + DOG_WEAK) {
         const mdat = monPtr(mon);
         if (mdat && !carnivorous(mdat) && !herbivorous(mdat)) {
@@ -329,7 +331,7 @@ function dog_hunger(mon, edog, turnCount, display, player, fov) {
             if ((mon.mhp || 0) > mon.mhpmax)
                 mon.mhp = mon.mhpmax;
             if (mon.mhp <= 0 || mon.dead) {
-                dog_starve(mon, display, player, fov);
+                dog_starve(mon, map, display, player, fov);
                 return true;
             }
             const canSee = display && player && (
@@ -342,7 +344,7 @@ function dog_hunger(mon, edog, turnCount, display, player, fov) {
             }
         } else if (turnCount > edog.hungrytime + DOG_STARVE
                    || mon.mhp <= 0 || mon.dead) {
-            dog_starve(mon, display, player, fov);
+            dog_starve(mon, map, display, player, fov);
             return true;
         }
     }
@@ -544,11 +546,7 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player, fov = nul
             if (rn2(10) < edog.apport) {
                 let dropObj;
                 while ((dropObj = droppables(mon)) != null) {
-                    const idx = mon.minvent.indexOf(dropObj);
-                    if (idx >= 0) mon.minvent.splice(idx, 1);
-                    dropObj.ox = omx;
-                    dropObj.oy = omy;
-                    placeFloorObject(map, dropObj);
+                    mdrop_obj(mon, dropObj, map);
                     const canSeePet = display && player && (
                         fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my)
                     );
@@ -616,7 +614,7 @@ function dog_invent(mon, edog, udist, map, turnCount, display, player, fov = nul
                         } else {
                             map.removeObject(obj);
                         }
-                        addToMonsterInventory(mon, picked);
+                        mpickobj(mon, picked);
                         // C ref: dogmove.c "The <pet> picks up <obj>." when observed.
                         const canSeePet = display && player && (
                             fov?.canSee ? fov.canSee(mon.mx, mon.my) : couldsee(map, player, mon.mx, mon.my)
@@ -855,7 +853,7 @@ export function dog_move(mon, map, player, display, fov, after = false, game = n
         && (dogGoalTraceStep === dogGoalStepLabel || dogGoalTraceStep === '*');
 
     // C ref: dogmove.c:1005-1006 — hunger check (before dog_invent)
-    if (edogRaw && dog_hunger(mon, edogRaw, turnCount, display, player, fov))
+    if (edogRaw && dog_hunger(mon, edogRaw, turnCount, map, display, player, fov))
         return 2; // MMOVE_DIED — starved
 
     // C ref: dogmove.c:1010-1015 — steed check (Conflict dismount)
@@ -1239,21 +1237,7 @@ export function dog_move(mon, map, player, display, fov, after = false, game = n
                         rn2(6);
                         target.mhp -= dmg;
                         if (target.mhp <= 0) {
-                            if (Array.isArray(target.minvent) && target.minvent.length > 0) {
-                                // C ref: relobj()/mdrop_obj() drops minvent in chain order;
-                                // JS inventory arrays are push-ordered, so reverse to match
-                                // floor pile top ordering seen in C captures.
-                                for (let idx = target.minvent.length - 1; idx >= 0; idx--) {
-                                    const obj = target.minvent[idx];
-                                    if (!obj) continue;
-                                    obj.ox = target.mx;
-                                    obj.oy = target.my;
-                                    placeFloorObject(map, obj);
-                                }
-                                target.minvent = [];
-                                target.weapon = null;
-                            }
-                            target.dead = true;
+                            mondead(target, map);
                             if (display && mmVisible) {
                                 // C ref: mon.c:3382 — Monnam(mdef) uses ARTICLE_THE
                                 // C ref: nonliving monsters (undead, golems) are "destroyed" not "killed"
@@ -1336,7 +1320,7 @@ export function dog_move(mon, map, player, display, fov, after = false, game = n
                         mon.mhp -= dmg;
                         const monDiedNow = mon.mhp <= 0;
                         if (monDiedNow) {
-                            mon.dead = true;
+                            mondead(mon, map);
                         }
                         consumePassivemmRng(target, mon, true, monDiedNow);
                     } else {

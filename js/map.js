@@ -11,6 +11,7 @@ import {
     MAXNROFROOMS, ROOMOFFSET,
     isok
 } from './config.js';
+import { pushRngLogEntry } from './rng.js';
 
 // A single map location (mirrors struct rm in rm.h:220+)
 export function makeLocation() {
@@ -220,7 +221,10 @@ export class GameMap {
     // Remove an object from the level
     removeObject(obj) {
         const idx = this.objects.indexOf(obj);
-        if (idx >= 0) this.objects.splice(idx, 1);
+        if (idx >= 0) {
+            this.objects.splice(idx, 1);
+            pushRngLogEntry(`^remove[${obj.otyp},${obj.ox},${obj.oy}]`);
+        }
     }
 
 }

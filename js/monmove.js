@@ -22,6 +22,7 @@ import { COLNO, ROWNO, IS_WALL, IS_DOOR, IS_ROOM,
          SHOPBASE, ROOM, ROOMOFFSET,
          NORMAL_SPEED, isok } from './config.js';
 import { rn2, rnd, c_d } from './rng.js';
+import { wipe_engr_at } from './engrave.js';
 import { monsterAttackPlayer, applyMonflee } from './mhitu.js';
 import { FOOD_CLASS, COIN_CLASS, BOULDER, ROCK, ROCK_CLASS,
          WEAPON_CLASS, ARMOR_CLASS, GEM_CLASS,
@@ -57,12 +58,14 @@ import { dist2, distmin, monnear,
          attackVerb, monAttackName,
          canSpotMonsterForMap, rememberInvisibleAt,
          addToMonsterInventory, canMergeMonsterInventoryObj,
+         mondead, mpickobj, mdrop_obj,
          MTSZ, SQSRCHRADIUS, FARAWAY, BOLT_LIM } from './monutil.js';
 export { dist2, distmin, monnear,
          monmoveTrace, monmovePhase3Trace, monmoveStepLabel,
          attackVerb, monAttackName,
          canSpotMonsterForMap, rememberInvisibleAt,
          addToMonsterInventory, canMergeMonsterInventoryObj,
+         mondead, mpickobj, mdrop_obj,
          MTSZ, SQSRCHRADIUS, FARAWAY, BOLT_LIM };
 
 // Re-export track functions (track.c)
@@ -373,64 +376,6 @@ function m_search_items_goal(mon, map, player, fov, ggx, ggy, appr) {
 // dochug — C ref: monmove.c:690
 // ========================================================================
 
-// C ref: engrave.c rubouts[] — partial rubout substitution table
-const WIPE_RUBOUTS = {
-    A: '^', B: 'Pb[', C: '(', D: '|)[', E: '|FL[_',
-    F: '|-', G: 'C(', H: '|-', I: '|', K: '|<',
-    L: '|_', M: '|', N: '|\\', O: 'C(', P: 'F',
-    Q: 'C(', R: 'PF', T: '|', U: 'J', V: '/\\',
-    W: 'V/\\', Z: '/',
-    b: '|', d: 'c|', e: 'c', g: 'c', h: 'n',
-    j: 'i', k: '|', l: '|', m: 'nr', n: 'r',
-    o: 'c', q: 'c', w: 'v', y: 'v',
-    ':': '.', ';': ',.:', ',': '.', '=': '-', '+': '-|',
-    '*': '+', '@': '0', '0': 'C(', '1': '|', '6': 'o',
-    '7': '/', '8': '3o',
-};
-
-// C ref: engrave.c wipeout_text() — degrade engraving text with RNG
-// Matches C's exact RNG consumption: rn2(lth) + rn2(4) per iteration,
-// plus rn2(wipeto.length) when rubout substitution applies.
-// IMPORTANT: if nxt hits a space, C does `continue` (decrements cnt but does
-// not retry), so the RNG calls are always consumed upfront.
-function wipeoutEngravingText(text, cnt) {
-    if (!text || cnt <= 0) return text || '';
-    const chars = text.split('');
-    const lth = chars.length;
-    while (cnt-- > 0) {
-        const nxt = rn2(lth);
-        const use_rubout = rn2(4);
-        const ch = chars[nxt];
-        if (ch === ' ') continue;
-        if ("?.,'`-|_".includes(ch)) {
-            chars[nxt] = ' ';
-            continue;
-        }
-        const wipeto = WIPE_RUBOUTS[ch];
-        if (use_rubout && wipeto) {
-            chars[nxt] = wipeto[rn2(wipeto.length)];
-        } else {
-            chars[nxt] = '?';
-        }
-    }
-    return chars.join('');
-}
-
-function wipeEngravingAt(map, x, y, cnt) {
-    if (!map || !Array.isArray(map.engravings)) return;
-    const idx = map.engravings.findIndex((e) => e && e.x === x && e.y === y);
-    if (idx < 0) return;
-    const engr = map.engravings[idx];
-    if (!engr || engr.type === 'headstone' || engr.nowipeout) return;
-    let erase = cnt;
-    if (engr.type !== 'dust' && engr.type !== 'blood') {
-        erase = rn2(1 + Math.floor(50 / (cnt + 1))) ? 0 : 1;
-    }
-    if (erase > 0) {
-        engr.text = wipeoutEngravingText(engr.text || '', erase).replace(/^ +/, '');
-        if (!engr.text) map.engravings.splice(idx, 1);
-    }
-}
 
 function dochug(mon, map, player, display, fov, game = null) {
     if (mon.waiting && map?.flags?.is_tutorial) return;
@@ -439,7 +384,7 @@ function dochug(mon, map, player, display, fov, game = null) {
         return;
     }
 
-    wipeEngravingAt(map, mon.mx, mon.my, 1);
+    wipe_engr_at(map, mon.mx, mon.my, 1);
 
     // Phase 2: Sleep check — C ref: monmove.c disturb()
     function disturb(monster) {
@@ -845,7 +790,7 @@ function maybeMonsterPickStuff(mon, map) {
         } else {
             map.removeObject(obj);
         }
-        addToMonsterInventory(mon, picked);
+        mpickobj(mon, picked);
         return true;
     }
     return false;
@@ -1139,7 +1084,7 @@ function m_move_aggress(mon, map, player, nx, ny, display = null, fov = null) {
         rn2(6);
         target.mhp -= Math.max(1, dmg);
         if (target.mhp <= 0) {
-            target.dead = true;
+            mondead(target, map);
             if (typeof map.removeMonster === 'function') map.removeMonster(target);
             defenderDied = true;
         }
@@ -1187,7 +1132,7 @@ function m_move_aggress(mon, map, player, nx, ny, display = null, fov = null) {
             rn2(6);
             mon.mhp -= Math.max(1, rdmg);
             const attackerDied = mon.mhp <= 0;
-            if (attackerDied) mon.dead = true;
+            if (attackerDied) mondead(mon, map);
             consumePassivemmRng(target, mon, true, attackerDied);
         } else {
             consumePassivemmRng(target, mon, false, false);

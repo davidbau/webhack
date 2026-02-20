@@ -1,0 +1,144 @@
+diff --git a/include/extern.h b/include/extern.h
+--- a/include/extern.h
++++ b/include/extern.h
+@@ -2745,6 +2745,9 @@ extern void midlog_exit_ptr(const char *, const void *, const char *, int, const
+
++/* Event logging (012-event-logging patch) */
++extern void event_log(const char *, ...) PRINTF_F(1, 2);
++
+ /* ### role.c ### */
+
+diff --git a/src/rnd.c b/src/rnd.c
+--- a/src/rnd.c
++++ b/src/rnd.c
+@@ -151,6 +151,22 @@ midlog_exit_ptr(const char *fn, const void *result,
+ }
+
++/*
++ * Event logging (012-event-logging patch).
++ *
++ * Writes ^event lines interleaved with the RNG log, to track game-state
++ * changes (object placement, monster pickup/drop/eat/die) for C-vs-JS
++ * divergence diagnosis.
++ */
++void
++event_log(const char *fmt, ...)
++{
++    va_list ap;
++    if (!rng_logfile)
++        return;
++    fputc('^', rng_logfile);
++    va_start(ap, fmt);
++    vfprintf(rng_logfile, fmt, ap);
++    va_end(ap);
++    fputc('\n', rng_logfile);
++}
++
+ #ifdef USE_ISAAC64
+ #include "isaac64.h"
+
+diff --git a/src/mkobj.c b/src/mkobj.c
+--- a/src/mkobj.c
++++ b/src/mkobj.c
+@@ -2112,6 +2112,7 @@ mkcorpstat(
+             start_corpse_timeout(otmp);
+         }
+     }
++    event_log("corpse[%d,%d,%d]", otmp->corpsenm, x, y);
+     return otmp;
+ }
+
+@@ -2361,6 +2362,7 @@ place_object(struct obj *otmp, coordxy x, coordxy y)
+     fobj = otmp;
+     if (otmp->timed)
+         obj_timer_checks(otmp, x, y, 0);
++    event_log("place[%d,%d,%d]", otmp->otyp, x, y);
+ }
+
+ /* tear down the object pile at <x,y> and create it again, so that any
+@@ -2562,6 +2564,7 @@ obj_extract_self(struct obj *obj)
+     case OBJ_FLOOR:
+         remove_object(obj);
++        event_log("remove[%d,%d,%d]", obj->otyp, obj->ox, obj->oy);
+         break;
+     case OBJ_CONTAINED:
+         extract_nobj(obj, &obj->ocontainer->cobj);
+diff --git a/src/steal.c b/src/steal.c
+--- a/src/steal.c
++++ b/src/steal.c
+@@ -619,6 +619,7 @@ mpickobj(struct monst *mtmp, struct obj *otmp)
+ {
+     int freed_otmp;
+     boolean snuff_otmp = FALSE;
++    event_log("pickup[%d@%d,%d,%d]", monsndx(mtmp->data), mtmp->mx, mtmp->my, otmp->otyp);
+
+     if (!otmp) {
+         impossible("monster (%s) taking or picking up nothing?",
+@@ -838,6 +839,7 @@ mdrop_obj(
+         place_object(obj, omx, omy);
+         stackobj(obj);
++        event_log("drop[%d@%d,%d,%d]", monsndx(mon->data), omx, omy, obj->otyp);
+     }
+     /* do this last, after placing obj on floor; removing steed's saddle
+        throws rider, possibly inflicting fatal damage and producing bones; this
+diff --git a/src/dogmove.c b/src/dogmove.c
+--- a/src/dogmove.c
++++ b/src/dogmove.c
+@@ -233,6 +233,7 @@ dog_eat(struct monst *mtmp,
+     nutrit = dog_nutrition(mtmp, obj);
++    event_log("eat[%d@%d,%d,%d]", monsndx(mtmp->data), mtmp->mx, mtmp->my, obj->otyp);
+
+     if (devour) {
+         if (mtmp->meating > 1)
+diff --git a/src/mon.c b/src/mon.c
+--- a/src/mon.c
++++ b/src/mon.c
+@@ -3132,6 +3132,7 @@ mondead(struct monst *mtmp)
+         svm.mvitals[mndx].died++;
++    event_log("die[%d@%d,%d]", mndx, mtmp->mx, mtmp->my);
+
+     /* if it's a (possibly polymorphed) quest leader, mark him as dead */
+     if (mtmp->m_id == svq.quest_status.leader_m_id)
+diff --git a/src/engrave.c b/src/engrave.c
+--- a/src/engrave.c
++++ b/src/engrave.c
+@@ -271,6 +271,7 @@ wipe_engr_at(coordxy x, coordxy y, xint16 cnt, boolean magical)
+ {
+     struct engr *ep = engr_at(x, y);
++    event_log("wipe[%d,%d]", x, y);
+
+     /* Headstones and some specially marked engravings are indelible */
+     if (ep && ep->engr_type != HEADSTONE && !ep->nowipeout) {
+@@ -451,6 +452,7 @@ make_engr_at(
+     ep->engr_type = (xint8) ((e_type > 0) ? e_type : rnd(N_ENGRAVE - 1));
+     ep->engr_szeach = smem;
+     ep->engr_alloc = smem * 3;
++    event_log("engr[%d,%d,%d]", ep->engr_type, x, y);
+     /* we do not set ep->eread or ep->erevealed;
+      * the caller will need to if required */
+ }
+@@ -1644,6 +1646,7 @@ del_engr(struct engr *ep)
+ {
++    event_log("dengr[%d,%d]", ep->engr_x, ep->engr_y);
+     if (ep == head_engr) {
+         head_engr = ep->nxt_engr;
+     } else {
+         struct engr *ept;
+
+diff --git a/src/trap.c b/src/trap.c
+--- a/src/trap.c
++++ b/src/trap.c
+@@ -577,6 +577,7 @@ maketrap(coordxy x, coordxy y, int typ)
+         if (Sokoban)
+             maybe_finish_sokoban();
+     }
++    event_log("trap[%d,%d,%d]", ttmp->ttyp, x, y);
+     return ttmp;
+ }
+@@ -6438,6 +6439,7 @@ deltrap(struct trap *trap)
+ {
+     struct trap *ttmp;
+
++    event_log("dtrap[%d,%d,%d]", trap->ttyp, trap->tx, trap->ty);
+     clear_conjoined_pits(trap);
+     if (trap == gf.ftrap) {

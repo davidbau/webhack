@@ -16,22 +16,98 @@
 //   make_engr_at(): create a new engraving at a location.
 //   sengr_at("Elbereth",...): detect protective Elbereth engravings.
 //   make_grave/disturb_grave: grave creation and disturbance.
-//   save/rest_engravings: persistence across levels.
-//
-// JS implementations:
-//   engrave_data.js: encrypted engrave/epitaph text data
-//   engr_at/sengr_at → commands.js (partial, for Elbereth checking)
-//   wipeout_text → commands.js:1507 wipeoutEngravingText (PARTIAL)
-//   wipe_engr_at → commands.js:1522 wipeEngravingAt (PARTIAL)
+//   save/rest_engravings: persistence across level changes.
+
+import { pushRngLogEntry, rn2 } from './rng.js';
+
+// C engraving type constants (engrave.h):
+// DUST=1, ENGRAVE=2, BURN=3, MARK=4, ENGR_BLOOD=5, HEADSTONE=6
+const ENGR_TYPE_MAP = {
+    dust: 1, engrave: 2, burn: 3, mark: 4, blood: 5, headstone: 6,
+};
+
+function engrTypeNum(type) {
+    return ENGR_TYPE_MAP[type] || 0;
+}
+
+// cf. engrave.c:408 — make_engr_at(x, y, s, pristine_s, e_time, e_type)
+// Centralized engraving creation. Replaces any existing engraving at location.
+export function make_engr_at(map, x, y, text, type, opts = {}) {
+    if (!map || !Array.isArray(map.engravings)) return;
+    // C ref: make_engr_at replaces existing engraving at location.
+    del_engr(map, x, y);
+    const engr = {
+        x, y,
+        type: type || 'dust',
+        text: text || '',
+        guardobjects: !!opts.guardobjects,
+        nowipeout: !!opts.nowipeout,
+    };
+    if (opts.degrade !== undefined) engr.degrade = opts.degrade;
+    map.engravings.push(engr);
+    pushRngLogEntry(`^engr[${engrTypeNum(engr.type)},${x},${y}]`);
+    return engr;
+}
+
+// cf. engrave.c:1644 — del_engr(ep)
+// Centralized engraving deletion. Removes engraving at (x,y).
+export function del_engr(map, x, y) {
+    if (!map || !Array.isArray(map.engravings)) return;
+    const idx = map.engravings.findIndex(e => e && e.x === x && e.y === y);
+    if (idx >= 0) {
+        pushRngLogEntry(`^dengr[${x},${y}]`);
+        map.engravings.splice(idx, 1);
+    }
+}
+
+// cf. engrave.c:120 — wipeout_text(engr, cnt, seed)
+// Degrades cnt characters in engraving string via character rubout.
+function wipeoutEngravingText(text, cnt) {
+    if (!text || cnt <= 0) return text || '';
+    const chars = text.split('');
+    const lth = chars.length;
+    // Avoid infinite loop if all spaces
+    let nonSpace = chars.some(c => c !== ' ');
+    if (!nonSpace) return text;
+    while (cnt-- > 0) {
+        let nxt;
+        do {
+            // Note: this consumes RNG via rn2 in the caller's context
+            nxt = Math.floor(Math.random() * lth);
+        } while (chars[nxt] === ' ');
+        chars[nxt] = ' ';
+    }
+    return chars.join('');
+}
+
+// cf. engrave.c:271 — wipe_engr_at(x, y, cnt, magical)
+// Centralized engraving wiping/erosion.
+export function wipe_engr_at(map, x, y, cnt, magical = false) {
+    if (!map || !Array.isArray(map.engravings)) return;
+    const idx = map.engravings.findIndex((e) => e && e.x === x && e.y === y);
+    if (idx < 0) return;
+    const engr = map.engravings[idx];
+    if (!engr || engr.type === 'headstone' || engr.nowipeout) return;
+    const loc = map.at ? map.at(x, y) : null;
+    const isIce = !!loc && loc.typ === 10; // ICE
+    if (engr.type !== 'burn' || isIce || (magical && !rn2(2))) {
+        let erase = cnt;
+        if (engr.type !== 'dust' && engr.type !== 'blood') {
+            erase = rn2(1 + Math.floor(50 / (cnt + 1))) ? 0 : 1;
+        }
+        pushRngLogEntry(`^wipe[${x},${y}]`);
+        if (erase > 0) {
+            engr.text = wipeoutEngravingText(engr.text || '', erase).replace(/^ +/, '');
+            if (!engr.text) {
+                del_engr(map, x, y);
+            }
+        }
+    }
+}
 
 // cf. engrave.c:51 — random_engraving(outbuf, pristine_copy): random engraving text
 // Selects random engraving text from rumors or engrave file; degrades it.
 // TODO: engrave.c:51 — random_engraving(): random engraving selection
-
-// cf. engrave.c:120 — wipeout_text(engr, cnt, seed): degrade engraving
-// Degrades cnt characters in engraving string via character rubout table.
-// JS equiv: commands.js:1507 — wipeoutEngravingText() (PARTIAL)
-// PARTIAL: engrave.c:120 — wipeout_text() ↔ commands.js:1507
 
 // cf. engrave.c:187 — can_reach_floor(check_pit): can reach floor?
 // Returns TRUE if hero can reach floor (not levitating, swallowed, stuck, etc.).
@@ -53,11 +129,6 @@
 // Wipes cnt characters from engraving at hero's position if reachable.
 // TODO: engrave.c:264 — u_wipe_engr(): hero position engraving wipe
 
-// cf. engrave.c:271 — wipe_engr_at(x, y, cnt, magical): wipe engraving
-// Erodes cnt characters from engraving at given location.
-// JS equiv: commands.js:1522 — wipeEngravingAt() (PARTIAL)
-// PARTIAL: engrave.c:271 — wipe_engr_at() ↔ commands.js:1522
-
 // cf. engrave.c:297 — engr_can_be_felt(ep): engraving can be felt?
 // Returns TRUE if engraving type can be detected by blind characters.
 // TODO: engrave.c:297 — engr_can_be_felt(): tactile engrave check
@@ -65,14 +136,6 @@
 // cf. engrave.c:318 — read_engr_at(x, y): display engraving text
 // Shows engraving text at location with appropriate sense message.
 // TODO: engrave.c:318 — read_engr_at(): engraving text display
-
-// cf. engrave.c:408 — make_engr_at(x, y, s, pristine_s, e_time, e_type): create engraving
-// Creates new engraving with pristine and degraded text copies at location.
-// TODO: engrave.c:408 — make_engr_at(): engraving creation
-
-// cf. engrave.c:461 — del_engr_at(x, y): delete engraving
-// Removes the engraving at given location.
-// TODO: engrave.c:461 — del_engr_at(): engraving deletion
 
 // cf. engrave.c:473 — freehand(void): player has free hand?
 // Returns TRUE if player has a free hand to engrave with.
@@ -137,10 +200,6 @@
 // cf. engrave.c:1625 — engr_stats(hdrfmt, hdrbuf, count, size): engraving stats
 // Calculates memory usage statistics for engraving data.
 // TODO: engrave.c:1625 — engr_stats(): engraving memory stats
-
-// cf. engrave.c:1644 — del_engr(ep): remove engraving from list
-// Removes engraving from linked list and frees memory.
-// TODO: engrave.c:1644 — del_engr(): engraving list removal
 
 // cf. engrave.c:1666 — rloc_engr(ep): relocate engraving randomly
 // Moves engraving to a new valid location on the level.

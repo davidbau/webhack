@@ -20,6 +20,7 @@ import { nonliving, monDisplayName } from './mondata.js';
 import { obj_resists } from './objdata.js';
 import { newexplevel } from './exper.js';
 import { applyMonflee } from './mhitu.js';
+import { mondead } from './monutil.js';
 
 
 // ============================================================================
@@ -599,7 +600,7 @@ function handleMonsterKilled(player, monster, display, map) {
     const mdat = monster.type || {};
     const killVerb = nonliving(mdat) ? 'destroy' : 'kill';
     display.putstr_message(`You ${killVerb} the ${monDisplayName(monster)}!`);
-    monster.dead = true;
+    mondead(monster, map);
 
     // cf. exper.c experience() -- roughly monster level * level
     const exp = (monster.mlevel + 1) * (monster.mlevel + 1);

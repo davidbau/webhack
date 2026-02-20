@@ -9,6 +9,7 @@ import { COLNO, ROWNO, STONE, DOOR, CORR, SDOOR, SCORR, STAIRS, LADDER, FOUNTAIN
          SHOPBASE, ROOMOFFSET, PM_CAVEMAN, RACE_ORC } from './config.js';
 import { SQKY_BOARD, SLP_GAS_TRAP, FIRE_TRAP, PIT, SPIKED_PIT, ANTI_MAGIC, IS_SOFT } from './symbols.js';
 import { rn2, rn1, rnd, rnl, d, c_d } from './rng.js';
+import { wipe_engr_at } from './engrave.js';
 import { exercise } from './attrib_exercise.js';
 import { objectData, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
          TOOL_CLASS, FOOD_CLASS, POTION_CLASS, SCROLL_CLASS, SPBOOK_CLASS,
@@ -31,6 +32,7 @@ import { handleInventory, compactInvletPromptChars, buildInventoryOverlayLines, 
 import { makemon, setMakemonPlayerContext } from './makemon.js';
 import { mons } from './monsters.js';
 import { monDisplayName, hasGivenName, monNam } from './mondata.js';
+import { mondead } from './monutil.js';
 import { doname, next_ident, xname } from './mkobj.js';
 import { observeObject, getDiscoveriesMenuLines, isObjectNameKnown } from './discovery.js';
 import { showPager } from './pager.js';
@@ -1473,46 +1475,11 @@ function maybeHandleShopEntryMessage(game, oldX, oldY) {
 
 // C ref: hack.c maybe_smudge_engr()
 // On successful movement, attempt to smudge engravings at origin/destination.
-function wipeoutEngravingText(text, cnt) {
-    if (!text || cnt <= 0) return text || '';
-    const chars = text.split('');
-    const lth = chars.length;
-    while (cnt-- > 0) {
-        let nxt;
-        do {
-            nxt = rn2(lth);
-        } while (chars[nxt] === ' ');
-        chars[nxt] = ' ';
-    }
-    return chars.join('');
-}
 
-// C ref: engrave.c wipe_engr_at()
-function wipeEngravingAt(map, x, y, cnt, magical = false) {
-    if (!map || !Array.isArray(map.engravings)) return;
-    const idx = map.engravings.findIndex((e) => e && e.x === x && e.y === y);
-    if (idx < 0) return;
-    const engr = map.engravings[idx];
-    if (!engr || engr.type === 'headstone' || engr.nowipeout) return;
-    const loc = map.at(x, y);
-    const isIce = !!loc && loc.typ === ICE;
-    if (engr.type !== 'burn' || isIce || (magical && !rn2(2))) {
-        let erase = cnt;
-        if (engr.type !== 'dust' && engr.type !== 'blood') {
-            erase = rn2(1 + Math.floor(50 / (cnt + 1))) ? 0 : 1;
-        }
-        if (erase > 0) {
-            engr.text = wipeoutEngravingText(engr.text || '', erase).replace(/^ +/, '');
-            if (!engr.text) {
-                map.engravings.splice(idx, 1);
-            }
-        }
-    }
-}
 
 function maybeSmudgeEngraving(map, x1, y1, x2, y2) {
     // C ref: u_wipe_engr(1) on movement: only current hero square is wiped.
-    wipeEngravingAt(map, x2, y2, 1, false);
+    wipe_engr_at(map, x2, y2, 1, false);
 }
 
 // Handle running in a direction
@@ -2360,24 +2327,6 @@ async function handleFire(player, map, display, game) {
         && weapon.oclass === WEAPON_CLASS
         && (weaponSkill === 18 /* P_POLEARMS */ || weaponSkill === 19 /* P_LANCE */);
 
-    // C ref: dothrow.c dofire() routes to use_whip() when no quiver
-    // and a bullwhip is wielded — asks "In what direction?" and consumes
-    // the direction key (cracking the whip in that direction).
-    if (!player.quiver && weapon?.otyp === BULLWHIP) {
-        replacePromptMessage();
-        display.putstr_message('In what direction?');
-        const dirCh = await nhgetch();
-        const dch = String.fromCharCode(dirCh);
-        const dir = DIRECTION_KEYS[dch];
-        replacePromptMessage();
-        if (!dir) {
-            if (!player.wizard) display.putstr_message('What a strange direction!  Never mind.');
-            return { moved: false, tookTime: false };
-        }
-        // TODO: implement actual whip cracking effects (use_whip in apply.c)
-        return { moved: false, tookTime: true };
-    }
-
     // C ref: dothrow.c dofire() routes to use_pole(..., TRUE) when no
     // quiver ammo is readied and a polearm/lance is wielded.
     if (!player.quiver && wieldingPolearm) {
@@ -3083,7 +3032,7 @@ async function handleKick(player, map, display, game) {
         const damage = rnd(4) + player.strDamage;
         mon.mhp -= Math.max(1, damage);
         if (mon.mhp <= 0) {
-            mon.dead = true;
+            mondead(mon, map);
             display.putstr_message(`The ${monDisplayName(mon)} dies!`);
             map.removeMonster(mon);
         }

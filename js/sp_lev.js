@@ -16,7 +16,8 @@
 import { GameMap, FILL_NORMAL } from './map.js';
 import { rn2, rnd, rn1, getRngCallCount, advanceRngRaw, pushRngLogEntry } from './rng.js';
 import { mksobj, mkobj, mkcorpstat, set_corpsenm, setLevelDepth, weight } from './mkobj.js';
-import { create_room, create_subroom, makecorridors, create_corridor, init_rect, rnd_rect, get_rect, split_rects, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize as dungeonMineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized, wallification as dungeonWallification, wallify_region as dungeonWallifyRegion, fix_wall_spines, set_wall_state, place_lregion, mktrap, enexto, somexy, sp_create_door, floodFillAndRegister, repair_irregular_room_boundaries, resolveBranchPlacementForLevel, induced_align, DUNGEON_ALIGN_BY_DNUM, enterMklevContext, leaveMklevContext } from './dungeon.js';
+import { create_room, create_subroom, makecorridors, create_corridor, init_rect, rnd_rect, get_rect, split_rects, check_room, add_doors_to_room, update_rect_pool_for_room, bound_digging, mineralize as dungeonMineralize, fill_ordinary_room, litstate_rnd, isMtInitialized, setMtInitialized, wallification as dungeonWallification, wallify_region as dungeonWallifyRegion, fix_wall_spines, set_wall_state, place_lregion, mktrap, deltrap, enexto, somexy, sp_create_door, floodFillAndRegister, repair_irregular_room_boundaries, resolveBranchPlacementForLevel, induced_align, DUNGEON_ALIGN_BY_DNUM, enterMklevContext, leaveMklevContext } from './dungeon.js';
+import { make_engr_at, del_engr } from './engrave.js';
 import { random_epitaph_text } from './rumors.js';
 import { seedFromMT } from './xoshiro256.js';
 import {
@@ -3749,7 +3750,7 @@ export function stair(direction, x, y) {
         // C ref: l_create_stairway() removes pre-existing trap at the stair spot.
         const trap = levelState.map.trapAt(stairX, stairY);
         if (trap) {
-            levelState.map.traps = (levelState.map.traps || []).filter(t => t !== trap);
+            deltrap(levelState.map, trap);
         }
 
         if (!canPlaceStair(dir)) {
@@ -5090,15 +5091,9 @@ export function engraving(opts) {
     if (!Array.isArray(levelState.map.engravings)) {
         levelState.map.engravings = [];
     }
-    // C ref: make_engr_at replaces existing engraving at location.
-    levelState.map.engravings = levelState.map.engravings.filter(e => !(e.x === pos.x && e.y === pos.y));
-    levelState.map.engravings.push({
-        x: pos.x,
-        y: pos.y,
-        type: engrType,
-        text: txt,
+    make_engr_at(levelState.map, pos.x, pos.y, txt, engrType, {
         guardobjects: !!guardobjects,
-        nowipeout: !wipeout
+        nowipeout: !wipeout,
     });
     markSpLevTouched(pos.x, pos.y);
 }
@@ -5153,7 +5148,7 @@ export function ladder(direction, x, y) {
 
     const trap = levelState.map.trapAt(xabs, yabs);
     if (trap) {
-        levelState.map.traps = (levelState.map.traps || []).filter(t => t !== trap);
+        deltrap(levelState.map, trap);
     }
 
     if (!canPlaceStair(dir)) {
@@ -5229,14 +5224,7 @@ export function grave(x_or_opts, y, text) {
 
     if (!Array.isArray(levelState.map.engravings)) levelState.map.engravings = [];
     const epitaph = (gtext !== undefined) ? gtext : random_epitaph_text();
-    levelState.map.engravings.push({
-        x: xabs,
-        y: yabs,
-        text: epitaph,
-        type: 'engrave',
-        guardobjects: false,
-        nowipeout: true
-    });
+    make_engr_at(levelState.map, xabs, yabs, epitaph, 'engrave', { nowipeout: true });
 }
 
 /**
@@ -6402,27 +6390,32 @@ function map_cleanup(map) {
     }
 
     if (Array.isArray(map.traps) && map.traps.length > 0) {
-        map.traps = map.traps.filter((trap) => {
-            if (!trap) return false;
+        const toRemove = map.traps.filter((trap) => {
+            if (!trap) return true; // remove nulls
             const tx = Number.isInteger(trap.tx) ? trap.tx : trap.x;
             const ty = Number.isInteger(trap.ty) ? trap.ty : trap.y;
             const loc = map.at(tx, ty);
-            if (!loc) return true;
-            if (!(IS_LAVA(loc.typ) || IS_POOL(loc.typ))) return true;
-            return undestroyableTrap(trap.ttyp);
+            if (!loc) return false;
+            return (IS_LAVA(loc.typ) || IS_POOL(loc.typ)) && !undestroyableTrap(trap.ttyp);
         });
+        for (const trap of toRemove) deltrap(map, trap);
     }
 
     // C ref: sp_lev.c map_cleanup() deletes engravings on liquid.
     if (Array.isArray(map.engravings) && map.engravings.length > 0) {
-        map.engravings = map.engravings.filter((engr) => {
-            if (!engr) return false;
+        const engrToRemove = map.engravings.filter((engr) => {
+            if (!engr) return true; // remove nulls
             const ex = Number.isInteger(engr.x) ? engr.x : engr.ex;
             const ey = Number.isInteger(engr.y) ? engr.y : engr.ey;
             const loc = map.at(ex, ey);
-            if (!loc) return true;
-            return !(IS_LAVA(loc.typ) || IS_POOL(loc.typ));
+            if (!loc) return false;
+            return IS_LAVA(loc.typ) || IS_POOL(loc.typ);
         });
+        for (const engr of engrToRemove) {
+            const ex = Number.isInteger(engr.x) ? engr.x : engr.ex;
+            const ey = Number.isInteger(engr.y) ? engr.y : engr.ey;
+            del_engr(map, ex, ey);
+        }
     }
 }
 

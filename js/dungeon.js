@@ -31,8 +31,9 @@ import {
     A_NONE, A_LAWFUL, A_NEUTRAL, A_CHAOTIC
 } from './config.js';
 import { GameMap, makeRoom, FILL_NONE, FILL_NORMAL } from './map.js';
-import { rn2, rnd, rn1, d, getRngCallCount, advanceRngRaw } from './rng.js';
+import { rn2, rnd, rn1, d, getRngCallCount, advanceRngRaw, pushRngLogEntry } from './rng.js';
 import { getbones } from './bones.js';
+import { make_engr_at } from './engrave.js';
 import {
     mkobj,
     mksobj,
@@ -2541,24 +2542,11 @@ function makeniche(map, depth, trap_type) {
                 // C ref: mklev.c makeniche() places trap in niche cell (xx, yy + dy).
                 maketrap(map, xx, yy + dy, actual_trap, depth);
                 // C ref: mklev.c:757-763 — trap engraving + wipe
-                // C: make_engr_at(xx, yy-dy, trap_text, NULL, 0L, DUST)
-                //    wipe_engr_at(xx, yy-dy, 5, FALSE)  -- ages it a little
                 const engr = TRAP_ENGRAVINGS[actual_trap];
                 if (engr) {
-                    // For DUST type wipe_engr_at skips rn2(26) and calls wipeout_text directly.
-                    const agedText = wipeout_text(engr, 5);
-                    const trimmed = agedText.replace(/^ +/, '');
-                    if (trimmed) {
-                        map.engravings = map.engravings || [];
-                        map.engravings.push({
-                            x: xx,
-                            y: yy - dy,
-                            type: 'dust',
-                            text: trimmed,
-                            degrade: true,
-                            guardobjects: false,
-                        });
-                    }
+                    // C ref: wipe_engr_at(xx, yy-dy, 5, FALSE)
+                    // For DUST type, cnt stays at 5 (no reduction)
+                    wipeout_text(engr, 5);
                 }
             }
             dosdoor(map, xx, yy, aroom, SDOOR, depth);
@@ -2831,7 +2819,18 @@ function maketrap(map, x, y, typ, depth = 1) {
     }
 
     map.traps.push(trap);
+    pushRngLogEntry(`^trap[${trap.ttyp},${x},${y}]`);
     return trap;
+}
+
+// cf. trap.c:6438 — deltrap(trap): centralized trap removal
+// All trap deletions should go through this function.
+export function deltrap(map, trap) {
+    if (!map || !trap) return;
+    const tx = Number.isInteger(trap.tx) ? trap.tx : trap.x;
+    const ty = Number.isInteger(trap.ty) ? trap.ty : trap.y;
+    pushRngLogEntry(`^dtrap[${trap.ttyp},${tx},${ty}]`);
+    map.traps = (map.traps || []).filter(t => t !== trap);
 }
 
 // C ref: trap.c:441 hole_destination() — consume RNG for fall depth
@@ -3410,16 +3409,8 @@ export function fill_ordinary_room(map, croom, depth, bonusItems) {
             pos = somexyspace(map, croom);
         } while (pos && map.at(pos.x, pos.y).typ !== ROOM && !rn2(40));
         if (pos) {
-            map.engravings = map.engravings.filter(e => !(e.x === pos.x && e.y === pos.y));
-            map.engravings.push({
-                x: pos.x,
-                y: pos.y,
-                // C ref: mklev.c fill_ordinary_room() graffiti uses MARK, not DUST.
-                type: 'mark',
-                text: engrText || '',
-                degrade: true,
-                guardobjects: false,
-            });
+            // C ref: mklev.c fill_ordinary_room() graffiti uses MARK, not DUST.
+            make_engr_at(map, pos.x, pos.y, engrText || '', 'mark', { degrade: true });
         }
     }
 
@@ -5466,7 +5457,7 @@ function put_lregion_here(map, x, y, nlx, nly, nhx, nhy, rtype, oneshot) {
             if (mon && mon.mtrapped) {
                 mon.mtrapped = 0;
             }
-            map.traps = map.traps.filter(t => t !== trap);
+            deltrap(map, trap);
         }
         invalid = bad_location(map, x, y, nlx, nly, nhx, nhy)
             || is_exclusion_zone(map, rtype, x, y);

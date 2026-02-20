@@ -9,7 +9,8 @@ function stripRngSourceTag(entry) {
 }
 
 function isMidlogEntry(entry) {
-    return typeof entry === 'string' && entry.length > 0 && (entry[0] === '>' || entry[0] === '<');
+    return typeof entry === 'string' && entry.length > 0
+        && (entry[0] === '>' || entry[0] === '<' || entry[0] === '^');
 }
 
 function isCompositeEntry(entry) {
@@ -530,4 +531,35 @@ export function createDiagnosticReport(result, options = {}) {
     }
 
     return report;
+}
+
+// --- Event log comparison ---
+
+function isEventEntry(entry) {
+    return typeof entry === 'string' && entry.length > 0 && entry[0] === '^';
+}
+
+export function compareEvents(jsRng = [], sessionRng = []) {
+    const js = (Array.isArray(jsRng) ? jsRng : []).filter(isEventEntry);
+    const session = (Array.isArray(sessionRng) ? sessionRng : []).filter(isEventEntry);
+    const total = Math.max(js.length, session.length);
+
+    let matched = 0;
+    let firstDivergence = null;
+
+    for (let i = 0; i < total; i++) {
+        if (js[i] === session[i]) {
+            matched++;
+            continue;
+        }
+        if (!firstDivergence) {
+            firstDivergence = {
+                index: i,
+                js: js[i] || '(missing)',
+                session: session[i] || '(missing)',
+            };
+        }
+    }
+
+    return { matched, total, firstDivergence };
 }

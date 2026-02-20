@@ -18,6 +18,7 @@ import { next_ident } from './mkobj.js';
 import { newexplevel } from './exper.js';
 import { nhgetch } from './input.js';
 import { nonliving, monDisplayName } from './mondata.js';
+import { mondead } from './monutil.js';
 
 // Direction vectors matching commands.js DIRECTION_KEYS
 const DIRECTION_KEYS = {
@@ -266,7 +267,7 @@ function dobuzz(player, map, display, type, nd, dx, dy, sx, sy) {
             // Apply damage
             mon.mhp -= damage;
             if (mon.mhp <= 0) {
-                mon.dead = true;
+                mondead(mon, map);
                 // C ref: nonliving monsters (undead, golems) are "destroyed" not "killed"
                 const mdat = mon.type || {};
                 const killVerb = nonliving(mdat) ? 'destroy' : 'kill';

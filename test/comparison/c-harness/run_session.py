@@ -203,8 +203,8 @@ def parse_rng_lines(lines):
         line = line.strip()
         if not line:
             continue
-        # Mid-level tracing: >funcname ... or <funcname ... — pass through as-is
-        if line[0] in ('>', '<'):
+        # Mid-level tracing: >funcname/<funcname, event logging: ^event — pass through as-is
+        if line[0] in ('>', '<', '^'):
             entries.append(line)
             continue
         # Format: "2808 rn2(12) = 2 @ mon.c:1145"

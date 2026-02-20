@@ -2,6 +2,7 @@
 // C ref: mkobj.c place_object()/stackobj()
 
 import { COIN_CLASS, objectData } from './objects.js';
+import { pushRngLogEntry } from './rng.js';
 
 export function canStackFloorObject(a, b) {
     if (!a || !b) return false;
@@ -39,6 +40,7 @@ export function canStackFloorObject(a, b) {
 }
 
 export function placeFloorObject(map, obj) {
+    pushRngLogEntry(`^place[${obj.otyp},${obj.ox},${obj.oy}]`);
     for (const existing of map.objects) {
         if (existing.ox !== obj.ox || existing.oy !== obj.oy) continue;
         if (existing.buried || obj.buried) continue;

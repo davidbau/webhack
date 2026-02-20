@@ -626,7 +626,7 @@ Patches live in `test/comparison/c-harness/patches/` and are applied by
 The C harness builds a patched NetHack 3.7 binary for ground-truth comparison.
 The C source is **frozen at commit `79c688cc6`** and never modified directly —
 only numbered patches in `test/comparison/c-harness/patches/` are applied on top
-(`001` through `011` as of 2026-02-19).
+(`001` through `012` as of 2026-02-20).
 
 Core harness capabilities come from:
 
@@ -661,6 +661,104 @@ simpler, and definitive.
   clean these up before each run.
 - **Parallel Lua build race** — `make -j` can race on `liblua.a`. The script
   builds Lua separately first.
+
+## Event Logging
+
+> *"You hear a distant clanking sound."*
+
+Event logging tracks game-state mutations (object placement, monster death,
+pickup/drop, engravings, traps) on both C and JS sides for divergence
+diagnosis. Events are `^`-prefixed lines interleaved with the RNG log.
+
+### How it works
+
+**C side**: The `012-event-logging.patch` adds `event_log()` calls at
+centralized bottleneck functions (`mondead`, `mpickobj`, `mdrop_obj`,
+`place_object`, `mkcorpstat`, `dog_eat`, `maketrap`, `deltrap`,
+`make_engr_at`, `del_engr`, `wipe_engr_at`). These write `^event[args]`
+lines to the RNG log file.
+
+**JS side**: The same bottleneck functions call
+`pushRngLogEntry('^event[args]')` to append event entries to the step's
+RNG array. The centralized functions live in:
+
+| Function | File | Purpose |
+|----------|------|---------|
+| `mondead(mon, map)` | `js/monutil.js` | Monster death — logs `^die`, drops inventory |
+| `mpickobj(mon, obj)` | `js/monutil.js` | Monster pickup — logs `^pickup` |
+| `mdrop_obj(mon, obj, map)` | `js/monutil.js` | Monster drop — logs `^drop` |
+| `placeFloorObject(map, obj)` | `js/floor_objects.js` | Object on floor — logs `^place` |
+| `removeFloorObject(map, obj)` | `js/floor_objects.js` | Object off floor — logs `^remove` |
+| `make_engr_at(...)` | `js/engrave.js` | Engraving created — logs `^engr` |
+| `del_engr(...)` | `js/engrave.js` | Engraving deleted — logs `^dengr` |
+| `wipe_engr_at(...)` | `js/engrave.js` | Engraving eroded — logs `^wipe` |
+
+### Event types
+
+| Event | Format | Meaning |
+|-------|--------|---------|
+| `^die[mndx@x,y]` | monster index, position | Monster died |
+| `^pickup[mndx@x,y,otyp]` | monster, position, object type | Monster picked up object |
+| `^drop[mndx@x,y,otyp]` | monster, position, object type | Monster dropped object |
+| `^place[otyp,x,y]` | object type, position | Object placed on floor |
+| `^remove[otyp,x,y]` | object type, position | Object removed from floor |
+| `^corpse[corpsenm,x,y]` | corpse monster, position | Corpse created |
+| `^eat[mndx@x,y,otyp]` | monster, position, object type | Monster ate object |
+| `^trap[ttyp,x,y]` | trap type, position | Trap created |
+| `^dtrap[ttyp,x,y]` | trap type, position | Trap deleted |
+| `^engr[type,x,y]` | engrave type, position | Engraving created |
+| `^dengr[x,y]` | position | Engraving deleted |
+| `^wipe[x,y]` | position | Engraving wiped/eroded |
+
+### Using events for debugging
+
+Events help diagnose *state drift* — when C and JS RNG diverge because
+game objects or monsters ended up in different positions. Instead of
+guessing where state went wrong, compare event sequences to see exactly
+which object placement or monster action differed.
+
+```bash
+# Run a session and look at event comparison
+node test/comparison/session_test_runner.js --verbose \
+  test/comparison/sessions/seed42_gameplay.session.json
+# Event mismatches appear in firstDivergences alongside rng/screen channels
+```
+
+Event comparison is **informational only** — mismatches don't fail the test.
+This is intentional: events track state changes that JS may not yet implement
+identically (e.g., missing monster behaviors), and blocking on them would
+make RNG parity work harder to iterate on.
+
+### Adding new event types
+
+To add a new event type:
+
+1. **C side**: Add `event_log("newevent[%d,%d]", x, y);` at the
+   centralized function in the relevant `.c` file, and add it to
+   `012-event-logging.patch`.
+2. **JS side**: Add `pushRngLogEntry('^newevent[...]')` at the
+   corresponding centralized JS function.
+3. **Regenerate sessions**: `python3 test/comparison/c-harness/run_session.py --from-config`
+4. Events are automatically recognized by the comparator (any line
+   starting with `^` is treated as an event).
+
+### Key design principle: centralized bottlenecks
+
+All event logging happens in centralized bottleneck functions, never at
+call sites. This mirrors C's architecture where `mondead()`, `mpickobj()`,
+and `mdrop_obj()` are the single points through which all deaths, pickups,
+and drops flow. In JS:
+
+- **All 10 monster death sites** call `mondead(mon, map)` — never set
+  `mon.dead = true` directly.
+- **All monster pickup sites** call `mpickobj(mon, obj)` — never call
+  `addToMonsterInventory` directly for gameplay pickups.
+- **All monster drop sites** call `mdrop_obj(mon, obj, map)` — never
+  splice from `minvent` directly for gameplay drops.
+
+Note: `mondead` drops inventory via `placeFloorObject` (producing `^place`
+events), NOT via `mdrop_obj` (which would produce `^drop` events). This
+matches C where `relobj()` calls `place_object()` directly.
 
 ## Architecture in 60 Seconds
 

@@ -140,14 +140,15 @@ echo "========================================"
 CURRENT_COMMIT=$(git rev-parse HEAD)
 CURRENT_SHORT=$(git rev-parse --short HEAD)
 
-declare -A SEEN_COMMITS=()
+SEEN_COMMITS=""
 declare -a COMMITS_TO_CHECK=()
 
 for update in "${PUSH_UPDATES[@]}"; do
   IFS='|' read -r local_ref local_sha remote_ref remote_sha <<<"$update"
   while read -r commit; do
-    if [ -n "${commit:-}" ] && [ -z "${SEEN_COMMITS[$commit]+x}" ]; then
-      SEEN_COMMITS["$commit"]=1
+    if [ -n "${commit:-}" ] && ! echo "$SEEN_COMMITS" | grep -qF "$commit"; then
+      SEEN_COMMITS="${SEEN_COMMITS}${commit}
+"
       COMMITS_TO_CHECK+=("$commit")
     fi
   done < <(collect_commits_for_update "$local_sha" "$remote_sha")

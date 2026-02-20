@@ -957,47 +957,78 @@ subsequent iterations. For seed5's `9s...9l` sequence: `multi=4` maps to 3
 occupation iters (fn returns true) + 1 free cycle (fn returns false, dosounds
 fires).
 
-### `dofire` routes to `use_whip()` when no quiver and bullwhip is wielded
-
-In C `dofire()` (dothrow.c), when `uquiver == NULL` and `flags.autoquiver` is
-false:
-- If wielding a **polearm/lance** → `use_pole(uwep, TRUE)` (asks direction)
-- If wielding a **bullwhip** → `use_whip(uwep)` (asks "In what direction?",
-  consumes direction key, returns without turn if direction invalid)
-- Otherwise → "You have no ammunition readied."
-
-JS `handleFire` must check for bullwhip *before* polearm. An archeologist
-wizard (seed201) starts with a bullwhip and no quiver, so `f` routes to the
-whip direction prompt. If JS instead falls through to the menu-based ammo
-selection (`What do you want to fire? [*]`), it consumes the direction key and
-subsequent count digits as menu input, causing an RNG divergence of 0 (JS) vs
-175 (C) at the first counted-move command after the fire.
-
-Fix: in `handleFire`, add a bullwhip guard before the polearm guard:
-```javascript
-if (!player.quiver && weapon?.otyp === BULLWHIP) {
-    // show "In what direction?", consume direction key
-    // return tookTime=true if valid direction, false otherwise
-}
-```
-
 ---
 
-### `wipeout_text` makes two `rn2` calls per character erased
+## Centralized Bottleneck Functions and Event Logging
 
-In C `wipeout_text(engrave.c)`, for each character erased (cnt iterations),
-the function calls **two** rn2s:
-1. `rn2(lth)` — picks position in string
-2. `rn2(4)` — determines if a "rubout" substitution is used (partial erasure)
+### Mirror C's bottleneck architecture, don't scatter logic
 
-JS's `wipeoutEngravingText` only calls `rn2(lth)` and is missing the `rn2(4)`
-call. Fixing this requires adding `rn2(4)` and implementing rubout characters
-(letters that degrade to similar-looking chars instead of becoming spaces).
+C routes all monster deaths through `mondead()` (mon.c), all monster pickups
+through `mpickobj()` (steal.c), and all monster drops through `mdrop_obj()`
+(steal.c). The JS port originally had these scattered across 10+ call sites
+with inconsistent behavior — some sites logged events, some dropped inventory,
+some did neither. Centralizing to match C's architecture solved three problems
+at once: consistent behavior, correct event logging, and easier maintenance.
 
-Also note: in C, if the picked position is already a space, it does `continue`
-(skips that iteration without retry). In JS, the inner `do...while` loop retries
-`rn2(lth)` until a non-space is found — which consumes extra RNG calls compared
-to C when spaces exist.
+The three bottleneck functions live in `js/monutil.js`:
+
+- **`mondead(mon, map)`** — sets `mon.dead = true`, logs `^die`, drops
+  inventory to floor via `placeFloorObject`. Does NOT call `map.removeMonster`
+  — callers handle that.
+- **`mpickobj(mon, obj)`** — logs `^pickup`, adds to monster inventory.
+  Caller must extract obj from floor first.
+- **`mdrop_obj(mon, obj, map)`** — removes from minvent, logs `^drop`,
+  places on floor.
+
+### Death drops use `placeFloorObject`, not `mdrop_obj`
+
+This is a subtle but important distinction. When a monster dies, C's `relobj()`
+calls `place_object()` directly — it does NOT go through `mdrop_obj()`. This
+means death inventory drops produce `^place` events, not `^drop` events. If JS
+routed death drops through `mdrop_obj`, the event logs would show extra `^drop`
+entries that don't match C, creating false divergences.
+
+### Event logging is interleaved with the RNG log
+
+Both C and JS write `^`-prefixed event lines into the same stream as RNG calls.
+On the C side, `event_log()` (in rnd.c, added by 012-event-logging.patch)
+writes to the RNG log file. On the JS side, `pushRngLogEntry('^...')` appends
+to the step's RNG array.
+
+Current event types:
+
+| Event | Meaning | C source | JS source |
+|-------|---------|----------|-----------|
+| `^die[mndx@x,y]` | Monster death | mon.c mondead | monutil.js mondead |
+| `^pickup[mndx@x,y,otyp]` | Monster picks up | steal.c mpickobj | monutil.js mpickobj |
+| `^drop[mndx@x,y,otyp]` | Monster drops | steal.c mdrop_obj | monutil.js mdrop_obj |
+| `^place[otyp,x,y]` | Object on floor | mkobj.c place_object | floor_objects.js |
+| `^remove[otyp,x,y]` | Object off floor | mkobj.c obj_extract_self | floor_objects.js |
+| `^corpse[corpsenm,x,y]` | Corpse created | mkobj.c mkcorpstat | (corpse creation) |
+| `^eat[mndx@x,y,otyp]` | Monster eats | dogmove.c dog_eat | dogmove.js dog_eat |
+| `^trap[ttyp,x,y]` | Trap created | trap.c maketrap | (trap creation) |
+| `^dtrap[ttyp,x,y]` | Trap deleted | trap.c deltrap | (trap deletion) |
+| `^engr[type,x,y]` | Engraving created | engrave.c make_engr_at | engrave.js |
+| `^dengr[x,y]` | Engraving deleted | engrave.c del_engr | engrave.js |
+| `^wipe[x,y]` | Engraving eroded | engrave.c wipe_engr_at | engrave.js |
+
+Event comparison is informational only — event mismatches appear in
+`firstDivergences` but don't set `result.passed = false`. This lets us detect
+state drift without blocking on expected differences while JS catches up.
+
+### Thread parameters carefully when centralizing
+
+When `mondead(mon, map)` needs a `map` parameter but the caller doesn't have
+one, you must thread it through the entire call chain. For example,
+`dog_starve()` didn't have `map`, so it had to be threaded through
+`dog_hunger()` → `dog_starve()` → `dog_move()`. Always trace the full call
+chain before adding a parameter to a bottleneck function.
+
+### Clean up imports after centralizing
+
+After moving logic into bottleneck functions, callers may have leftover imports
+(`addToMonsterInventory`, `pushRngLogEntry`, `placeFloorObject`) that are no
+longer used directly. Always verify and clean up.
 
 ---
 

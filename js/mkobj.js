@@ -2,7 +2,7 @@
 // Faithful port of mkobj.c from NetHack 3.7
 // C ref: mkobj.c — object creation, class initialization, containers
 
-import { rn2, rnd, rn1, rne, rnz, d, getRngCallCount } from './rng.js';
+import { rn2, rnd, rn1, rne, rnz, d, getRngCallCount, pushRngLogEntry } from './rng.js';
 import { isObjectNameKnown } from './discovery.js';
 import {
     objectData, bases, oclass_prob_totals, mkobjprobs, NUM_OBJECTS,
@@ -848,6 +848,7 @@ export function mkcorpstat(objtype, ptr_mndx, init) {
             start_corpse_timeout_rng(ptr_mndx);
         }
     }
+    pushRngLogEntry(`^corpse[${otmp.corpsenm},${otmp.ox || 0},${otmp.oy || 0}]`);
     return otmp;
 }
 

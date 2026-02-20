@@ -3,6 +3,7 @@
 
 import { ACCESSIBLE, COLNO, ROWNO } from './config.js';
 import { rn1 } from './rng.js';
+import { deltrap } from './dungeon.js';
 import {
     CORR, ROOM, AIR,
     IS_FURNITURE, IS_LAVA, IS_POOL, MAGIC_PORTAL, VIBRATING_SQUARE,
@@ -96,7 +97,7 @@ function getTeleportArrivalPosition(map, opts = {}) {
         if (invalid && force) {
             const trap = map?.trapAt?.(x, y);
             if (trap && trap.ttyp !== MAGIC_PORTAL && trap.ttyp !== VIBRATING_SQUARE) {
-                map.traps = (map.traps || []).filter(t => t !== trap);
+                deltrap(map, trap);
             }
             invalid = isBadLocation(x, y);
             if (invalid) return false;

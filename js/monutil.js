@@ -8,6 +8,8 @@ import { PM_GRID_BUG,
 import { couldsee } from './vision.js';
 import { monNam } from './mondata.js';
 import { weight } from './mkobj.js';
+import { pushRngLogEntry } from './rng.js';
+import { placeFloorObject } from './floor_objects.js';
 
 // ========================================================================
 // Constants — C ref: hack.h / monst.h / dogmove.c
@@ -146,4 +148,50 @@ export function addToMonsterInventory(mon, obj) {
     }
     mon.minvent.push(obj);
     return obj;
+}
+
+// ========================================================================
+// Centralized monster death/pickup/drop — C ref: mon.c, steal.c
+// ========================================================================
+
+// C ref: mon.c mondead() → m_detach() → relobj()
+// Marks monster dead and drops all inventory to floor.
+// Does NOT call map.removeMonster — callers handle removal if needed;
+// movemon() filters dead monsters at end of turn.
+export function mondead(mon, map) {
+    mon.dead = true;
+    pushRngLogEntry(`^die[${mon.mndx || 0}@${mon.mx},${mon.my}]`);
+    // C ref: m_detach -> relobj: drop all inventory to floor
+    if (Array.isArray(mon.minvent) && mon.minvent.length > 0) {
+        // Reverse order to match C's relobj chain-order floor pile ordering
+        for (let idx = mon.minvent.length - 1; idx >= 0; idx--) {
+            const obj = mon.minvent[idx];
+            if (!obj) continue;
+            obj.ox = mon.mx;
+            obj.oy = mon.my;
+            placeFloorObject(map, obj);
+        }
+        mon.minvent = [];
+        mon.weapon = null;
+    }
+}
+
+// C ref: steal.c:619 mpickobj()
+// Adds object to monster inventory with event logging.
+// Callers are responsible for floor removal before calling this.
+export function mpickobj(mon, obj) {
+    pushRngLogEntry(`^pickup[${mon.mndx}@${mon.mx},${mon.my},${obj.otyp}]`);
+    return addToMonsterInventory(mon, obj);
+}
+
+// C ref: steal.c:814 mdrop_obj()
+// Removes object from monster inventory and places on floor with event logging.
+export function mdrop_obj(mon, obj, map) {
+    const idx = Array.isArray(mon.minvent) ? mon.minvent.indexOf(obj) : -1;
+    if (idx >= 0) mon.minvent.splice(idx, 1);
+    if (mon.weapon === obj) mon.weapon = null;
+    obj.ox = mon.mx;
+    obj.oy = mon.my;
+    pushRngLogEntry(`^drop[${mon.mndx}@${mon.mx},${mon.my},${obj.otyp}]`);
+    placeFloorObject(map, obj);
 }

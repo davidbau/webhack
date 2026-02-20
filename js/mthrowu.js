@@ -25,7 +25,7 @@ import { couldsee, m_cansee } from './vision.js';
 import { monDisplayName } from './mondata.js';
 import { mons, AT_WEAP,
          MZ_TINY, G_FREQ } from './monsters.js';
-import { distmin, BOLT_LIM } from './monutil.js';
+import { distmin, mondead, BOLT_LIM } from './monutil.js';
 
 // C ref: mthrowu.c blocking_terrain() subset used by lined_up().
 function blockingTerrainForLinedup(map, x, y) {
@@ -173,7 +173,7 @@ export function m_throw(mon, startX, startY, dx, dy, range, weapon, map, player,
 
                 mtmp.mhp -= damage;
                 if (mtmp.mhp <= 0) {
-                    mtmp.dead = true;
+                    mondead(mtmp, map);
                     map.removeMonster(mtmp);
                     const exp = (mtmp.mlevel + 1) * (mtmp.mlevel + 1);
                     player.exp += exp;

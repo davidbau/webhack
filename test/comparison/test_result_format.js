@@ -222,6 +222,7 @@ export function formatResult(result) {
     if (m.grids) parts.push(`grids=${m.grids.matched}/${m.grids.total}`);
     if (m.screens) parts.push(`screens=${m.screens.matched}/${m.screens.total}`);
     if (m.colors) parts.push(`colors=${m.colors.matched}/${m.colors.total}`);
+    if (result.events) parts.push(`events=${result.events.matched}/${result.events.total}`);
     if (result.error) parts.push(`error: ${result.error}`);
 
     return parts.join(' ');
