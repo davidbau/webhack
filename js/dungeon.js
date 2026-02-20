@@ -3323,6 +3323,7 @@ export function fill_ordinary_room(map, croom, depth, bonusItems) {
                 const chest = mksobj(rn2(3) ? CHEST : LARGE_BOX, false, false);
                 if (chest) { chest.ox = pos.x; chest.oy = pos.y; map.objects.push(chest); }
                 rn2(6); // olocked check
+                if (chest && !Array.isArray(chest.cobj)) chest.cobj = [];
 
                 // Supply items loop
                 // C ref: mklev.c:1038-1070
@@ -3335,6 +3336,8 @@ export function fill_ordinary_room(map, croom, depth, bonusItems) {
                         // quan = 2 (no extra RNG, just weight update)
                     }
                     cursed = otmp.cursed;
+                    // C ref: mklev.c — add_to_container() stores item in chest
+                    if (chest) chest.cobj.push(otmp);
                     ++tryct;
                     if (tryct === 50) break;
                 } while (cursed || !rn2(5));
@@ -3362,6 +3365,8 @@ export function fill_ordinary_room(map, croom, depth, bonusItems) {
                             }
                         }
                     }
+                    // C ref: mklev.c — add_to_container() stores extra item in chest
+                    if (chest) chest.cobj.push(otmp);
                 }
 
                     skip_chests = true;

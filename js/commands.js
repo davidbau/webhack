@@ -1773,34 +1773,92 @@ function setContainerContents(container, items) {
 
 async function handleLoot(game) {
     const { player, map, display } = game;
-    const containers = (map.objectsAt(player.x, player.y) || [])
+
+    // Check floor containers at player's position.
+    const floorContainers = (map.objectsAt(player.x, player.y) || [])
         .filter((obj) => !!objectData[obj?.otyp]?.container);
 
-    if (containers.length === 0) {
+    // Check inventory containers the player is carrying.
+    // cf. pickup.c doloot_core() — also offers to loot carried containers.
+    const invContainers = (player.inventory || [])
+        .filter((obj) => obj && !!objectData[obj?.otyp]?.container);
+
+    if (floorContainers.length === 0 && invContainers.length === 0) {
         display.putstr_message("You don't find anything here to loot.");
         return { moved: false, tookTime: false };
     }
 
-    const container = containers[0];
-    if (container.olocked && !container.obroken) {
-        display.putstr_message('Hmmm, it seems to be locked.');
+    // Loot floor container first (C behavior: floor takes priority).
+    if (floorContainers.length > 0) {
+        const container = floorContainers[0];
+        if (container.olocked && !container.obroken) {
+            display.putstr_message('Hmmm, it seems to be locked.');
+            return { moved: false, tookTime: false };
+        }
+        const contents = getContainerContents(container);
+        if (contents.length === 0) {
+            display.putstr_message("It's empty.");
+            return { moved: false, tookTime: true };
+        }
+        for (const item of contents) {
+            player.addToInventory(item);
+            observeObject(item);
+        }
+        setContainerContents(container, []);
+        const count = contents.length;
+        display.putstr_message(`You loot ${count} item${count === 1 ? '' : 's'}.`);
+        return { moved: false, tookTime: true };
+    }
+
+    // Loot an inventory container (take things out).
+    // cf. pickup.c doloot_core() — "Do you want to take things out?"
+    // If only one inventory container, offer it directly; else prompt for letter.
+    let container;
+    if (invContainers.length === 1) {
+        container = invContainers[0];
+    } else {
+        // Build letter prompt from inventory letters.
+        const letters = invContainers.map((o) => o.invlet).filter(Boolean).join('');
+        const prompt = letters
+            ? `Loot which container? [${letters} or ?*]`
+            : 'Loot which container? [?*]';
+        while (true) {
+            display.putstr_message(prompt);
+            const ch = await nhgetch();
+            const c = String.fromCharCode(ch);
+            if (ch === 27 || ch === 10 || ch === 13 || ch === 32) {
+                display.topMessage = null;
+                display.putstr_message('Never mind.');
+                return { moved: false, tookTime: false };
+            }
+            container = invContainers.find((o) => o.invlet === c);
+            if (container) break;
+        }
+        display.topMessage = null;
+    }
+
+    // cf. pickup.c doloot_core() — "Do you want to take things out of <x>? [yn]"
+    const containerName = doname(container, player);
+    display.putstr_message(`Do you want to take things out of your ${containerName}? [yn] `);
+    const ans = await nhgetch();
+    display.topMessage = null;
+    if (String.fromCharCode(ans) !== 'y') {
+        display.putstr_message('Never mind.');
         return { moved: false, tookTime: false };
     }
 
     const contents = getContainerContents(container);
     if (contents.length === 0) {
-        display.putstr_message("You don't find anything here to loot.");
-        return { moved: false, tookTime: false };
+        display.putstr_message("It's empty.");
+        return { moved: false, tookTime: true };
     }
-
     for (const item of contents) {
         player.addToInventory(item);
         observeObject(item);
     }
     setContainerContents(container, []);
-
     const count = contents.length;
-    display.putstr_message(`You loot ${count} item${count === 1 ? '' : 's'}.`);
+    display.putstr_message(`You take out ${count} item${count === 1 ? '' : 's'}.`);
     return { moved: false, tookTime: true };
 }
 
