@@ -161,7 +161,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | wizard.c | — | Wizard of Yendor AI |
 | `[ ]` | wizcmds.c | — | Wizard-mode debug commands |
 | `[~]` | worm.c | worm.js | Long worm mechanics. save/rest_worm are N/A (no save file). All 24 other functions are TODO stubs |
-| `[ ]` | worn.c | — | Equipment slot management |
+| `[~]` | worn.c | `worn.js` | Equipment slot management |
 | `[a]` | write.c | write.js | Writing on scrolls. cost, write_ok, new_book_description implemented; dowrite TODO |
 | `[a]` | zap.c | zap.js | Wand beam effects. zhitm, zap_hit, resist, burnarmor, xkilled, corpse_chance, dobuzz implemented. dozap/weffects/bhitm/revive/polyuse and many others TODO |
 
