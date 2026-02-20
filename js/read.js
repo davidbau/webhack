@@ -136,10 +136,10 @@ async function handleRead(player, display, game) {
                     // C TTY behavior where pline() + yn() appear together.
                     display.putstr_message(`You know "${spellName}" quite well already.  Refresh your memory anyway? [yn] (n)`);
                     const ans = await nhgetch();
-                    replacePromptMessage();
                     if (String.fromCharCode(ans) !== 'y') {
                         return { moved: false, tookTime: false };
                     }
+                    replacePromptMessage();
                 }
 
                 // cf. spell.c study_book():577-602 — difficulty check (uncursed, non-BOTD books)

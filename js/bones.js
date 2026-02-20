@@ -293,3 +293,14 @@ export function getbones(game, depth) {
 
     return bonesMap;
 }
+
+// Compatibility exports for camelCase consumers (tests and some legacy callers).
+// These keep legacy import paths working while preserving the canonical snake_case
+// implementation names used by the C-ported codebase.
+export const canMakeBones = can_make_bones;
+export const dropUponDeath = drop_upon_death;
+export const resetObjs = resetobjs;
+export const sanitizeName = sanitize_name;
+export const giveToNearbyMon = give_to_nearby_mon;
+export const removeMonFromBones = remove_mon_from_bones;
+export const setGhostlyObjlist = set_ghostly_objlist;
