@@ -2360,6 +2360,24 @@ async function handleFire(player, map, display, game) {
         && weapon.oclass === WEAPON_CLASS
         && (weaponSkill === 18 /* P_POLEARMS */ || weaponSkill === 19 /* P_LANCE */);
 
+    // C ref: dothrow.c dofire() routes to use_whip() when no quiver
+    // and a bullwhip is wielded — asks "In what direction?" and consumes
+    // the direction key (cracking the whip in that direction).
+    if (!player.quiver && weapon?.otyp === BULLWHIP) {
+        replacePromptMessage();
+        display.putstr_message('In what direction?');
+        const dirCh = await nhgetch();
+        const dch = String.fromCharCode(dirCh);
+        const dir = DIRECTION_KEYS[dch];
+        replacePromptMessage();
+        if (!dir) {
+            if (!player.wizard) display.putstr_message('What a strange direction!  Never mind.');
+            return { moved: false, tookTime: false };
+        }
+        // TODO: implement actual whip cracking effects (use_whip in apply.c)
+        return { moved: false, tookTime: true };
+    }
+
     // C ref: dothrow.c dofire() routes to use_pole(..., TRUE) when no
     // quiver ammo is readied and a polearm/lance is wielded.
     if (!player.quiver && wieldingPolearm) {

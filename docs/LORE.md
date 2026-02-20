@@ -957,6 +957,48 @@ subsequent iterations. For seed5's `9s...9l` sequence: `multi=4` maps to 3
 occupation iters (fn returns true) + 1 free cycle (fn returns false, dosounds
 fires).
 
+### `dofire` routes to `use_whip()` when no quiver and bullwhip is wielded
+
+In C `dofire()` (dothrow.c), when `uquiver == NULL` and `flags.autoquiver` is
+false:
+- If wielding a **polearm/lance** → `use_pole(uwep, TRUE)` (asks direction)
+- If wielding a **bullwhip** → `use_whip(uwep)` (asks "In what direction?",
+  consumes direction key, returns without turn if direction invalid)
+- Otherwise → "You have no ammunition readied."
+
+JS `handleFire` must check for bullwhip *before* polearm. An archeologist
+wizard (seed201) starts with a bullwhip and no quiver, so `f` routes to the
+whip direction prompt. If JS instead falls through to the menu-based ammo
+selection (`What do you want to fire? [*]`), it consumes the direction key and
+subsequent count digits as menu input, causing an RNG divergence of 0 (JS) vs
+175 (C) at the first counted-move command after the fire.
+
+Fix: in `handleFire`, add a bullwhip guard before the polearm guard:
+```javascript
+if (!player.quiver && weapon?.otyp === BULLWHIP) {
+    // show "In what direction?", consume direction key
+    // return tookTime=true if valid direction, false otherwise
+}
+```
+
+---
+
+### `wipeout_text` makes two `rn2` calls per character erased
+
+In C `wipeout_text(engrave.c)`, for each character erased (cnt iterations),
+the function calls **two** rn2s:
+1. `rn2(lth)` — picks position in string
+2. `rn2(4)` — determines if a "rubout" substitution is used (partial erasure)
+
+JS's `wipeoutEngravingText` only calls `rn2(lth)` and is missing the `rn2(4)`
+call. Fixing this requires adding `rn2(4)` and implementing rubout characters
+(letters that degrade to similar-looking chars instead of becoming spaces).
+
+Also note: in C, if the picked position is already a space, it does `continue`
+(skips that iteration without retry). In JS, the inner `do...while` loop retries
+`rn2(lth)` until a non-space is found — which consumes extra RNG calls compared
+to C when spaces exist.
+
 ---
 
 ## Phase Chronicles
