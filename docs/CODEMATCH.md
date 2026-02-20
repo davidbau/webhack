@@ -113,7 +113,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[ ]` | pickup.c | — | Picking up items |
 | `[ ]` | pline.c | — | Message output (pline, You, etc.) |
 | `[ ]` | polyself.c | — | Polymorphing |
-| `[ ]` | potion.c | — | Potion effects |
+| `[a]` | potion.c | potion.js | Potion effects. handleQuaff (dodrink) with healing; ~60 functions TODO |
 | `[ ]` | pray.c | — | Prayer mechanics |
 | `[ ]` | priest.c | — | Priest behavior |
 | `[ ]` | quest.c | — | Quest mechanics |

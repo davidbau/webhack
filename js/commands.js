@@ -24,6 +24,7 @@ import { objectData, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
 import { nhgetch, ynFunction, getlin } from './input.js';
 import { playerAttackMonster } from './uhitm.js';
 import { handleEat } from './eat.js';
+import { handleQuaff } from './potion.js';
 import { makemon, setMakemonPlayerContext } from './makemon.js';
 import { mons } from './monsters.js';
 import { monDisplayName, hasGivenName, monNam } from './mondata.js';
@@ -3182,98 +3183,6 @@ async function handleSwapWeapon(player, display) {
     return { moved: false, tookTime: true };
 }
 
-// Handle quaffing a potion
-// C ref: potion.c dodrink()
-async function handleQuaff(player, map, display) {
-    const bcsign = (obj) => (obj?.blessed ? 1 : (obj?.cursed ? -1 : 0));
-    // C ref: potion.c healup() -- overflow healing can increase max HP.
-    const healup = (nhp, nxtra = 0) => {
-        if (!Number.isFinite(nhp) || nhp <= 0) return;
-        player.hp += nhp;
-        if (player.hp > player.hpmax) {
-            const extra = Math.max(0, Number(nxtra) || 0);
-            player.hpmax += extra;
-            player.hp = player.hpmax;
-        }
-    };
-
-    // C ref: potion.c:540-550 — check for fountain first
-    const loc = map.at(player.x, player.y);
-    if (loc && loc.typ === FOUNTAIN) {
-        display.putstr_message('Drink from the fountain?');
-        const ans = await nhgetch();
-        display.topMessage = null;
-        if (String.fromCharCode(ans) === 'y') {
-            drinkfountain(player, map, display);
-            return { moved: false, tookTime: true };
-        }
-    }
-
-    const potions = player.inventory.filter(o => o.oclass === 7); // POTION_CLASS
-    if (potions.length === 0) {
-        display.putstr_message("You don't have anything to drink.");
-        return { moved: false, tookTime: false };
-    }
-
-    display.putstr_message(`What do you want to drink? [${potions.map(p => p.invlet).join('')} or ?*]`);
-    const ch = await nhgetch();
-    const c = String.fromCharCode(ch);
-    const replacePromptMessage = () => {
-        if (typeof display.clearRow === 'function') display.clearRow(0);
-        display.topMessage = null;
-        display.messageNeedsMore = false;
-    };
-
-    if (ch === 27 || ch === 10 || ch === 13 || c === ' ') {
-        replacePromptMessage();
-        display.putstr_message('Never mind.');
-        return { moved: false, tookTime: false };
-    }
-
-    const selected = player.inventory.find((obj) => obj.invlet === c);
-    if (selected && selected.oclass !== 7) {
-        replacePromptMessage();
-        display.putstr_message('That is a silly thing to drink.');
-        return { moved: false, tookTime: false };
-    }
-
-    const item = potions.find(p => p.invlet === c);
-    if (item) {
-        player.removeFromInventory(item);
-        const potionName = String(item.name || '').toLowerCase();
-        // Simple potion effects
-        if (potionName.includes('full healing')) {
-            replacePromptMessage();
-            healup(400, 4 + 4 * bcsign(item));
-            exercise(player, A_CON, true);
-            exercise(player, A_STR, true);
-            display.putstr_message('You feel completely healed.');
-        } else if (potionName.includes('extra healing')) {
-            replacePromptMessage();
-            const heal = 16 + c_d(4 + (2 * bcsign(item)), 8);
-            const nxtra = item.blessed ? 5 : (!item.cursed ? 2 : 0);
-            healup(heal, nxtra);
-            exercise(player, A_CON, true);
-            exercise(player, A_STR, true);
-            display.putstr_message('You feel much better.');
-        } else if (potionName.includes('healing')) {
-            replacePromptMessage();
-            const heal = 8 + c_d(4 + (2 * bcsign(item)), 4);
-            healup(heal, !item.cursed ? 1 : 0);
-            exercise(player, A_CON, true);
-            display.putstr_message('You feel better.');
-        } else {
-            replacePromptMessage();
-            display.putstr_message("Hmm, that tasted like water.");
-        }
-        return { moved: false, tookTime: true };
-    }
-
-    replacePromptMessage();
-    display.putstr_message("Never mind.");
-    return { moved: false, tookTime: false };
-}
-
 function isApplyCandidate(obj) {
     if (!obj) return false;
     // C ref: apply.c apply_ok() — suggest all tools, wands, spellbooks.
@@ -3660,7 +3569,7 @@ async function handleKnownSpells(player, display) {
 }
 
 // C ref: fountain.c:243 drinkfountain() — drink from a fountain
-function drinkfountain(player, map, display) {
+export function drinkfountain(player, map, display) {
     const loc = map.at(player.x, player.y);
     const mgkftn = loc && loc.blessedftn === 1;
     const fate = rnd(30);
