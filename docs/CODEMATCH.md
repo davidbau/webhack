@@ -97,7 +97,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[a]` | mondata.c | mondata.js | Monster data queries: predicates, mon_knows_traps, passes_bars, dmgtype, hates_silver, sticks, etc. |
 | `[a]` | monmove.c | monmove.js | Monster movement: dochug, m_move, m_move_aggress, set_apparxy, m_search_items |
 | `[ ]` | monst.c | — | Monster data tables. JS: `monsters.js` |
-| `[ ]` | mplayer.c | — | Player-like monster generation |
+| `[~]` | mplayer.c | mplayer.js | Player-character rival monsters (endgame + ghost-level). is_mplayer() in mondata.js; rnd_offensive/defensive/misc_item in makemon.js; mk_mplayer/create_mplayers/mplayer_talk TODO (endgame not yet modeled) |
 | `[a]` | mthrowu.c | mthrowu.js | Monster ranged attacks: m_throw, thrwmu, lined_up, select_rwep, monmulti |
 | `[ ]` | muse.c | — | Monster item usage AI |
 | `[ ]` | music.c | — | Musical instruments |
