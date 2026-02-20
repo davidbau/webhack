@@ -323,9 +323,9 @@
 
         /* --- Side panels --- */
         .side-panel {
-            font-size: 12px;
+            font-size: calc(var(--game-font-size) * 0.75);
             line-height: 1.3;
-            width: 180px;
+            width: calc(var(--game-font-size) * 11.25);
             flex-shrink: 0;
             position: relative;
             z-index: 1;
@@ -365,7 +365,7 @@
 
         #keyref .keyref-section td {
             color: #555;
-            font-size: 10px;
+            font-size: calc(var(--game-font-size) * 0.625);
             text-transform: uppercase;
             letter-spacing: 0.05em;
             padding-top: 0.6em;
@@ -375,7 +375,7 @@
         /* Hover info panel (right panel) - styling set above with dark background */
 
         #hover-symbol {
-            font-size: 28px;
+            font-size: calc(var(--game-font-size) * 1.75);
             line-height: 1;
             display: block;
             margin-bottom: 0.3em;
@@ -384,20 +384,20 @@
 
         #hover-name {
             color: #ddd;  /* Light on dark background */
-            font-size: 14px;
+            font-size: calc(var(--game-font-size) * 0.875);
             display: block;
             margin-bottom: 0.2em;
         }
 
         #hover-desc {
             color: #ccc;  /* Light on dark background */
-            font-size: 11px;
+            font-size: calc(var(--game-font-size) * 0.6875);
             display: block;
         }
 
         #hover-stats {
             color: #aaa;  /* Light on dark background */
-            font-size: 10px;
+            font-size: calc(var(--game-font-size) * 0.625);
             display: block;
             margin-top: 0.3em;
         }
@@ -407,7 +407,6 @@
            Fullscreen iframe for guidebook/spoilers with minimized game
            ============================================================ */
         #docs-overlay {
-            display: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -415,6 +414,9 @@
             bottom: 0;
             z-index: 100;
             background: var(--color-bg);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s;
         }
 
         #docs-frame {
@@ -448,33 +450,48 @@
             transform: scale(1.1);
         }
 
-        /* Docs mode: show overlay, minimize game */
+        /* Docs mode: two-phase animation
+           Phase 1 (docs-fixed): position fixed at scale(1) — instant
+           Phase 2 (docs-mode):  scale down to 0.3 — animated */
+        body.docs-fixed #page {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            z-index: 102;
+            transform-origin: bottom right;
+            transform: scale(1);
+            pointer-events: auto;
+            overflow: hidden;
+            transition: transform 0.4s ease, box-shadow 0.4s ease, border-radius 0.4s ease, outline 0.4s ease;
+        }
+
         body.docs-mode #docs-overlay {
-            display: block;
+            opacity: 1;
+            visibility: visible;
         }
 
         body.docs-mode #page {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 102;
-            transform-origin: bottom right;
-            transform: scale(0.2);
-            pointer-events: auto;
+            transform: scale(0.5);
             cursor: pointer;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
             border-radius: 8px;
-            overflow: hidden;
+            outline: 3px solid var(--color-accent);
         }
 
         body.docs-mode #page:hover {
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+            outline-color: var(--color-accent-dark);
         }
 
         body.docs-mode #nav,
         body.docs-mode #controls,
         body.docs-mode .side-panel {
             display: none;
+        }
+
+        body.docs-mode #page,
+        body.docs-mode #main {
+            width: fit-content;
         }
 
         body.docs-mode.dark-mode #docs-overlay {
@@ -546,7 +563,7 @@
            ============================================================ */
         @media (max-width: 600px) {
             #nav {
-                font-size: 12px;
+                font-size: calc(var(--game-font-size) * 0.75);
                 gap: 1em;
                 padding: 0.75em 0.5em;
             }
@@ -566,8 +583,8 @@
 <body>
     <div id="page">
         <nav id="nav" role="navigation" aria-label="Main navigation">
-            <a href="guidebook/" target="nh-guidebook" tabindex="-1">How to Play NetHack</a>
-            <a href="spoilers/" target="nh-spoilers" tabindex="-1">Spoilers</a>
+            <a href="guidebook/" tabindex="-1">How to Play NetHack</a>
+            <a href="spoilers/" tabindex="-1">Spoilers</a>
             <a href="https://github.com/davidbau/menace#readme" target="_blank" tabindex="-1">About This Project</a>
         </nav>
         <div id="controls">
@@ -710,9 +727,12 @@
                 + (parseFloat(gs.paddingLeft) || 0) + (parseFloat(gs.paddingRight) || 0)
                 + (parseFloat(gs.borderLeftWidth) || 0) + (parseFloat(gs.borderRightWidth) || 0);
 
-            // Side panels: 180px content + 12px padding each = 192px each
-            // Flex gaps: 16px × 2 = 32px.  Total overhead: 416px.
-            var totalNeeded = gameNeeded + 416;
+            // Side panels scale with --game-font-size; compute from CSS variable
+            var fontSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--game-font-size')) || 16;
+            var panelWidth = fontSize * 11.25; // matches calc(var(--game-font-size) * 11.25)
+            var panelPadding = fontSize; // 1em padding per panel (--spacing-md)
+            var panelOverhead = (panelWidth + panelPadding) * 2 + 32; // two panels + flex gaps (16px × 2)
+            var totalNeeded = gameNeeded + panelOverhead;
 
             // Use clientWidth (excludes scrollbar) for accurate available layout space
             var availableWidth = document.documentElement.clientWidth;
@@ -986,26 +1006,85 @@
 
         if (!docsOverlay || !docsFrame || !docsClose || !nav) return;
 
-        // Track original path for restoration
-        const originalPath = window.location.pathname;
+        // Track original href for restoration
+        const originalHref = window.location.href;
 
-        // Map of URL paths to iframe sources
+        // Map of route keys to iframe sources
         const docsRoutes = {
-            '/guidebook': 'guidebook/',
-            '/spoilers': 'spoilers/'
+            'guidebook': 'guidebook/',
+            'spoilers': 'spoilers/'
         };
 
         function openDocs(src, path) {
-            docsFrame.src = src;
-            document.body.classList.add('docs-mode');
-            history.pushState({ docs: true, path: path }, '', path);
+            // Resolve src to absolute URL before pushState changes the base
+            docsFrame.src = new URL(src, window.location.href).href;
+            // Phase 1: fix position at current scale
+            document.body.classList.add('docs-fixed');
+            // Phase 2: next frame, scale down + show overlay
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    document.body.classList.add('docs-mode');
+                });
+            });
+            try { history.pushState({ docs: true, path: path }, '', path); } catch(e) {}
         }
 
         function closeDocs() {
+            // FLIP animation: zoom game back to its normal position
+            // First: record miniaturized position
+            var first = page.getBoundingClientRect();
+
+            // Last: remove classes to get final layout position
             document.body.classList.remove('docs-mode');
+            document.body.classList.remove('docs-fixed');
+            var last = page.getBoundingClientRect();
+
+            // Hide surrounding UI during zoom — they'll fade in after
+            var extras = page.querySelectorAll('#nav, #controls, .side-panel');
+            extras.forEach(function(el) {
+                el.style.opacity = '0';
+                el.style.transition = 'none';
+            });
+
+            // Invert: apply transform so it still looks miniaturized
+            var dx = first.left - last.left;
+            var dy = first.top - last.top;
+            var sx = first.width / last.width;
+            var sy = first.height / last.height;
+            page.style.transformOrigin = '0 0';
+            page.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')';
+
+            // Force reflow so the inverted state renders before animating
+            page.offsetHeight;
+
+            // Play: animate to identity transform
+            page.style.transition = 'transform 0.4s ease';
+            page.style.transform = '';
+
+            function cleanup() {
+                page.removeEventListener('transitionend', cleanup);
+                page.style.transition = '';
+                page.style.transformOrigin = '';
+                page.style.transform = '';
+                // Fade in surrounding UI
+                extras.forEach(function(el) {
+                    el.style.transition = 'opacity 0.3s ease';
+                    el.style.opacity = '';
+                });
+                // Clean up inline styles after fade completes
+                setTimeout(function() {
+                    extras.forEach(function(el) {
+                        el.style.transition = '';
+                        el.style.opacity = '';
+                    });
+                }, 350);
+            }
+            page.addEventListener('transitionend', cleanup);
+            setTimeout(cleanup, 500); // fallback
+
             docsFrame.src = 'about:blank';
             // Restore original URL
-            history.pushState({ docs: false }, '', originalPath);
+            try { history.pushState({ docs: false }, '', originalHref); } catch(e) {}
         }
 
         // Intercept nav link clicks
@@ -1014,12 +1093,14 @@
             if (!link) return;
 
             const href = link.getAttribute('href');
-            if (href === 'guidebook/') {
+            if (href.startsWith('guidebook')) {
                 e.preventDefault();
-                openDocs(href, '/guidebook');
-            } else if (href === 'spoilers/') {
+                e.stopPropagation();
+                openDocs('guidebook/', 'guidebook/');
+            } else if (href.startsWith('spoilers')) {
                 e.preventDefault();
-                openDocs(href, '/spoilers');
+                e.stopPropagation();
+                openDocs('spoilers/', 'spoilers/');
             }
             // Let other links (like GitHub) work normally
         });
@@ -1046,28 +1127,32 @@
             }
         });
 
-        // Handle browser back/forward
+        // Handle browser back/forward (instant, no animation)
         window.addEventListener('popstate', function(e) {
             if (e.state && e.state.docs) {
                 const src = docsRoutes[e.state.path];
                 if (src) {
                     docsFrame.src = src;
+                    document.body.classList.add('docs-fixed');
                     document.body.classList.add('docs-mode');
                 }
             } else {
                 document.body.classList.remove('docs-mode');
+                document.body.classList.remove('docs-fixed');
                 docsFrame.src = 'about:blank';
             }
         });
 
-        // Check if we should open docs based on initial URL
+        // Check if we should open docs based on initial URL (instant, no animation)
         const initialPath = window.location.pathname;
-        const initialSrc = docsRoutes[initialPath];
-        if (initialSrc) {
-            // Replace state so back button works correctly
-            history.replaceState({ docs: true, path: initialPath }, '', initialPath);
-            docsFrame.src = initialSrc;
-            document.body.classList.add('docs-mode');
+        for (const [key, src] of Object.entries(docsRoutes)) {
+            if (initialPath.includes(key)) {
+                try { history.replaceState({ docs: true, path: key }, '', key + '/'); } catch(e) {}
+                docsFrame.src = src;
+                document.body.classList.add('docs-fixed');
+                document.body.classList.add('docs-mode');
+                break;
+            }
         }
     })();
     </script>
