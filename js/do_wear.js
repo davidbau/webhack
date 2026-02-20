@@ -2,12 +2,27 @@
 // cf. do_wear.c — dowear, doputon, dotakeoff, doremring, doddoremarm, find_ac
 
 import { nhgetch } from './input.js';
-import { ARMOR_CLASS, RING_CLASS, objectData } from './objects.js';
+import { ARMOR_CLASS, RING_CLASS, AMULET_CLASS, objectData,
+         ARM_SUIT, ARM_SHIELD, ARM_HELM, ARM_GLOVES, ARM_BOOTS, ARM_CLOAK, ARM_SHIRT } from './objects.js';
 import { doname } from './mkobj.js';
 
 
 // ============================================================
-// 1. Message helpers
+// 1. Armor slot mapping
+// ============================================================
+
+const ARMOR_SLOTS = {
+    [ARM_SUIT]:   { prop: 'armor',   name: 'body armor' },
+    [ARM_SHIELD]: { prop: 'shield',  name: 'shield' },
+    [ARM_HELM]:   { prop: 'helmet',  name: 'helmet' },
+    [ARM_GLOVES]: { prop: 'gloves',  name: 'gloves' },
+    [ARM_BOOTS]:  { prop: 'boots',   name: 'boots' },
+    [ARM_CLOAK]:  { prop: 'cloak',   name: 'cloak' },
+    [ARM_SHIRT]:  { prop: 'shirt',   name: 'shirt' },
+};
+
+// ============================================================
+// 2. Slot on/off effect stubs (hook points for future intrinsic effects)
 // ============================================================
 
 // TODO: cf. do_wear.c fingers_or_gloves() — "fingers" or "gloves" depending on worn gloves
@@ -16,91 +31,124 @@ import { doname } from './mkobj.js';
 // TODO: cf. do_wear.c toggle_stealth() — toggle stealth intrinsic for boots/cloak
 // TODO: cf. do_wear.c toggle_displacement() — toggle displacement intrinsic for cloak
 
-// ============================================================
-// 2. Boots on/off
-// ============================================================
+// cf. do_wear.c Boots_on/off — no-op stubs for future intrinsic effects
+function Boots_on() {}
+function Boots_off() {}
 
-// TODO: cf. do_wear.c Boots_on() — apply effects when wearing boots
-// TODO: cf. do_wear.c Boots_off() — remove effects when taking off boots
+// cf. do_wear.c Cloak_on/off
+function Cloak_on() {}
+function Cloak_off() {}
 
-// ============================================================
-// 3. Cloak on/off
-// ============================================================
-
-// TODO: cf. do_wear.c Cloak_on() — apply effects when wearing a cloak
-// TODO: cf. do_wear.c Cloak_off() — remove effects when taking off a cloak
-
-// ============================================================
-// 4. Helmet on/off
-// ============================================================
-
-// TODO: cf. do_wear.c Helmet_on() — apply effects when wearing a helmet
-// TODO: cf. do_wear.c Helmet_off() — remove effects when taking off a helmet
+// cf. do_wear.c Helmet_on/off
+function Helmet_on() {}
+function Helmet_off() {}
 // TODO: cf. do_wear.c hard_helmet() — check if helmet is hard (non-cloth)
 
-// ============================================================
-// 5. Gloves on/off
-// ============================================================
-
-// TODO: cf. do_wear.c Gloves_on() — apply effects when wearing gloves
+// cf. do_wear.c Gloves_on/off
+function Gloves_on() {}
+function Gloves_off() {}
 // TODO: cf. do_wear.c wielding_corpse() — check if wielding a corpse (glove interaction)
-// TODO: cf. do_wear.c Gloves_off() — remove effects when taking off gloves
 
-// ============================================================
-// 6. Shield on/off
-// ============================================================
+// cf. do_wear.c Shield_on/off
+function Shield_on() {}
+function Shield_off() {}
 
-// TODO: cf. do_wear.c Shield_on() — apply effects when wearing a shield
-// TODO: cf. do_wear.c Shield_off() — remove effects when taking off a shield
+// cf. do_wear.c Shirt_on/off
+function Shirt_on() {}
+function Shirt_off() {}
 
-// ============================================================
-// 7. Shirt on/off
-// ============================================================
-
-// TODO: cf. do_wear.c Shirt_on() — apply effects when wearing a shirt
-// TODO: cf. do_wear.c Shirt_off() — remove effects when taking off a shirt
-
-// ============================================================
-// 8. Dragon armor
-// ============================================================
-
+// cf. do_wear.c Armor_on/off (body armor / suit)
+function Armor_on() {}
+function Armor_off() {}
+// TODO: cf. do_wear.c Armor_gone() — handle armor being destroyed while worn
 // TODO: cf. do_wear.c dragon_armor_handling() — handle dragon scale mail transformation
 
-// ============================================================
-// 9. Suit on/off
-// ============================================================
+// cf. do_wear.c Amulet_on/off
+function Amulet_on() {}
+function Amulet_off() {}
 
-// TODO: cf. do_wear.c Armor_on() — apply effects when wearing body armor
-// TODO: cf. do_wear.c Armor_off() — remove effects when taking off body armor
-// TODO: cf. do_wear.c Armor_gone() — handle armor being destroyed while worn
-
-// ============================================================
-// 10. Amulet on/off
-// ============================================================
-
-// TODO: cf. do_wear.c Amulet_on() — apply effects when wearing an amulet
-// TODO: cf. do_wear.c Amulet_off() — remove effects when taking off an amulet
-
-// ============================================================
-// 11. Ring on/off
-// ============================================================
-
+// cf. do_wear.c Ring_on/off
+function Ring_on() {}
+function Ring_off() {}
 // TODO: cf. do_wear.c learnring() — learn ring type from wearing effects
 // TODO: cf. do_wear.c adjust_attrib() — adjust attribute from ring effects
-// TODO: cf. do_wear.c Ring_on() — apply effects when putting on a ring
 // TODO: cf. do_wear.c Ring_off_or_gone() — shared logic for ring removal
-// TODO: cf. do_wear.c Ring_off() — remove effects when taking off a ring
 // TODO: cf. do_wear.c Ring_gone() — handle ring being destroyed while worn
-
-// ============================================================
-// 12. Blindfold on/off
-// ============================================================
 
 // TODO: cf. do_wear.c Blindf_on() — apply effects when wearing a blindfold/towel
 // TODO: cf. do_wear.c Blindf_off() — remove effects when taking off a blindfold/towel
 
+const SLOT_ON = {
+    [ARM_SUIT]: Armor_on,
+    [ARM_SHIELD]: Shield_on,
+    [ARM_HELM]: Helmet_on,
+    [ARM_GLOVES]: Gloves_on,
+    [ARM_BOOTS]: Boots_on,
+    [ARM_CLOAK]: Cloak_on,
+    [ARM_SHIRT]: Shirt_on,
+};
+
+const SLOT_OFF = {
+    [ARM_SUIT]: Armor_off,
+    [ARM_SHIELD]: Shield_off,
+    [ARM_HELM]: Helmet_off,
+    [ARM_GLOVES]: Gloves_off,
+    [ARM_BOOTS]: Boots_off,
+    [ARM_CLOAK]: Cloak_off,
+    [ARM_SHIRT]: Shirt_off,
+};
+
+
 // ============================================================
-// 13. Wear-state management
+// 3. Validation functions
+// ============================================================
+
+// cf. do_wear.c canwearobj() — check if player can wear this armor piece
+function canwearobj(player, obj, display) {
+    const sub = objectData[obj.otyp]?.sub;
+    const slot = ARMOR_SLOTS[sub];
+    if (!slot) return false;
+
+    // Already wearing something in that slot?
+    if (player[slot.prop]) {
+        display.putstr_message(`You are already wearing ${doname(player[slot.prop], player)}.`);
+        return false;
+    }
+
+    // Layering checks
+    if (sub === ARM_SUIT && player.cloak) {
+        display.putstr_message('You are wearing a cloak.');
+        return false;
+    }
+    if (sub === ARM_SHIRT && (player.cloak || player.armor)) {
+        if (player.cloak) {
+            display.putstr_message('You are wearing a cloak.');
+        } else {
+            display.putstr_message('You are wearing body armor.');
+        }
+        return false;
+    }
+    // Bimanual weapon + shield
+    if (sub === ARM_SHIELD && player.weapon && objectData[player.weapon.otyp]?.big) {
+        display.putstr_message('You cannot wear a shield while wielding a two-handed weapon.');
+        return false;
+    }
+
+    return true;
+}
+
+// cf. do_wear.c cursed() — check if item is cursed and print message
+function cursed_check(obj, display) {
+    if (obj && obj.cursed) {
+        display.putstr_message("You can't. It is cursed.");
+        obj.bknown = true;
+        return true;
+    }
+    return false;
+}
+
+// ============================================================
+// 4. Wear-state management stubs
 // ============================================================
 
 // TODO: cf. do_wear.c set_wear() — set wear-state flags on equipment
@@ -111,40 +159,7 @@ import { doname } from './mkobj.js';
 // TODO: cf. do_wear.c stop_donning() — stop donning if item is taken away
 
 // ============================================================
-// 14. Count/selection
-// ============================================================
-
-// TODO: cf. do_wear.c count_worn_stuff() — count number of worn items
-// TODO: cf. do_wear.c armor_or_accessory_off() — take off armor or accessory
-
-// ============================================================
-// 15. Takeoff/remove commands
-// ============================================================
-
-// TODO: cf. do_wear.c dotakeoff() — full T command implementation
-// TODO: cf. do_wear.c ia_dotakeoff() — take off specific item by invlet
-// TODO: cf. do_wear.c doremring() — R command: remove ring/amulet/blindfold
-// TODO: cf. do_wear.c cursed() — check if item is cursed and print message
-// TODO: cf. do_wear.c armoroff() — remove a piece of armor
-
-// ============================================================
-// 16. Wearing validation
-// ============================================================
-
-// TODO: cf. do_wear.c already_wearing() — check if already wearing item of this type
-// TODO: cf. do_wear.c already_wearing2() — variant check for body armor
-// TODO: cf. do_wear.c canwearobj() — check if player can wear this object
-
-// ============================================================
-// 17. Wear/puton dispatch
-// ============================================================
-
-// TODO: cf. do_wear.c accessory_or_armor_on() — dispatch wearing armor or accessory
-// TODO: cf. do_wear.c dowear() — full W command implementation
-// TODO: cf. do_wear.c doputon() — full P command implementation
-
-// ============================================================
-// 18. AC and slippery
+// 5. AC calculation
 // ============================================================
 
 // cf. do_wear.c find_ac() — recalculate player AC from all worn equipment
@@ -174,15 +189,17 @@ function find_ac(player) {
 // TODO: cf. do_wear.c glibr() — slippery fingers: drop weapon/rings
 
 // ============================================================
-// 19. Utility for other systems
+// 6. Utility stubs
 // ============================================================
 
 // TODO: cf. do_wear.c some_armor() — return armor worn in a given slot
 // TODO: cf. do_wear.c stuck_ring() — check if ring is stuck due to gloves/etc
 // TODO: cf. do_wear.c unchanger() — check if wearing an unchanging item
+// TODO: cf. do_wear.c count_worn_stuff() — count number of worn items
+// TODO: cf. do_wear.c armor_or_accessory_off() — take off armor or accessory
 
 // ============================================================
-// 20. Multi-item takeoff (A)
+// 7. Multi-item takeoff (A) stubs
 // ============================================================
 
 // TODO: cf. do_wear.c select_off() — mark item for takeoff in multi-remove
@@ -195,7 +212,7 @@ function find_ac(player) {
 // TODO: cf. do_wear.c menu_remarm() — menu-driven multi-remove
 
 // ============================================================
-// 21. Armor destruction
+// 8. Armor destruction stubs
 // ============================================================
 
 // TODO: cf. do_wear.c wornarm_destroyed() — check if worn armor should be destroyed
@@ -203,13 +220,13 @@ function find_ac(player) {
 // TODO: cf. do_wear.c destroy_arm() — destroy a worn piece of armor
 
 // ============================================================
-// 22. Stat adjustments
+// 9. Stat adjustment stubs
 // ============================================================
 
 // TODO: cf. do_wear.c adj_abon() — adjust ability bonuses from armor
 
 // ============================================================
-// 23. Accessibility/getobj
+// 10. Accessibility/getobj stubs
 // ============================================================
 
 // TODO: cf. do_wear.c inaccessible_equipment() — check if equipment is inaccessible
@@ -223,22 +240,25 @@ function find_ac(player) {
 
 
 // ============================================================
-// Extracted handlers (stub-level implementations)
+// Command handlers
 // ============================================================
 
-// cf. do_wear.c dowear() — simplified: no slot system, no canwearobj validation
+// Helper: collect all currently worn armor items
+function getWornArmorItems(player) {
+    const items = [];
+    for (const sub of Object.keys(ARMOR_SLOTS)) {
+        const prop = ARMOR_SLOTS[sub].prop;
+        if (player[prop]) items.push(player[prop]);
+    }
+    return items;
+}
+
+// cf. do_wear.c dowear() — W command: wear a piece of armor
 async function handleWear(player, display) {
-    const wornArmor = new Set([
-        player.armor,
-        player.shield,
-        player.helmet,
-        player.gloves,
-        player.boots,
-        player.cloak,
-    ].filter(Boolean));
-    const armor = player.inventory.filter((o) => o.oclass === ARMOR_CLASS && !wornArmor.has(o));
+    const wornSet = new Set(getWornArmorItems(player));
+    const armor = (player.inventory || []).filter((o) => o.oclass === ARMOR_CLASS && !wornSet.has(o));
     if (armor.length === 0) {
-        if (wornArmor.size > 0) {
+        if (wornSet.size > 0) {
             display.putstr_message("You don't have anything else to wear.");
         } else {
             display.putstr_message('You have no armor to wear.');
@@ -251,52 +271,171 @@ async function handleWear(player, display) {
     const c = String.fromCharCode(ch);
 
     const item = armor.find(a => a.invlet === c);
-    if (item) {
-        player.armor = item;
-        find_ac(player);
-        display.putstr_message(`You are now wearing ${item.name}.`);
-        return { moved: false, tookTime: true };
-    }
-
-    display.putstr_message("Never mind.");
-    return { moved: false, tookTime: false };
-}
-
-// cf. do_wear.c doputon() — simplified: rings only, no amulet/blindfold
-async function handlePutOn(player, display) {
-    const rings = (player.inventory || []).filter((o) => o.oclass === RING_CLASS
-        && o !== player.leftRing
-        && o !== player.rightRing);
-    if (rings.length === 0) {
-        display.putstr_message("You don't have anything else to put on.");
-        return { moved: false, tookTime: false };
-    }
-
-    display.putstr_message(`What do you want to put on? [${rings.map(r => r.invlet).join('')}]`);
-    const ch = await nhgetch();
-    const c = String.fromCharCode(ch);
-    const item = rings.find(r => r.invlet === c);
     if (!item) {
         display.putstr_message('Never mind.');
         return { moved: false, tookTime: false };
     }
-    if (!player.leftRing) player.leftRing = item;
-    else player.rightRing = item;
-    display.putstr_message(`You are now wearing ${item.name}.`);
+
+    // Validate that we can wear this item in its slot
+    if (!canwearobj(player, item, display)) {
+        return { moved: false, tookTime: false };
+    }
+
+    const sub = objectData[item.otyp]?.sub;
+    const slot = ARMOR_SLOTS[sub];
+    player[slot.prop] = item;
+    const onFn = SLOT_ON[sub];
+    if (onFn) onFn();
+    find_ac(player);
+    display.putstr_message(`You are now wearing ${doname(item, player)}.`);
     return { moved: false, tookTime: true };
 }
 
-// cf. do_wear.c dotakeoff() — simplified: body armor only, resets AC to 10
+// cf. do_wear.c doputon() — P command: put on ring or amulet
+async function handlePutOn(player, display) {
+    const eligible = (player.inventory || []).filter((o) => {
+        if (o.oclass === RING_CLASS && o !== player.leftRing && o !== player.rightRing) return true;
+        if (o.oclass === AMULET_CLASS && o !== player.amulet) return true;
+        return false;
+    });
+    if (eligible.length === 0) {
+        display.putstr_message("You don't have anything else to put on.");
+        return { moved: false, tookTime: false };
+    }
+
+    display.putstr_message(`What do you want to put on? [${eligible.map(r => r.invlet).join('')}]`);
+    const ch = await nhgetch();
+    const c = String.fromCharCode(ch);
+    const item = eligible.find(r => r.invlet === c);
+    if (!item) {
+        display.putstr_message('Never mind.');
+        return { moved: false, tookTime: false };
+    }
+
+    if (item.oclass === RING_CLASS) {
+        if (player.leftRing && player.rightRing) {
+            display.putstr_message("You're already wearing two rings.");
+            return { moved: false, tookTime: false };
+        }
+        if (!player.leftRing) player.leftRing = item;
+        else player.rightRing = item;
+        Ring_on();
+    } else if (item.oclass === AMULET_CLASS) {
+        if (player.amulet) {
+            display.putstr_message("You're already wearing an amulet.");
+            return { moved: false, tookTime: false };
+        }
+        player.amulet = item;
+        Amulet_on();
+    }
+
+    find_ac(player);
+    display.putstr_message(`You are now wearing ${doname(item, player)}.`);
+    return { moved: false, tookTime: true };
+}
+
+// cf. do_wear.c dotakeoff() — T command: take off a piece of armor
 async function handleTakeOff(player, display) {
-    if (!player.armor) {
+    const worn = getWornArmorItems(player);
+    if (worn.length === 0) {
         display.putstr_message("You're not wearing any armor.");
         return { moved: false, tookTime: false };
     }
 
-    display.putstr_message(`You take off ${player.armor.name}.`);
-    player.armor = null;
+    let item;
+    if (worn.length === 1) {
+        item = worn[0];
+    } else {
+        display.putstr_message(`What do you want to take off? [${worn.map(a => a.invlet).join('')}]`);
+        const ch = await nhgetch();
+        const c = String.fromCharCode(ch);
+        item = worn.find(a => a.invlet === c);
+        if (!item) {
+            display.putstr_message('Never mind.');
+            return { moved: false, tookTime: false };
+        }
+    }
+
+    // Layering: can't remove suit if cloak worn, can't remove shirt if cloak or suit worn
+    const sub = objectData[item.otyp]?.sub;
+    if (sub === ARM_SUIT && player.cloak) {
+        display.putstr_message("You can't take that off while wearing a cloak.");
+        return { moved: false, tookTime: false };
+    }
+    if (sub === ARM_SHIRT && (player.cloak || player.armor)) {
+        if (player.cloak) {
+            display.putstr_message("You can't take that off while wearing a cloak.");
+        } else {
+            display.putstr_message("You can't take that off while wearing body armor.");
+        }
+        return { moved: false, tookTime: false };
+    }
+
+    // Cursed check
+    if (cursed_check(item, display)) {
+        return { moved: false, tookTime: false };
+    }
+
+    const slot = ARMOR_SLOTS[sub];
+    player[slot.prop] = null;
+    const offFn = SLOT_OFF[sub];
+    if (offFn) offFn();
     find_ac(player);
+    display.putstr_message(`You take off ${doname(item, player)}.`);
     return { moved: false, tookTime: true };
 }
 
-export { handleWear, handlePutOn, handleTakeOff, find_ac };
+// cf. do_wear.c doremring() — R command: remove ring or amulet
+async function handleRemove(player, display) {
+    const accessories = [];
+    if (player.leftRing) accessories.push(player.leftRing);
+    if (player.rightRing) accessories.push(player.rightRing);
+    if (player.amulet) accessories.push(player.amulet);
+
+    if (accessories.length === 0) {
+        display.putstr_message("You aren't wearing any accessories.");
+        return { moved: false, tookTime: false };
+    }
+
+    let item;
+    if (accessories.length === 1) {
+        item = accessories[0];
+    } else {
+        display.putstr_message(`What do you want to remove? [${accessories.map(a => a.invlet).join('')}]`);
+        const ch = await nhgetch();
+        const c = String.fromCharCode(ch);
+        item = accessories.find(a => a.invlet === c);
+        if (!item) {
+            display.putstr_message('Never mind.');
+            return { moved: false, tookTime: false };
+        }
+    }
+
+    // Cursed check
+    if (cursed_check(item, display)) {
+        return { moved: false, tookTime: false };
+    }
+
+    if (item === player.leftRing) {
+        player.leftRing = null;
+        Ring_off();
+    } else if (item === player.rightRing) {
+        player.rightRing = null;
+        Ring_off();
+    } else if (item === player.amulet) {
+        player.amulet = null;
+        Amulet_off();
+    }
+
+    find_ac(player);
+    display.putstr_message(`You remove ${doname(item, player)}.`);
+    return { moved: false, tookTime: true };
+}
+
+export {
+    handleWear, handlePutOn, handleTakeOff, handleRemove, find_ac,
+    canwearobj, cursed_check,
+    Boots_on, Boots_off, Cloak_on, Cloak_off, Helmet_on, Helmet_off,
+    Gloves_on, Gloves_off, Shield_on, Shield_off, Shirt_on, Shirt_off,
+    Armor_on, Armor_off, Amulet_on, Amulet_off, Ring_on, Ring_off,
+};

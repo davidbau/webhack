@@ -22,6 +22,7 @@ import { newexplevel } from './exper.js';
 import { applyMonflee } from './mhitu.js';
 import { mondead } from './monutil.js';
 import { placeFloorObject } from './floor_objects.js';
+import { uwepgone, uswapwepgone, uqwepgone } from './wield.js';
 
 
 // ============================================================================
@@ -555,9 +556,9 @@ function consumeMeleePotion(player, weapon) {
         potion.o_id = next_ident();
     } else {
         player.removeFromInventory(weapon);
-        if (player.weapon === weapon) player.weapon = null;
-        if (player.swapWeapon === weapon) player.swapWeapon = null;
-        if (player.quiver === weapon) player.quiver = null;
+        if (player.weapon === weapon) uwepgone(player);
+        if (player.swapWeapon === weapon) uswapwepgone(player);
+        if (player.quiver === weapon) uqwepgone(player);
     }
     return potion;
 }

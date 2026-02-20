@@ -26,6 +26,7 @@ import { ACCESSIBLE } from './config.js';
 import { CLASS_SYMBOLS } from './objects.js';
 import { mons, PM_GHOST } from './monsters.js';
 import { placeFloorObject } from './floor_objects.js';
+import { uwepgone, uswapwepgone, uqwepgone } from './wield.js';
 import { makemon, MM_NONAME } from './makemon.js';
 import {
     saveLev, restLev, saveObjChn,
@@ -108,7 +109,9 @@ export function drop_upon_death(game) {
         if (idx >= 0) player.inventory.splice(idx, 1);
     }
     // Unequip everything
-    player.weapon = null;
+    uwepgone(player);
+    uswapwepgone(player);
+    uqwepgone(player);
     player.armor = null;
     player.shield = null;
     player.helmet = null;

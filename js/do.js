@@ -6,6 +6,7 @@ import { STAIRS } from './config.js';
 import { COIN_CLASS } from './objects.js';
 import { doname } from './mkobj.js';
 import { placeFloorObject } from './floor_objects.js';
+import { uwepgone, uswapwepgone, uqwepgone } from './wield.js';
 import { observeObject } from './discovery.js';
 import { compactInvletPromptChars, buildInventoryOverlayLines, renderOverlayMenuUntilDismiss } from './invent.js';
 
@@ -118,8 +119,10 @@ export async function handleDrop(player, map, display) {
             return { moved: false, tookTime: false };
         }
 
-        // Unequip wielded weapon if dropping it.
-        if (player.weapon === item) player.weapon = null;
+        // Unequip weapon slots if dropping the item.
+        if (player.weapon === item) uwepgone(player);
+        if (player.swapWeapon === item) uswapwepgone(player);
+        if (player.quiver === item) uqwepgone(player);
 
         player.removeFromInventory(item);
         item.ox = player.x;

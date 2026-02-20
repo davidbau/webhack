@@ -26,7 +26,8 @@ import { playerAttackMonster } from './uhitm.js';
 import { handleEat } from './eat.js';
 import { handleQuaff } from './potion.js';
 import { handleRead } from './read.js';
-import { handleWear, handlePutOn, handleTakeOff } from './do_wear.js';
+import { handleWear, handlePutOn, handleTakeOff, handleRemove } from './do_wear.js';
+import { handleWield, handleSwapWeapon, handleQuiver, uwepgone, uswapwepgone, uqwepgone, setuqwep } from './wield.js';
 import { handleDownstairs, handleUpstairs, handleDrop, formatGoldPickupMessage, formatInventoryPickupMessage } from './do.js';
 import { handleInventory, compactInvletPromptChars, buildInventoryOverlayLines, renderOverlayMenuUntilDismiss, currency } from './invent.js';
 import { makemon, setMakemonPlayerContext } from './makemon.js';
@@ -461,6 +462,18 @@ export async function rhack(ch, game) {
     // C ref: dothrow() fire command path
     if (c === 'f') {
         return await handleFire(player, map, display, game);
+    }
+
+    // Quiver
+    // C ref: wield.c dowieldquiver()
+    if (c === 'Q') {
+        return await handleQuiver(player, display);
+    }
+
+    // Remove ring/amulet
+    // C ref: do_wear.c doremring()
+    if (c === 'R') {
+        return await handleRemove(player, display);
     }
 
     // Engrave
@@ -2013,94 +2026,7 @@ async function handleClose(player, map, display, game) {
     return { moved: false, tookTime: false };
 }
 
-// Handle wielding a weapon
-// C ref: wield.c dowield()
-// C ref: wield.c dowield() — wield a weapon (instant action, no time cost)
-async function handleWield(player, display) {
-    const inventory = Array.isArray(player.inventory) ? player.inventory : [];
-    const suggestWield = (obj) => {
-        if (!obj) return false;
-        if (obj.oclass === WEAPON_CLASS) return true;
-        // C ref: wield.c wield_ok() includes is_weptool() in suggestions.
-        return obj.oclass === TOOL_CLASS && (objectData[obj.otyp]?.sub || 0) !== 0;
-    };
-
-    // C ref: wield.c getobj() prompt format for wield command.
-    // Keep wording/options aligned for session screen parity.
-    const letters = inventory.filter(suggestWield).map((item) => item.invlet).join('');
-    const replacePromptMessage = () => {
-        if (typeof display.clearRow === 'function') display.clearRow(0);
-        display.topMessage = null;
-        display.messageNeedsMore = false;
-    };
-    const wieldPrompt = letters.length > 0
-        ? `What do you want to wield? [- ${letters} or ?*]`
-        : 'What do you want to wield? [- or ?*]';
-    display.putstr_message(wieldPrompt);
-
-    while (true) {
-        const ch = await nhgetch();
-        let c = String.fromCharCode(ch);
-
-        if (ch === 27 || ch === 10 || ch === 13 || c === ' ') {
-            replacePromptMessage();
-            display.putstr_message('Never mind.');
-            return { moved: false, tookTime: false };
-        }
-        if (c === '?' || c === '*') continue;
-
-        if (c === '-') {
-            replacePromptMessage();
-            if (player.weapon) {
-                player.weapon = null;
-                display.putstr_message('You are bare handed.');
-                // C ref: wield.c ready_weapon(NULL) uses a turn when unwielding.
-                return { moved: false, tookTime: true };
-            }
-            display.putstr_message('You are already bare handed.');
-            return { moved: false, tookTime: false };
-        }
-
-        const item = inventory.find((o) => o.invlet === c);
-        if (!item) continue;
-        const weapon = item;
-        if (
-            weapon === player.armor
-            || weapon === player.shield
-            || weapon === player.helmet
-            || weapon === player.gloves
-            || weapon === player.boots
-            || weapon === player.cloak
-            || weapon === player.amulet
-        ) {
-            replacePromptMessage();
-            display.putstr_message('You cannot wield that!');
-            return { moved: false, tookTime: false };
-        }
-
-        // C ref: wield.c dowield() — selecting uswapwep triggers doswapweapon().
-        if (player.swapWeapon && weapon === player.swapWeapon) {
-            const oldwep = player.weapon || null;
-            player.weapon = player.swapWeapon;
-            player.swapWeapon = oldwep;
-            replacePromptMessage();
-            if (player.swapWeapon) {
-                display.putstr_message(`${player.swapWeapon.invlet} - ${doname(player.swapWeapon, player)}.`);
-            } else {
-                display.putstr_message('You have no secondary weapon readied.');
-            }
-            return { moved: false, tookTime: true };
-        }
-        player.weapon = weapon;
-        if (player.swapWeapon === weapon) {
-            player.swapWeapon = null;
-        }
-        replacePromptMessage();
-        display.putstr_message(`${weapon.invlet} - ${doname(weapon, player)}.`);
-        // C ref: wield.c:dowield returns ECMD_TIME (wielding takes a turn)
-        return { moved: false, tookTime: true };
-    }
-}
+// handleWield moved to wield.js
 
 async function handlePay(player, map, display) {
     // C ref: shk.c dopay() can still report "There appears..." even when
@@ -2181,9 +2107,9 @@ export async function promptDirectionAndThrowItem(player, map, display, item, { 
         thrownItem = { ...item, quan: 1, o_id: next_ident() };
     } else {
         player.removeFromInventory(item);
-        if (player.weapon === item) player.weapon = null;
-        if (player.swapWeapon === item) player.swapWeapon = null;
-        if (player.quiver === item) player.quiver = null;
+        if (player.weapon === item) uwepgone(player);
+        if (player.swapWeapon === item) uswapwepgone(player);
+        if (player.quiver === item) uqwepgone(player);
     }
     if (!targetMonster && fromFire) {
         // C fire traces probe obj_resists() after stack split/ID assignment.
@@ -2468,7 +2394,7 @@ async function handleFire(player, map, display, game) {
             }
             // C ref: selecting an item to fire updates the readied quiver item
             // even if the subsequent direction prompt is canceled.
-            player.quiver = selected;
+            setuqwep(player, selected);
             return await promptDirectionAndThrowItem(player, map, display, selected, { fromFire: true });
         }
         // Keep prompt active for unsupported letters (fixture parity).
@@ -2508,26 +2434,7 @@ async function handleEngrave(player, display) {
     }
 }
 
-async function handleSwapWeapon(player, display) {
-    const oldwep = player.weapon || null;
-    if (!player.swapWeapon) {
-        if (!player.weapon) {
-            display.putstr_message('You are already bare handed.');
-            return { moved: false, tookTime: false };
-        }
-        display.putstr_message('You have no secondary weapon readied.');
-        // C ref: doswapweapon() consumes a turn even when swap slot is empty.
-        return { moved: false, tookTime: true };
-    }
-    player.weapon = player.swapWeapon;
-    player.swapWeapon = oldwep;
-    if (player.swapWeapon) {
-        display.putstr_message(`${player.swapWeapon.invlet} - ${doname(player.swapWeapon, player)}.`);
-    } else {
-        display.putstr_message('You have no secondary weapon readied.');
-    }
-    return { moved: false, tookTime: true };
-}
+// handleSwapWeapon moved to wield.js
 
 function isApplyCandidate(obj) {
     if (!obj) return false;

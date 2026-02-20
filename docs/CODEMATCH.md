@@ -56,7 +56,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[N/A]` | dlb.c | — | Data librarian (file bundling). Not needed in JS |
 | `[a]` | do.c | do.js | Miscellaneous actions. handleDrop/handleDownstairs/handleUpstairs (dodrop/dodown/doup); ~45 functions TODO |
 | `[~]` | do_name.c | do_name.js | Naming things (docallcmd, do_mgivenname) |
-| `[a]` | do_wear.c | do_wear.js | Wearing/removing armor and accessories. handleWear/handlePutOn/handleTakeOff (dowear/doputon/dotakeoff); ~68 functions TODO |
+| `[~]` | do_wear.c | do_wear.js | Wearing/removing armor and accessories. Multi-slot handleWear/handlePutOn/handleTakeOff/handleRemove; canwearobj, cursed_check, find_ac; on/off stubs for all slots. Intrinsic effects, multi-takeoff(A), armor destruction TODO. |
 | `[a]` | dog.c | dog.js | Pet behavior. dogfood in dog.js; makedog/mon_arrive in u_init.js; losedogs/keepdogs/migrate TODO |
 | `[a]` | dogmove.c | dogmove.js | Pet movement AI. All functions except `quickmimic` |
 | `[~]` | dokick.c | dokick.js | Kicking mechanics |
@@ -156,7 +156,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[a]` | vision.c | vision.js | FOV / LOS. Core algorithm (view_from, right_side, left_side, clear_path, do_clear_area) matches C. block_point/dig_point/rogue_vision TODO |
 | `[~]` | weapon.c | `weapon.js` | Weapon skills, hit/damage bonuses, monster weapon AI. abon→player.strToHit, dbon→player.strDamage (player.js); select_rwep partial in mthrowu.js. |
 | `[a]` | were.c | were.js | Lycanthropy. 6 of 8 functions aligned; you_were/you_unwere TODO (need polymon/rehumanize) |
-| `[~]` | wield.c | `wield.js` | Wielding weapons. dowield→handleWield(commands.js:2371), doswapweapon→handleSwapWeapon(commands.js:3477) partial. |
+| `[~]` | wield.c | `wield.js` | Wielding weapons. setuwep/setuswapwep/setuqwep, uwepgone/uswapwepgone/uqwepgone, welded/weldmsg, ready_weapon, can_twoweapon(stub). handleWield/handleSwapWeapon/handleQuiver. Two-weapon combat, chwepon, corpse petrify, wield_tool TODO. |
 | `[N/A]` | windows.c | — | Windowing system interface. JS: `display.js`, `browser_input.js` |
 | `[~]` | wizard.c | wizard.js | Wizard of Yendor AI. All 21 functions are runtime gameplay AI; none implemented in JS |
 | `[~]` | wizcmds.c | wizcmds.js | Wizard-mode debug commands. wiz_level_tele/wiz_map/wiz_genesis/wiz_wish/wiz_identify PARTIAL in commands.js; Lua commands N/A; sanity checks and advanced debug TODO |
@@ -1214,29 +1214,29 @@ This section is generated from source symbol tables and includes function rows f
 ### do_wear.c -> do_wear.js
 | C Line | C Function | JS Line | Alignment |
 |--------|------------|---------|-----------|
-| 1085 | `Amulet_off` | - | Missing |
-| 958 | `Amulet_on` | - | Missing |
+| 1085 | `Amulet_off` | 68 | Stub (no-op) |
+| 958 | `Amulet_on` | 67 | Stub (no-op) |
 | 934 | `Armor_gone` | - | Missing |
-| 904 | `Armor_off` | - | Missing |
-| 882 | `Armor_on` | - | Missing |
+| 904 | `Armor_off` | 62 | Stub (no-op) |
+| 882 | `Armor_on` | 61 | Stub (no-op) |
 | 1490 | `Blindf_off` | - | Missing |
 | 1456 | `Blindf_on` | - | Missing |
-| 261 | `Boots_off` | - | Missing |
-| 186 | `Boots_on` | - | Missing |
-| 382 | `Cloak_off` | - | Missing |
-| 325 | `Cloak_on` | - | Missing |
-| 645 | `Gloves_off` | - | Missing |
-| 575 | `Gloves_on` | - | Missing |
-| 517 | `Helmet_off` | - | Missing |
-| 433 | `Helmet_on` | - | Missing |
+| 261 | `Boots_off` | 36 | Stub (no-op) |
+| 186 | `Boots_on` | 35 | Stub (no-op) |
+| 382 | `Cloak_off` | 40 | Stub (no-op) |
+| 325 | `Cloak_on` | 39 | Stub (no-op) |
+| 645 | `Gloves_off` | 49 | Stub (no-op) |
+| 575 | `Gloves_on` | 48 | Stub (no-op) |
+| 517 | `Helmet_off` | 44 | Stub (no-op) |
+| 433 | `Helmet_on` | 43 | Stub (no-op) |
 | 1450 | `Ring_gone` | - | Missing |
-| 1444 | `Ring_off` | - | Missing |
+| 1444 | `Ring_off` | 72 | Stub (no-op) |
 | 1342 | `Ring_off_or_gone` | - | Missing |
-| 1237 | `Ring_on` | - | Missing |
-| 730 | `Shield_off` | - | Missing |
-| 704 | `Shield_on` | - | Missing |
-| 773 | `Shirt_off` | - | Missing |
-| 754 | `Shirt_on` | - | Missing |
+| 1237 | `Ring_on` | 71 | Stub (no-op) |
+| 730 | `Shield_off` | 54 | Stub (no-op) |
+| 704 | `Shield_on` | 53 | Stub (no-op) |
+| 773 | `Shirt_off` | 58 | Stub (no-op) |
+| 754 | `Shirt_on` | 57 | Stub (no-op) |
 | 2204 | `accessory_or_armor_on` | - | Missing |
 | 3254 | `adj_abon` | - | Missing |
 | 1218 | `adjust_attrib` | - | Missing |
@@ -1248,22 +1248,22 @@ This section is generated from source symbol tables and includes function rows f
 | 2985 | `better_not_take_that_off` | - | Missing |
 | 1640 | `cancel_doff` | - | Missing |
 | 1659 | `cancel_don` | - | Missing |
-| 2025 | `canwearobj` | - | Missing |
+| 2025 | `canwearobj` | 107 | Multi-slot validation with layering checks |
 | 3424 | `count_worn_armor` | - | Missing |
 | 1728 | `count_worn_stuff` | - | Missing |
-| 1888 | `cursed` | - | Missing |
+| 1888 | `cursed` | 141 | cursed_check — prints message, sets bknown |
 | 3196 | `destroy_arm` | - | Missing |
 | 2819 | `do_takeoff` | - | Missing |
 | 3017 | `doddoremarm` | - | Missing |
 | 1598 | `doffing` | - | Missing |
 | 1569 | `donning` | - | Missing |
-| 2449 | `doputon` | - | Missing |
-| 1869 | `doremring` | - | Missing |
-| 1828 | `dotakeoff` | - | Missing |
-| 2427 | `dowear` | - | Missing |
+| 2449 | `doputon` | 295 | handlePutOn — rings + amulets |
+| 1869 | `doremring` | 389 | handleRemove — R command |
+| 1828 | `dotakeoff` | 338 | handleTakeOff — multi-slot with layering |
+| 2427 | `dowear` | 257 | handleWear — multi-slot with canwearobj |
 | 793 | `dragon_armor_handling` | - | Missing |
 | 3339 | `equip_ok` | - | Missing |
-| 2468 | `find_ac` | - | Missing |
+| 2468 | `find_ac` | 168 | Full AC recalculation |
 | 2523 | `glibr` | - | Missing |
 | 567 | `hard_helmet` | - | Missing |
 | 1857 | `ia_dotakeoff` | - | Missing |
@@ -5514,29 +5514,29 @@ No function symbols parsed from isaac64.c.
 ### wield.c -> wield.js
 | C Line | C Function | JS Line | Alignment |
 |--------|------------|---------|-----------|
-| 756 | `can_twoweapon` | - | Missing |
+| 756 | `can_twoweapon` | 64 | Stub (returns false) |
 | 133 | `cant_wield_corpse` | - | Missing |
 | 909 | `chwepon` | - | Missing |
-| 507 | `doquiver_core` | - | Missing |
-| 456 | `doswapweapon` | - | Missing |
+| 507 | `doquiver_core` | 212 | handleQuiver — Q command |
+| 456 | `doswapweapon` | 184 | handleSwapWeapon — x command |
 | 836 | `dotwoweapon` | - | Missing |
-| 350 | `dowield` | - | Missing |
-| 500 | `dowieldquiver` | - | Missing |
+| 350 | `dowield` | 116 | handleWield — w command |
+| 500 | `dowieldquiver` | 212 | handleQuiver — Q command |
 | 804 | `drop_uswapwep` | - | Missing |
 | 153 | `empty_handed` | - | Missing |
 | 341 | `finish_splitting` | - | Missing |
 | 1069 | `mwelded` | - | Missing |
 | 289 | `ready_ok` | - | Missing |
-| 164 | `ready_weapon` | - | Missing |
+| 164 | `ready_weapon` | 73 | Core wield logic |
 | 829 | `set_twoweap` | - | Missing |
-| 271 | `setuqwep` | - | Missing |
-| 280 | `setuswapwep` | - | Missing |
+| 271 | `setuqwep` | 23 | Set quiver slot |
+| 280 | `setuswapwep` | 18 | Set swap weapon slot |
 | 897 | `untwoweapon` | - | Missing |
-| 888 | `uqwepgone` | - | Missing |
-| 879 | `uswapwepgone` | - | Missing |
-| 864 | `uwepgone` | - | Missing |
-| 1042 | `welded` | - | Missing |
-| 1052 | `weldmsg` | - | Missing |
+| 888 | `uqwepgone` | 38 | Force-remove quiver |
+| 879 | `uswapwepgone` | 33 | Force-remove swap weapon |
+| 864 | `uwepgone` | 28 | Force-remove main weapon |
+| 1042 | `welded` | 48 | Cursed weapon check |
+| 1052 | `weldmsg` | 57 | Weld message |
 | 326 | `wield_ok` | - | Missing |
 | 678 | `wield_tool` | - | Missing |
 

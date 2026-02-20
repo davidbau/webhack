@@ -469,6 +469,8 @@ export class Player {
         this.amulet = null;
         this.leftRing = null;
         this.rightRing = null;
+        this.swapWeapon = null;  // C ref: uswapwep
+        this.quiver = null;      // C ref: uquiver
 
         // Turns
         this.turns = 0;
