@@ -144,7 +144,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[N/A]` | symbols.c | — | Terminal graphics mode management (ASCII/IBM/curses/UTF-8 symbol-set switching). Browser port uses static data in symbols.js; no runtime mode switching |
 | `[N/A]` | sys.c | — | System-level interface |
 | `[~]` | teleport.c | teleport.js | Teleportation. goodpos/collect_coords/enexto PARTIAL in dungeon.js; all runtime tele functions TODO |
-| `[ ]` | timeout.c | — | Timer-based effects |
+| `[~]` | timeout.c | timeout.js | Timer-based effects. run_timers/start_timer/stop_timer/nh_timeout all TODO; start_corpse_timeout/attach_egg_hatch_timeout PARTIAL in mkobj.js (RNG-parity only); save/restore N/A |
 | `[a]` | topten.c | topten.js | High score table. observable_depth implemented; I/O funcs N/A; encode/format funcs TODO |
 | `[p]` | track.c | track.js | Player tracking for pets. save/rest not yet implemented |
 | `[a]` | trap.c | trap.js | Trap mechanics: m_harmless_trap, floor_trigger, mintrap_postmove, mon_check_in_air |
@@ -159,7 +159,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[~]` | wield.c | `wield.js` | Wielding weapons. dowield→handleWield(commands.js:2371), doswapweapon→handleSwapWeapon(commands.js:3477) partial. |
 | `[N/A]` | windows.c | — | Windowing system interface. JS: `display.js`, `browser_input.js` |
 | `[~]` | wizard.c | wizard.js | Wizard of Yendor AI. All 21 functions are runtime gameplay AI; none implemented in JS |
-| `[ ]` | wizcmds.c | — | Wizard-mode debug commands |
+| `[~]` | wizcmds.c | wizcmds.js | Wizard-mode debug commands. wiz_level_tele/wiz_map/wiz_genesis/wiz_wish/wiz_identify PARTIAL in commands.js; Lua commands N/A; sanity checks and advanced debug TODO |
 | `[~]` | worm.c | worm.js | Long worm mechanics. save/rest_worm are N/A (no save file). All 24 other functions are TODO stubs |
 | `[~]` | worn.c | `worn.js` | Equipment slot management |
 | `[a]` | write.c | write.js | Writing on scrolls. cost, write_ok, new_book_description implemented; dowrite TODO |
