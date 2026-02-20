@@ -78,7 +78,7 @@ function parseTapLine(line, state) {
 
     // "ok N - name" or "not ok N - name" at depth > 0 are individual tests
     const okMatch = line.match(/^\s*(not )?ok \d+ - (.+)/);
-    if (okMatch && depth > 0) {
+    if (okMatch && (depth > 0 || (depth === 0 && !okMatch[2].replace(/\s*\([\d.]+ms\)\s*$/, '').endsWith('.test.js')))) {
         const failed = !!okMatch[1];
         const name = okMatch[2].replace(/\s*\([\d.]+ms\)\s*$/, '');
         if (failed) {

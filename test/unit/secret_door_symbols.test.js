@@ -1,10 +1,12 @@
 // Test secret door rendering with correct orientation
 // C ref: display.c - secret doors appear as walls matching their orientation
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'assert';
 import { HeadlessDisplay } from '../comparison/session_helpers.js';
 import { GameMap } from '../../js/map.js';
 import { SDOOR, HWALL, VWALL } from '../../js/config.js';
+
+describe('secret door symbols', () => {
 
 test('secret door symbols: vertical secret door uses - (walls E/W)', () => {
     const display = new HeadlessDisplay(80, 24);
@@ -54,3 +56,5 @@ test('secret door symbols: DECgraphics uses Unicode box-drawing', () => {
     assert.strictEqual(sym.ch, '\u2500', 'DECgraphics secret door should use box horizontal character');
     assert.strictEqual(sym.color, 7, 'Secret door should use CLR_GRAY (7)');
 });
+
+}); // describe

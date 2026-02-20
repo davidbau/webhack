@@ -1,8 +1,10 @@
 // Test message concatenation behavior matching C NetHack
 // C ref: win/tty/topl.c:264-267
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert';
 import { HeadlessDisplay } from '../comparison/session_helpers.js';
+
+describe('message concatenation', () => {
 
 test('message concatenation: short messages combine with two spaces', () => {
     const display = new HeadlessDisplay(80, 24);
@@ -62,3 +64,5 @@ test('message concatenation: triple message combination', () => {
         assert.strictEqual(display.topMessage, expected);
     }
 });
+
+}); // describe

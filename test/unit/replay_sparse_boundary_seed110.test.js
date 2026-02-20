@@ -1,10 +1,12 @@
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { replaySession } from '../../js/replay_core.js';
 import { DEFAULT_FLAGS } from '../../js/storage.js';
 import { normalizeSession } from '../comparison/session_loader.js';
+
+describe('replay sparse boundary seed110', () => {
 
 function comparable(entries) {
     const out = [];
@@ -113,3 +115,5 @@ test('replay keeps runmode close-only boundary frame non-timed (seed5 step 540)'
         else process.env.RNG_LOG_TAGS = prevTags;
     }
 });
+
+}); // describe

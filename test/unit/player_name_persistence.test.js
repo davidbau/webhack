@@ -1,6 +1,6 @@
 // Test player name persistence across sessions
 // C ref: options.c — name can be set via OPTIONS=name:playername
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'assert';
 import { loadFlags, saveFlags, DEFAULT_FLAGS } from '../../js/storage.js';
 
@@ -14,6 +14,8 @@ globalThis.localStorage = {
     key(i) { return [...store.keys()][i] ?? null; },
     get length() { return store.size; },
 };
+
+describe('player name persistence', () => {
 
 test('player name: saves to flags and persists across sessions', () => {
     localStorage.clear();
@@ -107,3 +109,5 @@ test('player name: preserves case when saved', () => {
     assert.strictEqual(reloaded.name, 'AlIcE',
         'Case should be preserved in saved name');
 });
+
+}); // describe

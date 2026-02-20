@@ -1,7 +1,9 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { HeadlessDisplay } from '../../js/headless_runtime.js';
+
+describe('status HP color', () => {
 
 function makePlayer(hp, hpmax) {
     return {
@@ -45,3 +47,5 @@ test('headless status HP text highlights when hitpointbar is enabled', () => {
     const hpStart = 'Dlvl:1 $:0 '.length;
     assert.notEqual(row[hpStart], 7);
 });
+
+}); // describe

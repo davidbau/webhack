@@ -1,7 +1,9 @@
 // Test player name prompt during character generation
 // C ref: role.c plnamesuffix() -> askname()
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'assert';
+
+describe('player name prompt', () => {
 
 test('player name: max length constant matches C NetHack', () => {
     // C ref: global.h PL_NSIZ = 32 (31 usable characters + null terminator)
@@ -94,3 +96,5 @@ test('player name: case sensitivity preserved', () => {
     assert.strictEqual(mixedCaseName.toLowerCase(), 'alice',
         'Welcome message should show lowercase version');
 });
+
+}); // describe

@@ -1,10 +1,12 @@
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { replaySession } from '../../js/replay_core.js';
 import { DEFAULT_FLAGS } from '../../js/storage.js';
 import { normalizeSession } from '../comparison/session_loader.js';
+
+describe('replay sparse boundary seed208', () => {
 
 function comparable(entries) {
     const out = [];
@@ -47,3 +49,5 @@ test('replay keeps sparse stop_occupation boundary frame state (seed208 step 263
         normalizeRow(expected263?.screen?.[6] || ''),
     );
 });
+
+}); // describe

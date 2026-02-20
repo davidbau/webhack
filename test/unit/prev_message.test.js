@@ -1,12 +1,14 @@
 // prev_message.test.js -- Test Ctrl+P (previous message) behavior
 // Verifies it matches C NetHack mode 's' (single)
 
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert';
 
 // C ref: topl.c tty_doprev_message() mode 's' (single)
 // Shows ONE message at a time on top line
 // Cycles backwards through history on repeated Ctrl+P
+
+describe('prev message', () => {
 
 test('prev_message: mode s behavior (single message)', () => {
     // C behavior in mode 's':
@@ -112,3 +114,5 @@ test('prev_message: exit on non-Ctrl+P key', () => {
     assert.notStrictEqual(escape, ctrlP, 'ESC exits loop');
     assert.notStrictEqual(space, ctrlP, 'Space exits loop');
 });
+
+}); // describe

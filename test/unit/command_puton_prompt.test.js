@@ -1,4 +1,4 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { rhack } from '../../js/commands.js';
@@ -6,6 +6,8 @@ import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
 import { RING_CLASS, RIN_PROTECTION } from '../../js/objects.js';
+
+describe('put on prompt', () => {
 
 function makeGame() {
     const map = new GameMap();
@@ -47,3 +49,5 @@ test('put on allows selecting a ring and equips it', async () => {
     assert.equal(result.tookTime, true);
     assert.equal(game.player.leftRing?.invlet, 'a');
 });
+
+}); // describe

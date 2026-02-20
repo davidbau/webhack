@@ -1,4 +1,4 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { rhack } from '../../js/commands.js';
@@ -6,6 +6,8 @@ import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
 import { DAGGER, WEAPON_CLASS, GEM_CLASS } from '../../js/objects.js';
+
+describe('wield prompt', () => {
 
 function makeGame() {
     const map = new GameMap();
@@ -69,3 +71,5 @@ test('wielding a non-weapon item is allowed and reports wielded item', async () 
     assert.equal(result.tookTime, true);
     assert.match(game.display.topMessage, /^d - .* \(wielded\)\.$/);
 });
+
+}); // describe

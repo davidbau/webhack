@@ -1,9 +1,11 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { replaySession } from '../../js/replay_core.js';
 import { DEFAULT_FLAGS } from '../../js/storage.js';
 import { loadAllSessions } from '../comparison/session_loader.js';
+
+describe('monster throw message naming', () => {
 
 test('monster throw message uses appearance name for unknown orcish dagger', async () => {
     const session = loadAllSessions({
@@ -30,3 +32,5 @@ test('monster throw message uses appearance name for unknown orcish dagger', asy
 
     assert.match(replay.steps[20].screen[0], /^The goblin throws a crude dagger!/);
 });
+
+}); // describe

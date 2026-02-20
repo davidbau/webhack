@@ -1,4 +1,4 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { rhack } from '../../js/commands.js';
@@ -6,6 +6,8 @@ import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
 import { FOOD_CLASS } from '../../js/objects.js';
+
+describe('eat invalid choice', () => {
 
 function makeGame() {
     const map = new GameMap();
@@ -42,3 +44,5 @@ test('eat command reports missing object for invalid inventory letter', async ()
     assert.equal(game.display.messages[2], 'What do you want to eat? [a or ?*]');
     assert.equal(game.display.messages.at(-1), 'Never mind.');
 });
+
+}); // describe

@@ -1,10 +1,12 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { rhack } from '../../js/commands.js';
 import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
+
+describe('extended command case', () => {
 
 function makeGame() {
     const map = new GameMap();
@@ -72,3 +74,5 @@ test('#name object-type path rejects non-callable inventory item with C wording'
     assert.ok(game.display.messages.includes('What do you want to call? [eg or ?*]'));
     assert.equal(game.display.topMessage, 'That is a silly thing to call.');
 });
+
+}); // describe

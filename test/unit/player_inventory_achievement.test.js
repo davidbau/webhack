@@ -1,8 +1,10 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { Player } from '../../js/player.js';
 import { DAGGER, WEAPON_CLASS } from '../../js/objects.js';
+
+describe('player inventory achievement', () => {
 
 test('player pickup clears achievement marker on branch prize objects', () => {
     const player = new Player();
@@ -16,3 +18,5 @@ test('player pickup clears achievement marker on branch prize objects', () => {
     player.addToInventory(obj);
     assert.equal(obj.achievement, 0);
 });
+
+}); // describe

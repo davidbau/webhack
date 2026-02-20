@@ -1,6 +1,8 @@
 // Test character generation confirmation behavior
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'assert';
+
+describe('chargen confirmation', () => {
 
 test('confirmation: name case is preserved', () => {
     // Player enters name with capital letter
@@ -74,3 +76,5 @@ test('welcome message: mixed case names preserved', () => {
     assert.strictEqual(welcomeMsg, 'Greetings McDavid, welcome to NetHack!',
         'Mixed case names like "McDavid" should be preserved exactly');
 });
+
+}); // describe

@@ -1,7 +1,7 @@
 // pickup_types_messages.test.js -- Verify message format matches C NetHack exactly
 // Tests visual behavior: message format, placement, filtering
 
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert';
 import { POTION_CLASS, SCROLL_CLASS, WEAPON_CLASS, COIN_CLASS } from '../../js/objects.js';
 
@@ -9,6 +9,8 @@ import { POTION_CLASS, SCROLL_CLASS, WEAPON_CLASS, COIN_CLASS } from '../../js/o
 // - Items: "%c - %.*s%s" where %c=invlet, %s=name, last %s=suffix (usually ".")
 // - Gold: special case, shows "N gold piece(s)."
 // - Format: "a - a potion of healing."
+
+describe('pickup types messages', () => {
 
 test('pickup_types: gold message format matches C NetHack', () => {
     // C ref: pickup.c gold is always auto-collected
@@ -160,3 +162,5 @@ test('pickup_types: multiple items - only first matching item picked up', () => 
     assert.strictEqual(firstMatch.name, 'potion',
         'First matching item is picked up');
 });
+
+}); // describe

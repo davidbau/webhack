@@ -1,8 +1,10 @@
 // message_history.test.js -- Unit tests for message history storage
 // Tests that messages are properly stored and maintained in display.messages
 
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert';
+
+describe('message history', () => {
 
 test('display stores messages in history', () => {
     // Mock display object
@@ -130,3 +132,5 @@ test('message history handles long messages', () => {
     assert.strictEqual(display.messages.length, 1);
     assert.strictEqual(display.messages[0], longMessage, 'Should preserve full long message');
 });
+
+}); // describe

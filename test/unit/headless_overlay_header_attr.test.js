@@ -1,7 +1,9 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { HeadlessDisplay } from '../../js/headless_runtime.js';
+
+describe('headless overlay header attr', () => {
 
 test('headless overlay menu renders first header line in inverse video', () => {
     const display = new HeadlessDisplay();
@@ -32,3 +34,5 @@ test('headless overlay menu caps right-side offset at C tty max column', () => {
     assert.equal(offx, 41);
     assert.equal(display.grid[0][41], 'C');
 });
+
+}); // describe

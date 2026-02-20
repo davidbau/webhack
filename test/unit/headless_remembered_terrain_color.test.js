@@ -1,9 +1,11 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { DOOR, D_CLOSED, ROOM } from '../../js/config.js';
 import { HeadlessDisplay } from '../../js/headless_runtime.js';
 import { GameMap } from '../../js/map.js';
+
+describe('headless remembered terrain color', () => {
 
 test('headless renderMap keeps remembered terrain color', () => {
     const display = new HeadlessDisplay();
@@ -149,3 +151,5 @@ test('headless keeps remembered engraving under visible monster in wizard mode',
     assert.equal(display.grid[row][col], '`');
     assert.equal(display.colors[row][col], 12);
 });
+
+}); // describe

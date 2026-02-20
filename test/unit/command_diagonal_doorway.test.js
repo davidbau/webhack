@@ -1,10 +1,12 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { rhack } from '../../js/commands.js';
 import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { DOOR, D_ISOPEN, ROOM } from '../../js/config.js';
+
+describe('diagonal doorway movement', () => {
 
 function makeGame() {
     const map = new GameMap();
@@ -98,3 +100,5 @@ test('diagonal move out of intact doorway shows message when mention_walls is en
     assert.equal(result.tookTime, false);
     assert.equal(game.display.topMessage, "You can't move diagonally out of an intact doorway.");
 });
+
+}); // describe

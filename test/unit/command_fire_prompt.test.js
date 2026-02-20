@@ -1,4 +1,4 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { rhack } from '../../js/commands.js';
@@ -9,6 +9,8 @@ import {
     WEAPON_CLASS, FOOD_CLASS, COIN_CLASS, GOLD_PIECE, LANCE, LONG_SWORD,
     ARROW, BOW, FLINT, ROCK, SLING, GEM_CLASS,
 } from '../../js/objects.js';
+
+describe('fire prompt', () => {
 
 function makeGame() {
     const map = new GameMap();
@@ -192,3 +194,5 @@ test('fire accepts manual inventory letters then asks direction', async () => {
     assert.equal(game.display.topMessage, null);
     assert.equal(game.player.quiver, readied);
 });
+
+}); // describe

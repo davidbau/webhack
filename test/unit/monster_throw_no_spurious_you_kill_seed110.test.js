@@ -1,9 +1,11 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { replaySession } from '../../js/replay_core.js';
 import { DEFAULT_FLAGS } from '../../js/storage.js';
 import { loadAllSessions } from '../comparison/session_loader.js';
+
+describe('monster throw no spurious you kill seed110', () => {
 
 test('seed110 throw topline does not claim player killed pet', async () => {
     const session = loadAllSessions({
@@ -32,3 +34,5 @@ test('seed110 throw topline does not claim player killed pet', async () => {
     assert.equal(replay.steps[step].screen[0], session.steps[step].screen[0]);
     assert.equal(replay.steps[step].screen[0].includes('You kill the Hachi!'), false);
 });
+
+}); // describe

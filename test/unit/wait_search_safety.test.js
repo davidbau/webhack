@@ -1,7 +1,9 @@
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { rhack } from '../../js/commands.js';
+
+describe('wait search safety', () => {
 
 function createGame({ multi = 0, hostileAdjacent = false } = {}) {
     const messages = [];
@@ -115,3 +117,5 @@ test('counted search bypasses safety and starts searching occupation', async () 
     assert.equal(continueOcc, true);
     assert.equal(game.multi, 1);
 });
+
+}); // describe

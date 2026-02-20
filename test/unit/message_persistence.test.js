@@ -1,9 +1,11 @@
 // Test message display persistence
 // Verifies that messages persist until replaced by new messages
 // Regression test for bug where clearRow(0) was called before every input (fixed in commit 450d02a)
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'assert';
 import { HeadlessDisplay } from '../comparison/session_helpers.js';
+
+describe('message persistence', () => {
 
 test('message display: messages persist until replaced', () => {
     const display = new HeadlessDisplay(80, 24);
@@ -90,3 +92,5 @@ test('message display: topMessage tracks current message state', () => {
     display.putstr_message(longMsg);
     assert.strictEqual(display.topMessage, longMsg);
 });
+
+}); // describe

@@ -1,10 +1,12 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { rhack } from '../../js/commands.js';
 import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
+
+describe('drop count prompt', () => {
 
 function makeGame() {
     const map = new GameMap();
@@ -43,3 +45,5 @@ test('drop prompt supports count entry via Ctrl+V digits', async () => {
     assert.ok(game.display.messages.includes('Count: 18'));
     assert.equal(game.display.topMessage, 'Never mind.');
 });
+
+}); // describe

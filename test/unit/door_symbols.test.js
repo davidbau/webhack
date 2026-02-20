@@ -1,6 +1,6 @@
 // Test door symbol rendering matching C NetHack
 // C ref: defsym.h PCHAR definitions for S_vodoor, S_hodoor, S_vcdoor, S_hcdoor
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'assert';
 import { HeadlessDisplay } from '../comparison/session_helpers.js';
 import { GameMap } from '../../js/map.js';
@@ -8,6 +8,8 @@ import {
     DOOR, VWALL, HWALL, ROOM, COLNO, ROWNO,
     D_ISOPEN, D_CLOSED, D_LOCKED, D_NODOOR
 } from '../../js/config.js';
+
+describe('door symbols', () => {
 
 test('door symbols: vertical open door uses - (walls N/S)', () => {
     const display = new HeadlessDisplay(80, 24);
@@ -99,3 +101,5 @@ test('door symbols: DECgraphics uses checkerboard for open doors', () => {
     assert.strictEqual(sym.ch, '\u2592', 'DECgraphics open door should use checkerboard');
     assert.strictEqual(sym.color, 3, 'Open door should use CLR_BROWN (3)');
 });
+
+}); // describe

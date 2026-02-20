@@ -1,9 +1,11 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { replaySession } from '../../js/replay_core.js';
 import { DEFAULT_FLAGS } from '../../js/storage.js';
 import { loadAllSessions } from '../comparison/session_loader.js';
+
+describe('monster throw overflow message seed206', () => {
 
 test('seed206 preserves stacked pet+throw message when throw miss line would overflow', async () => {
     const session = loadAllSessions({
@@ -34,3 +36,5 @@ test('seed206 preserves stacked pet+throw message when throw miss line would ove
         'The little dog misses the goblin.  The goblin throws a crude dagger!'
     );
 });
+
+}); // describe

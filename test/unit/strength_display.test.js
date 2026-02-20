@@ -1,9 +1,11 @@
 // Test strength display formatting (18/xx notation)
 // C ref: attrib.c str_string()
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'assert';
 import { Player } from '../../js/player.js';
 import { A_STR } from '../../js/config.js';
+
+describe('strength display', () => {
 
 test('strength display: normal values 3-18 show as plain numbers', () => {
     const player = new Player();
@@ -48,3 +50,5 @@ test('strength display: superhuman strength (25+) shows as plain number', () => 
     player.attributes[A_STR] = 25;
     assert.strictEqual(player.strDisplay, '25', 'Strength 25 should display as "25"');
 });
+
+}); // describe

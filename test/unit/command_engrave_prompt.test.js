@@ -1,4 +1,4 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { rhack } from '../../js/commands.js';
@@ -6,6 +6,8 @@ import { GameMap } from '../../js/map.js';
 import { Player } from '../../js/player.js';
 import { clearInputQueue, pushInput } from '../../js/input.js';
 import { WAND_CLASS } from '../../js/objects.js';
+
+describe('engrave prompt', () => {
 
 function makeGame() {
     const map = new GameMap();
@@ -41,3 +43,5 @@ test('engrave prompt stays open on invalid keys and cancels on enter', async () 
     assert.equal(game.display.messages.at(-1), 'Never mind.');
     assert.equal(game.display.topMessage, 'Never mind.');
 });
+
+}); // describe

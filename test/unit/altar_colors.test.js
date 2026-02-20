@@ -1,10 +1,12 @@
 // Test altar rendering with alignment-based colors
 // C ref: display.h altar_color enum
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'assert';
 import { HeadlessDisplay } from '../comparison/session_helpers.js';
 import { GameMap } from '../../js/map.js';
 import { ALTAR, A_LAWFUL, A_NEUTRAL, A_CHAOTIC } from '../../js/config.js';
+
+describe('altar colors', () => {
 
 test('altar colors: lawful altar uses white', () => {
     const display = new HeadlessDisplay(80, 24);
@@ -57,3 +59,5 @@ test('altar colors: unaligned altar defaults to gray', () => {
     assert.strictEqual(sym.ch, '_', 'Altar should use "_" symbol');
     assert.strictEqual(sym.color, 7, 'Unaligned altar should default to CLR_GRAY (7)');
 });
+
+}); // describe

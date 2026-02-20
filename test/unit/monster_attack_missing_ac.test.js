@@ -1,8 +1,10 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { monsterAttackPlayer } from '../../js/combat.js';
 import { initRng } from '../../js/rng.js';
+
+describe('monster attack missing AC', () => {
 
 test('monsterAttackPlayer does not crash when replay player AC fields are missing', () => {
     initRng(206);
@@ -23,3 +25,5 @@ test('monsterAttackPlayer does not crash when replay player AC fields are missin
 
     assert.doesNotThrow(() => monsterAttackPlayer(monster, player, display, null));
 });
+
+}); // describe

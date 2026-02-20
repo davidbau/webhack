@@ -1,9 +1,11 @@
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { initRng, enableRngLog, getRngLog, disableRngLog } from '../../js/rng.js';
 import { mksobj, setMklevObjectContext, setObjectMoves } from '../../js/mkobj.js';
 import { DAGGER } from '../../js/objects.js';
+
+describe('mkobj erosion gate', () => {
 
 function runCreateDagger({ moves, inMklev }) {
     initRng(123);
@@ -39,3 +41,5 @@ test('mkobj erosion RNG runs in mklev context even when moves <= 1', () => {
     const log = runCreateDagger({ moves: 1, inMklev: true });
     assert.equal(hasErosionRng(log), true);
 });
+
+}); // describe

@@ -1,10 +1,12 @@
 // toggle_pickup.test.js -- Test @ command (toggle autopickup)
 // C ref: options.c dotogglepickup()
 
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert';
 
 // Test behavior expectations based on C NetHack
+
+describe('toggle pickup', () => {
 
 test('toggle_pickup: @ command toggles pickup flag', () => {
     // Simulate the toggle behavior
@@ -54,3 +56,5 @@ test('toggle_pickup: works when buried or otherwise restricted', () => {
     assert.strictEqual(canUseWhenBuried, true,
         'Should be usable even when buried/trapped');
 });
+
+}); // describe

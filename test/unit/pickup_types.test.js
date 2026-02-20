@@ -1,13 +1,15 @@
 // pickup_types.test.js -- Unit tests for pickup_types filtering
 // Tests the shouldAutopickup function and pickup_types option
 
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert';
 import {
     WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
     TOOL_CLASS, FOOD_CLASS, POTION_CLASS, SCROLL_CLASS,
     SPBOOK_CLASS, WAND_CLASS, COIN_CLASS, GEM_CLASS, ROCK_CLASS
 } from '../../js/symbols.js';
+
+describe('pickup types', () => {
 
 // Helper function extracted from commands.js for testing
 function shouldAutopickup(obj, pickupTypes) {
@@ -116,3 +118,5 @@ test('pickup_types: order does not matter', () => {
     assert.strictEqual(shouldAutopickup(scroll, '!?'), true);
     assert.strictEqual(shouldAutopickup(scroll, '?!'), true);
 });
+
+}); // describe

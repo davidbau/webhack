@@ -1,6 +1,6 @@
 // Test COLOR_CSS array mapping to color constants
 // C ref: display.h color constants - must map correctly to CSS colors
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'assert';
 import {
     CLR_BLACK, CLR_RED, CLR_GREEN, CLR_BROWN, CLR_BLUE,
@@ -8,6 +8,8 @@ import {
     CLR_BRIGHT_GREEN, CLR_YELLOW, CLR_BRIGHT_BLUE, CLR_BRIGHT_MAGENTA,
     CLR_BRIGHT_CYAN, CLR_WHITE
 } from '../../js/display.js';
+
+describe('color CSS mapping', () => {
 
 test('color constants: verify correct values after NO_COLOR gap', () => {
     // C ref: display.h - color constants have a gap at 8 (NO_COLOR)
@@ -72,3 +74,5 @@ test('color constants: NO_COLOR gap at index 8', () => {
     assert.strictEqual(CLR_YELLOW, CLR_ORANGE + 2, 'CLR_YELLOW is ORANGE + 2');
     assert.strictEqual(CLR_WHITE, CLR_ORANGE + 6, 'CLR_WHITE is ORANGE + 6');
 });
+
+}); // describe

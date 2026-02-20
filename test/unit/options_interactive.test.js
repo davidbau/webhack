@@ -12,7 +12,7 @@ globalThis.localStorage = {
     get length() { return store.size; },
 };
 
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'assert';
 import { loadFlags, saveFlags, DEFAULT_FLAGS, OPTION_DEFS } from '../../js/storage.js';
 import {
@@ -21,6 +21,8 @@ import {
     setOptionValue,
     renderOptionsMenu,
 } from '../../js/options_menu.js';
+
+describe('options interactive', () => {
 
 test('options menu: flags structure matches OPTION_DEFS', () => {
     const flags = loadFlags();
@@ -342,3 +344,5 @@ test('options menu: count options support array-backed values', () => {
     assert.ok(pageText.includes('status condition fields') && pageText.includes('(3 currently set)'),
         'status condition fields count should reflect array length');
 });
+
+}); // describe

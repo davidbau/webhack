@@ -1,6 +1,6 @@
 // Test object rendering with correct colors
 // C ref: objects.c - each object has a color field used for display
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'assert';
 import { mksobj } from '../../js/mkobj.js';
 import { BANDED_MAIL, BATTLE_AXE, objectData } from '../../js/objects.js';
@@ -9,6 +9,8 @@ import {
     CLR_MAGENTA, CLR_CYAN, CLR_GRAY, CLR_ORANGE, CLR_BRIGHT_GREEN,
     CLR_YELLOW, CLR_BRIGHT_BLUE, CLR_BRIGHT_MAGENTA, CLR_BRIGHT_CYAN, CLR_WHITE
 } from '../../js/display.js';
+
+describe('object colors', () => {
 
 test('object colors: objects have displayColor property from objectData', () => {
     // Test a few different object types
@@ -75,3 +77,5 @@ test('object colors: banded mail matches C cyan class color', () => {
 test('object colors: battle-axe matches C cyan class color', () => {
     assert.equal(objectData[BATTLE_AXE].color, CLR_CYAN);
 });
+
+}); // describe

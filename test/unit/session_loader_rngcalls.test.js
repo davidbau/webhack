@@ -1,7 +1,9 @@
-import test from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { getSessionScreenAnsiLines, normalizeSession } from '../comparison/session_loader.js';
+
+describe('session loader rngCalls', () => {
 
 test('normalizeSession does not synthesize rngCalls from explicit rng traces', () => {
     const normalized = normalizeSession({
@@ -40,3 +42,5 @@ test('getSessionScreenAnsiLines prefers explicit screenAnsi over plain screen', 
     });
     assert.deepEqual(lines, ['\u001b[31mred-line\u001b[0m']);
 });
+
+}); // describe
