@@ -2334,6 +2334,26 @@ async function handleFire(player, map, display, game) {
         return { moved: false, tookTime: false };
     }
 
+    // C ref: dothrow.c dofire() — when no quiver and wielding bullwhip,
+    // routes to use_whip(uwep) which shows "In what direction?" and reads
+    // one direction character (matching apply.c use_whip() behavior).
+    if (!player.quiver && weapon && weapon.otyp === BULLWHIP) {
+        display.putstr_message('In what direction?');
+        const dirCh = await nhgetch();
+        const dch = String.fromCharCode(dirCh);
+        const dir = DIRECTION_KEYS[dch];
+        if (!dir) {
+            replacePromptMessage();
+            if (!game?.wizard) {
+                display.putstr_message('What a strange direction!  Never mind.');
+            }
+            return { moved: false, tookTime: false };
+        }
+        // TODO: implement actual whip crack effects for full parity
+        replacePromptMessage();
+        return { moved: false, tookTime: false };
+    }
+
     const inventory = player.inventory || [];
     const fireLetters = [];
     const quiverItem = player.quiver && inventory.includes(player.quiver)

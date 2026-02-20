@@ -802,6 +802,42 @@ Practical rule: model fireassist launcher auto-swap as a timed step before the
 direction prompt, and preserve the post-turn map frame before leaving the
 prompt pending.
 
+### `dofire` routes to `use_whip()` when no quiver and bullwhip is wielded
+
+In C `dofire()` (dothrow.c), when `uquiver == NULL` and `flags.autoquiver` is
+false:
+- If wielding a **polearm/lance** → `use_pole(uwep, TRUE)` (asks direction)
+- If wielding a **bullwhip** → `use_whip(uwep)` (asks "In what direction?",
+  consumes direction key, returns without turn if direction invalid)
+- Otherwise → "You have no ammunition readied."
+
+JS `handleFire` must check for bullwhip *before* polearm. An archeologist
+wizard (seed201) starts with a bullwhip and no quiver, so `f` routes to the
+whip direction prompt. If JS instead falls through to the menu-based ammo
+selection (`What do you want to fire? [*]`), it consumes the direction key and
+subsequent count digits as menu input, causing an RNG divergence of 0 (JS) vs
+175 (C) at the first counted-move command after the fire.
+
+Practical rule: in `handleFire`, add a bullwhip guard between the polearm guard
+and the inventory scan — show "In what direction?", consume one key, and return
+tookTime=false for invalid or valid directions (until whip effects are ported).
+
+### `wipeout_text` makes two `rn2` calls per character erased
+
+In C `wipeout_text(engrave.c)`, for each character erased (cnt iterations),
+the function calls **two** rn2s:
+1. `rn2(lth)` — picks position in string
+2. `rn2(4)` — determines if a "rubout" substitution is used (partial erasure)
+
+JS's `wipeoutEngravingText` only calls `rn2(lth)` and is missing the `rn2(4)`
+call. Fixing this requires adding `rn2(4)` and implementing rubout characters
+(letters that degrade to similar-looking chars instead of becoming spaces).
+
+Also note: in C, if the picked position is already a space, it does `continue`
+(skips that iteration without retry). In JS, the inner `do...while` loop retries
+`rn2(lth)` until a non-space is found — which consumes extra RNG calls compared
+to C when spaces exist.
+
 ### Inventory action menus should use canonical `xname()` nouns
 
 Building item action prompts from ad-hoc `item.name` strings causes drift like

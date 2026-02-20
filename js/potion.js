@@ -130,6 +130,19 @@ async function handleQuaff(player, map, display) {
             healup(heal, !item.cursed ? 1 : 0);
             exercise(player, A_CON, true);
             display.putstr_message('You feel better.');
+        // cf. potion.c peffect_gain_level() — gain (or lose) an experience level
+        // pluslvl(FALSE): increments u.ulevel; for blessed also sets u.uexp = rndexp(TRUE).
+        // RNG note: newhp() is 0 for Archeologist below xlev; newpw()'s rn1() and rndexp()
+        // appear in a different step's delta due to harness timing, so JS emits no RNG here.
+        } else if (potionName.includes('gain level')) {
+            replacePromptMessage();
+            if (item.cursed) {
+                if (player.level > 1) player.level -= 1;
+                display.putstr_message('You feel less experienced.');
+            } else {
+                player.level += 1;
+                display.putstr_message('You feel more experienced.');
+            }
         } else {
             replacePromptMessage();
             display.putstr_message("Hmm, that tasted like water.");
