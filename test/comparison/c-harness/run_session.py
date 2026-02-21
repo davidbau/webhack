@@ -447,7 +447,7 @@ def execute_wizload(session, level_name, steps, rng_log_file, verbose=False):
     # Press Enter
     tmux_send_special(session, 'Enter', 0.3)
     steps.append({
-        'key': '\\r',
+        'key': '\r',
         'action': 'command-confirm',
         'rng': [],
         'screen': capture_screen_compressed(session),
@@ -990,7 +990,7 @@ def run_wizload_session(seed, output_json, level_name, verbose=False):
         # Add final step with level data
         final_screen = capture_screen_compressed(session_name)
         final_step = {
-            'key': '\\r',
+            'key': '\r',
             'action': f'load-{level_name}',
             'rng': rng_entries,
             'screen': final_screen,

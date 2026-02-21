@@ -9,6 +9,8 @@ import { COLNO, ROWNO, STONE, DOOR, CORR, SDOOR, SCORR, STAIRS, LADDER, FOUNTAIN
          SHOPBASE, ROOMOFFSET, PM_CAVEMAN, PM_ROGUE, RACE_ORC } from './config.js';
 import { SQKY_BOARD, SLP_GAS_TRAP, FIRE_TRAP, PIT, SPIKED_PIT, ANTI_MAGIC, IS_SOFT } from './symbols.js';
 import { rn2, rn1, rnd, rnl, d, c_d } from './rng.js';
+import { resetLevelState, setFinalizeContext, setSpecialLevelDepth } from './sp_lev.js';
+import { otherSpecialLevels } from './special_levels.js';
 import { wipe_engr_at } from './engrave.js';
 import { exercise } from './attrib_exercise.js';
 import { objectData, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
@@ -4215,6 +4217,8 @@ async function handleExtendedCommand(game) {
             return await wizTeleport(game);
         case 'genesis':
             return await wizGenesis(game);
+        case 'wizloaddes':
+            return await handleWizLoadDes(game);
         case 'quit': {
             const ans = await ynFunction('Really quit?', 'yn', 'n'.charCodeAt(0), display);
             if (String.fromCharCode(ans) === 'y') {
@@ -4244,6 +4248,39 @@ async function handleExtendedCommand(game) {
             display.putstr_message(`#${rawCmd}: unknown extended command.`);
             return { moved: false, tookTime: false };
     }
+}
+
+// Wizard mode: load a special level description
+// C ref: wizcmds.c wiz_load_splua()
+async function handleWizLoadDes(game) {
+    const { player, display } = game;
+    const input = await getlin('Load which level?', display);
+    if (input === null || input.trim() === '') {
+        return { moved: false, tookTime: false };
+    }
+    const levelName = input.trim();
+    const generator = otherSpecialLevels[levelName];
+    if (!generator) {
+        display.putstr_message(`Cannot find level: ${levelName}`);
+        return { moved: false, tookTime: false };
+    }
+    // C ref: nhl_init() creates a fresh Lua state and loads nhlib.lua,
+    // whose top-level shuffle(align) consumes rn2(3), rn2(2).
+    rn2(3);
+    rn2(2);
+    resetLevelState();
+    setSpecialLevelDepth(player.dungeonLevel);
+    setFinalizeContext({
+        specialName: levelName,
+    });
+    const newMap = generator();
+    if (newMap) {
+        game.map = newMap;
+        game.levels[player.dungeonLevel] = newMap;
+        game.fov.compute(game.map, player.x, player.y);
+        display.renderMap(game.map, player, game.fov, game.flags);
+    }
+    return { moved: false, tookTime: false };
 }
 
 // Wizard mode: change dungeon level
