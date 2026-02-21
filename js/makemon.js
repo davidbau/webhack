@@ -900,7 +900,7 @@ function m_initweap(mon, mndx, depth) {
 
     // C ref: makemon.c:571 — offensive item check, OUTSIDE the switch,
     // always called for ALL monsters. rn2(75) is always consumed.
-    if (ptr.level > rn2(75)) {
+    if (mon.mlevel > rn2(75)) {
         // C ref: muse.c rnd_offensive_item()
         // Skip for animals, exploders, mindless, ghosts, kops
         const difficulty = ptr.difficulty || ptr.level;
