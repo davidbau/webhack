@@ -3,6 +3,11 @@ theme: jekyll-theme-minimal
 title: Mazes of Menace
 description: JavaScript port of NetHack 3.7
 
+# README.md is in jekyll-optional-front-matter's hardcoded ignore list;
+# adding it here tells the plugin to process it anyway.
+include:
+  - README.md
+
 # Plugins (all are on the GitHub Pages whitelist)
 readme_index:
   enabled: false
