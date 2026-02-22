@@ -93,13 +93,15 @@ throughout. See the full architecture and design documents:
 
 *A cloud of gas surrounds you! You have a peculiar feeling about your code.*
 
-- **Shops** — the shopkeeper glares at you across an unimplemented counter
-- **Special levels** — Medusa's Island, the Castle, Vlad's Tower, Gehennom; the dungeon goes deeper
-- **Altars and prayer** — your god is not yet listening
-- **Spellcasting** — your spell fizzles
-- **Wand, potion, and scroll effects** — zap, quaff, read; something happens, but not yet
-- **Full inventory management** — wear, wield, remove, throw; the item sits there patiently
-- **Polymorph** — you feel like a different data structure
+- **Shops** — the shopkeeper knows your name and the price of everything, but the billing system is not yet enforced (enjoy it while it lasts)
+- **Special level event logic** — all 132 levels generate correctly as maps, but their unique triggers, quest mechanics, and scripted monster placements are mostly missing
+- **Prayer and sacrifice** — your god hears you; nothing happens yet
+- **Spell effects** — you can study spellbooks and cast spells; the effects have yet to materialize
+- **Scroll effects** — you can read the scroll; the magic is pending
+- **Polymorph** — you feel like you should feel like a newt
+- **Trap variety** — pits, holes, and teleport traps work; arrow traps, dart traps, rolling boulders, and landmines are present in maps but inert
+- **Apply command** — tools, leashes, polearms, and other applied objects do nothing yet
+- **Artifact powers** — artifacts generate and can be wielded; their special powers are stubs
 - **And much more** — NetHack 3.7 has ~420,000 lines of C, headers, and Lua across ~8,600 functions; so far, this port covers the core loop and early gameplay with 83,000+ lines of JavaScript (with the goal of replicating the whole game faithfully)
 
 The Hive is aware of this.
