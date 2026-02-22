@@ -2826,10 +2826,10 @@ No function symbols parsed from isaac64.c.
 | 4824 | `mon_animal_list` | - | Missing |
 | 1708 | `mon_give_prop` | - | Missing |
 | 1760 | `mon_givit` | - | Missing |
-| 2678 | `mon_leaving_level` | - | Missing |
+| 2678 | `mon_leaving_level` | monutil.js | Partial — unstuck() called from mondead, mtrapped clearing; Missing: worm removal, mswallower display, mimic unhide, newsym |
 | 240 | `mon_sanity_check` | - | Missing |
 | 3743 | `mon_to_stone` | - | Missing |
-| 3077 | `mondead` | - | Missing |
+| 3077 | `mondead` | monutil.js | Partial — marks dead, calls unstuck() + relobj inventory drop; Missing: lifesaved_monster, vamprises, steam vortex gas cloud (rn2(10)), Kop respawn (rnd(5)+makemon), chameleon/lycanthrope revert, mvitals tracking, quest leader death |
 | 3249 | `mondied` | - | Missing |
 | 3263 | `mongone` | - | Missing |
 | 3373 | `monkilled` | - | Missing |
@@ -2866,7 +2866,7 @@ No function symbols parsed from isaac64.c.
 | 4260 | `setmangry` | - | Missing |
 | 6051 | `shieldeff_mon` | - | Missing |
 | 399 | `undead_to_corpse` | - | Missing |
-| 3434 | `unstuck` | - | Missing |
+| 3434 | `unstuck` | monutil.js | Implemented — clears player.ustuck, rnd(2) for sticky/engulf/hug monsters; TODO: swallowed-player repositioning + vision recalc (no RNG impact) |
 | 5789 | `usmellmon` | - | Missing |
 | 5008 | `valid_vampshiftform` | - | Missing |
 | 4986 | `validspecmon` | - | Missing |
@@ -2993,7 +2993,7 @@ No function symbols parsed from isaac64.c.
 | 242 | `onscary` | - | Missing |
 | 1459 | `postmov` | - | Missing |
 | 363 | `release_hero` | - | Missing |
-| 2201 | `set_apparxy` | - | Missing |
+| 2201 | `set_apparxy` | monmove.js | Partial — pet/ustuck/position early-return, notseen/displaced displacement, rn2(3)/rn2(4) gotu, offset loop faithful; Approximations: missing Underwater check, missing Xorn smell, loop exit omits passes_walls/can_ooze/can_fog, Displaced detected via cloak otyp not intrinsic |
 | 1074 | `should_displace` | - | Missing |
 | 1256 | `soko_allow_web` | - | Missing |
 | 2322 | `stuff_prevents_passage` | - | Missing |

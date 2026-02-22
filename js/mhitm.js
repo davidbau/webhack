@@ -370,7 +370,7 @@ function explmm(magr, mdef, mattk, display, vis, map, ctx) {
 
     // Kill off aggressor (self-destruct)
     if (!(result & M_ATTK_AGR_DIED)) {
-        mondead(magr, map);
+        mondead(magr, map, ctx?.player);
         if (!DEADMONSTER(magr)) {
             return result; // lifesaved
         }
@@ -425,7 +425,7 @@ function mdamagem(magr, mdef, mattk, mwep, dieroll, display, vis, map, ctx) {
                 `${monCombatName(mdef, ctx?.defVisible, { article: 'the', capitalize: true })} is ${killVerb}!`
             );
         }
-        mondead(mdef, map);
+        mondead(mdef, map, ctx?.player);
         if (!DEADMONSTER(mdef)) {
             return mhm.hitflags; // lifesaved
         }

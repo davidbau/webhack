@@ -824,9 +824,7 @@ function handleMonsterKilled(player, monster, display, map) {
     const mdat = monster.type || {};
     const killVerb = nonliving(mdat) ? 'destroy' : 'kill';
     display.putstr_message(`You ${killVerb} the ${monDisplayName(monster)}!`);
-    mondead(monster, map);
-    // C ref: mon.c mongone → unstuck() — release hero if stuck to dying monster
-    if (player.ustuck === monster) player.ustuck = null;
+    mondead(monster, map, player);
 
     // cf. exper.c experience() -- roughly monster level * level
     const exp = (monster.mlevel + 1) * (monster.mlevel + 1);

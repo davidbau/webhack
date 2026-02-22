@@ -272,7 +272,7 @@ function dobuzz(player, map, display, type, nd, dx, dy, sx, sy) {
             // Apply damage
             mon.mhp -= damage;
             if (mon.mhp <= 0) {
-                mondead(mon, map);
+                mondead(mon, map, player);
                 // C ref: nonliving monsters (undead, golems) are "destroyed" not "killed"
                 const mdat = mon.type || {};
                 const killVerb = nonliving(mdat) ? 'destroy' : 'kill';

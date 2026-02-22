@@ -305,7 +305,7 @@ function dog_starve(mon, map, display, player, fov) {
             display.putstr_message('You feel sad for a moment.');
         }
     }
-    mondead(mon, map);
+    mondead(mon, map, player);
 }
 
 // ========================================================================

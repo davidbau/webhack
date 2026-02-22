@@ -92,8 +92,8 @@ export async function promptDirectionAndThrowItem(player, map, display, item, { 
         // RNG and messaging parity for captured early-game traces.
         rnd(20);
         rn2(3);
-        // C traces include an immediate obj_resists() probe on the thrown
-        // object in this path before normal monster movement begins.
+        // TODO: C ref: dothrow.c thitmonst() has full combat simulation here.
+        // The obj_resists(0,0) stub is empirical; replace with proper thitmonst() port.
         obj_resists(item, 0, 0);
         const od = objectData[item.otyp];
         const baseName = od?.name || item.name || 'item';
@@ -135,7 +135,7 @@ export async function promptDirectionAndThrowItem(player, map, display, item, { 
         if (player.quiver === item) uqwepgone(player);
     }
     if (!targetMonster && fromFire) {
-        // C fire traces probe obj_resists() after stack split/ID assignment.
+        // TODO: C fire path has different obj_resists call site; replace with proper port.
         obj_resists(thrownItem, 0, 0);
     }
     const landingLoc = (typeof map.at === 'function')

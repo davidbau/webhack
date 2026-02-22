@@ -41,7 +41,7 @@ export async function handleKick(player, map, display, game) {
         const damage = rnd(4) + player.strDamage;
         mon.mhp -= Math.max(1, damage);
         if (mon.mhp <= 0) {
-            mondead(mon, map);
+            mondead(mon, map, player);
             display.putstr_message(`The ${monDisplayName(mon)} dies!`);
             map.removeMonster(mon);
         }

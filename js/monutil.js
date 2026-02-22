@@ -4,12 +4,13 @@
 
 import { isok } from './config.js';
 import { PM_GRID_BUG,
-         AT_BITE, AT_CLAW, AT_KICK, AT_BUTT, AT_TUCH, AT_STNG, AT_WEAP } from './monsters.js';
+         AT_BITE, AT_CLAW, AT_KICK, AT_BUTT, AT_TUCH, AT_STNG, AT_WEAP,
+         AT_ENGL, AT_HUGS, AD_STCK } from './monsters.js';
 import { couldsee } from './vision.js';
 import { monNam } from './mondata.js';
-import { is_hider, noattacks } from './mondata.js';
+import { is_hider, noattacks, dmgtype, attacktype } from './mondata.js';
 import { weight } from './mkobj.js';
-import { pushRngLogEntry } from './rng.js';
+import { pushRngLogEntry, rnd } from './rng.js';
 import { placeFloorObject } from './floor_objects.js';
 import { SCR_SCARE_MONSTER } from './objects.js';
 
@@ -247,13 +248,31 @@ export function addToMonsterInventory(mon, obj) {
 // Centralized monster death/pickup/drop — C ref: mon.c, steal.c
 // ========================================================================
 
-// C ref: mon.c mondead() → m_detach() → relobj()
+// C ref: mon.c:3434 unstuck() — release hero if stuck to dying/departing monster
+// Called from mon_leaving_level (via m_detach from mondead) and mongone.
+// Sets mspec_used = rnd(2) for sticky/engulfing/hugging monsters to prevent
+// immediate re-engagement (relevant when monster doesn't die, e.g. polymorph).
+export function unstuck(mon, player) {
+    if (!player || player.ustuck !== mon) return;
+    const ptr = mon.type || {};
+    player.ustuck = null;
+    // C ref: mon.c:3458-3461 — prevent holder from immediately re-holding
+    if (!mon.mspec_used && (dmgtype(ptr, AD_STCK)
+                            || attacktype(ptr, AT_ENGL)
+                            || attacktype(ptr, AT_HUGS))) {
+        mon.mspec_used = rnd(2);
+    }
+}
+
+// C ref: mon.c mondead() → m_detach() → mon_leaving_level() → unstuck()
 // Marks monster dead and drops all inventory to floor.
 // Does NOT call map.removeMonster — callers handle removal if needed;
 // movemon() filters dead monsters at end of turn.
-export function mondead(mon, map) {
+export function mondead(mon, map, player) {
     mon.dead = true;
     pushRngLogEntry(`^die[${mon.mndx || 0}@${mon.mx},${mon.my}]`);
+    // C ref: mon.c:2685 mon_leaving_level → unstuck
+    if (player) unstuck(mon, player);
     // C ref: m_detach -> relobj: drop all inventory to floor
     if (Array.isArray(mon.minvent) && mon.minvent.length > 0) {
         // Reverse order to match C's relobj chain-order floor pile ordering
