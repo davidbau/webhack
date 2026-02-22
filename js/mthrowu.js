@@ -5,7 +5,7 @@
 // INCOMPLETE / MISSING vs C mthrowu.c:
 // - select_rwep: simplified priority (C has cockatrice eggs, pies, boulders, launchers)
 // - m_throw: no ohitmon() full damage calculation (erosion, material bonuses)
-// - m_throw: corpse creation on kill is stub (RNG consumed but no object placed)
+// - m_throw: corpse creation uses corpse_chance + mkcorpstat (faithful to C mondied)
 // - thrwmu: polearm attack path not implemented (C:1169)
 // - thrwmu: mon_wield_item not called before select_rwep (C:1157)
 // - monmulti: prince/lord/mplayer multishot bonuses not modeled
@@ -18,14 +18,14 @@ import { ACCESSIBLE, IS_OBSTRUCTED, IS_DOOR, IS_WALL,
 import { rn2, rnd } from './rng.js';
 import { exercise } from './attrib_exercise.js';
 import { newexplevel } from './exper.js';
-import { BOULDER, WEAPON_CLASS, objectData } from './objects.js';
-import { doname } from './mkobj.js';
+import { BOULDER, WEAPON_CLASS, CORPSE, objectData } from './objects.js';
+import { doname, mkcorpstat } from './mkobj.js';
 import { couldsee, m_cansee } from './vision.js';
 import { monDisplayName } from './mondata.js';
-import { mons, AT_WEAP,
-         MZ_TINY, G_FREQ } from './monsters.js';
+import { mons, AT_WEAP, G_NOCORPSE } from './monsters.js';
 import { distmin, mondead, BOLT_LIM } from './monutil.js';
 import { placeFloorObject } from './floor_objects.js';
+import { corpse_chance } from './mon.js';
 
 // C ref: mthrowu.c blocking_terrain() subset used by lined_up().
 function blockingTerrainForLinedup(map, x, y) {
@@ -195,19 +195,20 @@ export function m_throw(mon, startX, startY, dx, dy, range, weapon, map, player,
 
                 mtmp.mhp -= damage;
                 if (mtmp.mhp <= 0) {
+                    // C ref: mthrowu.c:459-464 — mondied() when mon_moving
                     mondead(mtmp, map);
                     map.removeMonster(mtmp);
                     const exp = (mtmp.mlevel + 1) * (mtmp.mlevel + 1);
                     player.exp += exp;
                     player.score += exp;
                     newexplevel(player, display);
-                    rn2(6);
+                    // C ref: mon.c:3257-3259 — mondied() calls corpse_chance + make_corpse
                     const mdat2 = mons[mtmp.mndx] || {};
-                    const gfreq = (mdat2.geno || 0) & G_FREQ;
-                    const verysmall = (mdat2.size || 0) === MZ_TINY;
-                    const corpsetmp = 2 + (gfreq < 2 ? 1 : 0) + (verysmall ? 1 : 0);
-                    if (!rn2(corpsetmp)) {
-                        // Corpse creation stub — consume the same RNG as mkcorpstat path
+                    if (corpse_chance(mtmp)
+                        && !(((mdat2.geno || 0) & G_NOCORPSE) !== 0)) {
+                        const corpse = mkcorpstat(CORPSE, mtmp.mndx || 0, true,
+                            mtmp.mx, mtmp.my, map);
+                        if (corpse) corpse.age = (player.turns || 0) + 1;
                     }
                 }
                 break;

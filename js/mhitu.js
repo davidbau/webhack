@@ -7,6 +7,9 @@ import { A_CON } from './config.js';
 import {
     G_UNIQ, M2_NEUTER, M2_MALE, M2_FEMALE, M2_PNAME,
     AT_CLAW, AT_BITE, AT_KICK, AT_BUTT, AT_TUCH, AT_STNG, AT_WEAP,
+    AD_PHYS, AD_FIRE, AD_COLD, AD_SLEE, AD_ELEC, AD_DRST, AD_SLOW,
+    AD_PLYS, AD_DRLI, AD_DREN, AD_STON, AD_STCK, AD_TLPT, AD_CONF,
+    AD_DRIN,
 } from './monsters.js';
 import { objectData, BULLWHIP } from './objects.js';
 import { xname } from './mkobj.js';
@@ -16,6 +19,56 @@ import { thrwmu } from './mthrowu.js';
 
 const PIERCE = 1;
 
+// AD_* types that call mhitm_mgc_atk_negated (consuming rn2(10)) in C.
+// C ref: uhitm.c mhitm_ad_* handlers. Each one listed here has
+// `boolean negated = mhitm_mgc_atk_negated(magr, mdef, ...)` near its top.
+const AD_TYPES_WITH_MGC_NEGATION = new Set([
+    AD_FIRE, AD_COLD, AD_ELEC, AD_DRST, AD_STCK, AD_PLYS, AD_SLEE,
+    AD_DRLI, AD_DREN, AD_SLOW, AD_CONF, AD_TLPT, AD_STON, AD_DRIN,
+]);
+
+// Consume the same RNG as C's mhitm_adtyping dispatch for the mhitu branch.
+// This handles RNG parity for the "monster hits hero" path without implementing
+// the full effect logic.  Each AD_* handler may consume rn2(10) for magic negation
+// plus additional calls for its specific effect checks.
+function mhitu_adtyping_rng(adtyp) {
+    // Many handlers call mhitm_mgc_atk_negated → rn2(10)
+    if (AD_TYPES_WITH_MGC_NEGATION.has(adtyp)) {
+        rn2(10);
+    }
+
+    // Additional per-type RNG consumed in the mhitu branch of each handler.
+    // C ref: uhitm.c mhitm_ad_*() — mhitu branch only
+    switch (adtyp) {
+    case AD_ELEC:
+        // cf. mhitm_ad_elec: if !negated, destroy_item() calls rn2(20) for ring check
+        rn2(20);
+        break;
+    case AD_DRST:
+        // cf. mhitm_ad_drst: !negated && !rn2(8) → poisoned()
+        rn2(8);
+        break;
+    case AD_DRLI:
+        // cf. mhitm_ad_drli: !rn2(3) && !Drain_resistance && !negated
+        rn2(3);
+        break;
+    case AD_DREN:
+        // cf. mhitm_ad_dren: !negated && !rn2(4) → drain_en()
+        rn2(4);
+        break;
+    case AD_PLYS:
+        // cf. mhitm_ad_plys: !rn2(3) && !negated → paralyze for rnd(10)
+        rn2(3);
+        break;
+    case AD_SLOW:
+        // cf. mhitm_ad_slow: !negated && !rn2(4) → slow
+        rn2(4);
+        break;
+    default:
+        break;
+    }
+}
+
 // cf. mhitu.c hitmsg() (partial).
 function monsterHitVerb(attackType) {
     switch (attackType) {
@@ -24,7 +77,7 @@ function monsterHitVerb(attackType) {
         case AT_KICK: return 'kicks';
         case AT_BUTT: return 'butts';
         case AT_STNG: return 'stings';
-        case AT_TUCH: return 'touches';
+        case AT_TUCH: return 'touches you';
         case AT_WEAP: return 'hits';
         default: return 'hits';
     }
@@ -172,30 +225,39 @@ export function monsterAttackPlayer(monster, player, display, game = null, opts 
             handleSpecialAttack(attack.special, monster, player, display);
         }
 
-        // cf. uhitm.c monster-vs-player electric attacks (AD_ELEC):
-        // mhitm_mgc_atk_negated() then mhitm_ad_elec() consume rn2(10), rn2(20).
-        // In monsters.js attack.damage stores adtyp numeric code (AD_ELEC=6).
-        if (attack.damage === 6) {
-            rn2(10);
-            rn2(20);
+        // cf. uhitm.c mhitm_adtyping() → mhitm_ad_*() dispatch.
+        // Many AD_* handlers call mhitm_mgc_atk_negated() which consumes rn2(10).
+        // Some handlers consume additional RNG after that.
+        // attack.damage stores the adtyp numeric code.
+        const adtyp = attack.damage;
+        mhitu_adtyping_rng(adtyp);
+
+        // cf. uhitm.c:1189 mhitm_knockback() — called after mhitm_adtyping,
+        // regardless of damage. Always consumes rn2(3) + rn2(6) then returns
+        // FALSE for non-qualifying attack types (most attacks).
+        rn2(3);  // knockback distance
+        rn2(6);  // knockback chance (1/6)
+
+        // C ref: uhitm.c hitmsg() — hit message shown for all hits, not just
+        // damaging ones.  AD_STCK (lichen) has dice=0 but still prints "touches".
+        if (!suppressHitMsg) {
+            const verb = monsterHitVerb(attack.type);
+            display.putstr_message(`The ${monDisplayName(monster)} ${verb}!`);
+            if (adtyp === AD_ELEC) {
+                display.putstr_message('You get zapped!');
+            }
+        }
+
+        // C ref: uhitm.c:3299-3306 mhitm_ad_stck (mhitu branch)
+        // Sticky monster (lichen) grabs hero — sets u.ustuck.
+        if (adtyp === AD_STCK && !player.ustuck) {
+            player.ustuck = monster;
         }
 
         if (damage > 0) {
             // Apply damage
             const died = player.takeDamage(damage, monDisplayName(monster));
             const wizardSaved = died && player.wizard;
-            if (!wizardSaved && !suppressHitMsg) {
-                const verb = monsterHitVerb(attack.type);
-                display.putstr_message(`The ${monDisplayName(monster)} ${verb}!`);
-                if (attack.damage === 6) {
-                    display.putstr_message('You get zapped!');
-                }
-            }
-
-            // cf. uhitm.c:5236-5247 knockback after monster hits hero
-            // rn2(3) distance + rn2(6) chance, for physical attacks
-            rn2(3);
-            rn2(6);
 
             // cf. allmain.c stop_occupation() via mhitu.c attack flow.
             // A successful monster hit interrupts timed occupations/repeats.

@@ -561,12 +561,15 @@ function dochug(mon, map, player, display, fov, game = null) {
         }
     }
 
-    // Phase 3 movement + optional Phase 4 ranged
+    // Phase 3 movement + optional Phase 4 attack
+    // C ref: monmove.c:900-963 — movement dispatch and status tracking
     let mmoved = false;
     let phase4Allowed = !phase3Cond;
+    let moveDone = false; // tracks MMOVE_DONE equivalent
     if (phase3Cond) {
         if (mon.meating) {
             mon.meating--;
+            moveDone = true; // eating uses up the action (MMOVE_DONE)
         } else if (mon.tame) {
             const omx = mon.mx, omy = mon.my;
             dog_move(mon, map, player, display, fov, false, game);
@@ -580,7 +583,7 @@ function dochug(mon, map, player, display, fov, game = null) {
         } else {
             const omx = mon.mx, omy = mon.my;
             m_move(mon, map, player, display, fov);
-            const moveDone = !!mon._mMoveDone;
+            moveDone = !!mon._mMoveDone;
             let trapDied = false;
             if (!mon.dead && (mon.mx !== omx || mon.my !== omy)) {
                 const trapResult = mintrap_postmove(mon, map, player);
@@ -611,13 +614,20 @@ function dochug(mon, map, player, display, fov, game = null) {
             `pos=(${mon.mx},${mon.my})`,
             `roll=${postMoveBraveRoll}`);
 
+        // C ref: monmove.c:949-953 — after movement, ranged attack check
         if (mmoved && !mon.dead) {
             const targetX2 = Number.isInteger(mon.mux) ? mon.mux : player.x;
             const targetY2 = Number.isInteger(mon.muy) ? mon.muy : player.y;
             const nearby2 = monnear(mon, targetX2, targetY2);
             if (!nearby2 && hasWeaponAttack(mon)) {
-                phase4Allowed = true;
+                // C: break from switch to reach Phase 4 (ranged)
             }
+        }
+
+        // C ref: monmove.c:970 — status != MMOVE_DONE allows attack after movement.
+        // In C, monsters can move AND attack on the same turn.
+        if (!moveDone && !mon.dead) {
+            phase4Allowed = true;
         }
     }
 
@@ -631,7 +641,11 @@ function dochug(mon, map, player, display, fov, game = null) {
         const nearby2 = inrange2 && monnear(mon, targetX2, targetY2);
         if (inrange2) {
             if (nearby2) {
-                if (!phase3Cond) {
+                // C ref: monmove.c:938-959 — MMOVE_MOVED returns 0 (skip Phase 4
+                // melee), but MMOVE_NOTHING/MMOVE_NOMOVES fall through to Phase 4.
+                // !phase3Cond: monster never entered movement (was already adjacent).
+                // !mmoved: monster entered movement but didn't actually move.
+                if (!phase3Cond || !mmoved) {
                     if (maybeMonsterWieldBeforeAttack(mon, player, display, fov)) {
                         return;
                     }

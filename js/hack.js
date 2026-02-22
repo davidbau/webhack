@@ -21,7 +21,7 @@ import { describeGroundObjectForPlayer, maybeHandleShopEntryMessage } from './sh
 import { observeObject } from './discovery.js';
 import { DIRECTION_KEYS } from './dothrow.js';
 import { dosearch0 } from './detect.js';
-import { monsterNearby } from './monutil.js';
+import { monsterNearby, monnear } from './monutil.js';
 import { ynFunction } from './input.js';
 
 // Run direction keys (shift = run)
@@ -128,6 +128,45 @@ export async function handleMovement(dir, player, map, display, game) {
         }
         game.forceFight = false;
         return { moved: false, tookTime: true };
+    }
+
+    // C ref: hack.c:2741 escape_from_sticky_mon(x, y)
+    // If hero is stuck to a monster and trying to move away, attempt escape.
+    if (player.ustuck && (nx !== player.ustuck.mx || ny !== player.ustuck.my)) {
+        const stuckMon = player.ustuck;
+        if (stuckMon.dead || !monnear(stuckMon, player.x, player.y)) {
+            // Monster died or is no longer adjacent — auto-release
+            player.ustuck = null;
+        } else {
+            // C ref: hack.c:2645 rn2(!u.ustuck->mcanmove ? 8 : 40)
+            const canMove = stuckMon.mcanmove !== false && !stuckMon.mfrozen;
+            const escapeRoll = rn2(canMove ? 40 : 8);
+            if (escapeRoll <= 2) {
+                // Escape successful (cases 0, 1, 2)
+                display.putstr_message(`You pull free from the ${monDisplayName(stuckMon)}.`);
+                player.ustuck = null;
+            } else if (escapeRoll === 3 && !canMove) {
+                // Wake/release frozen monster, then check tame
+                stuckMon.mfrozen = 1;
+                stuckMon.sleeping = false;
+                if (stuckMon.tame && !game?.flags?.conflict) {
+                    display.putstr_message(`You pull free from the ${monDisplayName(stuckMon)}.`);
+                    player.ustuck = null;
+                } else {
+                    display.putstr_message(`You cannot escape from the ${monDisplayName(stuckMon)}!`);
+                    return { moved: false, tookTime: true };
+                }
+            } else {
+                // Failed to escape
+                if (stuckMon.tame && !game?.flags?.conflict) {
+                    display.putstr_message(`You pull free from the ${monDisplayName(stuckMon)}.`);
+                    player.ustuck = null;
+                } else {
+                    display.putstr_message(`You cannot escape from the ${monDisplayName(stuckMon)}!`);
+                    return { moved: false, tookTime: true };
+                }
+            }
+        }
     }
 
     // Check for monster at target position
