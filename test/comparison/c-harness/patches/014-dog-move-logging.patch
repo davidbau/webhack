@@ -1,0 +1,31 @@
+diff --git a/src/dogmove.c b/src/dogmove.c
+--- a/src/dogmove.c
++++ b/src/dogmove.c
+@@ -1037,6 +1037,9 @@
+     appr = dog_goal(mtmp, edog, after, udist, whappr);
+     if (appr == -2)
+         return MMOVE_NOTHING;
++    event_log("dog_move_entry[%d@%d,%d goal=%d,%d appr=%d]",
++              monsndx(mtmp->data), omx, omy,
++              gg.gx, gg.gy, appr);
+
+     if (Conflict && !resist_conflict(mtmp)) {
+         if (!edog) {
+@@ -1057,6 +1060,8 @@
+     allowflags = mon_allowflags(mtmp);
+     cnt = mfndpos(mtmp, &mfp, allowflags);
+
++    event_log("dog_move_mfndpos[cnt=%d flags=0x%lx]", cnt, allowflags);
++
+     /* Normally dogs don't step on cursed items, but if they have no
+      * other choice they will.  This requires checking ahead of time
+      * to see how many uncursed item squares are around.
+@@ -1271,6 +1276,8 @@
+
+  newdogpos:
+     if (nix != omx || niy != omy) {
++        event_log("dog_move_exit[%d@%d,%d->%d,%d chi=%d do_eat=%d]",
++                  monsndx(mtmp->data), omx, omy, nix, niy, chi, do_eat);
+         boolean wasseen;
+
+         if (mfp.info[chi] & ALLOW_U) {
