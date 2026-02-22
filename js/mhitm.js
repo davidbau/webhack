@@ -87,12 +87,19 @@ function pre_mm_attack(magr, mdef) {
     if (magr.mundetected) magr.mundetected = 0;
 }
 
+// cf. do_name.c:863 x_monnam() — returns "it" when player can't spot the monster.
+// In C, canspotmon() is checked per-monster even within visible combat messages.
+function monCombatName(mon, visible, { capitalize = false, article = 'the' } = {}) {
+    if (visible === false) return capitalize ? 'It' : 'it';
+    return monNam(mon, { capitalize, article });
+}
+
 // cf. mhitm.c:75 — missmm(magr, mdef, mattk): miss message
-function missmm(magr, mdef, mattk, display, vis) {
+function missmm(magr, mdef, mattk, display, vis, ctx) {
     pre_mm_attack(magr, mdef);
     if (vis && display) {
         display.putstr_message(
-            `${monAttackName(magr)} misses ${monNam(mdef, { article: 'the' })}.`
+            `${monCombatName(magr, ctx?.agrVisible, { capitalize: true })} misses ${monCombatName(mdef, ctx?.defVisible)}.`
         );
     }
 }
@@ -328,7 +335,7 @@ function hitmm(magr, mdef, mattk, mwep, dieroll, display, vis, map, ctx) {
         default: verb = 'hits'; break;
         }
         display.putstr_message(
-            `${monAttackName(magr)} ${verb} ${monNam(mdef, { article: 'the' })}.`
+            `${monCombatName(magr, ctx?.agrVisible, { capitalize: true })} ${verb} ${monCombatName(mdef, ctx?.defVisible)}.`
         );
     }
 
@@ -415,7 +422,7 @@ function mdamagem(magr, mdef, mattk, mwep, dieroll, display, vis, map, ctx) {
         if (vis && display) {
             const killVerb = nonliving(pd) ? 'destroyed' : 'killed';
             display.putstr_message(
-                `${monNam(mdef, { article: 'the', capitalize: true })} is ${killVerb}!`
+                `${monCombatName(mdef, ctx?.defVisible, { article: 'the', capitalize: true })} is ${killVerb}!`
             );
         }
         mondead(mdef, map);
@@ -540,7 +547,7 @@ export function mattackm(magr, mdef, display, vis, map, ctx) {
                 }
                 res[i] = hitmm(magr, mdef, mattk, mwep, dieroll, display, vis, map, ctx);
             } else {
-                missmm(magr, mdef, mattk, display, vis);
+                missmm(magr, mdef, mattk, display, vis, ctx);
             }
             break;
 
@@ -586,7 +593,7 @@ export function mattackm(magr, mdef, display, vis, map, ctx) {
                     res[i] = mdamagem(magr, mdef, mattk, null, 0, display, vis, map, ctx);
                 }
             } else {
-                missmm(magr, mdef, mattk, display, vis);
+                missmm(magr, mdef, mattk, display, vis, ctx);
             }
             break;
 

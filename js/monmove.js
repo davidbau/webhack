@@ -1074,7 +1074,8 @@ function m_move_aggress(mon, map, player, nx, ny, display = null, fov = null) {
         `vis=${vis ? 1 : 0}`);
 
     // C ref: monmove.c:2100 — mattackm(mtmp, mtmp2)
-    const ctx = { player, turnCount: (player.turns || 0) + 1 };
+    const ctx = { player, turnCount: (player.turns || 0) + 1,
+                  agrVisible: attackerVisible, defVisible: defenderVisible };
     const mstatus = mattackm(mon, target, display, vis, map, ctx);
 
     // C ref: monmove.c:2104 — aggressor died
@@ -1088,7 +1089,8 @@ function m_move_aggress(mon, map, player, nx, ny, display = null, fov = null) {
             target.movement -= NORMAL_SPEED;
         else
             target.movement = 0;
-        const rstatus = mattackm(target, mon, display, vis, map, ctx);
+        const rctx = { ...ctx, agrVisible: defenderVisible, defVisible: attackerVisible };
+        const rstatus = mattackm(target, mon, display, vis, map, rctx);
         if (rstatus & M_ATTK_DEF_DIED) return true;
     }
 

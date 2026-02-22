@@ -6,7 +6,9 @@
 import { rn2, rnd, d, c_d, rne, rnz } from './rng.js';
 import { isok, ACCESSIBLE, IS_WALL, IS_DOOR, COLNO, ROWNO, A_STR } from './config.js';
 import { exercise } from './attrib_exercise.js';
-import { objectData, WAND_CLASS, WAN_FIRE, WAN_COLD, WAN_LIGHTNING,
+import { objectData, WAND_CLASS, TOOL_CLASS, WEAPON_CLASS, SCROLL_CLASS,
+         POTION_CLASS, RING_CLASS,
+         WAN_FIRE, WAN_COLD, WAN_LIGHTNING,
          WAN_SLEEP, WAN_DEATH, WAN_MAGIC_MISSILE, WAN_STRIKING,
          WAN_DIGGING, WAN_NOTHING,
          CORPSE, FOOD_CLASS, FLESH } from './objects.js';
@@ -66,15 +68,22 @@ function beamDamageDice(type) {
 // C ref: zap.c:6070 resist() — magic resistance saving throw
 // Returns true if monster resists (damage halved by caller).
 // Consumes one rn2() call.
-function resist(mon, oclass) {
+export function resist(mon, oclass) {
     const mdat = mons[mon.mndx];
     // C ref: zap.c:6081-6103 — attack level based on object class
     let alev;
-    if (oclass === WAND_CLASS) alev = 12;
-    else alev = 10; // TOOL_CLASS/WEAPON_CLASS default
+    switch (oclass) {
+    case WAND_CLASS:    alev = 12; break;
+    case TOOL_CLASS:    alev = 10; break;
+    case WEAPON_CLASS:  alev = 10; break;
+    case SCROLL_CLASS:  alev = 9; break;
+    case POTION_CLASS:  alev = 6; break;
+    case RING_CLASS:    alev = 5; break;
+    default:            alev = 10; break; // spell: u.ulevel, simplified
+    }
 
     // C ref: zap.c:6104-6109 — defense level
-    let dlev = mon.mlevel || 0;
+    let dlev = mon.m_lev ?? mon.mlevel ?? 0;
     if (dlev > 50) dlev = 50;
     else if (dlev < 1) dlev = 1;
 

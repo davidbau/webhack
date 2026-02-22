@@ -823,14 +823,17 @@ export function pet_ranged_attk(mon, map, player, display, fov = null, game = nu
     const targVisible = fov?.canSee ? fov.canSee(mtarg.mx, mtarg.my) : couldsee(map, player, mtarg.mx, mtarg.my);
     const vis = monVisible || targVisible;
     const turnCount = (player.turns || 0) + 1;
-    const ctx = { player, turnCount };
+    const agrSpot = canSpotMonsterForMap(mon, map, player, fov);
+    const defSpot = canSpotMonsterForMap(mtarg, map, player, fov);
+    const ctx = { player, turnCount, agrVisible: agrSpot, defVisible: defSpot };
     const mstatus = mattackm(mon, mtarg, display, vis, map, ctx);
     if (mstatus & M_ATTK_AGR_DIED) return 1;
     // C ref: dogmove.c:928-944 — retaliation for ranged attack
     if ((mstatus & M_ATTK_HIT) && !(mstatus & M_ATTK_DEF_DIED)
         && rn2(4)) {
         if (mtarg.mcansee !== false) {
-            const rstatus = mattackm(mtarg, mon, display, vis, map, ctx);
+            const rctx = { ...ctx, agrVisible: defSpot, defVisible: agrSpot };
+            const rstatus = mattackm(mtarg, mon, display, vis, map, rctx);
             if (rstatus & M_ATTK_DEF_DIED) return 1;
         }
     }
@@ -1210,7 +1213,9 @@ export function dog_move(mon, map, player, display, fov, after = false, game = n
                 }
 
                 // C ref: dogmove.c:1146 — mattackm(mtmp, mtmp2)
-                const ctx = { player, turnCount };
+                const monSpot = canSpotMonsterForMap(mon, map, player, fov);
+                const targetSpot = canSpotMonsterForMap(target, map, player, fov);
+                const ctx = { player, turnCount, agrVisible: monSpot, defVisible: targetSpot };
                 const mstatus = mattackm(mon, target, display, mmVisible, map, ctx);
 
                 // C ref: dogmove.c:1148-1150 — pet died
@@ -1221,7 +1226,8 @@ export function dog_move(mon, map, player, display, fov, after = false, game = n
                     && rn2(4)
                     && target.mlstmv !== turnCount
                     && monnear(target, mon.mx, mon.my)) {
-                    const rstatus = mattackm(target, mon, display, mmVisible, map, ctx);
+                    const rctx = { ...ctx, agrVisible: targetSpot, defVisible: monSpot };
+                    const rstatus = mattackm(target, mon, display, mmVisible, map, rctx);
                     if (rstatus & M_ATTK_DEF_DIED) return 0;
                 }
                 return 0; // MMOVE_DONE

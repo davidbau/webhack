@@ -460,6 +460,59 @@ export async function handleInventory(player, display, game) {
                         { fromFire: stackCanShoot }
                     );
                 }
+                if (actionKey === 'i') {
+                    // cf. invent.c doorganize() / #adjust — reassign inventory letter
+                    if (game && typeof game.renderCurrentScreen === 'function') {
+                        game.renderCurrentScreen();
+                    }
+                    const inv = player.inventory || [];
+                    const usedLetters = new Set(inv.map(o => o.invlet));
+                    // Build available-letter string for prompt
+                    const allLetters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                    let availStr = '';
+                    {
+                        let i = 0;
+                        while (i < allLetters.length) {
+                            const ch = allLetters[i];
+                            if (!usedLetters.has(ch) || ch === selected.invlet) {
+                                // Find run of consecutive available letters
+                                let j = i;
+                                while (j + 1 < allLetters.length
+                                    && (!usedLetters.has(allLetters[j + 1]) || allLetters[j + 1] === selected.invlet)) {
+                                    j++;
+                                }
+                                if (availStr) availStr += '';
+                                if (j - i >= 2) {
+                                    availStr += `${allLetters[i]}-${allLetters[j]}`;
+                                } else {
+                                    for (let k = i; k <= j; k++) availStr += allLetters[k];
+                                }
+                                i = j + 1;
+                            } else {
+                                i++;
+                            }
+                        }
+                    }
+                    const adjustPrompt = `Adjust letter to what [${availStr}] (? see used letters)?`;
+                    display.putstr_message(adjustPrompt);
+                    const adjCh = await nhgetch();
+                    const adjChar = String.fromCharCode(adjCh);
+                    if (adjCh === 27 || adjCh === 10 || adjCh === 13 || adjCh === 32) {
+                        clearTopline();
+                        display.putstr_message('Never mind.');
+                        return { moved: false, tookTime: false };
+                    }
+                    if (/^[a-zA-Z]$/.test(adjChar)) {
+                        // Swap if another item has that letter
+                        const other = inv.find(o => o !== selected && o.invlet === adjChar);
+                        if (other) {
+                            other.invlet = selected.invlet;
+                        }
+                        selected.invlet = adjChar;
+                    }
+                    clearTopline();
+                    return { moved: false, tookTime: false };
+                }
                 if (actionKey === 'c') {
                     if (game && typeof game.renderCurrentScreen === 'function') {
                         game.renderCurrentScreen();

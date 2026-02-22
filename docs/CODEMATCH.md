@@ -85,7 +85,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[a]` | makemon.c | makemon.js | Monster creation. Core functions aligned; clone_mon/propagate TODO |
 | `[~]` | mcastu.c | mcastu.js | Monster spellcasting. castmu/buzzmu and all 11 spell functions TODO (runtime gameplay) |
 | `[N/A]` | mdlib.c | — | Metadata library utilities |
-| `[a]` | mhitm.c | mhitm.js | Monster-vs-monster combat. mattackm/hitmm/mdamagem/passivemm/fightm implemented (m-vs-m path); RNG parity for pets in dogmove.js; 5 functions TODO |
+| `[a]` | mhitm.c | mhitm.js | Monster-vs-monster combat. mattackm/hitmm/mdamagem/passivemm/fightm implemented (m-vs-m path); RNG parity for pets in dogmove.js; monCombatName per-monster visibility pronouns; 5 functions TODO |
 | `[a]` | mhitu.c | mhitu.js | Monster-vs-hero combat. monsterAttackPlayer restructured to match hitmu() flow; hitmsg, mhitm_knockback, mhitu_adtyping dispatcher, ~30 AD_* handlers (phys/fire/cold/elec/acid/stck/plys/slee/conf/stun/blnd/drst/drli/dren/drin/slow/ston etc.) implemented with real effects; gazemu/gulpmu/expels/summonmu/doseduce TODO |
 | `[~]` | minion.c | minion.js | Minion summoning: msummon, summon_minion, demon_talk, bribe, guardian angels. All 14 functions TODO (runtime gameplay) |
 | `[~]` | mklev.c | mklev.js | Level generation. makelevel/makerooms/makecorridors/mineralize PARTIAL in dungeon.js; topologize/mkinvokearea/place_branch TODO |
@@ -118,7 +118,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[~]` | priest.c | priest.js | Priest behavior, temple management, shrine, minion roamers. move_special() PARTIAL in monmove.js:679; all other functions TODO |
 | `[~]` | quest.c | quest.js | Quest mechanics. All 22 functions are runtime gameplay (NPC dialog, eligibility, expulsion); none in JS |
 | `[~]` | questpgr.c | questpgr.js | Quest text pager. com_pager_core N/A (Lua interpreter); is_quest_artifact PARTIAL in objdata.js:54; all other functions TODO |
-| `[a]` | read.c | read.js | Reading scrolls/spellbooks. handleRead (doread) with spellbook study; ~50 functions TODO |
+| `[a]` | read.c | read.js | Reading scrolls/spellbooks. handleRead (doread) with spellbook study + seffects dispatcher + all 22 scroll effects implemented; some effects approximate (teleportation, mapping, detection need infrastructure) |
 | `[x]` | rect.c | rect.js | Rectangle allocation for room placement |
 | `[~]` | region.c | region.js | Region effects (gas clouds, etc.). No runtime regions in JS; all functions TODO |
 | `[N/A]` | report.c | — | Bug reporting, panic trace |
@@ -163,7 +163,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[~]` | worm.c | worm.js | Long worm mechanics. save/rest_worm are N/A (no save file). All 24 other functions are TODO stubs |
 | `[~]` | worn.c | `worn.js` | Equipment slot management |
 | `[a]` | write.c | write.js | Writing on scrolls. cost, write_ok, new_book_description implemented; dowrite TODO |
-| `[a]` | zap.c | zap.js | Wand beam effects. zhitm, zap_hit, resist, burnarmor, xkilled, corpse_chance, dobuzz implemented. dozap/weffects/bhitm/revive/polyuse and many others TODO |
+| `[a]` | zap.c | zap.js | Wand beam effects. zhitm, zap_hit, resist (faithful alev/dlev), burnarmor, xkilled, corpse_chance, dobuzz implemented. dozap/weffects/bhitm/revive/polyuse and many others TODO |
 
 ### Summary
 
@@ -2131,8 +2131,8 @@ This section is generated from source symbol tables and includes function rows f
 | 3057 | `display_pickinv` | - | Missing |
 | 3467 | `display_used_invlets` | - | Missing |
 | 4319 | `dolook` | - | Missing |
-| 4981 | `doorganize` | - | Missing |
-| 5068 | `doorganize_core` | - | Missing |
+| 4981 | `doorganize` | invent.js:463 | Implemented (inline in item action menu 'i' handler; prompt + letter swap) |
+| 5068 | `doorganize_core` | invent.js:463 | Implemented (inline; see doorganize) |
 | 2814 | `doperminv` | - | Missing |
 | 4679 | `dopramulet` | - | Missing |
 | 4601 | `doprarm` | - | Missing |
@@ -4055,7 +4055,7 @@ No function symbols parsed from isaac64.c.
 | 1079 | `can_center_cloud` | - | Missing |
 | 295 | `candy_wrapper_text` | - | Missing |
 | 3059 | `cant_revive` | - | Missing |
-| 79 | `cap_spe` | - | Missing |
+| 79 | `cap_spe` | read.js:275 | Implemented |
 | 688 | `charge_ok` | - | Missing |
 | 3319 | `create_particular` | - | Missing |
 | 3199 | `create_particular_creation` | - | Missing |
@@ -4064,15 +4064,15 @@ No function symbols parsed from isaac64.c.
 | 2585 | `do_class_genocide` | - | Missing |
 | 2773 | `do_genocide` | - | Missing |
 | 3029 | `do_stinking_cloud` | - | Missing |
-| 329 | `doread` | - | Missing |
+| 329 | `doread` | read.js:73 | Implemented (handleRead: inventory selection + spellbook study + seffects dispatch) |
 | 2288 | `drop_boulder_on_monster` | - | Missing |
 | 2241 | `drop_boulder_on_player` | - | Missing |
 | 88 | `erode_obj_text` | - | Missing |
-| 1019 | `forget` | - | Missing |
+| 1019 | `forget` | read.js:936 | Partial (inline in seffect_amnesia; forgets spells only, no map forget) |
 | 223 | `hawaiian_design` | - | Missing |
 | 189 | `hawaiian_motif` | - | Missing |
-| 69 | `learnscroll` | - | Missing |
-| 57 | `learnscrolltyp` | - | Missing |
+| 69 | `learnscroll` | - | Missing (learnscrolltyp used directly) |
+| 57 | `learnscrolltyp` | read.js:270 | Implemented (wraps discoverObject) |
 | 2438 | `litroom` | - | Missing |
 | 1043 | `maybe_tame` | - | Missing |
 | 666 | `p_glow1` | - | Missing |
@@ -4081,30 +4081,30 @@ No function symbols parsed from isaac64.c.
 | 2966 | `punish` | - | Missing |
 | 314 | `read_ok` | - | Missing |
 | 728 | `recharge` | - | Missing |
-| 1777 | `seffect_amnesia` | - | Missing |
-| 1952 | `seffect_blank_paper` | - | Missing |
-| 1735 | `seffect_charging` | - | Missing |
-| 1348 | `seffect_confuse_monster` | - | Missing |
-| 1557 | `seffect_create_monster` | - | Missing |
-| 1285 | `seffect_destroy_armor` | - | Missing |
-| 1866 | `seffect_earth` | - | Missing |
-| 1114 | `seffect_enchant_armor` | - | Missing |
-| 1576 | `seffect_enchant_weapon` | - | Missing |
-| 1797 | `seffect_fire` | - | Missing |
-| 1993 | `seffect_food_detection` | - | Missing |
-| 1669 | `seffect_genocide` | - | Missing |
-| 1982 | `seffect_gold_detection` | - | Missing |
-| 2002 | `seffect_identify` | - | Missing |
-| 1688 | `seffect_light` | - | Missing |
-| 2049 | `seffect_magic_mapping` | - | Missing |
-| 2104 | `seffect_mail` | - | Missing |
-| 1923 | `seffect_punishment` | - | Missing |
-| 1438 | `seffect_remove_curse` | - | Missing |
-| 1403 | `seffect_scare_monster` | - | Missing |
-| 1938 | `seffect_stinking_cloud` | - | Missing |
-| 1626 | `seffect_taming` | - | Missing |
-| 1962 | `seffect_teleportation` | - | Missing |
-| 2141 | `seffects` | - | Missing |
+| 1777 | `seffect_amnesia` | read.js:936 | Implemented (forgets spells; rn2 message; exercise(A_WIS,false)) |
+| 1952 | `seffect_blank_paper` | read.js:317 | Implemented |
+| 1735 | `seffect_charging` | read.js:388 | Partial (confused path faithful; non-confused: no getobj/recharge yet) |
+| 1348 | `seffect_confuse_monster` | read.js:469 | Implemented (faithful RNG: rnd(100), rnd(2), rn1(8,2); umconf tracking) |
+| 1557 | `seffect_create_monster` | read.js:839 | Implemented (faithful RNG: rn2(73)+rnd(4); uses makemon; confused=acid blob) |
+| 1285 | `seffect_destroy_armor` | read.js:789 | Implemented (confused erodeproof; normal destroy_arm; cursed degrade+stun) |
+| 1866 | `seffect_earth` | read.js:1043 | Approximate (messages match; no boulder drop_boulder_on_monster/player yet) |
+| 1114 | `seffect_enchant_armor` | read.js:686 | Implemented (faithful: evaporation check, enchant calc, vibration warning) |
+| 1576 | `seffect_enchant_weapon` | read.js:606 | Implemented (faithful: confused erodeproof; chwepon RNG: rn2(spe), rnd(3-spe/3)) |
+| 1797 | `seffect_fire` | read.js:1007 | Partial (faithful RNG: rn1(3,3)+bcsign; no explode() area effect yet) |
+| 1993 | `seffect_food_detection` | read.js:901 | Stub (message only; needs food_detect infrastructure) |
+| 1669 | `seffect_genocide` | read.js:993 | Stub (messages only; needs do_genocide/do_class_genocide prompts) |
+| 1982 | `seffect_gold_detection` | read.js:884 | Stub (message only; needs gold_detect/trap_detect infrastructure) |
+| 2002 | `seffect_identify` | read.js:326 | Implemented (faithful RNG: rn2(5) blessed check + cval; identify_pack inline) |
+| 1688 | `seffect_light` | read.js:425 | Partial (confused: faithful rn1(2,3)+makemon lights; non-confused: no litroom yet) |
+| 2049 | `seffect_magic_mapping` | read.js:909 | Approximate (messages match; no do_mapping() level reveal yet) |
+| 2104 | `seffect_mail` | - | Missing (mail not relevant to gameplay) |
+| 1923 | `seffect_punishment` | read.js:1063 | Partial (confused/blessed "guilty" faithful; no punish() ball-and-chain yet) |
+| 1438 | `seffect_remove_curse` | read.js:556 | Implemented (faithful: inventory iteration, blessorcurse(2) for confused, uncurse worn) |
+| 1403 | `seffect_scare_monster` | read.js:515 | Implemented (faithful: resist() per monster, monflee, cansee check, ct counting) |
+| 1938 | `seffect_stinking_cloud` | read.js:1078 | Stub (message only; needs do_stinking_cloud positioning) |
+| 1626 | `seffect_taming` | read.js:960 | Approximate (simplified: no resist/maybe_tame, just sets tame flag in radius) |
+| 1962 | `seffect_teleportation` | read.js:867 | Stub (messages only; needs scrolltele/level_tele infrastructure) |
+| 2141 | `seffects` | read.js:1097 | Implemented (full dispatch to all 22 scroll types; exercise(A_WIS) for magic scrolls) |
 | 2418 | `set_lit` | - | Missing |
 | 651 | `stripspe` | - | Missing |
 | 99 | `tshirt_text` | - | Missing |
@@ -5869,7 +5869,7 @@ No function symbols parsed from isaac64.c.
 | 624 | `probe_monster` | - | Missing |
 | 610 | `probe_objchain` | - | Missing |
 | 576 | `release_hold` | - | Missing |
-| 6070 | `resist` | - | Missing |
+| 6070 | `resist` | zap.js:71 | Implemented (faithful: alev per oclass, dlev capped, rn2(100+alev-dlev) < mr) |
 | 882 | `revive` | - | Missing |
 | 1141 | `revive_egg` | - | Missing |
 | 3567 | `skiprange` | - | Missing |
