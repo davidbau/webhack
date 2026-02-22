@@ -7,6 +7,12 @@ description: JavaScript port of NetHack 3.7
 readme_index:
   enabled: false
 
+optional_front_matter:
+  ignore_files:
+    - CONTRIBUTING.md
+    - CODE_OF_CONDUCT.md
+    - CHANGELOG.md
+
 plugins:
   - jekyll-optional-front-matter   # process .md files without requiring front matter
   - jekyll-relative-links          # convert relative .md links to site page URLs
