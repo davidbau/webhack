@@ -94,7 +94,7 @@ throughout. See the full architecture and design documents:
 Shops, special levels, altars/prayer, spellcasting, wand/potion/scroll
 effects, polymorph, full inventory management (wear/wield/quaff/read/zap),
 and many other subsystems. NetHack 3.7 has ~420,000 lines of C, headers, and Lua across ~8,600 functions —
-this port covers the core loop and early gameplay with 83,000+ lines of JavaScript.
+so far, this port covers the core loop and early gameplay with 83,000+ lines of JavaScript.
 
 The Hive is aware of this.
 
