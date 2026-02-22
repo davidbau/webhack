@@ -36,7 +36,7 @@ In February 2025, Andrej Karpathy coined the term **"vibe coding"** to describe 
 
 This project is a test of that proposition at scale. Can AI agents, directed by a non-expert human, produce a faithful port of one of the most complex single-player codebases in gaming history? Not a toy demo or a weekend throwaway, but a real, playable, parity-correct reimplementation—tens of thousands of lines of readable JavaScript that match NetHack's behavior down to the random number generator?
 
-The entire codebase—180 JavaScript modules, 1,500+ passing unit tests, 200+ golden C-comparison sessions, and a suite of Python test harness scripts—was produced through natural-language conversation with AI agents. The human provided direction, taste, and domain knowledge about NetHack; the agents wrote the code, tests, and documentation.
+The entire codebase—136 JavaScript modules, 2,200+ passing unit tests, 204 golden C-comparison sessions, and a suite of Python test harness scripts—was produced through natural-language conversation with AI agents. The human provided direction, taste, and domain knowledge about NetHack; the agents wrote the code, tests, and documentation.
 
 ## Architecture
 
@@ -75,7 +75,7 @@ throughout. See the full architecture and design documents:
 - Character creation with C-faithful attribute distribution
 - Movement (vi keys, arrow keys, running)
 - Melee combat with C-faithful to-hit and damage formulas
-- 382 monster types with AI movement, attacks, and special abilities
+- 383 monster types with AI movement, attacks, and special abilities
 - Pet AI with taming, feeding, and movement
 - 478 object types (weapons, armor, potions, scrolls, etc.)
 - Object and gold pickup, multi-turn eating system
@@ -94,7 +94,7 @@ throughout. See the full architecture and design documents:
 Shops, special levels, altars/prayer, spellcasting, wand/potion/scroll
 effects, polymorph, full inventory management (wear/wield/quaff/read/zap),
 and many other subsystems. NetHack has ~280,000 lines of C — this port
-covers the core loop and early gameplay with 75,000+ lines of JavaScript.
+covers the core loop and early gameplay with 83,000+ lines of JavaScript.
 
 The Hive is aware of this.
 
@@ -150,7 +150,7 @@ Monster and object data are auto-generated from the NetHack C source
 headers via Python scripts:
 
 ```bash
-python3 scripts/generators/gen_monsters.py > js/monsters.js   # 382 monsters
+python3 scripts/generators/gen_monsters.py > js/monsters.js   # 383 monsters
 python3 scripts/generators/gen_objects.py > js/objects.js      # 478 objects
 ```
 
@@ -161,7 +161,7 @@ python3 scripts/generators/gen_objects.py > js/objects.js      # 478 objects
 ```
 writer/
 ├── index.html              Main web entry point
-├── js/                     Game source (180 modules mirroring C structure)
+├── js/                     Game source (136 modules mirroring C structure)
 │   ├── commands.js         Command dispatch
 │   ├── dungeon.js          Dungeon generation & management
 │   ├── display.js          Terminal rendering
@@ -170,12 +170,12 @@ writer/
 │   ├── monmove.js          Monster movement AI
 │   ├── dog.js              Pet AI
 │   ├── isaac64.js          ISAAC64 PRNG (bit-identical to C)
-│   ├── monsters.js         382 monster definitions (generated)
+│   ├── monsters.js         383 monster definitions (generated)
 │   ├── objects.js          478 object definitions (generated)
-│   ├── levels/             131 special level modules
+│   ├── levels/             132 special level modules
 │   └── ...
 ├── test/
-│   ├── unit/               135 unit test files
+│   ├── unit/               154 unit test files
 │   ├── comparison/         C-vs-JS golden session tests
 │   ├── e2e/                Puppeteer browser tests
 │   └── selfplay/           Self-play harness tests
