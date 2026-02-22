@@ -93,7 +93,7 @@ don't follow the same 1:1 C→JS mapping pattern.
 | `[~]` | mkmaze.c | mkmaze.js | Maze generation. wallification/create_maze/makemaz PARTIAL in dungeon.js; water plane (movebubbles etc.) TODO; save/restore N/A |
 | `[~]` | mkobj.c | mkobj.js | Object creation |
 | `[~]` | mkroom.c | mkroom.js | Room generation. somex/somey/inside_room/somexy/somexyspace ALIGNED in dungeon.js; mkshop/mktemple PARTIAL; fill_zoo ALIGNED; save/restore N/A |
-| `[a]` | mon.c | mon.js | Monster lifecycle: movemon, mfndpos, mm_aggression, corpse_chance, passivemm, hider premove, zombie_maker, zombie_form, undead_to_corpse, genus, pm_to_cham |
+| `[a]` | mon.c | mon.js | Monster lifecycle: movemon, mfndpos (flag-based), mm_aggression, corpse_chance, passivemm, hider premove, zombie_maker, zombie_form, undead_to_corpse, genus, pm_to_cham |
 | `[a]` | mondata.c | mondata.js | Monster data queries: predicates, mon_knows_traps, passes_bars, dmgtype, hates_silver, sticks, etc. |
 | `[a]` | monmove.c | monmove.js | Monster movement: dochug, m_move, m_move_aggress, set_apparxy, m_search_items |
 | `[~]` | monst.c | monst.js | Monster data tables. mons[] array PARTIAL in monsters.js (JS-native structure); monst_globals_init implicit in module load |
@@ -2810,19 +2810,19 @@ No function symbols parsed from isaac64.c.
 | 1638 | `meatcorpse` | - | Missing |
 | 1445 | `meatmetal` | - | Missing |
 | 1515 | `meatobj` | - | Missing |
-| 2122 | `mfndpos` | - | Missing |
+| 2122 | `mfndpos` | mon.js | Flag-based port. Missing: ALLOW_DIG, poison gas regions, worm segments |
 | 5249 | `mgender_from_permonst` | - | Missing |
 | 3838 | `migrate_mon` | - | Missing |
 | 5769 | `mimic_hit_msg` | - | Missing |
 | 929 | `minliquid` | - | Missing |
 | 943 | `minliquid_core` | - | Missing |
 | 2823 | `mlifesaver` | - | Missing |
-| 2372 | `mm_2way_aggression` | - | Missing |
-| 2410 | `mm_aggression` | - | Missing |
-| 2433 | `mm_displacement` | - | Missing |
+| 2372 | `mm_2way_aggression` | mon.js | Ported (zombie-maker aggression) |
+| 2410 | `mm_aggression` | mon.js | Ported (purple worm + zombie-maker) |
+| 2433 | `mm_displacement` | mon.js | Ported (displacer beast logic) |
 | 4026 | `mnearto` | - | Missing |
 | 3950 | `mnexto` | - | Missing |
-| 2046 | `mon_allowflags` | - | Missing |
+| 2046 | `mon_allowflags` | monmove.js | Ported. Missing: ALLOW_DIG, Conflict ALLOW_U, is_vampshifter NOGARLIC |
 | 4824 | `mon_animal_list` | - | Missing |
 | 1708 | `mon_give_prop` | - | Missing |
 | 1760 | `mon_givit` | - | Missing |

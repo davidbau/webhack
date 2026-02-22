@@ -1,5 +1,5 @@
 // mon.js -- Monster lifecycle and position management
-// C ref: mon.c — movemon(), mfndpos(), corpse_chance(), passivemm(),
+// C ref: mon.c — movemon(), mfndpos(), mon_allowflags(), corpse_chance(), passivemm(),
 // restrap/hider premove, mm_aggression, zombie_maker
 //
 // INCOMPLETE / MISSING vs C mon.c:
@@ -9,7 +9,12 @@
 // - No mpickstuff/mpickgold (full item pickup logic — stub in monmove.js)
 // - No minliquid (monsters falling in pools/lava)
 // - mfndpos: no ALLOW_DIG for tunneling monsters with picks
-// - mfndpos: no ALLOW_SANCT for temple sanctuary
+// - mfndpos: ALLOW_SANCT flag set but in_your_sanctuary gate not checked
+// - mfndpos: no poison gas region avoidance (NhRegion not ported)
+// - mfndpos: no worm segment crossing (long worm not ported)
+// - mon_allowflags: ALLOW_DIG not set (needs monster wielded pick tracking)
+// - mon_allowflags: Conflict ALLOW_U not implemented
+// - mon_allowflags: is_vampshifter NOGARLIC not ported
 // - passivemm: only AD_ACID/AD_ENCH/generic modeled; many passive types missing
 // - handleHiderPremove: no mimic furniture/object appearance selection
 
@@ -17,14 +22,37 @@ import { COLNO, ROWNO, IS_DOOR, IS_POOL, IS_LAVA, IS_OBSTRUCTED, ACCESSIBLE,
          POOL, ROOM, WATER, LAVAWALL, IRONBARS,
          D_CLOSED, D_LOCKED, D_BROKEN,
          SHOPBASE, ROOMOFFSET, NORMAL_SPEED, isok } from './config.js';
+
+// ========================================================================
+// mfndpos flag constants — C ref: mfndpos.h
+// ========================================================================
+export const ALLOW_MDISP  = 0x00001000;
+export const ALLOW_TRAPS  = 0x00020000;
+export const ALLOW_U      = 0x00040000;
+export const ALLOW_M      = 0x00080000;
+export const ALLOW_TM     = 0x00100000;
+export const ALLOW_ALL    = ALLOW_U | ALLOW_M | ALLOW_TM | ALLOW_TRAPS;
+export const NOTONL       = 0x00200000;
+export const OPENDOOR     = 0x00400000;
+export const UNLOCKDOOR   = 0x00800000;
+export const BUSTDOOR     = 0x01000000;
+export const ALLOW_ROCK   = 0x02000000;
+export const ALLOW_WALL   = 0x04000000;
+export const ALLOW_DIG    = 0x08000000;
+export const ALLOW_BARS   = 0x10000000;
+export const ALLOW_SANCT  = 0x20000000;
+export const ALLOW_SSM    = 0x40000000;
+export const NOGARLIC     = 0x80000000 | 0; // force signed 32-bit
 import { rn2, rnd } from './rng.js';
-import { BOULDER, SCR_SCARE_MONSTER } from './objects.js';
+import { BOULDER, SCR_SCARE_MONSTER, CLOVE_OF_GARLIC } from './objects.js';
 import { couldsee, m_cansee } from './vision.js';
 import { is_hider, hides_under, is_mindless, is_displacer, perceives,
          is_human, is_elf, is_dwarf, is_gnome, is_orc, is_shapeshifter,
-         mon_knows_traps, passes_bars,
+         mon_knows_traps, passes_bars, nohands, is_clinger,
+         is_giant, is_undead, is_unicorn, is_minion, throws_rocks,
          is_golem, is_rider, is_mplayer } from './mondata.js';
 import { PM_GRID_BUG, PM_FIRE_ELEMENTAL, PM_SALAMANDER,
+         PM_FLOATING_EYE, PM_MINOTAUR,
          PM_PURPLE_WORM, PM_BABY_PURPLE_WORM, PM_SHRIEKER,
          PM_GHOUL, PM_SKELETON,
          PM_DEATH, PM_PESTILENCE, PM_FAMINE,
@@ -50,7 +78,7 @@ import { PM_GRID_BUG, PM_FIRE_ELEMENTAL, PM_SALAMANDER,
          M1_SLITHY, M1_UNSOLID,
          MZ_TINY, MZ_MEDIUM, MZ_LARGE,
          MR_FIRE, MR_SLEEP, G_FREQ, G_NOCORPSE, G_UNIQ,
-         S_EYE, S_LIGHT, S_EEL, S_PIERCER, S_MIMIC,
+         S_EYE, S_LIGHT, S_EEL, S_PIERCER, S_MIMIC, S_UNICORN,
          S_ZOMBIE, S_LICH, S_KOBOLD, S_ORC, S_GIANT, S_HUMANOID, S_GNOME, S_KOP,
          S_DOG, S_NYMPH, S_LEPRECHAUN, S_HUMAN } from './monsters.js';
 import { PIT, SPIKED_PIT, HOLE } from './symbols.js';
@@ -249,36 +277,83 @@ function cant_squeeze_thru_mon(mon) {
     return load > 600;
 }
 
-export function mfndpos(mon, map, player, opts = {}) {
-    const isRider = (m) => m?.mndx === PM_DEATH || m?.mndx === PM_PESTILENCE || m?.mndx === PM_FAMINE;
+// C ref: monmove.c monlineu() — true if (nx,ny) lies on a line from mon through hero.
+// Used for NOTONL: shopkeepers/priests avoid standing on a line from hero.
+function monlineu(mon, player, nx, ny) {
+    const mux = Number.isInteger(mon.mux) ? mon.mux : player.x;
+    const muy = Number.isInteger(mon.muy) ? mon.muy : player.y;
+    return nx === mux || ny === muy
+        || (ny - muy) === (nx - mux)
+        || (ny - muy) === -(nx - mux);
+}
+
+// C ref: mon.c mm_displacement() — can attacker displace defender?
+function mm_displacement(mon, monAtPos) {
     const monLevel = (m) => Number.isInteger(m?.m_lev) ? m.m_lev
         : (Number.isInteger(m?.mlevel) ? m.mlevel
             : (Number.isInteger(m?.type?.level) ? m.type.level : 0));
-    const allowDoorOpen = !!opts.allowDoorOpen;
-    const allowDoorUnlock = !!opts.allowDoorUnlock;
+    if (!is_displacer(mon.type || {})) return false;
+    const defenderIsDisplacer = is_displacer(monAtPos.type || {});
+    const attackerHigherLevel = monLevel(mon) > monLevel(monAtPos);
+    const defenderIsGridBugDiag = (monAtPos.mndx === PM_GRID_BUG)
+        && (mon.mx !== monAtPos.mx && mon.my !== monAtPos.my);
+    const defenderMultiworm = !!monAtPos.wormno;
+    const attackerSize = Number.isInteger(mon.type?.size) ? mon.type.size : 0;
+    const defenderSize = Number.isInteger(monAtPos.type?.size) ? monAtPos.type.size : 0;
+    const sizeOk = is_rider(mon.type || {}) || attackerSize >= defenderSize;
+    return (!defenderIsDisplacer || attackerHigherLevel)
+        && !defenderIsGridBugDiag
+        && !monAtPos.mtrapped
+        && !defenderMultiworm
+        && sizeOk;
+}
+
+export function mfndpos(mon, map, player, flag) {
+    // C ref: mon.c:2122-2366 mfndpos()
+    // If flag is not provided (legacy callers), default to 0.
+    if (typeof flag !== 'number') flag = 0;
+
     const omx = mon.mx, omy = mon.my;
-    const nodiag = (mon.mndx === PM_GRID_BUG);
-    const mflags1 = mon.type?.flags1 || 0;
     const mdat = mon.type || {};
+    const mflags1 = mdat.flags1 || 0;
     const mlet = mdat.symbol ?? -1;
+    const nodiag = (mon.mndx === PM_GRID_BUG);
+
+    // C ref: mon.c:2142-2145 — confused: grant all, remove notonl
+    if (mon.confused) {
+        flag |= ALLOW_ALL;
+        flag &= ~NOTONL;
+    }
+    // C ref: mon.c:2146-2147 — blind: add ALLOW_SSM
+    if (mon.blind || mon.mcansee === false) {
+        flag |= ALLOW_SSM;
+    }
+
     const isFlyer = !!(mflags1 & M1_FLY);
     const isFloater = (mlet === S_EYE || mlet === S_LIGHT);
-    const m_in_air = isFlyer || isFloater;
+    const isClinger = is_clinger(mdat);
+    const hasCeiling = !(map?.flags?.is_airlevel || map?.flags?.is_waterlevel);
+    // C ref: mon.c:2152 — m_in_air includes clingers on ceilings when undetected
+    const m_in_air = isFlyer || isFloater || (isClinger && hasCeiling && mon.mundetected);
     const wantpool = (mlet === S_EEL);
     const isSwimmer = !!(mflags1 & (M1_SWIM | M1_AMPHIBIOUS));
     const poolok = (m_in_air || (isSwimmer && !wantpool));
     const likesLava = (mon.mndx === PM_FIRE_ELEMENTAL || mon.mndx === PM_SALAMANDER);
-    const lavaok = (m_in_air && !isFloater) || likesLava;
-    const canPassWall = !!(mflags1 & M1_WALLWALK);
-    const thrudoor = canPassWall;
-    const allowBars = passes_bars(mdat);
+    // C ref: mon.c:2160 — lavaok: flyers (not floaters) or lava-likers; exclude floating eye
+    const lavaok = ((m_in_air && !isFloater) || likesLava) && mon.mndx !== PM_FLOATING_EYE;
+    // C ref: mon.c:2162 — thrudoor = passes_walls || BUSTDOOR
+    const thrudoor = !!((flag & (ALLOW_WALL | BUSTDOOR)) !== 0);
     const isAmorphous = !!(mflags1 & M1_AMORPHOUS);
-    const allowM = !!mon.tame;
-    const allowSSM = !!(mon.tame || mon.peaceful || mon.isshk || mon.ispriest);
+    // C ref: mon.c:2164 — can_fog(mon): amorphous or unsolid fog form
+    // Simplified: amorphous monsters can pass through doors
+    const canFog = isAmorphous;
+
     const positions = [];
     const maxx = Math.min(omx + 1, COLNO - 1);
     const maxy = Math.min(omy + 1, ROWNO - 1);
 
+    let nexttry = 0; // C ref: eel retry loop
+    for (;;) {
     for (let nx = Math.max(1, omx - 1); nx <= maxx; nx++) {
         for (let ny = Math.max(0, omy - 1); ny <= maxy; ny++) {
             if (nx === omx && ny === omy) continue;
@@ -287,80 +362,128 @@ export function mfndpos(mon, map, player, opts = {}) {
             const loc = map.at(nx, ny);
             if (!loc) continue;
             const ntyp = loc.typ;
+            let posInfo = 0;
 
-            if (ntyp < POOL) {
-                if (!canPassWall) continue;
+            // C ref: mon.c:2192-2197 — IS_OBSTRUCTED: need ALLOW_WALL or ALLOW_ROCK (ALLOW_DIG deferred)
+            if (IS_OBSTRUCTED(ntyp)) {
+                if (!(flag & ALLOW_WALL) && !(flag & ALLOW_ROCK)) continue;
             }
             if (ntyp === WATER && !isSwimmer) continue;
-            if (ntyp === IRONBARS && !allowBars) continue;
-            if (IS_DOOR(ntyp)
-                && !(isAmorphous && !mon.engulfing)
-                && (((loc.flags & D_CLOSED) && !allowDoorOpen)
-                    || ((loc.flags & D_LOCKED) && !allowDoorUnlock))
-                && !thrudoor) continue;
-            if (ntyp === LAVAWALL && !lavaok) continue;
-            if (!poolok && IS_POOL(ntyp) !== wantpool) continue;
-            if (!lavaok && IS_LAVA(ntyp)) continue;
+            // C ref: mon.c:2203-2206 — IRONBARS: check ALLOW_BARS flag
+            if (ntyp === IRONBARS && !(flag & ALLOW_BARS)) continue;
 
+            // C ref: mon.c:2208-2217 — door handling
+            if (IS_DOOR(ntyp)) {
+                const canPassDoor = (isAmorphous && !mon.engulfing) || canFog || thrudoor;
+                if (!canPassDoor) {
+                    if ((loc.flags & D_CLOSED) && !(flag & OPENDOOR)) continue;
+                    if ((loc.flags & D_LOCKED) && !(flag & UNLOCKDOOR)) continue;
+                }
+            }
+
+            // C ref: mon.c:2218-2221 — diagonal door checks
             if (nx !== omx && ny !== omy) {
                 const monLoc = map.at(omx, omy);
                 if ((IS_DOOR(ntyp) && (loc.flags & ~D_BROKEN))
                     || (monLoc && IS_DOOR(monLoc.typ) && (monLoc.flags & ~D_BROKEN)))
                     continue;
+                // C ref: rogue level diagonal check — no diagonal movement
+                const isRogueLevel = !!(map?.flags?.is_rogue || map?.flags?.roguelike || map?.flags?.is_rogue_lev);
+                if (isRogueLevel) continue;
             }
 
+            // C ref: mon.c:2236-2237 — LAVAWALL needs lavaok AND ALLOW_WALL
+            if (ntyp === LAVAWALL && (!lavaok || !(flag & ALLOW_WALL))) continue;
+
+            // C ref: mon.c:2240-2265 — pool/lava conditional
+            if ((IS_POOL(ntyp) || IS_LAVA(ntyp))) {
+                if (IS_POOL(ntyp) && !poolok && !(wantpool && IS_POOL(ntyp))) {
+                    // On nexttry==1, skip wantpool check for eels
+                    if (nexttry === 0 || !wantpool) continue;
+                }
+                if (!poolok && IS_POOL(ntyp) !== wantpool) {
+                    if (nexttry === 0) continue;
+                    // On nexttry, eels accept non-pool too
+                }
+                if (!lavaok && IS_LAVA(ntyp)) continue;
+            }
+
+            // === Inside the "acceptable terrain" block ===
+
+            // C ref: mon.c:2267-2269 — onscary + ALLOW_SSM check
+            if (onscary(map, nx, ny) && !(flag & ALLOW_SSM)) continue;
+
+            // C ref: mon.c:2271-2275 — hero position: ALLOW_U check
+            if (nx === player.x && ny === player.y) {
+                if (!(flag & ALLOW_U)) continue;
+                posInfo |= ALLOW_U;
+            }
+
+            // C ref: mon.c:2277-2304 — monster at position
             const monAtPos = map.monsterAt(nx, ny);
-            let allowMAttack = false;
-            let allowMDisp = false;
             if (monAtPos && !monAtPos.dead) {
-                if (allowM) {
+                let allowMAttack = false;
+                if (flag & ALLOW_M) {
+                    // Tame: attack non-tame non-peaceful
                     allowMAttack = !monAtPos.tame && !monAtPos.peaceful;
                 } else {
+                    // Hostile/peaceful: check mm_aggression
                     const mmflag = mm_aggression(mon, monAtPos, map);
-                    allowMAttack = mmflag.allowM && (!monAtPos.tame || mmflag.allowTM);
-                }
-                if (!allowMAttack && is_displacer(mon.type || {})) {
-                    const defenderIsDisplacer = is_displacer(monAtPos.type || {});
-                    const attackerHigherLevel = monLevel(mon) > monLevel(monAtPos);
-                    const defenderIsGridBugDiag = (monAtPos.mndx === PM_GRID_BUG)
-                        && (mon.mx !== monAtPos.mx && mon.my !== monAtPos.my);
-                    const defenderMultiworm = !!monAtPos.wormno;
-                    const attackerSize = Number.isInteger(mon.type?.size) ? mon.type.size : 0;
-                    const defenderSize = Number.isInteger(monAtPos.type?.size) ? monAtPos.type.size : 0;
-                    const sizeOk = isRider(mon) || attackerSize >= defenderSize;
-                    allowMDisp = (!defenderIsDisplacer || attackerHigherLevel)
-                        && !defenderIsGridBugDiag
-                        && !monAtPos.mtrapped
-                        && !defenderMultiworm
-                        && sizeOk;
-                }
-            }
-            if (monAtPos && !allowMAttack && !allowMDisp) continue;
-
-            if (nx === player.x && ny === player.y) continue;
-            if (onscary(map, nx, ny) && !allowSSM) continue;
-
-            let hasBoulder = false;
-            for (const obj of map.objects) {
-                if (obj.buried) continue;
-                if (obj.ox === nx && obj.oy === ny && obj.otyp === BOULDER) {
-                    hasBoulder = true;
-                    break;
-                }
-            }
-            if (hasBoulder) continue;
-
-            let allowTraps = false;
-            const trap = map.trapAt(nx, ny);
-            if (trap) {
-                if (!m_harmless_trap(mon, trap)) {
-                    if (!mon.tame && mon_knows_traps(mon, trap.ttyp)) {
-                        continue;
+                    if (mmflag.allowM) {
+                        if (monAtPos.tame) {
+                            if (flag & ALLOW_TM) allowMAttack = true;
+                        } else {
+                            allowMAttack = true;
+                        }
                     }
-                    allowTraps = true;
+                }
+                if (allowMAttack) {
+                    posInfo |= ALLOW_M;
+                } else if (mm_displacement(mon, monAtPos)) {
+                    posInfo |= ALLOW_MDISP;
+                } else {
+                    continue;
                 }
             }
 
+            // C ref: mon.c:2306-2313 — garlic avoidance for undead
+            if (flag & NOGARLIC) {
+                let hasGarlic = false;
+                for (const obj of map.objects) {
+                    if (obj.buried) continue;
+                    if (obj.ox === nx && obj.oy === ny && obj.otyp === CLOVE_OF_GARLIC) {
+                        hasGarlic = true;
+                        break;
+                    }
+                }
+                if (hasGarlic) continue;
+            }
+
+            // C ref: mon.c:2315-2323 — boulder check (ALLOW_ROCK)
+            if (!(flag & ALLOW_ROCK)) {
+                let hasBoulder = false;
+                for (const obj of map.objects) {
+                    if (obj.buried) continue;
+                    if (obj.ox === nx && obj.oy === ny && obj.otyp === BOULDER) {
+                        hasBoulder = true;
+                        break;
+                    }
+                }
+                if (hasBoulder) continue;
+            }
+
+            // C ref: mon.c:2325-2331 — NOTONL: check monlineu
+            if (flag & NOTONL) {
+                const monSeeHero = (mon.mcansee !== false)
+                    && !mon.blind
+                    && m_cansee(mon, map, player.x, player.y)
+                    && (!player.invisible || perceives(mdat));
+                if (monSeeHero && monlineu(mon, player, nx, ny)) {
+                    posInfo |= NOTONL;
+                }
+            }
+
+            // C ref: mon.c:2333-2340 — tight squeeze for diagonal
             if (nx !== omx && ny !== omy) {
                 const sideAIsBadRock = bad_rock_for_mon(mon, map, omx, ny);
                 const sideBIsBadRock = bad_rock_for_mon(mon, map, nx, omy);
@@ -368,27 +491,40 @@ export function mfndpos(mon, map, player, opts = {}) {
                     continue;
             }
 
-            const mux = Number.isInteger(mon.mux) ? mon.mux : player.x;
-            const muy = Number.isInteger(mon.muy) ? mon.muy : player.y;
-            const monSeeHero = (mon.mcansee !== false)
-                && !mon.blind
-                && m_cansee(mon, map, player.x, player.y)
-                && (!player.invisible || perceives(mon.type || {}));
-            const notOnLine = monSeeHero
-                && (nx === mux || ny === muy
-                    || (ny - muy) === (nx - mux)
-                    || (ny - muy) === -(nx - mux));
+            // C ref: mon.c:2342-2352 — trap check
+            const trap = map.trapAt(nx, ny);
+            if (trap) {
+                if (!m_harmless_trap(mon, trap)) {
+                    if (!(flag & ALLOW_TRAPS)) {
+                        if (mon_knows_traps(mon, trap.ttyp))
+                            continue;
+                    }
+                    posInfo |= ALLOW_TRAPS;
+                }
+            }
 
             positions.push({
                 x: nx,
                 y: ny,
-                allowTraps,
-                allowM: !!allowMAttack,
-                allowMDisp: !!allowMDisp,
-                notOnLine,
+                info: posInfo,
+                // Legacy compat fields for callers that still use them
+                allowTraps: !!(posInfo & ALLOW_TRAPS),
+                allowM: !!(posInfo & ALLOW_M),
+                allowMDisp: !!(posInfo & ALLOW_MDISP),
+                allowU: !!(posInfo & ALLOW_U),
+                notOnLine: !!(posInfo & NOTONL),
             });
         }
     }
+
+    // C ref: mon.c:2358-2365 — eel nexttry: retry without wantpool requirement
+    if (positions.length === 0 && nexttry === 0 && wantpool) {
+        nexttry = 1;
+        continue;
+    }
+    break;
+    } // end nexttry loop
+
     return positions;
 }
 

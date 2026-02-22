@@ -42,14 +42,15 @@ import { MAGIC_PORTAL } from './symbols.js';
 import { gettrack } from './track.js';
 
 // Shared utilities from monmove.js
-import { dist2, distmin, monnear, mfndpos,
+import { dist2, distmin, monnear, mfndpos, mon_allowflags,
          m_avoid_kicked_loc, m_avoid_soko_push_loc,
          m_harmless_trap,
          monmoveTrace, monmoveStepLabel,
          canSpotMonsterForMap, rememberInvisibleAt,
          mondead, mpickobj, mdrop_obj,
          MTSZ, SQSRCHRADIUS, FARAWAY,
-         mon_track_add } from './monmove.js';
+         mon_track_add,
+         ALLOW_M, ALLOW_MDISP, ALLOW_TRAPS, ALLOW_U } from './monmove.js';
 
 // ========================================================================
 // Constants — C ref: dogmove.c:11-13
@@ -1098,7 +1099,7 @@ export function dog_move(mon, map, player, display, fov, after = false, game = n
     // ========================================================================
 
     // Collect valid positions (column-major order, no stay pos, boulder filter)
-    const positions = mfndpos(mon, map, player);
+    const positions = mfndpos(mon, map, player, mon_allowflags(mon));
     const cnt = positions.length;
     monmoveTrace('dog_move-begin',
         `step=${(Number.isInteger(map?._replayStepIndex) ? map._replayStepIndex + 1 : '?')}`,

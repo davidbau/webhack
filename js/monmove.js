@@ -19,6 +19,8 @@
 // - shk_move: simplified from full C shk.c; no billing/theft tracking
 // - undesirable_disp: not yet implemented (C:2279)
 // - distfleeck: brave_gremlin roll consumed but not applied (C:541)
+// - mon_allowflags: ALLOW_DIG deferred (needs wielded pick tracking)
+// - mon_allowflags: Conflict ALLOW_U not implemented
 
 import { COLNO, ROWNO, IS_WALL, IS_DOOR, IS_ROOM,
          ACCESSIBLE, CORR, DOOR, D_ISOPEN, D_CLOSED, D_LOCKED, D_BROKEN,
@@ -40,15 +42,18 @@ import { couldsee, m_cansee } from './vision.js';
 import { can_teleport, noeyes, perceives, nohands,
          hides_under, is_mercenary, monDisplayName, monNam,
          mon_knows_traps, is_rider, is_mind_flayer,
-         is_mindless, telepathic } from './mondata.js';
-import { PM_GRID_BUG, PM_SHOPKEEPER, mons,
+         is_mindless, telepathic,
+         is_giant, is_undead, is_unicorn, is_minion, throws_rocks,
+         passes_bars, is_human } from './mondata.js';
+import { PM_GRID_BUG, PM_SHOPKEEPER, PM_MINOTAUR, mons,
          PM_LEPRECHAUN,
          PM_DISPLACER_BEAST,
          PM_WHITE_UNICORN, PM_GRAY_UNICORN, PM_BLACK_UNICORN,
          PM_SHRIEKER, PM_PURPLE_WORM, PM_MEDUSA, PM_ERINYS,
          AT_WEAP,
-         S_MIMIC,
+         S_MIMIC, S_GHOST,
          S_DOG, S_NYMPH, S_LEPRECHAUN, S_HUMAN,
+         M1_WALLWALK,
          M2_COLLECT, M2_STRONG, M2_ROCKTHROW, M2_GREEDY, M2_JEWELS, M2_MAGIC,
          MZ_TINY, MZ_HUMAN, WT_HUMAN,
          M2_WANDER,
@@ -79,9 +84,16 @@ export { initrack, settrack };
 // Re-export mon.c functions
 import { movemon as _movemon, mfndpos, handleHiderPremove,
          onscary,
-         corpse_chance } from './mon.js';
+         corpse_chance,
+         ALLOW_MDISP, ALLOW_TRAPS, ALLOW_U, ALLOW_M, ALLOW_TM, ALLOW_ALL,
+         NOTONL, OPENDOOR, UNLOCKDOOR, BUSTDOOR, ALLOW_ROCK, ALLOW_WALL,
+         ALLOW_DIG, ALLOW_BARS, ALLOW_SANCT, ALLOW_SSM, NOGARLIC } from './mon.js';
 import { mattackm, M_ATTK_HIT, M_ATTK_DEF_DIED, M_ATTK_AGR_DIED } from './mhitm.js';
-export { mfndpos, onscary, corpse_chance };
+export { mfndpos, onscary, corpse_chance,
+         ALLOW_MDISP, ALLOW_TRAPS, ALLOW_U, ALLOW_M, ALLOW_TM, ALLOW_ALL,
+         NOTONL, OPENDOOR, UNLOCKDOOR, BUSTDOOR, ALLOW_ROCK, ALLOW_WALL,
+         ALLOW_DIG, ALLOW_BARS, ALLOW_SANCT, ALLOW_SSM, NOGARLIC };
+// mon_allowflags is exported from its definition below
 
 // Re-export trap.c functions
 import { m_harmless_trap, floor_trigger, mintrap_postmove } from './trap.js';
@@ -178,6 +190,91 @@ export function m_can_break_boulder(mon) {
     return is_rider(ptr)
         || (!mon.mspec_used
             && (mon.isshk || mon.ispriest || ptr.sound === MS_LEADER));
+}
+
+// ========================================================================
+// mon_allowflags — C ref: mon.c:2046-2108
+// ========================================================================
+// Compute the bitfield flag argument for mfndpos().
+// INCOMPLETE: ALLOW_DIG (needs monster wielded pick tracking),
+//   Conflict ALLOW_U (Conflict system not implemented)
+export function mon_allowflags(mon) {
+    const ptr = mon?.type || {};
+    const f1 = ptr.flags1 || 0;
+    let flag = 0;
+
+    // C ref: mon.c:2049-2059 — disposition-based flags
+    if (mon.tame) {
+        flag |= ALLOW_M | ALLOW_TRAPS | ALLOW_SANCT | ALLOW_SSM;
+    } else if (mon.peaceful) {
+        flag |= ALLOW_SANCT | ALLOW_SSM;
+    } else {
+        flag |= ALLOW_U;
+    }
+
+    // C ref: mon.c:2061-2065 — passes_walls
+    if (f1 & M1_WALLWALK) {
+        flag |= ALLOW_ROCK | ALLOW_WALL;
+    }
+
+    // C ref: mon.c:2066-2069 — throws_rocks or m_can_break_boulder
+    if (throws_rocks(ptr) || m_can_break_boulder(mon)) {
+        flag |= ALLOW_ROCK;
+    }
+
+    // C ref: mon.c:2070-2073 — can open doors (not nohands and not verysmall)
+    const verysmall = (ptr.size || 0) === MZ_TINY;
+    if (!nohands(ptr) && !verysmall) {
+        flag |= OPENDOOR;
+    }
+
+    // C ref: mon.c:2074-2078 — can unlock doors
+    const can_open = (flag & OPENDOOR) !== 0;
+    if ((can_open && monhaskey(mon, true)) || mon.iswiz || is_rider(ptr)) {
+        flag |= UNLOCKDOOR;
+    }
+
+    // C ref: mon.c:2079-2081 — is_giant can bust doors
+    if (is_giant(ptr)) {
+        flag |= BUSTDOOR;
+    }
+
+    // C ref: mon.c:2082-2084 — passes_bars
+    if (passes_bars(ptr)) {
+        flag |= ALLOW_BARS;
+    }
+
+    // C ref: mon.c:2085-2087 — is_minion or is_rider can enter sanctum
+    if (is_minion(ptr) || is_rider(ptr)) {
+        flag |= ALLOW_SANCT;
+    }
+
+    // C ref: mon.c:2088-2093 — unicorn on noteleport level
+    if (is_unicorn(ptr) /* && level.flags.noteleport — deferred */) {
+        flag |= NOTONL;
+    }
+
+    // C ref: mon.c:2094-2097 — human or minotaur
+    if (is_human(ptr) || (mon.mndx === PM_MINOTAUR)) {
+        flag |= ALLOW_SSM;
+    }
+
+    // C ref: mon.c:2098-2102 — undead (non-ghost) avoid garlic
+    if (is_undead(ptr) && (ptr.symbol !== S_GHOST)) {
+        flag |= NOGARLIC;
+    }
+
+    // C ref: mon.c:2103-2105 — shopkeepers
+    if (mon.isshk) {
+        flag |= ALLOW_SSM;
+    }
+
+    // C ref: mon.c:2106-2108 — priests
+    if (mon.ispriest) {
+        flag |= ALLOW_SSM | ALLOW_SANCT;
+    }
+
+    return flag;
 }
 
 // ========================================================================
@@ -869,13 +966,13 @@ function move_special(mon, map, player, inHisShop, appr, uondoor, avoid, ggx, gg
 
     let nix = omx;
     let niy = omy;
-    const positions = mfndpos(mon, map, player);
+    const positions = mfndpos(mon, map, player, mon_allowflags(mon));
     const cnt = positions.length;
     let chcnt = 0;
     if (mon.isshk && avoid && uondoor) {
         let hasOffLine = false;
         for (let i = 0; i < cnt; i++) {
-            if (!positions[i].notOnLine) {
+            if (!(positions[i].info & NOTONL)) {
                 hasOffLine = true;
                 break;
             }
@@ -890,12 +987,12 @@ function move_special(mon, map, player, inHisShop, appr, uondoor, avoid, ggx, gg
         if (!loc) continue;
         if (!(IS_ROOM(loc.typ) || (mon.isshk && (!inHisShop || mon.following)))) continue;
 
-        if (avoid && positions[i].notOnLine && !positions[i].allowM) continue;
+        if (avoid && (positions[i].info & NOTONL) && !(positions[i].info & ALLOW_M)) continue;
 
         const better = dist2(nx, ny, ggx, ggy) < dist2(nix, niy, ggx, ggy);
         if ((!appr && !rn2(++chcnt))
             || (appr && better)
-            || positions[i].allowM) {
+            || (positions[i].info & ALLOW_M)) {
             nix = nx;
             niy = ny;
         }
@@ -1097,7 +1194,7 @@ function m_move(mon, map, player, display = null, fov = null) {
         }
     }
 
-    const positions = mfndpos(mon, map, player, { allowDoorOpen: can_open, allowDoorUnlock: can_unlock });
+    const positions = mfndpos(mon, map, player, mon_allowflags(mon));
     const cnt = positions.length;
     const replayStep = Number.isInteger(map?._replayStepIndex) ? map._replayStepIndex + 1 : '?';
     const posSummary = positions.map((p) => `(${p.x},${p.y})`).join(' ');
